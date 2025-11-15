@@ -19,8 +19,8 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
     e.preventDefault();
     setError('');
 
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    if (newPassword.length !== 6) {
+      setError('Password must be exactly 6 characters long.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -66,7 +66,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
                 autoComplete="new-password"
-                placeholder="Minimum 8 characters"
+                placeholder="6 characters long"
               />
             </div>
             <div>
