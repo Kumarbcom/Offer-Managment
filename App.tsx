@@ -88,7 +88,7 @@ function App() {
   }, [currentUser, quotations, salesPersonUser]);
   
   const renderLoadingScreen = (message: string = 'Loading application data...') => (
-     <div className="flex items-center justify-center min-h-screen bg-gray-100">
+     <div className="flex items-center justify-center min-h-screen bg-slate-100">
         <div className="text-center p-8 bg-white rounded-lg shadow-md">
             <h1 className="text-3xl font-bold text-gray-800 mb-4">Offer Management Pro</h1>
             <p className="text-lg text-gray-600">{message}</p>
@@ -191,7 +191,7 @@ function App() {
   
   const visibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));
   
-  const mainAppClass = `min-h-screen bg-gray-100 font-sans ${isPasswordChangeRequired ? 'filter blur-sm pointer-events-none' : ''}`;
+  const mainAppClass = `min-h-screen bg-slate-100 font-sans ${isPasswordChangeRequired ? 'filter blur-sm pointer-events-none' : ''}`;
 
   if (dataError) {
       return renderLoadingScreen(`Error connecting to the database: ${dataError.message}`);
@@ -241,8 +241,8 @@ function App() {
                                         onClick={() => handleSetView(item.view)}
                                         className={`px-3 py-2 text-sm font-semibold rounded-md transition duration-300 ${
                                             view === item.view
-                                            ? 'bg-indigo-600 text-white shadow'
-                                            : 'text-gray-600 hover:bg-gray-200'
+                                            ? 'bg-blue-600 text-white shadow'
+                                            : 'text-slate-600 hover:bg-slate-200'
                                         }`}
                                     >
                                         {item.name}
@@ -251,7 +251,7 @@ function App() {
                             </nav>
                              <button
                                 onClick={() => setIsPasswordModalOpen(true)}
-                                className="p-2 text-sm font-semibold rounded-md transition duration-300 text-gray-600 hover:bg-gray-200"
+                                className="p-2 text-sm font-semibold rounded-md transition duration-300 text-slate-600 hover:bg-slate-200"
                                 title="Change Password"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

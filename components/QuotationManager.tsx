@@ -18,6 +18,17 @@ interface QuotationManagerProps {
 type SortByType = 'id' | 'quotationDate' | 'customer' | 'contactPerson' | 'salesPerson' | 'totalAmount' | 'status';
 type SortOrderType = 'asc' | 'desc';
 
+const getStatusClass = (status: QuotationStatus) => {
+    switch (status) {
+        case 'Open': return 'bg-blue-100 text-blue-800';
+        case 'PO received': return 'bg-green-100 text-green-800';
+        case 'Partial PO Received': return 'bg-teal-100 text-teal-800';
+        case 'Expired': return 'bg-yellow-100 text-yellow-800';
+        case 'Lost': return 'bg-rose-100 text-rose-800';
+        default: return 'bg-slate-100 text-slate-800';
+    }
+}
+
 export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, customers, salesPersons, setEditingQuotationId, setView, setQuotations, userRole, quotationFilter, onBackToCustomers }) => {
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
@@ -54,6 +65,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         return String(q.id).includes(term) 
             || getCustomerName(q.customerId).toLowerCase().includes(term)
             || q.contactPerson.toLowerCase().includes(term)
+            || getSalesPersonName(q.salesPersonId).toLowerCase().includes(term)
+            || q.status.toLowerCase().includes(term)
             || q.contactNumber.toLowerCase().includes(term);
       })
       .sort((a, b) => {
@@ -101,8 +114,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
   const SortableHeader: React.FC<{ title: string; sortKey: SortByType; className?: string }> = ({ title, sortKey, className = '' }) => (
-    <th className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${className}`} onClick={() => handleSort(sortKey)}>
-        <div className="flex items-center"><span>{title}</span>{sortBy === sortKey && <span className="ml-1 text-gray-900">{sortOrder === 'asc' ? '▲' : '▼'}</span>}</div>
+    <th className={`px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 ${className}`} onClick={() => handleSort(sortKey)}>
+        <div className="flex items-center"><span>{title}</span>{sortBy === sortKey && <span className="ml-1 text-slate-800">{sortOrder === 'asc' ? '▲' : '▼'}</span>}</div>
     </th>
   );
   
@@ -118,31 +131,113 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   if (quotations === null || customers === null || salesPersons === null) return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading quotations...</div>;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      {quotationFilter && (
-        <div className="bg-indigo-100 border-l-4 border-indigo-500 text-indigo-800 p-4 mb-4 rounded-md flex justify-between items-center" role="alert">
-          <div><p className="font-bold">Filtered View</p><p className="text-sm">{filterDescription}</p></div>
-          {onBackToCustomers && <button onClick={onBackToCustomers} className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md transition duration-300 text-sm">Back to Customers</button>}
-        </div>
-      )}
-      <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-gray-800">Manage Quotations</h2>
-        <div className="flex items-center space-x-2">
-            <button onClick={handleExport} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Export</button>
-            {userRole === 'Admin' && <button onClick={handleAddNew} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Add New</button>}
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+       <div className="flex flex-wrap gap-4 justify-between items-center pb-3 border-b border-slate-200">
+        <h2 className="text-xl font-bold text-slate-800">Quotations</h2>
+        <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 sm:w-auto w-full">
+            <div className="relative flex-grow">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-2">
+                    <svg className="w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path>
+                    </svg>
+                </span>
+                <input 
+                    type="text" 
+                    id="universalSearch" 
+                    className="block w-full pl-9 pr-3 py-1 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                    placeholder="Search..." 
+                    value={universalSearchTerm} 
+                    onChange={(e) => setUniversalSearchTerm(e.target.value)}
+                />
+            </div>
+            <button onClick={handleExport} className="inline-flex items-center gap-2 justify-center px-3 py-1.5 border border-transparent text-sm font-semibold rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                <span>Export</span>
+            </button>
+            {userRole === 'Admin' && (
+                <button onClick={handleAddNew} className="inline-flex items-center gap-2 justify-center px-3 py-1.5 border border-transparent text-sm font-semibold rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                    <span>Add New</span>
+                </button>
+            )}
         </div>
       </div>
-      <div className="mb-4 pb-4 border-b border-gray-200"><div className="max-w-md"><label htmlFor="universalSearch" className="block text-sm font-medium text-gray-700 mb-1">Search Quotations</label><input type="text" id="universalSearch" className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" placeholder="Search ID, Customer, Contact..." value={universalSearchTerm} onChange={(e) => setUniversalSearchTerm(e.target.value)}/></div></div>
       
-      {filteredAndSortedQuotations.length > 0 ? (
-        <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50"><tr><SortableHeader title="ID" sortKey="id" /><SortableHeader title="Date" sortKey="quotationDate" /><SortableHeader title="Customer" sortKey="customer" /><SortableHeader title="Contact" sortKey="contactPerson" /><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact No</th><SortableHeader title="Sales Person" sortKey="salesPerson" /><SortableHeader title="Amount" sortKey="totalAmount" /><SortableHeader title="Status" sortKey="status" /><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comments</th><th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th></tr></thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAndSortedQuotations.map(q => (<tr key={q.id} className="hover:bg-gray-50"><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{q.id}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(q.quotationDate).toLocaleDateString()}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{getCustomerName(q.customerId)}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{q.contactPerson}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{q.contactNumber}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getSalesPersonName(q.salesPersonId)}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${q.status.includes('PO') ? 'bg-green-100 text-green-800' : q.status === 'Open' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>{q.status}</span></td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><input type="text" value={q.comments || ''} onChange={(e) => handleCommentChange(q.id, e.target.value)} className="w-full p-1 border border-gray-300 rounded-md shadow-sm text-sm" placeholder="Add comment..." disabled={!isCommentEditable}/></td><td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2"><button onClick={() => handleEdit(q.id)} className="text-indigo-600 hover:text-indigo-900">{canEdit ? 'Edit' : 'View'}</button>{userRole === 'Admin' && <button onClick={() => handleDelete(q.id)} className="text-red-600 hover:text-red-900">Delete</button>}</td></tr>))}
-            </tbody></table>
+      {quotationFilter && (
+        <div className="text-sm text-slate-600 mt-2 flex items-center gap-4 bg-slate-50 p-2 rounded-md" role="alert">
+            <span className="font-medium">Filter Applied:</span>
+            <span>{filterDescription}</span>
+            {onBackToCustomers && <button onClick={onBackToCustomers} className="text-blue-600 hover:underline font-semibold ml-auto">Back to Customers</button>}
         </div>
-      ) : ( <p className="text-gray-500 text-center py-8">{quotations.length > 0 ? 'No quotations match search.' : 'No quotations found.'}</p> )}
+      )}
+      
+      <div className="overflow-x-auto mt-4 -mx-4">
+        {filteredAndSortedQuotations.length > 0 ? (
+            <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+                <tr>
+                    <SortableHeader title="ID" sortKey="id" className="w-16" />
+                    <SortableHeader title="Date" sortKey="quotationDate" />
+                    <SortableHeader title="Customer" sortKey="customer" />
+                    <SortableHeader title="Contact Details" sortKey="contactPerson" />
+                    <SortableHeader title="Sales Person" sortKey="salesPerson" />
+                    <SortableHeader title="Amount" sortKey="totalAmount" className="text-right" />
+                    <SortableHeader title="Status" sortKey="status" />
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Comments</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+                {filteredAndSortedQuotations.map(q => (
+                <tr key={q.id} className="hover:bg-slate-50/70 text-sm">
+                    <td className="px-3 py-2 whitespace-nowrap text-slate-600">{q.id}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
+                    <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{getCustomerName(q.customerId)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="text-sm text-slate-800">{q.contactPerson}</div>
+                        <div className="text-xs text-slate-500">{q.contactNumber}</div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-slate-600">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(q.status)}`}>
+                            {q.status}
+                        </span>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-slate-600 w-48">
+                        <input 
+                            type="text" 
+                            value={q.comments || ''} 
+                            onChange={(e) => handleCommentChange(q.id, e.target.value)} 
+                            className="w-full p-1 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-md text-sm focus:outline-none disabled:bg-transparent disabled:border-transparent" 
+                            placeholder="Add comment..." 
+                            disabled={!isCommentEditable}
+                        />
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                            <button onClick={() => handleEdit(q.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title={canEdit ? 'Edit' : 'View'}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                                    <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                            {userRole === 'Admin' && (
+                                <button onClick={() => handleDelete(q.id)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
+                    </td>
+                </tr>))}
+            </tbody>
+            </table>
+        ) : ( 
+            <p className="text-slate-500 text-center py-8">{quotations.length > 0 ? 'No quotations match your search criteria.' : 'No quotations found.'}</p> 
+        )}
+      </div>
     </div>
   );
 };

@@ -29,7 +29,7 @@ const statusColors: Record<QuotationStatus, { bg: string, text: string }> = {
     'PO received': { bg: 'bg-green-100', text: 'text-green-700' },
     'Partial PO Received': { bg: 'bg-teal-100', text: 'text-teal-700' },
     'Expired': { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-    'Lost': { bg: 'bg-red-100', text: 'text-red-700' },
+    'Lost': { bg: 'bg-rose-100', text: 'text-rose-700' },
 };
 
 
@@ -252,20 +252,20 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
   }
 
   return (
-    <div className="space-y-8">
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <h3 className="text-lg font-bold text-gray-800 mb-3">
+    <div className="space-y-6">
+      <div className="bg-slate-50 p-2 rounded-lg shadow-sm border border-slate-200">
+        <h3 className="text-base font-semibold text-slate-800 mb-1">
             Quotation Summary for {customerIdsInView.length} Customer{customerIdsInView.length !== 1 ? 's' : ''}
         </h3>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
             <div
                 onClick={() => onFilterQuotations({ customerIds: customerIdsInView })}
-                className="cursor-pointer text-indigo-700 hover:text-indigo-900 hover:underline transition-colors text-sm font-semibold p-1"
+                className="cursor-pointer text-blue-700 hover:text-blue-900 transition-colors text-sm font-semibold p-1 rounded-md hover:bg-blue-100/50"
                 title={`View all ${quotationStatsForVisibleCustomers.total.count} quotations`}
             >
                 <span>Total Enquiries: </span>
                 <span className="font-bold">{quotationStatsForVisibleCustomers.total.count}</span>
-                <span className="text-gray-400 mx-1">|</span>
+                <span className="text-slate-400 mx-1">|</span>
                 <span className="font-bold">{formatCurrency(quotationStatsForVisibleCustomers.total.value)}</span>
             </div>
             {QUOTATION_STATUSES.map(status => {
@@ -276,12 +276,12 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                     <div
                         key={status}
                         onClick={() => onFilterQuotations({ customerIds: customerIdsInView, status: status })}
-                        className={`cursor-pointer ${colors.text} hover:opacity-70 transition-opacity text-sm font-semibold p-1`}
+                        className={`cursor-pointer ${colors.text} hover:bg-opacity-80 transition-opacity text-sm font-semibold p-1 rounded-md hover:bg-current/10`}
                         title={`View ${stats.count} '${status}' quotations`}
                     >
                         <span>{status}: </span>
                         <span className="font-bold">{stats.count}</span>
-                        <span className="text-gray-400 mx-1">|</span>
+                        <span className="text-slate-400 mx-1">|</span>
                         <span className="font-bold">{formatCurrency(stats.value)}</span>
                     </div>
                 )
@@ -289,58 +289,56 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-md">
-         <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Customers</h2>
-            <div className="flex flex-wrap gap-2">
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+         <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-slate-800">Customers</h2>
+            <div className="flex flex-wrap gap-2 text-sm">
                 <button
                     onClick={handleExport}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md transition duration-300"
+                    className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
                 >
                     Export All
                 </button>
                 <button
                     onClick={handleDownloadTemplate}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-300"
+                    className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
                 >
                     Template
                 </button>
-                <div>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        accept=".xlsx, .xls"
-                    />
-                    <button
-                        onClick={handleUploadClick}
-                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300"
-                    >
-                        Upload
-                    </button>
-                </div>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
+                >
+                    Upload
+                </button>
                 <button
                     onClick={handleAddNew}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-300"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
                 >
                     Add New
                 </button>
             </div>
          </div>
          
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-200">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>
-                <label htmlFor="searchTerm" className="block text-sm font-medium text-gray-700">Search by Name</label>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. ABC Corp" />
+                <label htmlFor="searchTerm" className="block text-xs font-medium text-slate-600">Search by Name</label>
+                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. ABC Corp" />
             </div>
             <div>
-                <label htmlFor="searchCity" className="block text-sm font-medium text-gray-700">Search by City</label>
-                <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Bangalore" />
+                <label htmlFor="searchCity" className="block text-xs font-medium text-slate-600">Search by City</label>
+                <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. Bangalore" />
             </div>
             <div>
-                <label htmlFor="sortBy" className="block text-sm font-medium text-gray-700">Sort By</label>
-                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                <label htmlFor="sortBy" className="block text-xs font-medium text-slate-600">Sort By</label>
+                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
                     <option value="id">ID</option>
                     <option value="name">Customer Name</option>
                     <option value="city">City</option>
@@ -349,35 +347,35 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                 </select>
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">Order</label>
-                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-md shadow-sm flex items-center justify-center">
+                <label className="block text-xs font-medium text-slate-600">Order</label>
+                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
                     {sortOrder === 'asc' ? 'Ascending ▲' : 'Descending ▼'}
                 </button>
             </div>
          </div>
 
         {filteredAndSortedCustomers.length > 0 ? (
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-x-auto -mx-4">
+                <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
                     <tr>
                       {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
-                        <th key={header} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           {header}
                         </th>
                       ))}
                     </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-slate-200">
                     {filteredAndSortedCustomers.map(customer => (
-                        <tr key={customer.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer.id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{customer.address}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.city}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.pincode}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getSalesPersonName(customer.salesPersonId)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <tr key={customer.id} className="hover:bg-slate-50/70">
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.id}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600 max-w-xs truncate">{customer.address}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.city}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.pincode}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">
                                 <div className="flex flex-col items-start gap-1">
                                     {QUOTATION_STATUSES.map(status => {
                                         const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
@@ -393,16 +391,16 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                                             >
                                                 <span>{status}: </span>
                                                 <span className="font-bold">{relevantQuotes.length}</span>
-                                                <span className="text-gray-400 mx-1">|</span>
+                                                <span className="text-slate-400 mx-1">|</span>
                                                 <span className="font-bold">{formatCurrency(totalValue)}</span>
                                             </div>
                                         )
                                     })}
                                 </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                <button onClick={() => handleEdit(customer)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                                <button onClick={() => handleDelete(customer.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                            <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
+                                <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
                             </td>
                         </tr>
                     ))}
@@ -410,7 +408,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                 </table>
             </div>
         ) : (
-          <p className="text-gray-500 text-center py-8">
+          <p className="text-slate-500 text-center py-8">
             {customers.length > 0 ? 'No customers match your search criteria.' : 'No customers found. Add one to get started.'}
         </p>
         )}

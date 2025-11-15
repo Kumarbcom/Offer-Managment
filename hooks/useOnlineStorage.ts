@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, SetStateAction } from 'react';
 import { get, set } from '../firebase';
 import { INITIAL_DATA } from '../initialData';
@@ -16,15 +15,18 @@ const seededCollections = new Set<CollectionName>();
 /**
  * A hook to manage data persistence.
  * It attempts to use Firebase Firestore if configured.
- * If Firebase is not configured or fails on initial load, it falls back to using the browser's Local Storage.
- * This ensures the application is always usable out-of-the-box.
+ * If Firebase is not configured or fails on initial load, it falls back to a different storage strategy:
+ * - For the 'products' collection, it uses in-memory state to avoid local storage quota errors.
+ * - For all other collections, it uses the browser's Local Storage.
+ * This ensures the application is always usable out-of-the-box, even with large product catalogs.
  */
-// FIX: Changed React.SetStateAction to SetStateAction and imported it from 'react'.
 export const useOnlineStorage = <T extends {id?: number, name?: string}>(collectionName: CollectionName): [T[] | null, (value: SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
     
-    // Always initialize local storage hook to follow rules of hooks.
     const initialData = INITIAL_DATA[collectionName] as unknown as T[];
+    const useInMemoryFallback = collectionName === 'products' && !isFirebaseConfigured;
+
     const [localData, setLocalData] = useLocalStorage<T[]>(collectionName, initialData);
+    const [inMemoryData, setInMemoryData] = useState<T[]>(initialData);
 
     const [state, setState] = useState<T[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -32,8 +34,13 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
 
     useEffect(() => {
         if (!isFirebaseConfigured) {
-            console.warn(`Firebase not configured for '${collectionName}'. Using Local Storage.`);
-            setState(localData);
+            if (useInMemoryFallback) {
+                // Using in-memory storage for products when Firebase is not configured.
+                setState(inMemoryData);
+            } else {
+                // Using local storage for other collections.
+                setState(localData);
+            }
             setIsLoading(false);
             return;
         }
@@ -53,17 +60,21 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
             } catch (e) {
                 console.error(`Firebase error on loading '${collectionName}':`, e);
                 setError(e as Error);
-                console.warn(`Falling back to Local Storage for '${collectionName}' due to Firebase error.`);
-                setState(localData); // Fallback on error
+                // Fallback to local/in-memory storage on error
+                if (useInMemoryFallback) {
+                    setState(inMemoryData);
+                } else {
+                    setState(localData);
+                }
             } finally {
                 setIsLoading(false);
             }
         };
         fetchData();
+    // This effect should only run once when the hook mounts for a specific collection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [collectionName]); // This effect should only run once when the collection name changes.
+    }, [collectionName]);
 
-    // FIX: Changed React.SetStateAction to SetStateAction.
     const setValue = useCallback(async (value: SetStateAction<T[]>) => {
         const previousState = state;
         const valueToStore = value instanceof Function ? value(previousState!) : value;
@@ -71,7 +82,11 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
         setState(valueToStore); // Optimistic UI update
 
         if (!isFirebaseConfigured) {
-            await setLocalData(valueToStore);
+            if (useInMemoryFallback) {
+                setInMemoryData(valueToStore);
+            } else {
+                await setLocalData(valueToStore);
+            }
             return;
         }
 
@@ -83,7 +98,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
             setState(previousState); // Revert optimistic update on failure
             throw e;
         }
-    }, [collectionName, state, setLocalData]);
+    }, [collectionName, state, setLocalData, useInMemoryFallback]);
     
     return [state, setValue, isLoading, error];
 };

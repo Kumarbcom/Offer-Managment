@@ -254,33 +254,31 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   }
 
   return (
-    <div className="space-y-8">
-      <div className="bg-white p-6 rounded-lg shadow-md">
-         <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Products</h2>
-            <div className="flex flex-wrap gap-2">
-                <button onClick={handleExport} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Export All</button>
-                <button onClick={handleDownloadTemplate} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Template</button>
-                <div>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
-                    <button onClick={handleUploadClick} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Upload</button>
-                </div>
-                <button onClick={handleAddNew} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Add New</button>
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+         <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-slate-800">Products</h2>
+            <div className="flex flex-wrap gap-2 text-sm">
+                <button onClick={handleExport} className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">Export All</button>
+                <button onClick={handleDownloadTemplate} className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">Template</button>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
+                <button onClick={handleUploadClick} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">Upload</button>
+                <button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">Add New</button>
             </div>
          </div>
          
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-200">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>
-                <label htmlFor="searchTerm" className="block text-sm font-medium text-gray-700">Search by Part No</label>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. LAPP-123" />
+                <label htmlFor="searchTerm" className="block text-xs font-medium text-slate-600">Search by Part No</label>
+                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. LAPP-123" />
             </div>
              <div>
-                <label htmlFor="searchDescription" className="block text-sm font-medium text-gray-700">Search by Description</label>
-                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. ÖLFLEX" />
+                <label htmlFor="searchDescription" className="block text-xs font-medium text-slate-600">Search by Description</label>
+                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. ÖLFLEX" />
             </div>
             <div>
-                <label htmlFor="sortBy" className="block text-sm font-medium text-gray-700">Sort By</label>
-                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                <label htmlFor="sortBy" className="block text-xs font-medium text-slate-600">Sort By</label>
+                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
                     <option value="id">ID</option>
                     <option value="partNo">Part No</option>
                     <option value="description">Description</option>
@@ -292,42 +290,42 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                 </select>
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">Order</label>
-                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-md shadow-sm flex items-center justify-center">
+                <label className="block text-xs font-medium text-slate-600">Order</label>
+                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
                     {sortOrder === 'asc' ? 'Ascending ▲' : 'Descending ▼'}
                 </button>
             </div>
          </div>
 
         {filteredAndSortedProducts.length > 0 ? (
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-x-auto -mx-4">
+                <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
                     <tr>
                       {['ID', 'Part No', 'Description', 'HSN Code', 'Current LP', 'Current SP', 'UOM', 'Plant', 'Weight', 'Actions'].map(header => (
-                        <th key={header} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th key={header} scope="col" className={`px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider ${['Current LP', 'Current SP', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>
                           {header}
                         </th>
                       ))}
                     </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-slate-200">
                     {filteredAndSortedProducts.map(product => {
                         const currentPrice = getCurrentPrice(product);
                         return (
-                            <tr key={product.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.partNo}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{product.description}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.hsnCode}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{currentPrice ? currentPrice.lp.toFixed(2) : 'N/A'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{currentPrice ? currentPrice.sp.toFixed(2) : 'N/A'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.uom}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.plant}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.weight}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                    <button onClick={() => handleEdit(product)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                                    <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                            <tr key={product.id} className="hover:bg-slate-50/70 text-sm">
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.id}</td>
+                                <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{product.partNo}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600 max-w-xs truncate">{product.description}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.hsnCode}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{currentPrice ? currentPrice.lp.toFixed(2) : 'N/A'}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{currentPrice ? currentPrice.sp.toFixed(2) : 'N/A'}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.uom}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.plant}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{product.weight}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                    <button onClick={() => handleEdit(product)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
+                                    <button onClick={() => handleDelete(product.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
                                 </td>
                             </tr>
                         )
@@ -336,7 +334,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                 </table>
             </div>
         ) : (
-          <p className="text-gray-500 text-center py-8">
+          <p className="text-slate-500 text-center py-8">
             {products.length > 0 ? 'No products match your search criteria.' : 'No products found. Add one to get started.'}
         </p>
         )}
