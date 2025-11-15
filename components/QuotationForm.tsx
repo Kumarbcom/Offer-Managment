@@ -148,7 +148,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
                 if (newPrice !== item.price) {
                     wasUpdated = true;
-                    return { ...item, price: newPrice, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP' };
+                    // FIX: Explicitly type `priceSource` to prevent it from being inferred as a generic `string`.
+                    const priceSource: 'LP' | 'SP' = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
+                    return { ...item, price: newPrice, priceSource: priceSource };
                 }
             }
         }
@@ -213,8 +215,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handleSaveCustomer = async (newCustomer: Customer) => { await setCustomers(prev => [...prev.filter(c => c.id !== newCustomer.id), newCustomer]); setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null); setIsCustomerModalOpen(false); };
   const handleSaveProduct = async (newProduct: Product) => { await setProducts(prev => [...prev.filter(p => p.id !== newProduct.id), newProduct]); setIsProductModalOpen(false); };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (isReadOnly || !formData || !formData.customerId) {
         alert("Please select a customer."); return;
     }
@@ -327,6 +329,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         <form onSubmit={handleSubmit} className="p-3 md:p-4">
             <div className="bg-slate-50 p-2 flex flex-wrap items-center gap-2 border border-slate-200 mb-4 rounded-md">
                 {!isReadOnly && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
+                {/* FIX: The ActionButton's onClick prop expects a function with no arguments.
+                The event parameter in handleSubmit is made optional to satisfy this. */}
                 {!isReadOnly && <ActionButton onClick={handleSubmit} title="Save Quotation"><Icons.Save /><span>Save</span></ActionButton>}
                 <ActionButton onClick={() => handlePreview('standard')} title="Preview Standard"><Icons.PrintStandard /><span>Preview</span></ActionButton>
                 <ActionButton onClick={() => handlePreview('discounted')} title="Preview with Discount"><Icons.PrintDiscount /><span>Discounted</span></ActionButton>

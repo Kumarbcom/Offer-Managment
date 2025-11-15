@@ -51,7 +51,9 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
   };
 
   const handleAddNew = () => {
-      setEditingUser({ name: '', role: 'Viewer' });
+      // FIX: `name: ''` is not a valid Partial<User> because '' is not a valid User['name'].
+      // Removing it makes name `undefined`, which is valid and indicates a new user.
+      setEditingUser({ role: 'Viewer' });
   }
 
   if (!users) return <div>Loading users...</div>;
