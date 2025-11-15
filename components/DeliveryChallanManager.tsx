@@ -35,7 +35,8 @@ export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this challan?')) {
-      await setDeliveryChallans(prev => prev!.filter(c => c.id !== id));
+      if (!deliveryChallans) return;
+      await setDeliveryChallans(deliveryChallans.filter(c => c.id !== id));
     }
   };
   

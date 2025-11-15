@@ -1,48 +1,89 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { MOCK_SALES_PERSONS, MOCK_CUSTOMERS, MOCK_PRODUCTS, MOCK_QUOTATIONS, MOCK_DELIVERY_CHALLANS } from '../mockData';
 
-const initialDataMap = {
-    salesPersons: MOCK_SALES_PERSONS,
-    customers: MOCK_CUSTOMERS,
-    products: MOCK_PRODUCTS,
-    quotations: MOCK_QUOTATIONS,
-    deliveryChallans: MOCK_DELIVERY_CHALLANS,
-};
+import { useState, useEffect, useCallback, SetStateAction } from 'react';
+import { get, set } from '../firebase';
+import { INITIAL_DATA } from '../initialData';
+import { firebaseConfig } from '../firebaseConfig';
+import { useLocalStorage } from './useLocalStorage';
 
-type CollectionName = keyof typeof initialDataMap;
+type CollectionName = keyof typeof INITIAL_DATA;
 
-export const useOnlineStorage = <T extends {id: number}>(collectionName: CollectionName): [T[] | null, (value: React.SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
-    const [storedValue, setStoredValue] = useState<T[] | null>(null);
+// Check if the Firebase config has been filled out.
+const isFirebaseConfigured = firebaseConfig.projectId && firebaseConfig.projectId !== "YOUR_PROJECT_ID";
+
+// A flag to ensure seeding only happens once per collection per session for Firebase.
+const seededCollections = new Set<CollectionName>();
+
+/**
+ * A hook to manage data persistence.
+ * It attempts to use Firebase Firestore if configured.
+ * If Firebase is not configured or fails on initial load, it falls back to using the browser's Local Storage.
+ * This ensures the application is always usable out-of-the-box.
+ */
+// FIX: Changed React.SetStateAction to SetStateAction and imported it from 'react'.
+export const useOnlineStorage = <T extends {id?: number, name?: string}>(collectionName: CollectionName): [T[] | null, (value: SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
+    
+    // Always initialize local storage hook to follow rules of hooks.
+    const initialData = INITIAL_DATA[collectionName] as unknown as T[];
+    const [localData, setLocalData] = useLocalStorage<T[]>(collectionName, initialData);
+
+    const [state, setState] = useState<T[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
+        if (!isFirebaseConfigured) {
+            console.warn(`Firebase not configured for '${collectionName}'. Using Local Storage.`);
+            setState(localData);
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchData = async () => {
+            setIsLoading(true);
+            setError(null);
             try {
-                // Directly use mock data as the online storage is not configured.
-                const data = initialDataMap[collectionName] as unknown as T[];
-                setStoredValue(data);
+                let data = await get(collectionName);
+                if (data.length === 0 && !seededCollections.has(collectionName)) {
+                    console.log(`Firebase collection '${collectionName}' is empty. Seeding with initial data.`);
+                    await set(collectionName, initialData);
+                    seededCollections.add(collectionName);
+                    data = await get(collectionName); // Re-fetch to get data with firebase IDs
+                }
+                setState(data as T[]);
             } catch (e) {
+                console.error(`Firebase error on loading '${collectionName}':`, e);
                 setError(e as Error);
+                console.warn(`Falling back to Local Storage for '${collectionName}' due to Firebase error.`);
+                setState(localData); // Fallback on error
             } finally {
                 setIsLoading(false);
             }
-        }, 500); // Simulate network delay
+        };
+        fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [collectionName]); // This effect should only run once when the collection name changes.
 
-        return () => clearTimeout(timer);
-    }, [collectionName]);
+    // FIX: Changed React.SetStateAction to SetStateAction.
+    const setValue = useCallback(async (value: SetStateAction<T[]>) => {
+        const previousState = state;
+        const valueToStore = value instanceof Function ? value(previousState!) : value;
+        
+        setState(valueToStore); // Optimistic UI update
 
-    const setValue = useCallback(async (value: React.SetStateAction<T[]>) => {
-        // This function will now only update the state in memory.
-        if (storedValue === null) {
-            console.warn("Attempted to set value before storage was loaded.");
+        if (!isFirebaseConfigured) {
+            await setLocalData(valueToStore);
             return;
         }
-        const valueToStore = value instanceof Function ? value(storedValue) : value;
-        setStoredValue(valueToStore);
-        // The original implementation returned a promise, so we do the same.
-        return Promise.resolve();
-    }, [storedValue]);
+
+        try {
+            await set(collectionName, valueToStore);
+        } catch (e) {
+            console.error(`Firebase error on saving '${collectionName}':`, e);
+            setError(e as Error);
+            setState(previousState); // Revert optimistic update on failure
+            throw e;
+        }
+    }, [collectionName, state, setLocalData]);
     
-    return [storedValue, setValue, isLoading, error];
+    return [state, setValue, isLoading, error];
 };

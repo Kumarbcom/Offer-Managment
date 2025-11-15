@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, DeliveryChallan } from './types';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
-import { USERS } from './auth';
 import { SalesPersonManager } from './components/SalesPersonManager';
 import { CustomerManager } from './components/CustomerManager';
 import { ProductManager } from './components/ProductManager';
@@ -17,7 +15,7 @@ import { DeliveryChallanForm } from './components/DeliveryChallanForm';
 
 
 function App() {
-  const [users, setUsers] = useLocalStorage<User[]>('users', USERS);
+  const [users, setUsers, usersLoading, usersError] = useOnlineStorage<User>('users');
   const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
   const [customers, setCustomers, customersLoading, customersError] = useOnlineStorage<Customer>('customers');
   const [products, setProducts, productsLoading, productsError] = useOnlineStorage<Product>('products');
@@ -32,8 +30,8 @@ function App() {
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
   
-  const isLoadingData = salesPersonsLoading || customersLoading || productsLoading || quotationsLoading || deliveryChallansLoading;
-  const dataError = salesPersonsError || customersError || productsError || quotationsError || deliveryChallansError;
+  const isLoadingData = usersLoading || salesPersonsLoading || customersLoading || productsLoading || quotationsLoading || deliveryChallansLoading;
+  const dataError = usersError || salesPersonsError || customersError || productsError || quotationsError || deliveryChallansError;
 
   const handleLogin = (user: User) => {
       setCurrentUser(user);
@@ -52,7 +50,7 @@ function App() {
   const handlePasswordChange = async (newPassword: string) => {
     if (!currentUser || !users) return;
     const updatedUsers = users.map(u => u.name === currentUser.name ? { ...u, password: newPassword } : u);
-    setUsers(updatedUsers);
+    await setUsers(updatedUsers);
     setCurrentUser(prev => prev ? { ...prev, password: newPassword } : null);
     setIsPasswordModalOpen(false);
     setIsPasswordChangeRequired(false);
@@ -188,7 +186,7 @@ function App() {
   ];
 
   if (!currentUser) {
-    return <Login onLogin={handleLogin} users={users} isLoading={users === null} />;
+    return <Login onLogin={handleLogin} users={users} isLoading={usersLoading} />;
   }
   
   const visibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));

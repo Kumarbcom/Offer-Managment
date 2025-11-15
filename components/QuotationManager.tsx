@@ -74,7 +74,10 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const handleAddNew = () => { setEditingQuotationId(null); setView('quotation-form'); };
   const handleEdit = (id: number) => { setEditingQuotationId(id); setView('quotation-form'); };
   const handleDelete = async (id: number) => { if (window.confirm("Are you sure?") && quotations) await setQuotations(quotations.filter(q => q.id !== id)); }
-  const handleCommentChange = async (id: number, newComment: string) => await setQuotations(prev => prev.map(q => q.id === id ? { ...q, comments: newComment } : q));
+  const handleCommentChange = async (id: number, newComment: string) => {
+    if(!quotations) return;
+    await setQuotations(quotations.map(q => q.id === id ? { ...q, comments: newComment } : q))
+  };
   
   const handleExport = () => {
     if(!filteredAndSortedQuotations || filteredAndSortedQuotations.length === 0) { alert("No data to export."); return; }

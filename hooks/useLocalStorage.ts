@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback } from 'react';
 
-export const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: React.SetStateAction<T>) => void] => {
+export const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: React.SetStateAction<T>) => Promise<void>] => {
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);
@@ -12,7 +12,7 @@ export const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: R
     }
   });
 
-  const setValue = useCallback((value: React.SetStateAction<T>) => {
+  const setValue = useCallback(async (value: React.SetStateAction<T>) => {
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);

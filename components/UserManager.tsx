@@ -1,54 +1,57 @@
-
 import React, { useState } from 'react';
 import type { User } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
 
 interface UserManagerProps {
   users: User[] | null;
-  setUsers: (users: User[]) => void;
+  setUsers: (users: User[]) => Promise<void>;
   currentUser: User;
 }
 
 const ROLES: User['role'][] = ['Admin', 'Sales Person', 'Management', 'SCM', 'Viewer'];
-const ALL_USER_NAMES = ['Admin', 'Manager', 'SCM', ...SALES_PERSON_NAMES];
+const ALL_USER_NAMES: User['name'][] = ['Kumar', 'Vandita', 'Ranjan', 'Gurudatta', 'Purshothama', 'DC Venugopal', 'Rachana', 'Mohan', 'Geetha', ...SALES_PERSON_NAMES];
 
 export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, currentUser }) => {
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
 
   const handleEdit = (user: User) => {
     setEditingUser({ ...user });
   };
 
-  const handleSave = () => {
-    if (!editingUser || !users) return;
-    
-    // Simple validation
-    if (!editingUser.name || !editingUser.role) {
+  const handleSave = async () => {
+    if (!editingUser || !users || !editingUser.name || !editingUser.role) {
         alert("Username and Role are required.");
         return;
     }
     
-    const isNew = !users.some(u => u.name === editingUser.name);
+    const isNew = !users.some(u => u.name === editingUser!.name);
+
     if (isNew) {
-      setUsers([...users, { ...editingUser, password: 'password' }]); // Set a default password for new users
+      const newUser: User = {
+        name: editingUser.name,
+        role: editingUser.role,
+        password: '123456' // Set a default password for new users
+      };
+      await setUsers([...users, newUser]);
     } else {
-      setUsers(users.map(u => (u.name === editingUser.name ? editingUser : u)));
+      await setUsers(users.map(u => (u.name === editingUser.name ? editingUser as User : u)));
     }
     setEditingUser(null);
   };
 
-  const handleDelete = (userName: User['name']) => {
+  const handleDelete = async (userName: User['name']) => {
     if (userName === currentUser.name) {
       alert("You cannot delete your own account.");
       return;
     }
     if(window.confirm(`Are you sure you want to delete user "${userName}"?`)){
-        setUsers(users!.filter(u => u.name !== userName));
+        if(!users) return;
+        await setUsers(users.filter(u => u.name !== userName));
     }
   };
 
   const handleAddNew = () => {
-      setEditingUser({ name: '' as any, role: 'Viewer' });
+      setEditingUser({ name: '', role: 'Viewer' });
   }
 
   if (!users) return <div>Loading users...</div>;
@@ -99,7 +102,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
                 )}
               </tr>
             ))}
-            {editingUser && !users.some(u => u.name === editingUser.name) && (
+            {editingUser && !editingUser.name && (
                  <tr>
                     <td className="px-6 py-4">
                         <select value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value as User['name']})} className="p-1 border rounded w-full">

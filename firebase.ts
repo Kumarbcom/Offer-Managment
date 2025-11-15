@@ -1,7 +1,7 @@
 import { db } from './firebaseConfig';
 import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
 
-type CollectionName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'deliveryChallans';
+type CollectionName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'deliveryChallans' | 'users';
 
 /**
  * Fetches all documents from a specified Firestore collection.
@@ -29,7 +29,7 @@ export async function get(collectionName: CollectionName): Promise<any[]> {
  * @param collectionName The name of the collection to update.
  * @param data The new array of data to store in the collection.
  */
-export async function set<T extends { id: number }>(collectionName: CollectionName, data: T[]): Promise<void> {
+export async function set<T extends { id?: number, name?: string }>(collectionName: CollectionName, data: T[]): Promise<void> {
     try {
         const batch = writeBatch(db);
         const collectionRef = collection(db, collectionName);
@@ -39,10 +39,18 @@ export async function set<T extends { id: number }>(collectionName: CollectionNa
             batch.delete(document.ref);
         });
 
-        // Add new documents, using the item's own `id` as the document ID for consistency.
+        // Add new documents, using the item's own `id` or `name` as the document ID for consistency.
         data.forEach(item => {
-            const docRef = doc(db, collectionName, String(item.id));
-            const { ...itemData } = item; // create a new object without the potential firebaseId
+            // Users are identified by name, others by id.
+            const docId = collectionName === 'users' ? String(item.name) : String(item.id);
+            if (!docId || docId === 'undefined') {
+                console.warn("Skipping item without an id/name:", item);
+                return;
+            }
+
+            const docRef = doc(db, collectionName, docId);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { firebaseId, ...itemData } = item as any; // remove firebaseId before saving
             batch.set(docRef, itemData);
         });
 

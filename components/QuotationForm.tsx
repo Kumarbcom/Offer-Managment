@@ -139,8 +139,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : '') : value } : null);
   };
   
-  const handleItemChange = (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
+  const handleItemChange = async (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
     if (!formData) return;
+    
+    let productToUpdate: { productId: number, newWeight: number } | null = null;
+    
     const newDetails = formData.details.map((item, i) => {
         if (i === index) {
             const updatedItem = { ...item };
@@ -152,7 +155,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             if (field === 'airFreightDetails.weightPerMtr') {
                 const product = products.find(p => p.id === updatedItem.productId);
                 if (product && product.weight !== value) {
-                    setProducts(prevProducts => prevProducts.map(p => p.id === updatedItem.productId ? {...p, weight: value} : p));
+                    productToUpdate = { productId: updatedItem.productId, newWeight: value };
                 }
             }
             if (field === 'airFreight' && value === false) updatedItem.airFreightDetails.airFreightLeadTime = '';
@@ -160,6 +163,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         }
         return item;
     });
+
+    if (productToUpdate) {
+        await setProducts(prevProducts => prevProducts.map(p => p.id === productToUpdate!.productId ? {...p, weight: productToUpdate!.newWeight} : p));
+    }
+
     setFormData({ ...formData, details: newDetails });
   };
   

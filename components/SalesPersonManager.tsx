@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { SalesPerson } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
@@ -30,7 +29,8 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
   
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this sales person?")) {
-      await setSalesPersons(prev => prev!.filter(p => p.id !== id));
+        if(!salesPersons) return;
+        await setSalesPersons(salesPersons.filter(p => p.id !== id));
     }
   };
 

@@ -1,9 +1,11 @@
+
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 // TODO: Replace the placeholder values with your project's actual Firebase configuration.
 // You can find this in your Firebase project settings.
-const firebaseConfig = {
+// FIX: Export firebaseConfig to be used in other modules.
+export const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
   projectId: "YOUR_PROJECT_ID",
