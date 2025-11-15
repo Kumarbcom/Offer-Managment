@@ -76,29 +76,43 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
     }, [collectionName]);
 
     const setValue = useCallback(async (value: SetStateAction<T[]>) => {
-        const previousState = state;
-        const valueToStore = value instanceof Function ? value(previousState!) : value;
-        
-        setState(valueToStore); // Optimistic UI update
+        let previousState: T[] | null = null;
+        let newState: T[] | undefined;
+
+        // Use the functional update form to get the most recent state for the update.
+        // This also allows us to capture both old and new states for the async operation.
+        setState(current => {
+            previousState = current;
+            newState = value instanceof Function ? value(current!) : value;
+            return newState;
+        });
+
+        // The state update is queued, but the new value is available immediately.
+        // We must check if it's defined before proceeding with persistence.
+        if (newState === undefined) {
+            console.warn('State update resulted in an undefined value. Aborting persistence.');
+            return;
+        }
 
         if (!isFirebaseConfigured) {
             if (useInMemoryFallback) {
-                setInMemoryData(valueToStore);
+                setInMemoryData(newState);
             } else {
-                await setLocalData(valueToStore);
+                await setLocalData(newState);
             }
             return;
         }
 
         try {
-            await set(collectionName, valueToStore);
+            await set(collectionName, newState);
         } catch (e) {
             console.error(`Firebase error on saving '${collectionName}':`, e);
             setError(e as Error);
-            setState(previousState); // Revert optimistic update on failure
+            // Revert the optimistic UI update if the async operation fails.
+            setState(previousState);
             throw e;
         }
-    }, [collectionName, state, setLocalData, useInMemoryFallback]);
+    }, [collectionName, useInMemoryFallback, setLocalData, setInMemoryData]);
     
     return [state, setValue, isLoading, error];
 };
