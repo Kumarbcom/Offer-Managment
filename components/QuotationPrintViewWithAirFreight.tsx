@@ -67,11 +67,13 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         <th className="p-1 font-semibold border">Sl. No</th>
                         <th className="p-1 font-semibold border">Part No</th>
                         <th className="p-1 font-semibold border">Description</th>
-                        <th className="p-1 font-semibold border text-center">Qty/UOM</th>
+                        <th className="p-1 font-semibold border text-center">Qty</th>
+                        <th className="p-1 font-semibold border text-center">UOM</th>
                         <th className="p-1 font-semibold border text-right">Unit Price (₹)</th>
                         <th className="p-1 font-semibold border text-right">Amount (₹)</th>
-                        <th className="p-1 font-semibold border text-right">Air Freight/Unit (₹)</th>
-                        <th className="p-1 font-semibold border text-right">Total Air Freight (₹)</th>
+                        <th className="p-1 font-semibold border text-center">Stock Status</th>
+                        <th className="p-1 font-semibold border text-right">Airfreight/Unit (₹)</th>
+                        <th className="p-1 font-semibold border text-right">Airfreight Amount (₹)</th>
                         <th className="p-1 font-semibold border text-center">Lead Time</th>
                         <th className="p-1 font-semibold border text-right">Total (₹)</th>
                     </tr>
@@ -88,12 +90,14 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                                 <td className="p-1 border text-center">{index + 1}</td>
                                 <td className="p-1 border font-medium">{item.partNo}</td>
                                 <td className="p-1 border max-w-xs">{item.description}</td>
-                                <td className="p-1 border text-center">{item.moq} {item.uom}</td>
+                                <td className="p-1 border text-center">{item.moq}</td>
+                                <td className="p-1 border text-center">{item.uom}</td>
                                 <td className="p-1 border text-right">{unitPrice.toFixed(2)}</td>
                                 <td className="p-1 border text-right">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="p-1 border text-center">{item.stockStatus}</td>
                                 <td className="p-1 border text-right">{freightPerUnit > 0 ? freightPerUnit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
                                 <td className="p-1 border text-right">{freightAmount > 0 ? freightAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
-                                <td className="p-1 border text-center">{item.airFreight && item.airFreightDetails.airFreightLeadTime ? item.airFreightDetails.airFreightLeadTime : item.stockStatus}</td>
+                                <td className="p-1 border text-center">{item.airFreight ? item.airFreightDetails.airFreightLeadTime : '-'}</td>
                                 <td className="p-1 border text-right font-medium">{totalWithFreight.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                         );

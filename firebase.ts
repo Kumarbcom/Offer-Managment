@@ -5,6 +5,7 @@ type CollectionName = 'salesPersons' | 'customers' | 'products' | 'quotations' |
 
 /**
  * Fetches all documents from a specified Firestore collection.
+ * It ensures that the local object's `id` or `name` is correctly populated from the Firestore document ID.
  * @param collectionName The name of the collection to fetch.
  * @returns A promise that resolves to an array of documents.
  */
@@ -15,33 +16,71 @@ export async function get(collectionName: CollectionName): Promise<any[]> {
         if (snapshot.empty) {
             return [];
         }
-        // Use the document ID from firestore as firebaseId
-        return snapshot.docs.map(doc => ({ ...doc.data(), firebaseId: doc.id }));
+        
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const docId = doc.id;
+
+            if (collectionName === 'users') {
+                 // For users, ensure the 'name' field matches the document ID
+                 return { ...data, name: docId };
+            } else {
+                // For other collections, ensure the 'id' field matches the document ID (parsed as a number)
+                const numericId = parseInt(docId, 10);
+                if (isNaN(numericId)) {
+                    console.warn(`Document in ${collectionName} has a non-numeric ID '${docId}'. Skipping.`);
+                    return null;
+                }
+                return { ...data, id: numericId };
+            }
+        }).filter(item => item !== null); // Filter out any items that were skipped
     } catch (error) {
         console.error(`Failed to fetch data for ${collectionName}:`, error);
         throw error;
     }
 }
 
+
 /**
- * Overwrites an entire Firestore collection with a new set of data.
- * It first deletes all existing documents and then adds the new ones.
+ * Efficiently synchronizes a local array of data with a Firestore collection.
+ * It calculates the difference between the previous and new state and performs only the necessary create, update, or delete operations.
+ * This avoids a read-before-write pattern, making the operation more robust.
  * @param collectionName The name of the collection to update.
- * @param data The new array of data to store in the collection.
+ * @param previousData The state of the data before the change.
+ * @param newData The new array of data that represents the desired state of the collection.
  */
-export async function set<T extends { id?: number, name?: string }>(collectionName: CollectionName, data: T[]): Promise<void> {
+export async function set<T extends { id?: number, name?: string }>(collectionName: CollectionName, previousData: T[] | null, newData: T[]): Promise<void> {
     try {
         const batch = writeBatch(db);
-        const collectionRef = collection(db, collectionName);
 
-        const existingDocsSnapshot = await getDocs(collectionRef);
-        existingDocsSnapshot.forEach(document => {
-            batch.delete(document.ref);
+        const previousDataIds = new Set<string>();
+        if (previousData) {
+             previousData.forEach(item => {
+                const docId = collectionName === 'users' ? String(item.name) : String(item.id);
+                if (docId && docId !== 'undefined') {
+                    previousDataIds.add(docId);
+                }
+            });
+        }
+        
+        const newDataIds = new Set<string>();
+        newData.forEach(item => {
+            const docId = collectionName === 'users' ? String(item.name) : String(item.id);
+            if (docId && docId !== 'undefined') {
+                newDataIds.add(docId);
+            }
         });
 
-        // Add new documents, using the item's own `id` or `name` as the document ID for consistency.
-        data.forEach(item => {
-            // Users are identified by name, others by id.
+        // 1. Determine and queue documents for deletion.
+        previousDataIds.forEach(id => {
+            if (!newDataIds.has(id)) {
+                const docRef = doc(db, collectionName, id);
+                batch.delete(docRef);
+            }
+        });
+
+        // 2. Queue documents for creation or update.
+        newData.forEach(item => {
             const docId = collectionName === 'users' ? String(item.name) : String(item.id);
             if (!docId || docId === 'undefined') {
                 console.warn("Skipping item without an id/name:", item);
@@ -49,8 +88,19 @@ export async function set<T extends { id?: number, name?: string }>(collectionNa
             }
 
             const docRef = doc(db, collectionName, docId);
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { firebaseId, ...itemData } = item as any; // remove firebaseId before saving
+            
+            // Prepare the data for Firestore by removing the local ID property.
+            let itemData: any;
+            if (collectionName === 'users') {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { name, ...rest } = item as any;
+                itemData = rest;
+            } else {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, ...rest } = item as any;
+                itemData = rest;
+            }
+            
             batch.set(docRef, itemData);
         });
 

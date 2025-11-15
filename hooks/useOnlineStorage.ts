@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, SetStateAction } from 'react';
+import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
 import { get, set } from '../firebase';
 import { INITIAL_DATA } from '../initialData';
 import { firebaseConfig } from '../firebaseConfig';
@@ -31,6 +31,11 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
     const [state, setState] = useState<T[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
+    
+    const stateRef = useRef(state);
+    useEffect(() => {
+        stateRef.current = state;
+    }, [state]);
 
     useEffect(() => {
         if (!isFirebaseConfigured) {
@@ -52,7 +57,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
                 let data = await get(collectionName);
                 if (data.length === 0 && !seededCollections.has(collectionName)) {
                     console.log(`Firebase collection '${collectionName}' is empty. Seeding with initial data.`);
-                    await set(collectionName, initialData);
+                    await set(collectionName, [], initialData); // Use new set signature for seeding
                     seededCollections.add(collectionName);
                     data = await get(collectionName); // Re-fetch to get data with firebase IDs
                 }
@@ -76,19 +81,12 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
     }, [collectionName]);
 
     const setValue = useCallback(async (value: SetStateAction<T[]>) => {
-        let previousState: T[] | null = null;
-        let newState: T[] | undefined;
+        const previousState = stateRef.current;
+        const newState = value instanceof Function ? value(previousState!) : value;
 
-        // Use the functional update form to get the most recent state for the update.
-        // This also allows us to capture both old and new states for the async operation.
-        setState(current => {
-            previousState = current;
-            newState = value instanceof Function ? value(current!) : value;
-            return newState;
-        });
-
-        // The state update is queued, but the new value is available immediately.
-        // We must check if it's defined before proceeding with persistence.
+        // Optimistic UI update
+        setState(newState);
+        
         if (newState === undefined) {
             console.warn('State update resulted in an undefined value. Aborting persistence.');
             return;
@@ -104,7 +102,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
         }
 
         try {
-            await set(collectionName, newState);
+            await set(collectionName, previousState, newState);
         } catch (e) {
             console.error(`Firebase error on saving '${collectionName}':`, e);
             setError(e as Error);
@@ -112,7 +110,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
             setState(previousState);
             throw e;
         }
-    }, [collectionName, useInMemoryFallback, setLocalData, setInMemoryData]);
+    }, [collectionName, isFirebaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
     
     return [state, setValue, isLoading, error];
 };
