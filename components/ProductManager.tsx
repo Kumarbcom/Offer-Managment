@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
@@ -92,21 +93,20 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-        if (!products) return;
-        await setProducts(products.filter(p => p.id !== id));
+        await setProducts(prev => (prev || []).filter(p => p.id !== id));
     }
   };
 
   const handleSaveProduct = async (product: Product) => {
-    if (!products) return;
     await setProducts(prev => {
-        const index = prev.findIndex(p => p.id === product.id);
+        const prevProducts = prev || [];
+        const index = prevProducts.findIndex(p => p.id === product.id);
         if (index > -1) {
-            const newProducts = [...prev];
+            const newProducts = [...prevProducts];
             newProducts[index] = product;
             return newProducts;
         } else {
-            return [...prev, product];
+            return [...prevProducts, product];
         }
     });
   };
@@ -154,7 +154,6 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
-        if (!products) return;
         const data = e.target?.result;
         if (!data) return;
 
@@ -172,59 +171,63 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, setPro
                     productsByPartNo[partNo].push(row);
                 }
             });
+            
+            await setProducts(prev => {
+                const prevProducts = prev || [];
+                const lastId = prevProducts.length > 0 ? Math.max(...prevProducts.map(p => p.id)) : 0;
+                let newId = lastId;
 
-            const lastId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
-            let newId = lastId;
+                const newProducts: Product[] = Object.values(productsByPartNo).map((rows): Product | null => {
+                    const firstRow = rows[0];
+                    if (!firstRow['PartNo'] || !firstRow['Description']) {
+                        console.warn(`Skipping product due to missing PartNo or Description.`);
+                        return null;
+                    }
+                    newId++;
 
-            const newProducts: Product[] = Object.values(productsByPartNo).map((rows): Product | null => {
-                const firstRow = rows[0];
-                if (!firstRow['PartNo'] || !firstRow['Description']) {
-                     console.warn(`Skipping product due to missing PartNo or Description.`);
-                    return null;
+                    const parseExcelDate = (excelDate: any): string => {
+                        if (!excelDate) return '';
+                        if (typeof excelDate === 'number' && excelDate > 1) {
+                            const date = new Date(Date.UTC(1900, 0, excelDate - 1));
+                            return date.toISOString().split('T')[0];
+                        }
+                        if (typeof excelDate === 'string') {
+                            const parsedDate = new Date(excelDate);
+                            if (!isNaN(parsedDate.getTime())) return parsedDate.toISOString().split('T')[0];
+                            return excelDate;
+                        }
+                        return '';
+                    };
+
+                    const prices: PriceEntry[] = rows.map(row => {
+                        const validFrom = parseExcelDate(row['ValidFrom']);
+                        if (!validFrom) return null;
+                        return { lp: parseFloat(row['LP']) || 0, sp: parseFloat(row['SP']) || 0, validFrom: validFrom, validTo: parseExcelDate(row['ValidTo']) || '9999-12-31' };
+                    }).filter((p): p is PriceEntry => p !== null);
+                    
+                    if (prices.length === 0) return null;
+                    prices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
+
+                    return {
+                        id: newId,
+                        partNo: String(firstRow['PartNo']),
+                        description: String(firstRow['Description']),
+                        hsnCode: String(firstRow['HSNCode'] || ''),
+                        prices: prices,
+                        uom: (UOMS.find(u => u === firstRow['UOM']) || '') as Product['uom'],
+                        plant: (PLANTS.find(p => p === firstRow['Plant']) || '') as Product['plant'],
+                        weight: parseFloat(firstRow['Weight']) || 0,
+                    };
+                }).filter((p): p is Product => p !== null);
+
+                if (newProducts.length > 0) {
+                    alert(`${newProducts.length} products imported successfully!`);
+                    return [...prevProducts, ...newProducts];
+                } else {
+                    alert('No valid products found in the file. Check column names (e.g., "PartNo", "Description", "ValidFrom").');
+                    return prevProducts;
                 }
-                newId++;
-
-                const parseExcelDate = (excelDate: any): string => {
-                    if (!excelDate) return '';
-                    if (typeof excelDate === 'number' && excelDate > 1) {
-                        const date = new Date(Date.UTC(1900, 0, excelDate - 1));
-                        return date.toISOString().split('T')[0];
-                    }
-                    if (typeof excelDate === 'string') {
-                        const parsedDate = new Date(excelDate);
-                        if (!isNaN(parsedDate.getTime())) return parsedDate.toISOString().split('T')[0];
-                        return excelDate;
-                    }
-                    return '';
-                };
-
-                const prices: PriceEntry[] = rows.map(row => {
-                    const validFrom = parseExcelDate(row['ValidFrom']);
-                    if (!validFrom) return null;
-                    return { lp: parseFloat(row['LP']) || 0, sp: parseFloat(row['SP']) || 0, validFrom: validFrom, validTo: parseExcelDate(row['ValidTo']) || '9999-12-31' };
-                }).filter((p): p is PriceEntry => p !== null);
-                
-                if (prices.length === 0) return null;
-                prices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
-
-                return {
-                    id: newId,
-                    partNo: String(firstRow['PartNo']),
-                    description: String(firstRow['Description']),
-                    hsnCode: String(firstRow['HSNCode'] || ''),
-                    prices: prices,
-                    uom: (UOMS.find(u => u === firstRow['UOM']) || '') as Product['uom'],
-                    plant: (PLANTS.find(p => p === firstRow['Plant']) || '') as Product['plant'],
-                    weight: parseFloat(firstRow['Weight']) || 0,
-                };
-            }).filter((p): p is Product => p !== null);
-
-            if (newProducts.length > 0) {
-                await setProducts(prev => [...prev, ...newProducts]);
-                alert(`${newProducts.length} products imported successfully!`);
-            } else {
-                alert('No valid products found in the file. Check column names (e.g., "PartNo", "Description", "ValidFrom").');
-            }
+            });
         } catch (error) {
             console.error("Error parsing Excel file:", error);
             alert("Failed to import products. Please check the file format.");

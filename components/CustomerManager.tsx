@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef } from 'react';
 import type { Customer, SalesPerson, Quotation, QuotationStatus } from '../types';
 import { CustomerAddModal } from './CustomerAddModal';
@@ -116,21 +117,20 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
-        if (!customers) return;
-        await setCustomers(customers.filter(c => c.id !== id));
+        await setCustomers(prev => (prev || []).filter(c => c.id !== id));
     }
   };
 
   const handleSaveCustomer = async (customer: Customer) => {
-    if (!customers) return;
     await setCustomers(prev => {
-        const index = prev.findIndex(c => c.id === customer.id);
+        const prevCustomers = prev || [];
+        const index = prevCustomers.findIndex(c => c.id === customer.id);
         if (index > -1) {
-            const newCustomers = [...prev];
+            const newCustomers = [...prevCustomers];
             newCustomers[index] = customer;
             return newCustomers;
         } else {
-            return [...prev, customer];
+            return [...prevCustomers, customer];
         }
     });
   };
@@ -175,7 +175,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
-        if (!customers || !salesPersons) return;
+        if (!salesPersons) return;
         const data = e.target?.result;
         if (!data) return;
 
@@ -185,42 +185,46 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
             const worksheet = workbook.Sheets[sheetName];
             const json: any[] = XLSX.utils.sheet_to_json(worksheet);
             
-            const lastId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) : 0;
-            let newId = lastId;
+            await setCustomers(prev => {
+                const prevCustomers = prev || [];
+                const lastId = prevCustomers.length > 0 ? Math.max(...prevCustomers.map(c => c.id)) : 0;
+                let newId = lastId;
 
-            const newCustomers: Customer[] = json.map((row, index) => {
-                if (!row['Name'] || !row['City']) {
-                    console.warn(`Skipping row ${index + 2} due to missing Name or City.`);
-                    return null;
+                const newCustomers: Customer[] = json.map((row, index) => {
+                    if (!row['Name'] || !row['City']) {
+                        console.warn(`Skipping row ${index + 2} due to missing Name or City.`);
+                        return null;
+                    }
+
+                    const salesPersonName = String(row['SalesPersonName'] || '').trim();
+                    const salesPerson = salesPersons.find(sp => sp.name.toLowerCase() === salesPersonName.toLowerCase());
+                    const salesPersonId = salesPerson ? salesPerson.id : '';
+
+                    newId++;
+                    return {
+                        id: newId,
+                        name: String(row['Name']),
+                        address: String(row['Address'] || ''),
+                        city: String(row['City']),
+                        pincode: String(row['Pincode'] || ''),
+                        salesPersonId: salesPersonId,
+                        discountStructure: {
+                            singleCore: parseFloat(row['SingleCoreDiscount']) || 0,
+                            multiCore: parseFloat(row['MultiCoreDiscount']) || 0,
+                            specialCable: parseFloat(row['SpecialCableDiscount']) || 0,
+                            accessories: parseFloat(row['AccessoriesDiscount']) || 0,
+                        },
+                    };
+                }).filter((c): c is Customer => c !== null);
+
+                if (newCustomers.length > 0) {
+                    alert(`${newCustomers.length} customers imported successfully!`);
+                    return [...prevCustomers, ...newCustomers];
+                } else {
+                    alert('No valid customers found in the file. Make sure columns are named correctly (e.g., "Name", "City").');
+                    return prevCustomers;
                 }
-
-                const salesPersonName = String(row['SalesPersonName'] || '').trim();
-                const salesPerson = salesPersons.find(sp => sp.name.toLowerCase() === salesPersonName.toLowerCase());
-                const salesPersonId = salesPerson ? salesPerson.id : '';
-
-                newId++;
-                return {
-                    id: newId,
-                    name: String(row['Name']),
-                    address: String(row['Address'] || ''),
-                    city: String(row['City']),
-                    pincode: String(row['Pincode'] || ''),
-                    salesPersonId: salesPersonId,
-                    discountStructure: {
-                        singleCore: parseFloat(row['SingleCoreDiscount']) || 0,
-                        multiCore: parseFloat(row['MultiCoreDiscount']) || 0,
-                        specialCable: parseFloat(row['SpecialCableDiscount']) || 0,
-                        accessories: parseFloat(row['AccessoriesDiscount']) || 0,
-                    },
-                };
-            }).filter((c): c is Customer => c !== null);
-
-            if (newCustomers.length > 0) {
-                await setCustomers(prev => [...prev, ...newCustomers]);
-                alert(`${newCustomers.length} customers imported successfully!`);
-            } else {
-                alert('No valid customers found in the file. Make sure columns are named correctly (e.g., "Name", "City").');
-            }
+            });
         } catch (error) {
             console.error("Error parsing Excel file:", error);
             alert("Failed to import customers. Please check the file format and content.");

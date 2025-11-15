@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { DeliveryChallan, Quotation, Customer, View, UserRole } from '../types';
 
@@ -35,8 +36,7 @@ export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this challan?')) {
-      if (!deliveryChallans) return;
-      await setDeliveryChallans(deliveryChallans.filter(c => c.id !== id));
+      await setDeliveryChallans(prevChallans => (prevChallans || []).filter(c => c.id !== id));
     }
   };
   

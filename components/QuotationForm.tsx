@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy } from '../types';
 import { PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES } from '../constants';
@@ -148,7 +149,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
                 if (newPrice !== item.price) {
                     wasUpdated = true;
-                    // FIX: Explicitly type `priceSource` to prevent it from being inferred as a generic `string`.
                     const priceSource: 'LP' | 'SP' = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
                     return { ...item, price: newPrice, priceSource: priceSource };
                 }
@@ -166,52 +166,56 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   };
   
   const handleItemChange = async (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
-    if (!formData) return;
-    
     let productToUpdate: { productId: number, newWeight: number } | null = null;
     
-    const newDetails = formData.details.map((item, i) => {
-        if (i === index) {
-            const updatedItem = { ...item };
-            if (field.startsWith('airFreightDetails.')) {
-                const subField = field.split('.')[1] as keyof QuotationItem['airFreightDetails'];
-                updatedItem.airFreightDetails = { ...updatedItem.airFreightDetails, [subField]: value };
-            } else { (updatedItem as any)[field] = value; }
-            
-            if (field === 'airFreightDetails.weightPerMtr') {
-                const product = products.find(p => p.id === updatedItem.productId);
-                if (product && product.weight !== value) {
-                    productToUpdate = { productId: updatedItem.productId, newWeight: value };
+    setFormData(prev => {
+        if (!prev) return null;
+        const newDetails = prev.details.map((item, i) => {
+            if (i === index) {
+                const updatedItem = { ...item };
+                if (field.startsWith('airFreightDetails.')) {
+                    const subField = field.split('.')[1] as keyof QuotationItem['airFreightDetails'];
+                    updatedItem.airFreightDetails = { ...updatedItem.airFreightDetails, [subField]: value };
+                } else { (updatedItem as any)[field] = value; }
+                
+                if (field === 'airFreightDetails.weightPerMtr') {
+                    const product = products.find(p => p.id === updatedItem.productId);
+                    if (product && product.weight !== value) {
+                        productToUpdate = { productId: updatedItem.productId, newWeight: value };
+                    }
                 }
+                if (field === 'airFreight' && value === false) updatedItem.airFreightDetails.airFreightLeadTime = '';
+                return updatedItem;
             }
-            if (field === 'airFreight' && value === false) updatedItem.airFreightDetails.airFreightLeadTime = '';
-            return updatedItem;
-        }
-        return item;
+            return item;
+        });
+        return { ...prev, details: newDetails };
     });
 
     if (productToUpdate) {
         await setProducts(prevProducts => prevProducts.map(p => p.id === productToUpdate!.productId ? {...p, weight: productToUpdate!.newWeight} : p));
     }
-
-    setFormData({ ...formData, details: newDetails });
   };
   
   const handleProductSelect = (index: number, productId: number | string) => {
-    if (!formData || !productId) return;
-    const numericProductId = Number(productId);
-    const product = products.find(p => p.id === numericProductId);
-    if (product) {
-        const priceEntry = getPriceForDate(product, formData.quotationDate);
-        if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${new Date(formData.quotationDate).toLocaleDateString()}. Please check product price validity.`);
-        const newDetails = [...formData.details];
-        newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
-        setFormData({ ...formData, details: newDetails });
-    }
+    if (!productId) return;
+    setFormData(prevFormData => {
+        if (!prevFormData) return null;
+        const numericProductId = Number(productId);
+        const product = products.find(p => p.id === numericProductId);
+        if (product) {
+            const priceEntry = getPriceForDate(product, prevFormData.quotationDate);
+            if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${new Date(prevFormData.quotationDate).toLocaleDateString()}. Please check product price validity.`);
+            const newDetails = [...prevFormData.details];
+            newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
+            return { ...prevFormData, details: newDetails };
+        }
+        return prevFormData;
+    });
   }
 
-  const handleAddItem = () => { if (formData) setFormData({ ...formData, details: [...formData.details, createEmptyQuotationItem()] }); };
-  const handleRemoveItem = (index: number) => { if (formData && formData.details.length > 1) setFormData({ ...formData, details: formData.details.filter((_, i) => i !== index) }); };
+  const handleAddItem = () => { setFormData(prev => prev ? { ...prev, details: [...prev.details, createEmptyQuotationItem()] } : null); };
+  const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
   const handleSaveCustomer = async (newCustomer: Customer) => { await setCustomers(prev => [...prev.filter(c => c.id !== newCustomer.id), newCustomer]); setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null); setIsCustomerModalOpen(false); };
   const handleSaveProduct = async (newProduct: Product) => { await setProducts(prev => [...prev.filter(p => p.id !== newProduct.id), newProduct]); setIsProductModalOpen(false); };
 
@@ -235,16 +239,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handleNewButtonClick = () => { if (isReadOnly) return; setEditingQuotationId(null); const url = new URL(window.location.href); url.searchParams.delete('id'); window.history.pushState({}, '', url); }
   
   const handleAddProductFromSearch = (product: Product, discount: number) => {
-    if (!formData) return;
-    const priceEntry = getPriceForDate(product, formData.quotationDate);
-    if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return; }
-    const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
-    const emptyItemIndex = formData.details.findIndex(item => !item.productId);
-    const newDetails = [...formData.details];
-    if (emptyItemIndex !== -1) newDetails[emptyItemIndex] = newQuotationItem;
-    else newDetails.push(newQuotationItem);
-    setFormData({ ...formData, details: newDetails });
-    setIsProductSearchModalOpen(false);
+    setFormData(prev => {
+        if (!prev) return null;
+        const priceEntry = getPriceForDate(product, prev.quotationDate);
+        if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return prev; }
+        const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
+        const emptyItemIndex = prev.details.findIndex(item => !item.productId);
+        const newDetails = [...prev.details];
+        if (emptyItemIndex !== -1) newDetails[emptyItemIndex] = newQuotationItem;
+        else newDetails.push(newQuotationItem);
+        setIsProductSearchModalOpen(false);
+        return { ...prev, details: newDetails };
+    });
   };
   
   const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !formData.customerId) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
@@ -329,8 +335,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         <form onSubmit={handleSubmit} className="p-3 md:p-4">
             <div className="bg-slate-50 p-2 flex flex-wrap items-center gap-2 border border-slate-200 mb-4 rounded-md">
                 {!isReadOnly && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
-                {/* FIX: The ActionButton's onClick prop expects a function with no arguments.
-                The event parameter in handleSubmit is made optional to satisfy this. */}
                 {!isReadOnly && <ActionButton onClick={handleSubmit} title="Save Quotation"><Icons.Save /><span>Save</span></ActionButton>}
                 <ActionButton onClick={() => handlePreview('standard')} title="Preview Standard"><Icons.PrintStandard /><span>Preview</span></ActionButton>
                 <ActionButton onClick={() => handlePreview('discounted')} title="Preview with Discount"><Icons.PrintDiscount /><span>Discounted</span></ActionButton>

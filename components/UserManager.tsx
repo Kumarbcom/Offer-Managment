@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import type { User } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
 
 interface UserManagerProps {
   users: User[] | null;
-  setUsers: (users: User[]) => Promise<void>;
+  setUsers: (users: React.SetStateAction<User[]>) => Promise<void>;
   currentUser: User;
 }
 
@@ -19,23 +20,27 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
   };
 
   const handleSave = async () => {
-    if (!editingUser || !users || !editingUser.name || !editingUser.role) {
+    if (!editingUser || !editingUser.name || !editingUser.role) {
         alert("Username and Role are required.");
         return;
     }
     
-    const isNew = !users.some(u => u.name === editingUser!.name);
+    await setUsers(prevUsers => {
+        const currentUsers = prevUsers || [];
+        const isNew = !currentUsers.some(u => u.name === editingUser.name);
+        
+        if (isNew) {
+            const newUser: User = {
+                name: editingUser.name!,
+                role: editingUser.role!,
+                password: '123456'
+            };
+            return [...currentUsers, newUser];
+        } else {
+            return currentUsers.map(u => (u.name === editingUser.name ? editingUser as User : u));
+        }
+    });
 
-    if (isNew) {
-      const newUser: User = {
-        name: editingUser.name,
-        role: editingUser.role,
-        password: '123456' // Set a default password for new users
-      };
-      await setUsers([...users, newUser]);
-    } else {
-      await setUsers(users.map(u => (u.name === editingUser.name ? editingUser as User : u)));
-    }
     setEditingUser(null);
   };
 
@@ -45,14 +50,11 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
       return;
     }
     if(window.confirm(`Are you sure you want to delete user "${userName}"?`)){
-        if(!users) return;
-        await setUsers(users.filter(u => u.name !== userName));
+        await setUsers(prevUsers => (prevUsers || []).filter(u => u.name !== userName));
     }
   };
 
   const handleAddNew = () => {
-      // FIX: `name: ''` is not a valid Partial<User> because '' is not a valid User['name'].
-      // Removing it makes name `undefined`, which is valid and indicates a new user.
       setEditingUser({ role: 'Viewer' });
   }
 

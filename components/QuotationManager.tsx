@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Quotation, Customer, SalesPerson, QuotationStatus, UserRole } from '../types';
+import { QUOTATION_STATUSES } from '../constants';
 
 declare var XLSX: any;
 
@@ -33,6 +34,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
+  const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
 
   const getCustomerName = (id: number | '') => customers?.find(c => c.id === id)?.name || 'N/A';
   const getSalesPersonName = (id: number | '') => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';
@@ -84,12 +86,19 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       });
   }, [quotations, universalSearchTerm, customers, salesPersons, sortBy, sortOrder, quotationFilter]);
 
+  useEffect(() => {
+    setSelectedQuotationIds(new Set());
+  }, [filteredAndSortedQuotations]);
+
   const handleAddNew = () => { setEditingQuotationId(null); setView('quotation-form'); };
   const handleEdit = (id: number) => { setEditingQuotationId(id); setView('quotation-form'); };
-  const handleDelete = async (id: number) => { if (window.confirm("Are you sure?") && quotations) await setQuotations(quotations.filter(q => q.id !== id)); }
+  const handleDelete = async (id: number) => { 
+    if (window.confirm("Are you sure?")) {
+      await setQuotations(prev => (prev || []).filter(q => q.id !== id)); 
+    }
+  }
   const handleCommentChange = async (id: number, newComment: string) => {
-    if(!quotations) return;
-    await setQuotations(quotations.map(q => q.id === id ? { ...q, comments: newComment } : q))
+    await setQuotations(prev => (prev || []).map(q => q.id === id ? { ...q, comments: newComment } : q))
   };
   
   const handleExport = () => {
@@ -110,6 +119,40 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     XLSX.writeFile(wb, "Quotations_Export.xlsx");
   };
 
+  const handleSelectOne = (id: number) => {
+    setSelectedQuotationIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      const allIds = new Set(filteredAndSortedQuotations.map(q => q.id));
+      setSelectedQuotationIds(allIds);
+    } else {
+      setSelectedQuotationIds(new Set());
+    }
+  };
+
+  const handleBulkStatusChange = async (status: QuotationStatus) => {
+    if (selectedQuotationIds.size === 0) return;
+    if (window.confirm(`Are you sure you want to change the status of ${selectedQuotationIds.size} quotation(s) to "${status}"?`)) {
+      await setQuotations(prev =>
+        (prev || []).map(q =>
+          selectedQuotationIds.has(q.id) ? { ...q, status: status } : q
+        )
+      );
+      setSelectedQuotationIds(new Set());
+    }
+  };
+
+  const isAllSelected = selectedQuotationIds.size > 0 && selectedQuotationIds.size === filteredAndSortedQuotations.length;
   const isCommentEditable = userRole === 'Admin' || userRole === 'Sales Person';
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
@@ -170,12 +213,41 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             {onBackToCustomers && <button onClick={onBackToCustomers} className="text-blue-600 hover:underline font-semibold ml-auto">Back to Customers</button>}
         </div>
       )}
+
+      {selectedQuotationIds.size > 0 && (
+        <div className="my-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center gap-4">
+          <div className="font-semibold text-blue-800">
+            {selectedQuotationIds.size} quotation{selectedQuotationIds.size > 1 ? 's' : ''} selected.
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">Change status to:</span>
+            {QUOTATION_STATUSES.map(status => (
+              <button
+                key={status}
+                onClick={() => handleBulkStatusChange(status)}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${getStatusClass(status)} hover:opacity-80`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       
       <div className="overflow-x-auto mt-4 -mx-4">
         {filteredAndSortedQuotations.length > 0 ? (
             <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
                 <tr>
+                    <th className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        checked={isAllSelected}
+                        onChange={handleSelectAll}
+                        aria-label="Select all quotations"
+                      />
+                    </th>
                     <SortableHeader title="ID" sortKey="id" className="w-16" />
                     <SortableHeader title="Date" sortKey="quotationDate" />
                     <SortableHeader title="Customer" sortKey="customer" />
@@ -188,50 +260,62 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-                {filteredAndSortedQuotations.map(q => (
-                <tr key={q.id} className="hover:bg-slate-50/70 text-sm">
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-600">{q.id}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
-                    <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{getCustomerName(q.customerId)}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="text-sm text-slate-800">{q.contactPerson}</div>
-                        <div className="text-xs text-slate-500">{q.contactNumber}</div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-600">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(q.status)}`}>
-                            {q.status}
-                        </span>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-600 w-48">
-                        <input 
-                            type="text" 
-                            value={q.comments || ''} 
-                            onChange={(e) => handleCommentChange(q.id, e.target.value)} 
-                            className="w-full p-1 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-md text-sm focus:outline-none disabled:bg-transparent disabled:border-transparent" 
-                            placeholder="Add comment..." 
-                            disabled={!isCommentEditable}
-                        />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                            <button onClick={() => handleEdit(q.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title={canEdit ? 'Edit' : 'View'}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                                    <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                                </svg>
-                            </button>
-                            {userRole === 'Admin' && (
-                                <button onClick={() => handleDelete(q.id)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
+                {filteredAndSortedQuotations.map(q => {
+                  const isSelected = selectedQuotationIds.has(q.id);
+                  return (
+                    <tr key={q.id} className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-sm`}>
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            checked={isSelected}
+                            onChange={() => handleSelectOne(q.id)}
+                            aria-label={`Select quotation ${q.id}`}
+                          />
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-slate-600">{q.id}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
+                        <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{getCustomerName(q.customerId)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="text-sm text-slate-800">{q.contactPerson}</div>
+                            <div className="text-xs text-slate-500">{q.contactNumber}</div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-slate-600">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(q.status)}`}>
+                                {q.status}
+                            </span>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-slate-600 w-48">
+                            <input 
+                                type="text" 
+                                value={q.comments || ''} 
+                                onChange={(e) => handleCommentChange(q.id, e.target.value)} 
+                                className="w-full p-1 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-md text-sm focus:outline-none disabled:bg-transparent disabled:border-transparent" 
+                                placeholder="Add comment..." 
+                                disabled={!isCommentEditable}
+                            />
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end space-x-2">
+                                <button onClick={() => handleEdit(q.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title={canEdit ? 'Edit' : 'View'}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                                        <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                                        <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
                                     </svg>
                                 </button>
-                            )}
-                        </div>
-                    </td>
-                </tr>))}
+                                {userRole === 'Admin' && (
+                                    <button onClick={() => handleDelete(q.id)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                        </td>
+                    </tr>
+                )})}
             </tbody>
             </table>
         ) : ( 

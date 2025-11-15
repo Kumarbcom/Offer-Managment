@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { SalesPerson } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
@@ -29,8 +30,7 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
   
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this sales person?")) {
-        if(!salesPersons) return;
-        await setSalesPersons(salesPersons.filter(p => p.id !== id));
+        await setSalesPersons(prev => (prev || []).filter(p => p.id !== id));
     }
   };
 
@@ -40,14 +40,16 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(!salesPersons) return;
     setIsSaving(true);
     try {
       if (isEditing) {
-        await setSalesPersons(prev => prev!.map(p => p.id === (currentPerson as SalesPerson).id ? currentPerson as SalesPerson : p));
+        await setSalesPersons(prev => (prev || []).map(p => p.id === (currentPerson as SalesPerson).id ? currentPerson as SalesPerson : p));
       } else {
-        const newId = salesPersons.length > 0 ? Math.max(...salesPersons.map(p => p.id)) + 1 : 1;
-        await setSalesPersons(prev => [...prev!, { ...currentPerson, id: newId } as SalesPerson]);
+        await setSalesPersons(prev => {
+          const prevPeople = prev || [];
+          const newId = prevPeople.length > 0 ? Math.max(...prevPeople.map(p => p.id)) + 1 : 1;
+          return [...prevPeople, { ...currentPerson, id: newId } as SalesPerson];
+        });
       }
       resetForm();
     } catch (error) {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import type { DeliveryChallan, DeliveryChallanItem, Customer, Quotation, Product, View, UserRole } from '../types';
 import { SearchableSelect } from './common/SearchableSelect';
@@ -86,20 +87,20 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
   };
   
   const handleItemChange = (index: number, field: keyof DeliveryChallanItem, value: any) => {
-      if (!formData) return;
-      const newItems = [...formData.items];
-      (newItems[index] as any)[field] = value;
-      setFormData({ ...formData, items: newItems });
+      setFormData(prev => {
+        if (!prev) return null;
+        const newItems = [...prev.items];
+        (newItems[index] as any)[field] = value;
+        return { ...prev, items: newItems };
+      });
   }
 
   const handleAddItem = () => {
-    if (formData) setFormData({ ...formData, items: [...formData.items, createEmptyChallanItem()] });
+    setFormData(prev => prev ? { ...prev, items: [...prev.items, createEmptyChallanItem()] } : null);
   };
 
   const handleRemoveItem = (index: number) => {
-    if (formData && formData.items.length > 1) {
-      setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
-    }
+    setFormData(prev => prev && prev.items.length > 1 ? { ...prev, items: prev.items.filter((_, i) => i !== index) } : prev);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,9 +108,9 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
     if (isReadOnly || !formData || !challans) return;
     
     if (editingChallanId === null) {
-      await setChallans([...challans, formData]);
+      await setChallans(prev => [...(prev || []), formData]);
     } else {
-      await setChallans(challans.map(c => c.id === editingChallanId ? formData : c));
+      await setChallans(prev => (prev || []).map(c => c.id === editingChallanId ? formData : c));
     }
     setView('delivery-challans');
   };
