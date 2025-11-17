@@ -187,9 +187,9 @@ export async function deleteCustomer(id: number) {
     if (error) throw new Error(parseSupabaseError(error, 'Failed to delete customer'));
 }
 
-export async function addCustomersBatch(customers: Omit<Customer, 'id'>[]): Promise<void> {
-    const { error } = await supabase.from('customers').insert(customers);
-    if (error) throw new Error(parseSupabaseError(error, "Failed to add customers batch"));
+export async function addCustomersBatch(customers: Customer[]): Promise<void> {
+    const { error } = await supabase.from('customers').upsert(customers, { onConflict: 'id' });
+    if (error) throw new Error(parseSupabaseError(error, "Failed to add or update customers batch"));
 }
 
 
@@ -218,10 +218,18 @@ export async function getProductsPaginated(options: ProductQueryOptions) {
         .range(offset, offset + pageLimit - 1);
     
     if (filters.partNo) {
-        query = query.ilike('partNo', `${filters.partNo}%`);
+        const terms = filters.partNo.split('*').map(term => term.trim()).filter(Boolean);
+        if (terms.length > 0) {
+            const orFilter = terms.map(term => `partNo.ilike.%${term}%`).join(',');
+            query = query.or(orFilter);
+        }
     }
     if (filters.description) {
-        query = query.ilike('description', `${filters.description}%`);
+        const terms = filters.description.split('*').map(term => term.trim()).filter(Boolean);
+        if (terms.length > 0) {
+            const orFilter = terms.map(term => `description.ilike.%${term}%`).join(',');
+            query = query.or(orFilter);
+        }
     }
 
     const { data, error } = await query;

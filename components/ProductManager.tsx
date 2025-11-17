@@ -334,12 +334,12 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
          
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>
-                <label htmlFor="searchTerm" className="block text-xs font-medium text-slate-600">Search by Part No (starts with)</label>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. OLFLEX" />
+                <label htmlFor="searchTerm" className="block text-xs font-medium text-slate-600">Search Part No (use * for OR)</label>
+                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. OLFLEX*UNITRONIC" />
             </div>
              <div>
-                <label htmlFor="searchDescription" className="block text-xs font-medium text-slate-600">Search by Description (starts with)</label>
-                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. Cable" />
+                <label htmlFor="searchDescription" className="block text-xs font-medium text-slate-600">Search Description (use * for OR)</label>
+                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. CABLE*POWER" />
             </div>
             <div>
                 <label htmlFor="sortBy" className="block text-xs font-medium text-slate-600">Sort By</label>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Customer, SalesPerson, Quotation, QuotationStatus } from '../types';
 import { CustomerAddModal } from './CustomerAddModal';
 import { QUOTATION_STATUSES } from '../constants';
@@ -47,7 +47,10 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
   const [sortOrder, setSortOrder] = useState<SortOrderType>('asc');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const debouncedSearchCity = useDebounce(searchCity, 500);
@@ -149,16 +152,9 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
     setIsModalOpen(false);
     setCustomerToEdit(null);
   };
-  
+
   const handleDownloadTemplate = () => {
-    if (typeof XLSX === 'undefined') {
-        alert('Excel library is not available. Please check your connection.');
-        return;
-    }
-    const headers = [
-        "Name", "Address", "City", "Pincode", "SalesPersonName", 
-        "SingleCoreDiscount", "MultiCoreDiscount", "SpecialCableDiscount", "AccessoriesDiscount"
-    ];
+    const headers = ["id (for updates only)", "name", "address", "city", "pincode", "salesPersonId", "singleCoreDiscount", "multiCoreDiscount", "specialCableDiscount", "accessoriesDiscount"];
     const ws = XLSX.utils.aoa_to_sheet([headers]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Customers");
@@ -166,149 +162,108 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
   };
 
   const handleExport = () => {
-    if (typeof XLSX === 'undefined') {
-        alert('Excel library is not available. Please check your connection.');
-        return;
-    }
-    if (!displayedCustomers) return;
-    const dataToExport = displayedCustomers.map(customer => ({
-      Name: customer.name,
-      Address: customer.address,
-      City: customer.city,
-      Pincode: customer.pincode,
-      SalesPersonName: getSalesPersonName(customer.salesPersonId),
-      SingleCoreDiscount: customer.discountStructure.singleCore,
-      MultiCoreDiscount: customer.discountStructure.multiCore,
-      SpecialCableDiscount: customer.discountStructure.specialCable,
-      AccessoriesDiscount: customer.discountStructure.accessories,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Customers");
-    XLSX.writeFile(wb, "Customers_Export_Visible.xlsx");
+      const dataToExport = displayedCustomers.map(c => ({
+          id: c.id,
+          name: c.name,
+          address: c.address,
+          city: c.city,
+          pincode: c.pincode,
+          salesPersonId: c.salesPersonId,
+          singleCoreDiscount: c.discountStructure.singleCore,
+          multiCoreDiscount: c.discountStructure.multiCore,
+          specialCableDiscount: c.discountStructure.specialCable,
+          accessoriesDiscount: c.discountStructure.accessories,
+      }));
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Customers");
+      XLSX.writeFile(wb, "Customers_Export.xlsx");
   };
 
-  const handleFileUpload = (file: File) => {
-    if (typeof XLSX === 'undefined') {
-        alert('Excel library is not available. Please check your connection.');
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        if (!salesPersons) {
-            alert("Sales person data is not loaded yet. Please try again in a moment.");
-            return;
-        }
-        const data = e.target?.result;
-        if (!data) return;
-
-        try {
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const json: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-            if (json.length === 0) {
-                alert("The uploaded file is empty or has no data rows.");
-                return;
-            }
-            
-            const CANONICAL_HEADERS = {
-                NAME: "Name",
-                ADDRESS: "Address",
-                CITY: "City",
-                PINCODE: "Pincode",
-                SALES_PERSON_NAME: "SalesPersonName",
-                SINGLE_CORE_DISCOUNT: "SingleCoreDiscount",
-                MULTI_CORE_DISCOUNT: "MultiCoreDiscount",
-                SPECIAL_CABLE_DISCOUNT: "SpecialCableDiscount",
-                ACCESSORIES_DISCOUNT: "AccessoriesDiscount"
-            };
-            const REQUIRED_CANONICAL_HEADERS = [CANONICAL_HEADERS.NAME, CANONICAL_HEADERS.CITY];
-
-            const fileHeaders = Object.keys(json[0]);
-            const normalizedFileHeaderMap = new Map<string, string>();
-            fileHeaders.forEach(h => normalizedFileHeaderMap.set(h.trim().toLowerCase(), h));
-            
-            const headerMap = new Map<string, string>();
-            for (const key in CANONICAL_HEADERS) {
-                const canonicalHeader = CANONICAL_HEADERS[key as keyof typeof CANONICAL_HEADERS];
-                const normalizedCanonical = canonicalHeader.toLowerCase();
-                if (normalizedFileHeaderMap.has(normalizedCanonical)) {
-                    headerMap.set(canonicalHeader, normalizedFileHeaderMap.get(normalizedCanonical)!);
-                }
-            }
-            
-            const missingHeaders = REQUIRED_CANONICAL_HEADERS.filter(h => !headerMap.has(h));
-            if (missingHeaders.length > 0) {
-                alert(`Template mismatch. The following required columns are missing or misspelled: ${missingHeaders.join(', ')}. Please use the downloaded template for reference.`);
-                return;
-            }
-
-            const getValue = (row: any, canonicalHeader: string): any => {
-                const actualHeader = headerMap.get(canonicalHeader);
-                return actualHeader ? row[actualHeader] : undefined;
-            };
-            
-            const newCustomers: Omit<Customer, 'id'>[] = json.map((row, index) => {
-                const name = String(getValue(row, CANONICAL_HEADERS.NAME) || '').trim();
-                const city = String(getValue(row, CANONICAL_HEADERS.CITY) || '').trim();
-                
-                if (!name || !city) {
-                    console.warn(`Skipping row ${index + 2} due to missing Name or City.`);
-                    return null;
-                }
-
-                const salesPersonName = String(getValue(row, CANONICAL_HEADERS.SALES_PERSON_NAME) || '').trim();
-                const salesPerson = salesPersons.find(sp => sp.name.toLowerCase() === salesPersonName.toLowerCase());
-                const salesPersonId = salesPerson ? salesPerson.id : null;
-
-                return {
-                    name: name,
-                    address: String(getValue(row, CANONICAL_HEADERS.ADDRESS) || ''),
-                    city: city,
-                    pincode: String(getValue(row, CANONICAL_HEADERS.PINCODE) || ''),
-                    salesPersonId: salesPersonId,
-                    discountStructure: {
-                        singleCore: parseFloat(getValue(row, CANONICAL_HEADERS.SINGLE_CORE_DISCOUNT)) || 0,
-                        multiCore: parseFloat(getValue(row, CANONICAL_HEADERS.MULTI_CORE_DISCOUNT)) || 0,
-                        specialCable: parseFloat(getValue(row, CANONICAL_HEADERS.SPECIAL_CABLE_DISCOUNT)) || 0,
-                        accessories: parseFloat(getValue(row, CANONICAL_HEADERS.ACCESSORIES_DISCOUNT)) || 0,
-                    },
-                };
-            }).filter((c): c is Omit<Customer, 'id'> => c !== null);
-
-            if (newCustomers.length > 0) {
-                await addCustomersBatch(newCustomers);
-                alert(`${newCustomers.length} customers imported successfully!`);
-                fetchCustomers(1);
-            } else {
-                alert('No valid customers found in the file. Make sure required columns "Name" and "City" have values.');
-            }
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : `An issue occurred during file processing. Please check the console for details.`;
-            console.error("Error importing customers:", error);
-            alert(`Failed to import customers.\n\nError: ${errorMessage}`);
-        }
-    };
-    reader.onerror = (error) => {
-        console.error("File reading error:", error);
-        alert("Failed to read the file.");
-    };
-    reader.readAsArrayBuffer(file);
-  };
-  
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+      fileInputRef.current?.click();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      handleFileUpload(file);
-      event.target.value = '';
-    }
+      const file = event.target.files?.[0];
+      if (file) {
+        handleFileUpload(file);
+        event.target.value = '';
+      }
+  };
+
+  const handleFileUpload = (file: File) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+          const data = e.target?.result;
+          if (!data) return;
+
+          setIsUploading(true);
+          setUploadProgress('Reading and parsing file...');
+
+          try {
+              const workbook = XLSX.read(data, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[sheetName];
+              const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+              const lastIdResult = await getCustomersPaginated({ pageLimit: 1, startAfterDoc: 0, sortBy: 'id', sortOrder: 'desc', filters: {} });
+              let lastId = lastIdResult.customers.length > 0 ? lastIdResult.customers[0].id : 0;
+              
+              const customersToUpsert: Customer[] = json.map(row => {
+                  if (!row.name) return null;
+
+                  const customer: Partial<Customer> = {
+                      name: String(row.name),
+                      address: String(row.address || ''),
+                      city: String(row.city || ''),
+                      pincode: String(row.pincode || ''),
+                      salesPersonId: row.salesPersonId ? parseInt(String(row.salesPersonId), 10) : null,
+                      discountStructure: {
+                          singleCore: parseFloat(String(row.singleCoreDiscount)) || 0,
+                          multiCore: parseFloat(String(row.multiCoreDiscount)) || 0,
+                          specialCable: parseFloat(String(row.specialCableDiscount)) || 0,
+                          accessories: parseFloat(String(row.accessoriesDiscount)) || 0,
+                      }
+                  };
+                  
+                  const idKey = Object.keys(row).find(key => key.toLowerCase().startsWith('id'));
+                  const rowId = idKey ? row[idKey] : undefined;
+
+                  if (rowId && !isNaN(parseInt(String(rowId), 10))) {
+                      customer.id = parseInt(String(rowId), 10);
+                  } else {
+                      lastId++;
+                      customer.id = lastId;
+                  }
+
+                  return customer as Customer;
+              }).filter((c): c is Customer => c !== null);
+
+              if (customersToUpsert.length > 0) {
+                  setUploadProgress(`Upserting ${customersToUpsert.length} customers...`);
+                  await addCustomersBatch(customersToUpsert);
+                  alert(`${customersToUpsert.length} customers processed successfully!`);
+                  fetchCustomers(1);
+              } else {
+                  alert('No valid customer data found in the file.');
+              }
+          } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : `An issue occurred during file processing.`;
+              console.error("Error importing customers:", error);
+              alert(`Failed to import customers.\n\nError: ${errorMessage}`);
+          } finally {
+              setIsUploading(false);
+              setUploadProgress('');
+          }
+      };
+      reader.onerror = (error) => {
+          console.error("File reading error:", error);
+          alert("Failed to read the file.");
+          setIsUploading(false);
+          setUploadProgress('');
+      };
+      reader.readAsArrayBuffer(file);
   };
   
   const customerIdsInView = displayedCustomers.map(c => c.id);
@@ -361,37 +316,36 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
             <div className="flex flex-wrap gap-2 text-sm">
                 <button
                     onClick={handleExport}
-                    className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
+                    disabled={isUploading}
+                    className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
                 >
                     Export Visible
                 </button>
                 <button
                     onClick={handleDownloadTemplate}
-                    className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
+                    disabled={isUploading}
+                    className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
                 >
                     Template
                 </button>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                />
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
                 <button
                     onClick={handleUploadClick}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
+                    disabled={isUploading}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
                 >
-                    Upload
+                    {isUploading ? 'Uploading...' : 'Upload'}
                 </button>
                 <button
                     onClick={handleAddNew}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
+                    disabled={isUploading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
                 >
                     Add New
                 </button>
             </div>
          </div>
+         {isUploading && ( <div className="my-2 p-2 text-center text-sm font-semibold text-indigo-700 bg-indigo-100 rounded-md" role="status">{uploadProgress}</div> )}
          
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import type { Quotation, Customer, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomerStats } from '../supabase';
+import { getCustomerStats, getCustomersByIds } from '../supabase';
 
 // Forward declaration for Chart.js from CDN
 declare const Chart: any;
@@ -25,10 +25,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
   const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
   const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
   const [customerStats, setCustomerStats] = useState<{ totalCount: number } | null>(null);
+  const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
     
   useEffect(() => {
     getCustomerStats().then(setCustomerStats).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (quotations) {
+        const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
+            .filter((id): id is number => id !== null && !customerMap.has(id));
+
+        if (customerIdsToFetch.length > 0) {
+            getCustomersByIds(customerIdsToFetch).then(customers => {
+                setCustomerMap(prevMap => {
+                    const newMap = new Map(prevMap);
+                    customers.forEach(c => newMap.set(c.id, c.name));
+                    return newMap;
+                });
+            });
+        }
+    }
+  }, [quotations, customerMap]);
+
 
   const calculateTotalAmount = (details: Quotation['details']): number => {
       return details.reduce((total, item) => {
@@ -524,6 +543,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         <tr>
                             <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">ID</th>
                             <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">Date</th>
+                            <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">Customer</th>
+                            <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">Contact</th>
                             <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">Sales Person</th>
                             <th className="px-2 py-1 text-right text-[11px] font-medium text-gray-600 uppercase">Value</th>
                         </tr>
@@ -533,6 +554,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <tr key={q.id}>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs font-medium text-gray-900">{q.id}</td>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
+                                <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800 font-semibold">{q.customerId ? customerMap.get(q.customerId) || '...' : 'N/A'}</td>
+                                <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
+                                    <div>{q.contactPerson}</div>
+                                    <div className="text-[10px] text-gray-500">{q.contactNumber}</div>
+                                </td>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800">{salesPersons.find(c => c.id === q.salesPersonId)?.name || 'N/A'}</td>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800 text-right">{formatCurrency(calculateTotalAmount(q.details))}</td>
                             </tr>
