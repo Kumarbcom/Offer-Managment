@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set } from '../supabase';
+import { get, set, toSupabaseTableName } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
-import { supabaseConfig } from '../supabaseClient';
+import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
 
 type CollectionName = keyof typeof INITIAL_DATA;
@@ -11,12 +11,9 @@ const isSupabaseConfigured = supabaseConfig.url && !supabaseConfig.url.includes(
 const seededTables = new Set<CollectionName>();
 
 /**
- * A hook to manage data persistence.
- * It attempts to use Supabase if configured.
- * If Supabase is not configured or fails on initial load, it falls back to a different storage strategy:
- * - For the 'products' collection, it uses in-memory state to avoid local storage quota errors.
- * - For all other collections, it uses the browser's Local Storage.
- * This ensures the application is always usable out-of-the-box, even with large product catalogs.
+ * A hook to manage data persistence with real-time synchronization.
+ * It uses Supabase for data storage and real-time updates.
+ * If Supabase is not configured or fails, it falls back to Local Storage (or in-memory for products).
  */
 export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableName: CollectionName): [T[] | null, (value: SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
     
@@ -71,6 +68,58 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
             }
         };
         fetchData();
+
+        // --- REAL-TIME SUBSCRIPTION LOGIC ---
+        const supabaseTableName = toSupabaseTableName(tableName);
+        const channelName = `table-changes-${tableName}`;
+        const primaryKey = tableName === 'users' ? 'name' : 'id';
+
+        const channel = supabase
+            .channel(channelName)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: supabaseTableName },
+                (payload: any) => {
+                    const currentState = stateRef.current || [];
+                    switch (payload.eventType) {
+                        case 'INSERT': {
+                            const newRecord = payload.new as T;
+                            // Add if not already present (handles local echo)
+                            if (!currentState.some(item => (item as any)[primaryKey] === (newRecord as any)[primaryKey])) {
+                                setState(prev => [...(prev || []), newRecord]);
+                            }
+                            break;
+                        }
+                        case 'UPDATE': {
+                            const updatedRecord = payload.new as T;
+                            setState(prev => (prev || []).map(item =>
+                                (item as any)[primaryKey] === (updatedRecord as any)[primaryKey] ? updatedRecord : item
+                            ));
+                            break;
+                        }
+                        case 'DELETE': {
+                            const oldRecord = payload.old as Partial<T>;
+                            const recordIdToDelete = (oldRecord as any)[primaryKey];
+                            setState(prev => (prev || []).filter(item => (item as any)[primaryKey] !== recordIdToDelete));
+                            break;
+                        }
+                    }
+                }
+            )
+            .subscribe((status: string, err?: Error) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log(`Successfully subscribed to real-time updates for ${tableName}`);
+                }
+                if (status === 'CHANNEL_ERROR' || err) {
+                    const subError = new Error(`Subscription error on channel ${channelName}: Real-time updates for '${tableName}' might not be working. Ensure replication is enabled for the '${supabaseTableName}' table in your Supabase project settings.`);
+                    console.error(subError, err);
+                    setError(subError);
+                }
+            });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tableName]);
 

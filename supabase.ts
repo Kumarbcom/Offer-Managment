@@ -16,7 +16,7 @@ const parseSupabaseError = (error: unknown, context?: string): string => {
 };
 
 // This function maps the app's internal camelCase names to the snake_case convention used by Supabase tables.
-const toSupabaseTableName = (name: TableName): string => {
+export const toSupabaseTableName = (name: TableName): string => {
     if (name === 'salesPersons') return 'sales_persons';
     if (name === 'deliveryChallans') return 'delivery_challans';
     return name;
