@@ -52,8 +52,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  const debouncedSearchCity = useDebounce(searchCity, 500);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const debouncedSearchCity = useDebounce(searchCity, 300);
 
   const totalPages = Math.ceil(totalCount / PAGE_LIMIT);
 

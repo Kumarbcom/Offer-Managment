@@ -140,12 +140,13 @@ export async function getCustomersPaginated(options: CustomerQueryOptions) {
 }
 
 export async function searchCustomers(term: string): Promise<Customer[]> {
-    if (!term) return [];
-    const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .ilike('name', `%${term}%`)
-        .limit(50);
+    let query = supabase.from('customers').select('*').limit(50);
+    if (term) {
+        query = query.ilike('name', `%${term}%`);
+    } else {
+        query = query.order('id', { ascending: false }); // Show latest customers by default
+    }
+    const { data, error } = await query;
 
     if (error) {
         throw new Error(parseSupabaseError(error, "Failed to search customers"));
@@ -220,14 +221,14 @@ export async function getProductsPaginated(options: ProductQueryOptions) {
     if (filters.partNo) {
         const terms = filters.partNo.split('*').map(term => term.trim()).filter(Boolean);
         if (terms.length > 0) {
-            const orFilter = terms.map(term => `partNo.ilike.%${term}%`).join(',');
+            const orFilter = terms.map(term => `partNo.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
             query = query.or(orFilter);
         }
     }
     if (filters.description) {
         const terms = filters.description.split('*').map(term => term.trim()).filter(Boolean);
         if (terms.length > 0) {
-            const orFilter = terms.map(term => `description.ilike.%${term}%`).join(',');
+            const orFilter = terms.map(term => `description.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
             query = query.or(orFilter);
         }
     }
@@ -261,12 +262,23 @@ export async function updateProduct(product: Product): Promise<void> {
 }
 
 export async function searchProducts(term: string) {
-    if (!term) return [];
-    const { data, error } = await supabase
+    let query = supabase
         .from('products')
         .select('*')
-        .or(`partNo.ilike.%${term}%,description.ilike.%${term}%`)
         .limit(50);
+    
+    if (term) {
+        const terms = term.split('*').map(t => t.trim().replace(/"/g, '""')).filter(Boolean);
+        if (terms.length > 0) {
+            const partNoFilters = terms.map(t => `partNo.ilike."*${t}*"`).join(',');
+            const descriptionFilters = terms.map(t => `description.ilike."*${t}*"`).join(',');
+            query = query.or(`${partNoFilters},${descriptionFilters}`);
+        }
+    } else {
+        query = query.order('id', { ascending: false });
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         throw new Error(parseSupabaseError(error, "Failed to search products"));

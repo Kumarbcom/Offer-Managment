@@ -120,7 +120,7 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     debounceTimeoutRef.current = setTimeout(() => {
       fetchProducts(false);
-    }, 500); 
+    }, 300); 
 
     return () => { if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current) };
   }, [searchTerm, searchDescription, sortBy, sortOrder]);
@@ -158,7 +158,7 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
   const handleExport = () => {
     const dataToExport = displayedProducts.flatMap(product => {
       if (product.prices.length === 0) {
-        return [{ PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: '', SP: '', ValidFrom: '', ValidTo: '' }];
+        return [{ PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: 0, SP: 0, ValidFrom: '', ValidTo: '' }];
       }
       return product.prices.map(price => ({
         PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: price.lp, SP: price.sp, ValidFrom: price.validFrom, ValidTo: price.validTo

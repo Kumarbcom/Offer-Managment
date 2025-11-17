@@ -68,6 +68,15 @@ const Icons = {
     Trash: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>,
 };
 
+const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
+    <div className={`flex items-stretch ${className}`}>
+        <label className="w-1/3 bg-slate-100 text-slate-600 font-semibold text-sm flex items-center justify-center text-center p-2 rounded-l-md border border-r-0 border-slate-300">
+            {label}
+        </label>
+        <div className="w-2/3">{children}</div>
+    </div>
+);
+
 export const QuotationForm: React.FC<QuotationFormProps> = ({
   salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, userRole
 }) => {
@@ -134,6 +143,26 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       details: [createEmptyQuotationItem()],
     };
   }, [quotations]);
+  
+  const handleCustomerOpen = useCallback(() => {
+    if (searchedCustomers.length === 0 && !isSearchingCustomers) {
+        setIsSearchingCustomers(true);
+        searchCustomers('').then(results => {
+            setSearchedCustomers(results);
+            setIsSearchingCustomers(false);
+        });
+    }
+  }, [searchedCustomers.length, isSearchingCustomers]);
+
+  const handleProductOpen = useCallback(() => {
+      if (searchedProducts.length === 0 && !isSearchingProducts) {
+          setIsSearchingProducts(true);
+          searchProducts('').then(results => {
+              setSearchedProducts(results);
+              setIsSearchingProducts(false);
+          });
+      }
+  }, [searchedProducts.length, isSearchingProducts]);
 
   useEffect(() => {
     const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
@@ -195,10 +224,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [formData?.quotationDate, fetchedProducts, getPriceForDate, formData?.details]);
 
   useEffect(() => {
-    if (debouncedProductSearchTerm.length < 1) {
-      setSearchedProducts([]);
-      return;
-    }
     const performSearch = async () => {
       setIsSearchingProducts(true);
       const results = await searchProducts(debouncedProductSearchTerm);
@@ -209,9 +234,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [debouncedProductSearchTerm]);
   
   useEffect(() => {
-    if (debouncedCustomerSearchTerm.length < 1) {
-      return;
-    }
     const performSearch = async () => {
       setIsSearchingCustomers(true);
       const results = await searchCustomers(debouncedCustomerSearchTerm);
@@ -398,15 +420,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }
 
   if (!formData) return <div className="p-8 text-center">Loading form...</div>;
-  
-  const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
-    <div className={`flex items-stretch ${className}`}>
-        <label className="w-1/3 bg-slate-100 text-slate-600 font-semibold text-sm flex items-center justify-center text-center p-2 rounded-l-md border border-r-0 border-slate-300">
-            {label}
-        </label>
-        <div className="w-2/3">{children}</div>
-    </div>
-  );
 
   return (
     <div className="p-2 md:p-4 bg-slate-50 min-h-screen font-sans">
@@ -440,22 +453,22 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm">
                 <div className="space-y-2">
                     <FormField label="Quotation ID"><div className="p-2 bg-slate-50 font-bold text-slate-800 rounded-r-md border border-slate-300 h-full flex items-center">{editingQuotationId ?? "{New}"}</div></FormField>
-                    <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Customer" className='items-start'><div className={`border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect options={searchedCustomers} value={formData.customerId} onChange={val => { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); }} idKey="id" displayKey="name" placeholder="Type to search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers}/>{selectedCustomerObj && <div className="p-2 bg-slate-50 text-xs text-slate-600 border-t border-slate-200">{selectedCustomerObj.address}, {selectedCustomerObj.city} - {selectedCustomerObj.pincode}</div>}</div></FormField>
+                    <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" disabled={isReadOnly}/></FormField>
+                    <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" disabled={isReadOnly}/></FormField>
+                    <FormField label="Customer" className='items-start'><div className={`border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect options={searchedCustomers} value={formData.customerId} onChange={val => { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); }} idKey="id" displayKey="name" placeholder="Type to search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/>{selectedCustomerObj && <div className="p-2 bg-slate-50 text-xs text-slate-600 border-t border-slate-200">{selectedCustomerObj.address}, {selectedCustomerObj.city} - {selectedCustomerObj.pincode}</div>}</div></FormField>
                 </div>
                 <div className="space-y-2">
-                    <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Payment"><select name="paymentTerms" value={formData.paymentTerms} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{PAYMENT_TERMS.map(t => <option key={t} value={t}>{t}</option>)}</select></FormField>
-                    <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
-                    <FormField label="Products"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
+                    <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" disabled={isReadOnly}/></FormField>
+                    <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" disabled={isReadOnly}/></FormField>
+                    <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" disabled={isReadOnly}/></FormField>
+                    <FormField label="Payment"><select name="paymentTerms" value={formData.paymentTerms} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}>{PAYMENT_TERMS.map(t => <option key={t} value={t}>{t}</option>)}</select></FormField>
+                    <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
+                    <FormField label="Products"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
                 </div>
                 <div className="space-y-2">
-                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
-                    <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
-                    <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
+                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
+                    <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
+                    <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}>{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
                     {selectedCustomerObj && <fieldset className="border-2 border-slate-200 p-2 space-y-1 rounded-md"><legend className="font-bold text-slate-700 px-1 text-xs">Customer Discounts</legend>{Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => <div key={key} className="flex items-center text-xs"><label className="w-1/2 bg-slate-200 text-slate-800 p-1 text-center rounded-l-sm capitalize">{key.replace(/([A-Z])/g, ' $1')}</label><div className="w-1/2 p-1 bg-slate-100 rounded-r-sm font-medium">{value}%</div></div>)}</fieldset>}
                 </div>
             </div>
@@ -469,7 +482,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
                         optionsForSelect.unshift(currentProduct);
                     }
-                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-48 align-top"><div className={isReadOnly ? 'bg-slate-100' : ''}><SearchableSelect options={optionsForSelect} value={item.productId} onChange={val => handleProductSelect(index, val)} idKey="id" displayKey="partNo" placeholder="Type to search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} /></div></td><td className="border-t border-slate-300 p-1 min-w-[200px] align-top text-slate-600">{item.description}</td><td className="border-t border-slate-300 align-top"><input type="number" value={item.moq} onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" value={item.req} onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-20 p-1 text-right flex-grow bg-transparent" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-1 text-slate-500" disabled><option value="LP">LP</option><option value="SP">SP</option></select></div></td><td className="border-t border-slate-300 align-top"><input type="text" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{unitPrice.toFixed(2)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.stockStatus} onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} className="w-24 p-1 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-4 w-4 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails.weightPerMtr} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-20 p-1 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top">{freightPerMtr.toFixed(2)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails.airFreightLeadTime} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-24 p-1 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-1 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
+                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-48 align-top"><div className={isReadOnly ? 'bg-slate-100' : ''}><SearchableSelect options={optionsForSelect} value={item.productId} onChange={val => handleProductSelect(index, val)} idKey="id" displayKey="partNo" placeholder="Type to search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} /></div></td><td className="border-t border-slate-300 p-1 min-w-[200px] align-top text-slate-600">{item.description}</td><td className="border-t border-slate-300 align-top"><input type="number" value={item.moq} onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" value={item.req} onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-20 p-1 text-right flex-grow bg-transparent" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-1 text-slate-500" disabled><option value="LP">LP</option><option value="SP">SP</option></select></div></td><td className="border-t border-slate-300 align-top"><input type="text" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{unitPrice.toFixed(2)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.stockStatus} onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} className="w-24 p-1 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-4 w-4 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails.weightPerMtr} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-20 p-1 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top">{freightPerMtr.toFixed(2)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails.airFreightLeadTime} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-24 p-1 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-1 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
                     <tfoot className="bg-slate-200 text-slate-800 font-bold text-xs"><tr className="divide-x divide-slate-300"><td colSpan={2} className="p-2 text-center">Total</td><td className="p-2 text-center">{totals.moq}</td><td className="p-2 text-center">{totals.req}</td><td colSpan={3}></td><td className="p-2 text-right">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={4}></td><td className="p-2 text-right">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={2}></td></tr></tfoot>
                 </table>
             </div>

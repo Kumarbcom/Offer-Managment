@@ -9,10 +9,11 @@ interface SearchableSelectProps<T> {
   placeholder?: string;
   onSearch?: (term: string) => void;
   isLoading?: boolean;
+  onOpen?: () => void;
 }
 
 export const SearchableSelect = <T extends Record<string, any>,>(
-  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', onSearch, isLoading }: SearchableSelectProps<T>
+  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', onSearch, isLoading, onOpen }: SearchableSelectProps<T>
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +41,13 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef, selectedOption, displayKey]);
+  
+  const handleFocus = () => {
+    setIsOpen(true);
+    if (onOpen) {
+      onOpen();
+    }
+  };
 
   const handleSelect = (option: T) => {
     onChange(option[idKey]);
@@ -64,13 +72,13 @@ export const SearchableSelect = <T extends Record<string, any>,>(
   );
 
   return (
-    <div className="relative w-full" ref={wrapperRef}>
+    <div className="relative w-full h-full" ref={wrapperRef}>
       <input
         type="text"
-        className="w-full p-1 border border-transparent hover:border-gray-300 focus:border-gray-300 focus:outline-none"
+        className="w-full h-full p-2 border border-transparent hover:border-gray-300 focus:border-gray-300 focus:outline-none"
         value={searchTerm}
         onChange={handleInputChange}
-        onFocus={() => setIsOpen(true)}
+        onFocus={handleFocus}
         placeholder={placeholder}
       />
       {isOpen && (
@@ -88,7 +96,7 @@ export const SearchableSelect = <T extends Record<string, any>,>(
               </li>
             ))
           ) : (
-            <li className="p-2 text-gray-500">{searchTerm ? 'No results found' : 'Type to search'}</li>
+            <li className="p-2 text-gray-500">{searchTerm ? 'No results found' : isAsync ? 'Type to search' : 'No options'}</li>
           )}
         </ul>
       )}
