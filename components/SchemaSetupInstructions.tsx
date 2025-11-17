@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 
 const SQL_SCHEMA = `
--- Offer Management Database Schema v1.1
+-- Offer Management Database Schema v1.2
 -- Instructions:
 -- 1. Go to your Supabase project dashboard.
 -- 2. In the left sidebar, navigate to the "SQL Editor".
@@ -11,7 +10,7 @@ const SQL_SCHEMA = `
 -- 5. Click "Run".
 -- 6. After the script finishes successfully, refresh this application page.
 
--- Step 1: Create the tables with required columns.
+-- Step 1: Create the tables with auto-incrementing primary keys.
 
 CREATE TABLE public.users (
   name TEXT PRIMARY KEY,
@@ -20,15 +19,15 @@ CREATE TABLE public.users (
 );
 
 CREATE TABLE public.sales_persons (
-  id INT PRIMARY KEY,
-  name TEXT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
   email TEXT,
   mobile TEXT
 );
 
 CREATE TABLE public.products (
-  id INT PRIMARY KEY,
-  "partNo" TEXT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  "partNo" TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL,
   "hsnCode" TEXT,
   prices JSONB NOT NULL,
@@ -38,27 +37,27 @@ CREATE TABLE public.products (
 );
 
 CREATE TABLE public.customers (
-  id INT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   address TEXT,
   city TEXT,
   pincode TEXT,
-  "salesPersonId" INT,
+  "salesPersonId" INT REFERENCES public.sales_persons(id),
   "discountStructure" JSONB
 );
 
 CREATE TABLE public.quotations (
-  id INT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   "quotationDate" DATE NOT NULL,
   "enquiryDate" DATE NOT NULL,
-  "customerId" INT,
+  "customerId" INT REFERENCES public.customers(id),
   "contactPerson" TEXT,
   "contactNumber" TEXT,
   "otherTerms" TEXT,
   "paymentTerms" TEXT,
   "preparedBy" TEXT,
   "productsBrand" TEXT,
-  "salesPersonId" INT,
+  "salesPersonId" INT REFERENCES public.sales_persons(id),
   "modeOfEnquiry" TEXT,
   status TEXT,
   comments TEXT,
@@ -66,10 +65,10 @@ CREATE TABLE public.quotations (
 );
 
 CREATE TABLE public.delivery_challans (
-  id INT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   "challanDate" DATE NOT NULL,
-  "customerId" INT,
-  "quotationId" INT,
+  "customerId" INT REFERENCES public.customers(id),
+  "quotationId" INT REFERENCES public.quotations(id),
   "vehicleNo" TEXT,
   "poNo" TEXT,
   "poDate" DATE,
@@ -77,13 +76,16 @@ CREATE TABLE public.delivery_challans (
 );
 
 -- Step 2: Grant permissions to the API roles.
--- This allows the application to read and write to the tables using the public anon key.
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.users TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.sales_persons TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.products TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.customers TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.quotations TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.delivery_challans TO anon, authenticated;
+
+-- Allow the API roles to use the new sequences for the SERIAL columns.
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+
 
 -- Step 3: Disable Row Level Security (RLS) for all new tables.
 -- This is a quick setup for development. For production, you should enable RLS
@@ -114,34 +116,47 @@ export const SchemaSetupInstructions: React.FC<SchemaSetupInstructionsProps> = (
       <div className="text-left p-8 bg-white rounded-lg shadow-2xl max-w-4xl w-full">
         <h1 className="text-2xl font-bold text-red-700 mb-4">Database Setup Required</h1>
         <p className="text-gray-600 mb-2">
-          The application couldn't connect to your database tables. This usually means the tables haven't been created yet or have incorrect permissions.
-        </p>
-        <p className="text-gray-600 mb-4">
-          Please run the following SQL script in your Supabase project's SQL Editor to create and configure the necessary tables.
+          The application couldn't connect to your database tables. This usually means the tables haven't been created yet. Please follow the steps below.
         </p>
         
-        <p className="mt-4 text-sm text-red-500 bg-red-50 p-2 rounded mb-4">
+        <div className="mt-4 text-sm text-red-500 bg-red-50 p-2 rounded mb-4">
             <strong>Detected Error:</strong> {error}
-        </p>
+        </div>
 
-        <div className="relative">
-            <textarea
-                readOnly
-                value={SQL_SCHEMA}
-                className="w-full h-64 p-3 font-mono text-xs bg-slate-900 text-slate-100 rounded-md border border-slate-700 resize-none focus:outline-none"
-                aria-label="SQL Schema for database setup"
-            />
-            <button
-                onClick={handleCopy}
-                className="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1 px-3 rounded-md text-sm transition-colors"
-            >
-                {copied ? 'Copied!' : 'Copy SQL'}
-            </button>
+        <div className="space-y-4">
+            <div>
+                <h3 className="font-bold text-lg text-slate-800">Step 1: Run the SQL Schema Script</h3>
+                <p className="text-sm text-gray-600 mb-2">Copy and run the script below in your Supabase project's SQL Editor to create the necessary tables.</p>
+                <div className="relative">
+                    <textarea
+                        readOnly
+                        value={SQL_SCHEMA}
+                        className="w-full h-40 p-3 font-mono text-xs bg-slate-900 text-slate-100 rounded-md border border-slate-700 resize-y focus:outline-none"
+                        aria-label="SQL Schema for database setup"
+                    />
+                    <button
+                        onClick={handleCopy}
+                        className="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1 px-3 rounded-md text-sm transition-colors"
+                    >
+                        {copied ? 'Copied!' : 'Copy SQL'}
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 className="font-bold text-lg text-slate-800">Step 2: Enable Real-Time Data (Replication)</h3>
+                <p className="text-sm text-gray-600 mb-2">For live data synchronization to work, you need to enable replication for your tables.</p>
+                <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
+                    <li>In your Supabase dashboard, go to <code className="bg-slate-100 p-1 rounded">Database</code>, then <code className="bg-slate-100 p-1 rounded">Replication</code>.</li>
+                    <li>You will see a list of your tables under "Source". Click on the number under the "Publication" column (it might say "0").</li>
+                    <li>Check the box next to <code className="bg-slate-100 p-1 rounded">supabase_realtime</code> for <span className="font-bold">all</span> the tables you just created, then click Save.</li>
+                </ol>
+            </div>
         </div>
         
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t pt-4">
           <div className="text-sm text-gray-500">
-            After running the script in Supabase, click Retry.
+            After completing both steps, click Retry.
           </div>
           <div className="flex items-center gap-4">
             <a 

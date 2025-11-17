@@ -1,18 +1,18 @@
-
 import React, { useState } from 'react';
 import type { User } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
+import { DataActions } from '../hooks/useOnlineStorage';
 
 interface UserManagerProps {
   users: User[] | null;
-  setUsers: (users: React.SetStateAction<User[]>) => Promise<void>;
+  actions: DataActions<User>;
   currentUser: User;
 }
 
 const ROLES: User['role'][] = ['Admin', 'Sales Person', 'Management', 'SCM', 'Viewer'];
 const ALL_USER_NAMES: User['name'][] = ['Kumar', 'Vandita', 'Ranjan', 'Gurudatta', 'Purshothama', 'DC Venugopal', 'Rachana', 'Mohan', 'Geetha', ...SALES_PERSON_NAMES];
 
-export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, currentUser }) => {
+export const UserManager: React.FC<UserManagerProps> = ({ users, actions, currentUser }) => {
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
 
   const handleEdit = (user: User) => {
@@ -25,22 +25,15 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
         return;
     }
     
-    await setUsers(prevUsers => {
-        const currentUsers = prevUsers || [];
-        const isNew = !currentUsers.some(u => u.name === editingUser.name);
-        
-        if (isNew) {
-            const newUser: User = {
-                name: editingUser.name!,
-                role: editingUser.role!,
-                password: '123456'
-            };
-            return [...currentUsers, newUser];
-        } else {
-            // Use a merge operation to safely update the user without losing data.
-            return currentUsers.map(u => (u.name === editingUser.name ? { ...u, ...editingUser } : u));
-        }
-    });
+    if (editingUser.password) { // This is an existing user being edited
+        await actions.update(editingUser as User);
+    } else { // This is a new user
+        await actions.add({
+            name: editingUser.name!,
+            role: editingUser.role!,
+            password: '123456'
+        });
+    }
 
     setEditingUser(null);
   };
@@ -51,10 +44,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
       return;
     }
     if(window.confirm(`Are you sure you want to delete user "${userName}"?`)){
-        await setUsers(prevUsers => {
-          const currentUsers = prevUsers || [];
-          return currentUsers.filter(u => u.name !== userName);
-        });
+        await actions.remove([userName]);
     }
   };
 
@@ -113,7 +103,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
             {editingUser && !editingUser.name && (
                  <tr>
                     <td className="px-6 py-4">
-                        <select value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value as User['name']})} className="p-1 border rounded w-full">
+                        <select value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value as User['name']})} className="p-1 border rounded w-full">
                             <option value="">Select User Name</option>
                             {ALL_USER_NAMES.filter(name => !users.some(u => u.name === name)).map(name => (
                                 <option key={name} value={name}>{name}</option>

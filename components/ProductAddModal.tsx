@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
+import { DataActions } from '../hooks/useOnlineStorage';
 
 interface ProductAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (product: Product) => Promise<void>;
-  products: Product[] | null;
+  actions: DataActions<Product>;
   productToEdit?: Product | null;
 }
 
@@ -21,7 +20,7 @@ const emptyProductData: Omit<Product, 'id'> = {
   weight: 0,
 };
 
-export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClose, onSave, products, productToEdit }) => {
+export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClose, actions, productToEdit }) => {
   const [formData, setFormData] = useState<Omit<Product, 'id'> | Product>(emptyProductData);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -81,7 +80,6 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!products) return;
     if (!formData.partNo || !formData.description) {
       alert('Part No and Description are required.');
       return;
@@ -103,18 +101,13 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
            processedPrices[processedPrices.length - 1].validTo = '9999-12-31';
         }
     
-        const formDataWithProcessedPrices = { ...formData, prices: processedPrices };
+        const productToSave = { ...formData, prices: processedPrices };
         
-        let productToSave: Product;
-
-        if ('id' in formData && formData.id) {
-          productToSave = formDataWithProcessedPrices as Product;
+        if ('id' in productToSave && productToSave.id) {
+          await actions.update(productToSave as Product);
         } else {
-          const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-          productToSave = { ...formDataWithProcessedPrices, id: newId } as Product;
+          await actions.add(productToSave);
         }
-
-        await onSave(productToSave);
         onClose();
 
     } catch (error) {

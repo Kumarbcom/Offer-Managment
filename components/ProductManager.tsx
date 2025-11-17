@@ -1,14 +1,15 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { ProductAddModal } from './ProductAddModal';
+import { DataActions } from '../hooks/useOnlineStorage';
 
 declare var XLSX: any;
 
 interface ProductManagerProps {
   products: Product[] | null; 
-  setProducts: (value: React.SetStateAction<Product[]>) => Promise<void>; 
+  actions: DataActions<Product>;
+  refetch: () => Promise<void>;
 }
 
 type SortByType = 'id' | 'partNo' | 'description' | 'hsnCode';
@@ -39,7 +40,7 @@ const getCurrentPrice = (product: Product): PriceEntry | null => {
     return [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
 };
 
-export const ProductManager: React.FC<ProductManagerProps> = ({ products: initialProducts, setProducts: notifyAppOfChanges }) => {
+export const ProductManager: React.FC<ProductManagerProps> = ({ products: initialProducts, actions, refetch }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchDescription, setSearchDescription] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
@@ -50,6 +51,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -57,7 +59,6 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
     if (!initialProducts) return [];
     
     const filtered = initialProducts.filter(product => {
-        // FIX: Replace undefined `filters` variable with state variables `searchTerm` and `searchDescription`.
         const partNoMatch = searchTerm ? product.partNo.toLowerCase().startsWith(searchTerm.toLowerCase()) : true;
         const descriptionMatch = searchDescription ? product.description.toLowerCase().startsWith(searchDescription.toLowerCase()) : true;
         return partNoMatch && descriptionMatch;
@@ -66,7 +67,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
     return filtered.sort((a, b) => {
         let comparison = 0;
         switch (sortBy) {
-          case 'id': comparison = a.id - b.id; break;
+          case 'id': comparison = (a.id ?? 0) - (b.id ?? 0); break;
           case 'partNo': comparison = a.partNo.localeCompare(b.partNo); break;
           case 'description': comparison = a.description.localeCompare(b.description); break;
           case 'hsnCode': comparison = (a.hsnCode || '').localeCompare(b.hsnCode || ''); break;
@@ -75,8 +76,6 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
     });
   }, [initialProducts, searchTerm, searchDescription, sortBy, sortOrder]);
 
-  // Reset to page 1 when filters change
-  // FIX: Added `useEffect` to React import to resolve `Cannot find name 'useEffect'` error.
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, searchDescription, sortBy, sortOrder]);
@@ -91,29 +90,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
   const handleDeleteSelected = async () => {
     if (selectedProductIds.size === 0) return;
     if (window.confirm(`Are you sure you want to delete ${selectedProductIds.size} selected product(s)?`)) {
-        await notifyAppOfChanges(prev => (prev || []).filter(p => !selectedProductIds.has(p.id)));
+        await actions.remove(Array.from(selectedProductIds));
         setSelectedProductIds(new Set());
     }
   };
   
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-        await notifyAppOfChanges(prev => (prev || []).filter(p => p.id !== id));
+        await actions.remove([id]);
     }
   };
 
-  const handleSaveProduct = async (product: Product) => {
-    await notifyAppOfChanges(prev => {
-        const products = prev || [];
-        const exists = products.some(p => p.id === product.id);
-        if (exists) {
-            return products.map(p => p.id === product.id ? product : p); // Update
-        } else {
-            return [...products, product]; // Add
-        }
-    });
-  };
-  
   const handleCloseModal = () => { setIsModalOpen(false); setProductToEdit(null); };
   
   const handleDownloadTemplate = () => {
@@ -155,16 +142,21 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
     reader.onload = async (e) => {
       const data = e.target?.result;
       if (!data) return;
-
+  
       setIsUploading(true);
       setUploadProgress('Reading and parsing file...');
-
+      setUploadError(null);
+  
       try {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet);
-
+  
+        if (json.length > 100000) {
+          throw new Error(`File contains ${json.length} rows, which exceeds the limit of 100,000. Please split the file.`);
+        }
+  
         const productsByPartNo: Record<string, any[]> = {};
         json.forEach(row => {
           const partNo = String(row['PartNo'] || '').trim();
@@ -173,37 +165,42 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
             productsByPartNo[partNo].push(row);
           }
         });
-
+  
         const parseExcelDate = (excelDate: any): string => {
-            if (!excelDate) return '';
-            if (typeof excelDate === 'number' && excelDate > 1) {
-              const date = new Date(Date.UTC(1900, 0, excelDate - 1));
-              return date.toISOString().split('T')[0];
-            }
-            if (typeof excelDate === 'string') {
-              const parsedDate = new Date(excelDate);
-              if (!isNaN(parsedDate.getTime())) return parsedDate.toISOString().split('T')[0];
-              return excelDate;
-            }
-            return '';
-          };
-          
-        const parsedProducts = Object.values(productsByPartNo).map((rows): Omit<Product, 'id'> | null => {
+          if (!excelDate) return '';
+          if (typeof excelDate === 'number' && excelDate > 1) {
+            const date = new Date(Date.UTC(1900, 0, excelDate - 1));
+            return date.toISOString().split('T')[0];
+          }
+          if (typeof excelDate === 'string') {
+            const parsedDate = new Date(excelDate);
+            if (!isNaN(parsedDate.getTime())) return parsedDate.toISOString().split('T')[0];
+            return excelDate;
+          }
+          return '';
+        };
+  
+        const parsedProducts: Omit<Product, 'id'>[] = Object.values(productsByPartNo).map((rows): Omit<Product, 'id'> | null => {
           const firstRow = rows[0];
           if (!firstRow['PartNo'] || !firstRow['Description']) {
             console.warn(`Skipping product due to missing PartNo or Description.`);
             return null;
           }
-          
+  
           const prices: PriceEntry[] = rows.map(row => {
             const validFrom = parseExcelDate(row['ValidFrom']);
             if (!validFrom) return null;
-            return { lp: parseFloat(row['LP']) || 0, sp: parseFloat(row['SP']) || 0, validFrom: validFrom, validTo: parseExcelDate(row['ValidTo']) || '9999-12-31' };
+            return {
+              lp: parseFloat(row['LP']) || 0,
+              sp: parseFloat(row['SP']) || 0,
+              validFrom: validFrom,
+              validTo: parseExcelDate(row['ValidTo']) || '9999-12-31',
+            };
           }).filter((p): p is PriceEntry => p !== null);
-
+  
           if (prices.length === 0) return null;
           prices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
-
+  
           return {
             partNo: String(firstRow['PartNo']),
             description: String(firstRow['Description']),
@@ -214,27 +211,29 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
             weight: parseFloat(firstRow['Weight']) || 0,
           };
         }).filter((p): p is Omit<Product, 'id'> => p !== null);
-
+  
         if (parsedProducts.length > 0) {
-            setUploadProgress(`Saving ${parsedProducts.length} products to the database...`);
-            await notifyAppOfChanges(prev => {
-                const prevProducts = prev || [];
-                const lastId = prevProducts.length > 0 ? Math.max(...prevProducts.map(p => p.id)) : 0;
-                let newId = lastId;
-                const productsWithIds = parsedProducts.map(p => {
-                    newId++;
-                    return { ...p, id: newId };
-                });
-                return [...prevProducts, ...productsWithIds];
-            });
-            alert(`${parsedProducts.length} products imported successfully!`);
+          setUploadProgress(`Uploading ${parsedProducts.length} products...`);
+          await actions.bulkAdd(parsedProducts);
+          await refetch();
+          alert(`${parsedProducts.length} products imported successfully!`);
         } else {
-            alert('No valid products found in the file. Check column names (e.g., "PartNo", "Description", "ValidFrom").');
+          setUploadError('No valid products found in the file. Check column names (e.g., "PartNo", "Description", "ValidFrom").');
         }
-
-      } catch (error) {
+  
+      } catch (error: any) {
         console.error("Error parsing or uploading Excel file:", error);
-        alert("Failed to import products. Please check the file format and console for errors.");
+        let errorMessage = "An unknown error occurred. Please check the file format and content.";
+        // Check for Supabase error structure
+        if (error && typeof error === 'object' && error.message) {
+            errorMessage = `Error: ${error.message}`;
+            if (error.details) errorMessage += `\nDetails: ${error.details}`;
+            if (error.hint) errorMessage += `\nHint: ${error.hint}`;
+        } else if (error instanceof Error) {
+            // Check for standard JS Error
+            errorMessage = error.message;
+        }
+        setUploadError(errorMessage);
       } finally {
         setIsUploading(false);
         setUploadProgress('');
@@ -242,9 +241,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
     };
     reader.onerror = (error) => {
       console.error("File reading error:", error);
-      alert("Failed to read the file.");
+      setUploadError("Failed to read the file.");
       setIsUploading(false);
-      setUploadProgress('');
     };
     reader.readAsArrayBuffer(file);
   };
@@ -268,13 +266,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedProductIds(new Set(paginatedProducts.map(p => p.id)));
+      setSelectedProductIds(new Set(paginatedProducts.map(p => p.id as number)));
     } else {
       setSelectedProductIds(new Set());
     }
   };
 
-  const isAllSelectedOnPage = selectedProductIds.size > 0 && paginatedProducts.every(p => selectedProductIds.has(p.id));
+  const isAllSelectedOnPage = selectedProductIds.size > 0 && paginatedProducts.every(p => selectedProductIds.has(p.id as number));
 
   if (initialProducts === null) {
       return (
@@ -303,6 +301,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
          </div>
 
          {isUploading && ( <div className="my-2 p-2 text-center text-sm font-semibold text-indigo-700 bg-indigo-100 rounded-md" role="status">{uploadProgress}</div> )}
+         {uploadError && (
+          <div className="my-2 p-3 text-sm text-red-800 bg-red-100 border border-red-200 rounded-md" role="alert">
+            <p className="font-bold">Import Failed</p>
+            <p className="whitespace-pre-wrap">{uploadError}</p>
+          </div>
+        )}
          
          {selectedProductIds.size > 0 && (
             <div className="my-3 p-3 bg-rose-50 border border-rose-200 rounded-lg flex flex-wrap items-center gap-4">
@@ -350,10 +354,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
             <tbody className="bg-white divide-y divide-slate-200">
                 {paginatedProducts.map(product => {
                     const currentPrice = getCurrentPrice(product);
-                    const isSelected = selectedProductIds.has(product.id);
+                    const isSelected = selectedProductIds.has(product.id!);
                     return (
                         <tr key={product.id} className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-sm`}>
-                            <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isSelected} onChange={() => handleSelectOne(product.id)} aria-label={`Select product ${product.partNo}`}/></td>
+                            <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isSelected} onChange={() => handleSelectOne(product.id!)} aria-label={`Select product ${product.partNo}`}/></td>
                             <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.id}</td>
                             <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{product.partNo}</td>
                             <td className="px-3 py-2 whitespace-nowrap text-slate-600 max-w-xs truncate">{product.description}</td>
@@ -365,7 +369,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
                             <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{product.weight}</td>
                             <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
                                 <button onClick={() => handleEdit(product)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
-                                <button onClick={() => handleDelete(product.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+                                <button onClick={() => handleDelete(product.id!)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
                             </td>
                         </tr>
                     )
@@ -392,8 +396,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products: initia
       <ProductAddModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        onSave={handleSaveProduct}
-        products={initialProducts}
+        actions={actions}
         productToEdit={productToEdit}
       />
     </div>

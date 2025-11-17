@@ -2,17 +2,18 @@ import React, { useState, useMemo } from 'react';
 import type { SalesPerson } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
 import { DataManagerTemplate } from './common/DataManagerTemplate';
+import { DataActions } from '../hooks/useOnlineStorage';
 
 declare var XLSX: any;
 
 interface SalesPersonManagerProps {
   salesPersons: SalesPerson[] | null;
-  setSalesPersons: (value: React.SetStateAction<SalesPerson[]>) => Promise<void>;
+  actions: DataActions<SalesPerson>;
 }
 
 const emptySalesPerson: Omit<SalesPerson, 'id'> = { name: '', email: '', mobile: '' };
 
-export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPersons, setSalesPersons }) => {
+export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPersons, actions }) => {
   const [currentPerson, setCurrentPerson] = useState<Omit<SalesPerson, 'id'> | SalesPerson>(emptySalesPerson);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -30,8 +31,8 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
             sp.mobile.toLowerCase().includes(searchTerm.toLowerCase())
         )
         .sort((a, b) => {
-            const aVal = a[sortBy];
-            const bVal = b[sortBy];
+            let aVal: string | number = a[sortBy] ?? '';
+            let bVal: string | number = b[sortBy] ?? '';
             let comparison = 0;
             if (typeof aVal === 'string' && typeof bVal === 'string') {
                 comparison = aVal.localeCompare(bVal);
@@ -55,7 +56,7 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
   
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this sales person?")) {
-        await setSalesPersons(prev => (prev || []).filter(p => p.id !== id));
+        await actions.remove([id]);
     }
   };
 
@@ -68,13 +69,9 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
     setIsSaving(true);
     try {
       if (isEditing) {
-        await setSalesPersons(prev => (prev || []).map(p => p.id === (currentPerson as SalesPerson).id ? currentPerson as SalesPerson : p));
+        await actions.update(currentPerson as SalesPerson);
       } else {
-        await setSalesPersons(prev => {
-          const prevPeople = prev || [];
-          const newId = prevPeople.length > 0 ? Math.max(...prevPeople.map(p => p.id)) + 1 : 1;
-          return [...prevPeople, { ...currentPerson, id: newId } as SalesPerson];
-        });
+        await actions.add(currentPerson);
       }
       resetForm();
     } catch (error) {
@@ -134,7 +131,7 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{person.mobile}</td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
         <button onClick={() => handleEdit(person)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-        <button onClick={() => handleDelete(person.id)} className="text-red-600 hover:text-red-900">Delete</button>
+        <button onClick={() => handleDelete(person.id!)} className="text-red-600 hover:text-red-900">Delete</button>
       </td>
     </tr>
   ));

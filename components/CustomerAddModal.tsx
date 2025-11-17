@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Customer, SalesPerson } from '../types';
+import { DataActions } from '../hooks/useOnlineStorage';
 
 interface CustomerAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (customer: Customer) => Promise<void>;
+  actions: DataActions<Customer>;
   salesPersons: SalesPerson[] | null;
-  customers: Customer[] | null;
   customerToEdit?: Customer | null;
 }
 
@@ -20,7 +19,7 @@ const emptyCustomer: Omit<Customer, 'id'> = {
   discountStructure: { singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0 },
 };
 
-export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onClose, onSave, salesPersons, customers, customerToEdit }) => {
+export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onClose, actions, salesPersons, customerToEdit }) => {
   const [formData, setFormData] = useState<Omit<Customer, 'id'> | Customer>(emptyCustomer);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -58,24 +57,18 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customers) return;
     if (!formData.name) {
       alert('Customer Name is required.');
       return;
     }
-    
-    let customerToSave: Customer;
-
-    if (customerToEdit) {
-      customerToSave = formData as Customer;
-    } else {
-      const newId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
-      customerToSave = { ...formData, id: newId } as Customer;
-    }
 
     setIsSaving(true);
     try {
-        await onSave(customerToSave);
+        if ('id' in formData && formData.id) {
+          await actions.update(formData as Customer);
+        } else {
+          await actions.add(formData);
+        }
         onClose();
     } catch (error) {
         alert(`Failed to save customer. ${(error as Error).message}`);

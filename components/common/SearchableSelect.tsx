@@ -8,10 +8,12 @@ interface SearchableSelectProps<T> {
   idKey: keyof T;
   displayKey: keyof T;
   placeholder?: string;
+  onSearch?: (term: string) => void;
+  isLoading?: boolean;
 }
 
 export const SearchableSelect = <T extends Record<string, any>,>(
-  { options, value, onChange, idKey, displayKey, placeholder = 'Select...' }: SearchableSelectProps<T>
+  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', onSearch, isLoading }: SearchableSelectProps<T>
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,23 +25,27 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     if (selectedOption) {
       setSearchTerm(String(selectedOption[displayKey]));
     } else {
-      setSearchTerm('');
+       if (!onSearch) { // Do not clear search term if we are searching asynchronously
+        setSearchTerm('');
+       }
     }
-  }, [selectedOption, displayKey]);
+  }, [selectedOption, displayKey, onSearch]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         // Reset search term to selected value if dropdown is closed without selection
-        setSearchTerm(selectedOption ? String(selectedOption[displayKey]) : '');
+        if (selectedOption) {
+            setSearchTerm(String(selectedOption[displayKey]));
+        }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef, selectedOption, displayKey]);
 
-  const filteredOptions = options.filter(option =>
+  const filteredOptions = onSearch ? options : options.filter(option =>
     String(option[displayKey]).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -50,8 +56,12 @@ export const SearchableSelect = <T extends Record<string, any>,>(
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    if (!e.target.value) {
+    const newTerm = e.target.value;
+    setSearchTerm(newTerm);
+    if (onSearch) {
+        onSearch(newTerm);
+    }
+    if (!newTerm) {
         onChange(null); // Clear selection if input is cleared
     }
     setIsOpen(true);
@@ -69,7 +79,8 @@ export const SearchableSelect = <T extends Record<string, any>,>(
       />
       {isOpen && (
         <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-          {filteredOptions.length > 0 ? (
+          {isLoading && <li className="p-2 text-gray-500">Loading...</li>}
+          {!isLoading && filteredOptions.length > 0 ? (
             filteredOptions.map(option => (
               <li
                 key={option[idKey]}
@@ -79,8 +90,8 @@ export const SearchableSelect = <T extends Record<string, any>,>(
                 {String(option[displayKey])}
               </li>
             ))
-          ) : (
-            <li className="p-2 text-gray-500">No results found</li>
+          ) : !isLoading && (
+            <li className="p-2 text-gray-500">{searchTerm ? 'No results found' : 'Type to search'}</li>
           )}
         </ul>
       )}

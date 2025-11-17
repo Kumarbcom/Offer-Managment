@@ -8,15 +8,17 @@ import { SearchableSelect } from './common/SearchableSelect';
 import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
+import { DataActions } from '../hooks/useOnlineStorage';
+import { useDebounce } from '../hooks/useDebounce';
+import { searchCustomers, getCustomersByIds } from '../supabase';
 
 interface QuotationFormProps {
-  customers: Customer[];
-  setCustomers: (value: React.SetStateAction<Customer[]>) => Promise<void>;
+  customerActions: DataActions<Customer>;
   salesPersons: SalesPerson[];
   products: Product[];
-  setProducts: (value: React.SetStateAction<Product[]>) => Promise<void>;
+  productActions: DataActions<Product>;
   quotations: Quotation[];
-  setQuotations: (value: React.SetStateAction<Quotation[]>) => Promise<void>;
+  quotationActions: DataActions<Quotation>;
   setView: (view: View) => void;
   editingQuotationId: number | null;
   setEditingQuotationId: (id: number | null) => void;
@@ -71,16 +73,45 @@ const Icons = {
 };
 
 export const QuotationForm: React.FC<QuotationFormProps> = ({
-  customers, setCustomers, salesPersons, products, setProducts, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, userRole
+  customerActions, salesPersons, products, productActions, quotations, quotationActions, setView, editingQuotationId, setEditingQuotationId, userRole
 }) => {
-  const [formData, setFormData] = useState<Quotation | null>(null);
+  const [formData, setFormData] = useState<Omit<Quotation, 'id'> | Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
   const [productSearch, setProductSearch] = useState<{ index: number; term: string }>({ index: -1, term: '' });
+  
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
+  const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const isReadOnly = userRole !== 'Admin' && userRole !== 'Sales Person';
+
+  useEffect(() => {
+    if (debouncedCustomerSearchTerm.length < 2) {
+      setSearchedCustomers([]);
+      return;
+    }
+    const performSearch = async () => {
+      setIsSearchingCustomers(true);
+      const results = await searchCustomers(debouncedCustomerSearchTerm);
+      setSearchedCustomers(results);
+      setIsSearchingCustomers(false);
+    };
+    performSearch();
+  }, [debouncedCustomerSearchTerm]);
+
+  const customerOptions = useMemo(() => {
+    const options = [...searchedCustomers];
+    if (selectedCustomer && !options.some(c => c.id === selectedCustomer.id)) {
+        options.unshift(selectedCustomer);
+    }
+    return options;
+  }, [searchedCustomers, selectedCustomer]);
+
 
   const getPriceForDate = useCallback((product: Product, date: string): PriceEntry | null => {
     if (!product || !product.prices) return null;
@@ -103,10 +134,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     return [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
   }, []);
 
-  const createNewQuotation = useCallback((): Quotation => {
-    const newId = quotations.length > 0 ? Math.max(...quotations.map(q => q.id)) + 1 : 1;
+  const createNewQuotation = useCallback((): Omit<Quotation, 'id'> => {
     return {
-      id: newId,
       quotationDate: getTodayDateString(),
       enquiryDate: getTodayDateString(),
       customerId: null,
@@ -122,24 +151,28 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       comments: '',
       details: [createEmptyQuotationItem()],
     };
-  }, [quotations]);
+  }, []);
 
   useEffect(() => {
     const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
     setFormData(quotationToEdit || createNewQuotation());
+    if (quotationToEdit?.customerId) {
+        getCustomersByIds([quotationToEdit.customerId]).then(customers => {
+            if (customers.length > 0) setSelectedCustomer(customers[0]);
+        });
+    } else {
+        setSelectedCustomer(null);
+    }
   }, [editingQuotationId, quotations, createNewQuotation]);
 
   useEffect(() => {
-    if (formData && formData.customerId) {
-        const customer = customers.find(c => c.id === formData.customerId);
-        if (customer && customer.salesPersonId && formData.salesPersonId !== customer.salesPersonId) {
-            setFormData(prev => prev ? {...prev, salesPersonId: customer.salesPersonId} : null);
-        }
+    if (selectedCustomer && ('salesPersonId' in formData!) && formData.salesPersonId !== selectedCustomer.salesPersonId) {
+        setFormData(prev => prev ? {...prev, salesPersonId: selectedCustomer.salesPersonId} : null);
     }
-  }, [formData?.customerId, customers]);
+  }, [selectedCustomer, formData]);
 
   useEffect(() => {
-    if (!formData || !formData.details.length || !products) return;
+    if (!formData || !formData.details.length || !products || !('quotationDate' in formData)) return;
     let wasUpdated = false;
     const newDetails = formData.details.map(item => {
         if (item.productId > 0) {
@@ -161,12 +194,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const isNumericId = name === 'customerId' || name === 'salesPersonId';
+    const isNumericId = name === 'salesPersonId';
     setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
   };
   
+  const handleCustomerChange = (customerId: number | null) => {
+    setFormData(prev => prev ? { ...prev, customerId: customerId } : null);
+    const customer = customerOptions.find(c => c.id === customerId);
+    setSelectedCustomer(customer || null);
+  };
+  
   const handleItemChange = async (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
-    let productToUpdate: { productId: number, newWeight: number } | null = null;
+    let productToUpdate: Product | null = null;
     
     setFormData(prev => {
         if (!prev) return null;
@@ -181,7 +220,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 if (field === 'airFreightDetails.weightPerMtr') {
                     const product = products.find(p => p.id === updatedItem.productId);
                     if (product && product.weight !== value) {
-                        productToUpdate = { productId: updatedItem.productId, newWeight: value };
+                        productToUpdate = { ...product, weight: value };
                     }
                 }
                 if (field === 'airFreight' && value === false) updatedItem.airFreightDetails.airFreightLeadTime = '';
@@ -193,7 +232,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     });
 
     if (productToUpdate) {
-        await setProducts(prevProducts => prevProducts.map(p => p.id === productToUpdate!.productId ? {...p, weight: productToUpdate!.newWeight} : p));
+        await productActions.update(productToUpdate);
     }
   };
   
@@ -201,16 +240,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     setProductSearch({ index: -1, term: '' });
     if (!productId) return;
     const product = products.find(p => p.id === productId);
-    const customer = customers.find(c => c.id === formData?.customerId);
 
-    if (product && formData) {
+    if (product && formData && 'quotationDate' in formData) {
         const priceEntry = getPriceForDate(product, formData.quotationDate);
         if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return; }
         
         let discount = 0;
-        // This is a simplified logic, can be expanded based on product type
-        if (customer) {
-            discount = customer.discountStructure.singleCore; // Defaulting to singleCore for now
+        if (selectedCustomer) {
+            discount = selectedCustomer.discountStructure.singleCore;
         }
         
         const price = priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp;
@@ -221,7 +258,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             const newDetails = [...prev.details];
             newDetails[index] = {
                 ...newDetails[index],
-                productId: product.id,
+                productId: product.id!,
                 partNo: product.partNo,
                 description: product.description,
                 price: price,
@@ -238,23 +275,24 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleAddItem = () => { setFormData(prev => prev ? { ...prev, details: [...prev.details, createEmptyQuotationItem()] } : null); };
   const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
-  const handleSaveCustomer = async (newCustomer: Customer) => { await setCustomers(prev => [...prev.filter(c => c.id !== newCustomer.id), newCustomer]); setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null); setIsCustomerModalOpen(false); };
-  const handleSaveProduct = async (newProduct: Product) => { await setProducts(prev => [...prev.filter(p => p.id !== newProduct.id), newProduct]); setIsProductModalOpen(false); };
-
+  
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (isReadOnly || !formData || !formData.customerId) {
         alert("Please select a customer."); return;
     }
-    const isNew = editingQuotationId === null;
-    const idToSave = isNew ? (quotations.length > 0 ? Math.max(...quotations.map(q => q.id)) + 1 : 1) : editingQuotationId;
-    let quotationToSave = { ...formData, id: idToSave };
     
-    await setQuotations(prev => isNew ? [...prev, quotationToSave] : prev.map(q => q.id === idToSave ? quotationToSave : q));
-    if(isNew) {
-        setEditingQuotationId(quotationToSave.id);
-        const url = new URL(window.location.href); url.searchParams.set('id', String(quotationToSave.id)); window.history.pushState({}, '', url);
+    let savedQuotation: Quotation;
+    if ('id' in formData && formData.id) {
+      savedQuotation = await quotationActions.update(formData as Quotation);
+    } else {
+      savedQuotation = await quotationActions.add(formData);
+      setEditingQuotationId(savedQuotation.id!);
+      const url = new URL(window.location.href);
+      url.searchParams.set('id', String(savedQuotation.id));
+      window.history.pushState({}, '', url);
     }
+    
     alert("Quotation saved successfully!");
   };
   
@@ -262,10 +300,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   
   const handleAddProductFromSearch = (product: Product, discount: number) => {
     setFormData(prev => {
-        if (!prev) return null;
+        if (!prev || !('quotationDate' in prev)) return null;
         const priceEntry = getPriceForDate(product, prev.quotationDate);
         if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return prev; }
-        const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
+        const newQuotationItem: QuotationItem = { productId: product.id!, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
         const emptyItemIndex = prev.details.findIndex(item => !item.productId);
         const newDetails = [...prev.details];
         if (emptyItemIndex !== -1) newDetails[emptyItemIndex] = newQuotationItem;
@@ -275,7 +313,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     });
   };
   
-  const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !formData.customerId) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
+  const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !selectedCustomer) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
 
   const currentQuotationIndex = useMemo(() => editingQuotationId === null ? -1 : quotations.findIndex(q => q.id === editingQuotationId), [editingQuotationId, quotations]);
 
@@ -288,7 +326,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       else if (direction === 'next') newIndex = Math.min(quotations.length - 1, currentQuotationIndex + 1);
       
       const newId = quotations[newIndex].id;
-      setEditingQuotationId(newId);
+      setEditingQuotationId(newId!);
       const url = new URL(window.location.href); url.searchParams.set('id', String(newId)); window.history.pushState({}, '', url);
   };
   
@@ -304,11 +342,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }, { moq: 0, req: 0, amount: 0, airFreightAmount: 0 });
   }, [formData]);
 
-  const selectedCustomer = useMemo(() => customers.find(c => c.id === formData?.customerId), [customers, formData?.customerId]);
   const selectedSalesPerson = useMemo(() => salesPersons.find(sp => sp.id === formData?.salesPersonId), [salesPersons, formData?.salesPersonId]);
 
   if (previewMode !== 'none') {
-    if (!formData || !selectedCustomer) return null;
+    if (!formData || !selectedCustomer || !('id' in formData)) return null;
     return (
         <div className="bg-slate-100 min-h-screen">
           <div className="bg-white shadow-md p-4 mb-4 flex justify-between items-center no-print sticky top-0 z-30">
@@ -319,9 +356,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             </div>
           </div>
           <div id="print-area">
-             {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
-             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
-             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
+             {previewMode === 'standard' && <QuotationPrintView quotation={formData as Quotation} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData as Quotation} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData as Quotation} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
           </div>
         </div>
     );
@@ -349,3 +386,162 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 <NavButton onClick={() => handleNavigation('first')} disabled={currentQuotationIndex <= 0}>|◀</NavButton>
                 <NavButton onClick={() => handleNavigation('prev')} disabled={currentQuotationIndex <= 0}>◀</NavButton>
                 <button onClick={() => setView('quotations')} className="bg-blue-500 hover:bg-blue-400 text-white rounded-md h-8 px-3 flex items-center justify-center font-bold text-base" title="Back to Quotations List">
+                    {('id' in formData && formData.id) ? `QTN #${formData.id}` : 'New QTN'}
+                </button>
+                <NavButton onClick={() => handleNavigation('next')} disabled={currentQuotationIndex === -1 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
+                <NavButton onClick={() => handleNavigation('last')} disabled={currentQuotationIndex === -1 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
+           </div>
+        </header>
+        <form onSubmit={handleSubmit} className="p-2 md:p-4">
+          <fieldset disabled={isReadOnly}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 text-sm">
+                {/* Column 1 */}
+                <div className="flex flex-col gap-2">
+                    <FormField label="Quotation Date">
+                        <input type="date" name="quotationDate" value={'quotationDate' in formData ? formData.quotationDate : ''} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </FormField>
+                    <FormField label="Enquiry Date">
+                         <input type="date" name="enquiryDate" value={'enquiryDate' in formData ? formData.enquiryDate : ''} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </FormField>
+                    <FormField label="Customer">
+                        <div className="flex w-full">
+                           <div className="flex-grow">
+                                <SearchableSelect options={customerOptions} value={formData.customerId} onChange={(val) => handleCustomerChange(val as number | null)} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers}/>
+                           </div>
+                           <button type="button" onClick={() => setIsCustomerModalOpen(true)} className="flex-shrink-0 bg-slate-200 hover:bg-slate-300 px-2 rounded-r-md border border-l-0 border-slate-300" title="Add New Customer"><Icons.AddCustomer /></button>
+                        </div>
+                    </FormField>
+                    <FormField label="Contact Person">
+                         <input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </FormField>
+                </div>
+                 {/* Column 2 */}
+                <div className="flex flex-col gap-2">
+                    <FormField label="Contact Number">
+                         <input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </FormField>
+                     <FormField label="Other Terms">
+                         <input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </FormField>
+                     <FormField label="Payment Terms">
+                         <select name="paymentTerms" value={formData.paymentTerms} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white">
+                            {PAYMENT_TERMS.map(term => <option key={term} value={term}>{term}</option>)}
+                         </select>
+                    </FormField>
+                     <FormField label="Prepared By">
+                         <select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white">
+                            {PREPARED_BY_LIST.map(person => <option key={person} value={person}>{person}</option>)}
+                         </select>
+                    </FormField>
+                </div>
+                {/* Column 3 */}
+                <div className="flex flex-col gap-2">
+                     <FormField label="Products Brand">
+                         <select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white">
+                            {PRODUCTS_BRANDS.map(brand => <option key={brand} value={brand}>{brand}</option>)}
+                         </select>
+                    </FormField>
+                    <FormField label="Sales Person">
+                         <select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white">
+                            <option value="">Select...</option>
+                            {salesPersons.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                         </select>
+                    </FormField>
+                    <FormField label="Mode of Enquiry">
+                         <select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white">
+                            {MODES_OF_ENQUIRY.map(mode => <option key={mode} value={mode}>{mode}</option>)}
+                         </select>
+                    </FormField>
+                     <FormField label="Status">
+                         <select name="status" value={formData.status} onChange={handleChange} className="w-full p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white">
+                            {QUOTATION_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
+                         </select>
+                    </FormField>
+                </div>
+                {/* Column 4 */}
+                <div className="flex flex-col gap-2">
+                     <div className="flex-grow flex items-stretch">
+                        <label className="w-1/3 bg-slate-100 text-slate-600 font-semibold text-sm flex items-center justify-center text-center p-2 rounded-l-md border border-r-0 border-slate-300">Comments</label>
+                        <textarea name="comments" value={formData.comments} onChange={handleChange} className="w-2/3 p-1 border border-slate-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" rows={4}></textarea>
+                     </div>
+                </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex flex-wrap gap-2 my-4 justify-end">
+                <ActionButton onClick={handleNewButtonClick} disabled={isReadOnly} title="Create New Quotation"><Icons.New/><span>New</span></ActionButton>
+                <ActionButton onClick={() => handleSubmit()} disabled={isReadOnly} title="Save Quotation"><Icons.Save/><span>Save</span></ActionButton>
+                <ActionButton onClick={() => handlePreview('standard')} disabled={!formData.customerId} title="Print Standard View"><Icons.PrintStandard/><span>Print</span></ActionButton>
+                <ActionButton onClick={() => handlePreview('discounted')} disabled={!formData.customerId} title="Print View with Discount"><Icons.PrintDiscount/><span>Print Disc.</span></ActionButton>
+                <ActionButton onClick={() => handlePreview('withAirFreight')} disabled={!formData.customerId} title="Print View with Air Freight"><Icons.PrintAirFreight/><span>Print Air</span></ActionButton>
+                <ActionButton onClick={() => setIsCustomerModalOpen(true)} disabled={isReadOnly} title="Add New Customer"><Icons.AddCustomer/><span>Add Customer</span></ActionButton>
+                <ActionButton onClick={() => setIsProductModalOpen(true)} disabled={isReadOnly} title="Add New Product"><Icons.AddProduct/><span>Add Product</span></ActionButton>
+                <ActionButton onClick={() => setIsProductSearchModalOpen(true)} disabled={isReadOnly} title="Search & Add Products"><Icons.SearchProduct/><span>Search & Add</span></ActionButton>
+            </div>
+
+            {/* Items Table */}
+            <div className="overflow-x-auto -mx-2 md:-mx-4">
+                 <table className="min-w-full text-xs">
+                    <thead className="bg-slate-200 text-slate-700">
+                        <tr>
+                            {['#', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Disc %', 'Net Price', 'Total', 'Stock', 'UOM', 'Air Freight?', 'Weight/Mtr', 'Lead Time', ''].map(h => <th key={h} className="p-1 font-semibold text-center">{h}</th>)}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {formData.details.map((item, index) => {
+                            const netPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+                            const total = netPrice * item.moq;
+                            return (
+                            <tr key={index} className="border-b border-slate-200 hover:bg-slate-50">
+                                <td className="p-1 text-center font-medium">{index + 1}</td>
+                                <td className="p-0 align-top w-48">
+                                    <SearchableSelect 
+                                        options={productOptions} 
+                                        value={item.productId} 
+                                        onChange={(val) => handleSelectProduct(index, val as number | null)} 
+                                        idKey="id" 
+                                        displayKey="partNo" 
+                                        placeholder="Search part no..."
+                                    />
+                                </td>
+                                <td className="p-1 align-top w-64">{item.description}</td>
+                                <td className="p-0 align-top"><input type="number" value={item.moq} onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value))} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-slate-300"/></td>
+                                <td className="p-0 align-top"><input type="number" value={item.req} onChange={e => handleItemChange(index, 'req', parseInt(e.target.value))} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-slate-300"/></td>
+                                <td className="p-1 align-top text-right">{item.price.toFixed(2)} <span className="text-slate-400">{item.priceSource}</span></td>
+                                <td className="p-0 align-top"><input type="text" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-slate-300"/></td>
+                                <td className="p-1 align-top text-right font-semibold">{netPrice.toFixed(2)}</td>
+                                <td className="p-1 align-top text-right font-semibold">{total.toFixed(2)}</td>
+                                <td className="p-0 align-top"><input type="text" value={item.stockStatus} onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} className="w-24 p-1 text-center border-transparent hover:border-slate-300 focus:border-slate-300"/></td>
+                                <td className="p-1 align-top text-center">{item.uom}</td>
+                                <td className="p-1 align-top text-center"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} /></td>
+                                <td className="p-0 align-top"><input type="number" step="0.001" value={item.airFreightDetails.weightPerMtr} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value))} className="w-20 p-1 text-center border-transparent hover:border-slate-300 focus:border-slate-300"/></td>
+                                <td className="p-0 align-top"><input type="text" value={item.airFreightDetails.airFreightLeadTime} disabled={!item.airFreight} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-24 p-1 text-center border-transparent hover:border-slate-300 focus:border-slate-300 disabled:bg-slate-100"/></td>
+                                <td className="p-1 align-top text-center"><button type="button" onClick={() => handleRemoveItem(index)} className="text-red-500 hover:text-red-700 font-bold" title="Remove Item"><Icons.Trash /></button></td>
+                            </tr>
+                        )})}
+                    </tbody>
+                    <tfoot className="bg-slate-100 font-bold">
+                        <tr>
+                            <td colSpan={3} className="p-2 text-right">Totals</td>
+                            <td className="p-2 text-center">{totals.moq}</td>
+                            <td className="p-2 text-center">{totals.req}</td>
+                            <td colSpan={3}></td>
+                            <td className="p-2 text-right">{totals.amount.toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</td>
+                            <td colSpan={6}></td>
+                        </tr>
+                    </tfoot>
+                 </table>
+            </div>
+            <div className="flex justify-end mt-2">
+                 <button type="button" onClick={handleAddItem} className="bg-slate-600 hover:bg-slate-700 text-white font-semibold py-1 px-3 text-sm rounded-md transition duration-300" disabled={isReadOnly}>+ Add Item</button>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} actions={customerActions} salesPersons={salesPersons}/>
+      <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} actions={productActions}/>
+      <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} products={products} onSelect={handleAddProductFromSearch} />
+    </div>
+  );
+};

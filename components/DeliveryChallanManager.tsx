@@ -1,12 +1,12 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { DeliveryChallan, Quotation, Customer, View, UserRole } from '../types';
+import { DataActions } from '../hooks/useOnlineStorage';
+import { getCustomersByIds } from '../supabase';
 
 interface DeliveryChallanManagerProps {
   deliveryChallans: DeliveryChallan[] | null;
-  setDeliveryChallans: (challans: React.SetStateAction<DeliveryChallan[]>) => Promise<void>;
+  actions: DataActions<DeliveryChallan>;
   quotations: Quotation[] | null;
-  customers: Customer[] | null;
   setView: (view: View) => void;
   setEditingChallanId: (id: number | null) => void;
   userRole: UserRole;
@@ -14,15 +14,37 @@ interface DeliveryChallanManagerProps {
 
 export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
   deliveryChallans,
-  setDeliveryChallans,
+  actions,
   quotations,
-  customers,
   setView,
   setEditingChallanId,
   userRole,
 }) => {
 
+  const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
+
   const canEdit = userRole === 'Admin' || userRole === 'SCM';
+
+  useEffect(() => {
+    const fetchCustomerNames = async () => {
+        if (!deliveryChallans) return;
+        const customerIds = [...new Set(deliveryChallans.map(c => c.customerId).filter(id => id !== null))] as number[];
+        const missingIds = customerIds.filter(id => !customerMap.has(id));
+
+        if (missingIds.length > 0) {
+            const fetchedCustomers = await getCustomersByIds(missingIds);
+            setCustomerMap(prevMap => {
+                const newMap = new Map(prevMap);
+                fetchedCustomers.forEach(c => newMap.set(c.id!, c.name));
+                return newMap;
+            });
+        }
+    };
+    if (deliveryChallans && deliveryChallans.length > 0) {
+        fetchCustomerNames();
+    }
+  }, [deliveryChallans, customerMap]);
+
 
   const handleAddNew = () => {
     setEditingChallanId(null);
@@ -36,13 +58,13 @@ export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this challan?')) {
-      await setDeliveryChallans(prevChallans => (prevChallans || []).filter(c => c.id !== id));
+      await actions.remove([id]);
     }
   };
   
-  const getCustomerName = (id: number | '') => customers?.find(c => c.id === id)?.name || 'N/A';
+  const getCustomerName = (id: number | null) => id ? (customerMap.get(id) || '...') : 'N/A';
 
-  if (!deliveryChallans || !quotations || !customers) {
+  if (!deliveryChallans || !quotations) {
     return <div>Loading challan data...</div>;
   }
 
@@ -77,9 +99,9 @@ export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
                 <td className="px-6 py-4">{challan.quotationId}</td>
                 <td className="px-6 py-4">{challan.poNo}</td>
                 <td className="px-6 py-4 text-right space-x-2">
-                  <button onClick={() => handleEdit(challan.id)} className="text-indigo-600 hover:text-indigo-900">{canEdit ? 'Edit' : 'View'}</button>
+                  <button onClick={() => handleEdit(challan.id!)} className="text-indigo-600 hover:text-indigo-900">{canEdit ? 'Edit' : 'View'}</button>
                   {canEdit && (
-                    <button onClick={() => handleDelete(challan.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                    <button onClick={() => handleDelete(challan.id!)} className="text-red-600 hover:text-red-900">Delete</button>
                   )}
                 </td>
               </tr>

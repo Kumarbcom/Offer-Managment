@@ -1,16 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Quotation, Customer, SalesPerson, QuotationStatus, UserRole } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
+import { DataActions } from '../hooks/useOnlineStorage';
+import { getCustomersByIds } from '../supabase';
 
 declare var XLSX: any;
 
 interface QuotationManagerProps {
   quotations: Quotation[] | null;
-  customers: Customer[] | null;
   salesPersons: SalesPerson[] | null;
   setEditingQuotationId: (id: number | null) => void;
   setView: (view: 'quotation-form') => void;
-  setQuotations: (value: React.SetStateAction<Quotation[]>) => Promise<void>;
+  actions: DataActions<Quotation>;
   userRole: UserRole;
   quotationFilter: { customerIds?: number[], status?: QuotationStatus } | null;
   onBackToCustomers?: () => void;
@@ -32,15 +33,15 @@ const getStatusClass = (status: QuotationStatus) => {
     }
 }
 
-export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, customers, salesPersons, setEditingQuotationId, setView, setQuotations, userRole, quotationFilter, onBackToCustomers }) => {
+export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, salesPersons, setEditingQuotationId, setView, actions, userRole, quotationFilter, onBackToCustomers }) => {
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
 
-  const getCustomerName = (id: number | '') => customers?.find(c => c.id === id)?.name || 'N/A';
-  const getSalesPersonName = (id: number | '') => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';
+  const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';
   
   const calculateTotalAmount = (details: Quotation['details']): number => {
       return details.reduce((total, item) => {
@@ -53,6 +54,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     setSortBy(newSortBy);
     setSortOrder(prev => sortBy === newSortBy && prev === 'asc' ? 'desc' : 'asc');
   };
+
+  const getCustomerName = (id: number | null) => id ? (customerMap.get(id) || 'Loading...') : 'N/A';
 
   const filteredAndSortedQuotations = useMemo(() => {
     if (!quotations) return [];
@@ -77,7 +80,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       .sort((a, b) => {
         let comparison = 0;
         switch (sortBy) {
-          case 'id': comparison = a.id - b.id; break;
+          case 'id': comparison = (a.id ?? 0) - (b.id ?? 0); break;
           case 'quotationDate': comparison = new Date(a.quotationDate).getTime() - new Date(b.quotationDate).getTime(); break;
           case 'customer': comparison = getCustomerName(a.customerId).localeCompare(getCustomerName(b.customerId)); break;
           case 'contactPerson': comparison = a.contactPerson.localeCompare(b.contactPerson); break;
@@ -87,7 +90,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         }
         return sortOrder === 'asc' ? comparison : -comparison;
       });
-  }, [quotations, universalSearchTerm, customers, salesPersons, sortBy, sortOrder, quotationFilter]);
+  }, [quotations, universalSearchTerm, salesPersons, sortBy, sortOrder, quotationFilter, customerMap]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -97,6 +100,26 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const paginatedQuotations = filteredAndSortedQuotations.slice((currentPage - 1) * PAGE_LIMIT, currentPage * PAGE_LIMIT);
 
   useEffect(() => {
+    const fetchCustomerNames = async () => {
+        const customerIds = [...new Set(paginatedQuotations.map(q => q.customerId).filter(id => id !== null))] as number[];
+        const missingIds = customerIds.filter(id => !customerMap.has(id));
+
+        if (missingIds.length > 0) {
+            const fetchedCustomers = await getCustomersByIds(missingIds);
+            setCustomerMap(prevMap => {
+                const newMap = new Map(prevMap);
+                fetchedCustomers.forEach(c => newMap.set(c.id!, c.name));
+                return newMap;
+            });
+        }
+    };
+    if (paginatedQuotations.length > 0) {
+        fetchCustomerNames();
+    }
+  }, [paginatedQuotations, customerMap]);
+
+
+  useEffect(() => {
     setSelectedQuotationIds(new Set());
   }, [paginatedQuotations]);
 
@@ -104,11 +127,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const handleEdit = (id: number) => { setEditingQuotationId(id); setView('quotation-form'); };
   const handleDelete = async (id: number) => { 
     if (window.confirm("Are you sure?")) {
-      await setQuotations(prev => (prev || []).filter(q => q.id !== id)); 
+      await actions.remove([id]); 
     }
   }
   const handleCommentChange = async (id: number, newComment: string) => {
-    await setQuotations(prev => (prev || []).map(q => q.id === id ? { ...q, comments: newComment } : q))
+    const quotation = quotations?.find(q => q.id === id);
+    if(quotation) {
+        await actions.update({ ...quotation, comments: newComment });
+    }
   };
   
   const handleExport = () => {
@@ -143,7 +169,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      const allIdsOnPage = new Set(paginatedQuotations.map(q => q.id));
+      const allIdsOnPage = new Set(paginatedQuotations.map(q => q.id as number));
       setSelectedQuotationIds(allIdsOnPage);
     } else {
       setSelectedQuotationIds(new Set());
@@ -151,18 +177,19 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   };
 
   const handleBulkStatusChange = async (status: QuotationStatus) => {
-    if (selectedQuotationIds.size === 0) return;
+    if (selectedQuotationIds.size === 0 || !quotations) return;
     if (window.confirm(`Are you sure you want to change the status of ${selectedQuotationIds.size} quotation(s) to "${status}"?`)) {
-      await setQuotations(prev =>
-        (prev || []).map(q =>
-          selectedQuotationIds.has(q.id) ? { ...q, status: status } : q
-        )
-      );
-      setSelectedQuotationIds(new Set());
+        for (const id of selectedQuotationIds) {
+            const quotation = quotations.find(q => q.id === id);
+            if (quotation) {
+                await actions.update({ ...quotation, status });
+            }
+        }
+        setSelectedQuotationIds(new Set());
     }
   };
 
-  const isAllSelectedOnPage = selectedQuotationIds.size > 0 && paginatedQuotations.every(q => selectedQuotationIds.has(q.id));
+  const isAllSelectedOnPage = selectedQuotationIds.size > 0 && paginatedQuotations.every(q => selectedQuotationIds.has(q.id as number));
   const isCommentEditable = userRole === 'Admin' || userRole === 'Sales Person';
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
@@ -177,11 +204,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     const { customerIds, status } = quotationFilter;
     let desc = "Showing ";
     desc += status ? `'${status}' quotations ` : "all quotations ";
-    if (customerIds && customerIds.length > 0) desc += customerIds.length === 1 ? `for ${customers?.find(c => c.id === customerIds[0])?.name}` : `for ${customerIds.length} customers`;
+    if (customerIds && customerIds.length > 0) {
+        const customerName = customerIds.length === 1 ? getCustomerName(customerIds[0]) : '';
+        desc += customerIds.length === 1 ? `for ${customerName}` : `for ${customerIds.length} customers`;
+    }
     return desc + ".";
-  }, [quotationFilter, customers]);
+  }, [quotationFilter, getCustomerName]);
 
-  if (quotations === null || customers === null || salesPersons === null) return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading quotations...</div>;
+  if (quotations === null || salesPersons === null) return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading quotations...</div>;
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
@@ -271,7 +301,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
                 {paginatedQuotations.map(q => {
-                  const isSelected = selectedQuotationIds.has(q.id);
+                  const isSelected = selectedQuotationIds.has(q.id as number);
                   return (
                     <tr key={q.id} className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-sm`}>
                         <td className="px-3 py-2">
@@ -279,7 +309,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                             type="checkbox"
                             className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                             checked={isSelected}
-                            onChange={() => handleSelectOne(q.id)}
+                            onChange={() => handleSelectOne(q.id as number)}
                             aria-label={`Select quotation ${q.id}`}
                           />
                         </td>
@@ -301,7 +331,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                             <input 
                                 type="text" 
                                 value={q.comments || ''} 
-                                onChange={(e) => handleCommentChange(q.id, e.target.value)} 
+                                onChange={(e) => handleCommentChange(q.id as number, e.target.value)} 
                                 className="w-full p-1 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-md text-sm focus:outline-none disabled:bg-transparent disabled:border-transparent" 
                                 placeholder="Add comment..." 
                                 disabled={!isCommentEditable}
@@ -309,14 +339,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center justify-end space-x-2">
-                                <button onClick={() => handleEdit(q.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title={canEdit ? 'Edit' : 'View'}>
+                                <button onClick={() => handleEdit(q.id as number)} className="text-slate-400 hover:text-blue-600 transition-colors" title={canEdit ? 'Edit' : 'View'}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
                                         <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
                                     </svg>
                                 </button>
                                 {userRole === 'Admin' && (
-                                    <button onClick={() => handleDelete(q.id)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
+                                    <button onClick={() => handleDelete(q.id as number)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
                                         </svg>
