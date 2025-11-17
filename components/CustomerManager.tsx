@@ -44,8 +44,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getSalesPersonName = (id: number | '') => {
-    if (id === '' || !salesPersons) return 'N/A';
+  const getSalesPersonName = (id: number | null) => {
+    if (id === null || !salesPersons) return 'N/A';
     return salesPersons.find(sp => sp.id === id)?.name || 'Unknown';
   };
 
@@ -92,7 +92,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
     if (!quotations || filteredAndSortedCustomers.length === 0) return initialStats;
 
     const customerIdsInView = new Set(filteredAndSortedCustomers.map(c => c.id));
-    const relevantQuotations = quotations.filter(q => customerIdsInView.has(q.customerId as number));
+    const relevantQuotations = quotations.filter(q => q.customerId !== null && customerIdsInView.has(q.customerId));
 
     return relevantQuotations.reduce((stats, q) => {
       const value = calculateTotalAmount(q.details);
@@ -246,7 +246,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
 
                     const salesPersonName = String(getValue(row, CANONICAL_HEADERS.SALES_PERSON_NAME) || '').trim();
                     const salesPerson = salesPersons.find(sp => sp.name.toLowerCase() === salesPersonName.toLowerCase());
-                    const salesPersonId = salesPerson ? salesPerson.id : '';
+                    const salesPersonId = salesPerson ? salesPerson.id : null;
 
                     newId++;
                     return {

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import type { DeliveryChallan, Quotation, Customer, View, UserRole } from '../types';
 
@@ -40,7 +41,7 @@ export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
     }
   };
   
-  const getCustomerName = (id: number | '') => customers?.find(c => c.id === id)?.name || 'N/A';
+  const getCustomerName = (id: number | null) => customers?.find(c => c.id === id)?.name || 'N/A';
 
   if (!deliveryChallans || !quotations || !customers) {
     return <div>Loading challan data...</div>;

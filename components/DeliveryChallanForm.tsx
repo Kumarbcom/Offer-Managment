@@ -37,8 +37,8 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
 
   const createNewChallan = (): Omit<DeliveryChallan, 'id'> => ({
       challanDate: getTodayDateString(),
-      customerId: '',
-      quotationId: '',
+      customerId: null,
+      quotationId: null,
       vehicleNo: '',
       poNo: '',
       poDate: getTodayDateString(),
@@ -91,7 +91,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     const isNumericId = name === 'quotationId' || name === 'customerId';
-    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : '') : value } : null);
+    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
   };
   
   const handleItemChange = (index: number, field: keyof DeliveryChallanItem, value: any) => {

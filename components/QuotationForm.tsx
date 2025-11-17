@@ -115,14 +115,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       id: newId,
       quotationDate: getTodayDateString(),
       enquiryDate: getTodayDateString(),
-      customerId: '',
+      customerId: null,
       contactPerson: '',
       contactNumber: '',
       otherTerms: '± 5% Length Variation',
       paymentTerms: '100% Against Proforma Invoice',
       preparedBy: 'Kumar' as PreparedBy,
       productsBrand: 'Lapp',
-      salesPersonId: '',
+      salesPersonId: null,
       modeOfEnquiry: 'Customer Email',
       status: 'Open',
       comments: '',
@@ -191,8 +191,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const isNumericId = name === 'customerId' || name === 'salesPersonId';
-    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : '') : value } : null);
+    const isNumericId = name === 'salesPersonId';
+    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
   };
   
   const handleItemChange = async (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
@@ -405,7 +405,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <FormField label="Quotation ID"><div className="p-2 bg-slate-50 font-bold text-slate-800 rounded-r-md border border-slate-300 h-full flex items-center">{editingQuotationId ?? "{New}"}</div></FormField>
                     <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Customer" className='items-start'><div className={`border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect options={customers} value={formData.customerId} onChange={val => handleChange({ target: { name: 'customerId', value: String(val) } } as any)} idKey="id" displayKey="name" placeholder="Type to search customer..."/>{selectedCustomer && <div className="p-2 bg-slate-50 text-xs text-slate-600 border-t border-slate-200">{selectedCustomer.address}, {selectedCustomer.city} - {selectedCustomer.pincode}</div>}</div></FormField>
+                    <FormField label="Customer" className='items-start'><div className={`border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect options={customers} value={formData.customerId} onChange={val => setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null)} idKey="id" displayKey="name" placeholder="Type to search customer..."/>{selectedCustomer && <div className="p-2 bg-slate-50 text-xs text-slate-600 border-t border-slate-200">{selectedCustomer.address}, {selectedCustomer.city} - {selectedCustomer.pincode}</div>}</div></FormField>
                 </div>
                 <div className="space-y-2">
                     <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
@@ -416,7 +416,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <FormField label="Products"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
                 </div>
                 <div className="space-y-2">
-                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
+                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
                     <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
                     <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
                     {selectedCustomer && <fieldset className="border-2 border-slate-200 p-2 space-y-1 rounded-md"><legend className="font-bold text-slate-700 px-1 text-xs">Customer Discounts</legend>{Object.entries(selectedCustomer.discountStructure).map(([key, value]) => <div key={key} className="flex items-center text-xs"><label className="w-1/2 bg-slate-200 text-slate-800 p-1 text-center rounded-l-sm capitalize">{key.replace(/([A-Z])/g, ' $1')}</label><div className="w-1/2 p-1 bg-slate-100 rounded-r-sm font-medium">{value}%</div></div>)}</fieldset>}
