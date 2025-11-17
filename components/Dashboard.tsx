@@ -1,20 +1,20 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import type { Quotation, Customer, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomerStats } from '../supabase';
 
 // Forward declaration for Chart.js from CDN
 declare const Chart: any;
 
 interface DashboardProps {
   quotations: Quotation[] | null;
+  customers: Customer[] | null;
   salesPersons: SalesPerson[] | null;
   currentUser: User;
 }
 
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, currentUser }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, salesPersons, currentUser }) => {
     
   const lineChartRef = useRef<HTMLCanvasElement>(null);
   const barChartRef = useRef<HTMLCanvasElement>(null);
@@ -24,19 +24,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
   const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
   const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
   const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
-  const [customerStats, setCustomerStats] = useState<{ totalCount: number; bySalesPerson: Record<string, number> } | null>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-        try {
-            const stats = await getCustomerStats();
-            setCustomerStats(stats);
-        } catch (error) {
-            console.error("Failed to load customer stats", error);
-        }
-    };
-    fetchStats();
-  }, []);
     
   const calculateTotalAmount = (details: Quotation['details']): number => {
       return details.reduce((total, item) => {
@@ -153,14 +140,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     return sortedQuotations.slice(0, 5);
   }, [filteredQuotations, quotationSortType]);
 
-  const totalCustomers = customerStats?.totalCount || 0;
+  const totalCustomers = customers?.length || 0;
   const customersBySalesPerson = useMemo(() => {
-    if (!salesPersons || !customerStats) return [];
+    if (!salesPersons || !customers) return [];
     return salesPersons.map(sp => ({
         name: sp.name,
-        count: customerStats.bySalesPerson[String(sp.id!)] || 0
+        count: customers.filter(c => c.salesPersonId === sp.id).length
     }))
-  }, [customerStats, salesPersons]);
+  }, [customers, salesPersons]);
 
   // Line Chart Effect
   useEffect(() => {
@@ -341,7 +328,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     { key: 'year', label: 'Last 1 Year' },
   ];
 
-  if (!quotations || !salesPersons) {
+  if (!quotations || !customers || !salesPersons) {
     return <div className="text-center p-8">Loading dashboard data...</div>;
   }
 
@@ -560,7 +547,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <tr key={q.id}>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs font-medium text-gray-900">{q.id}</td>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
-                                <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800">{salesPersons.find(c => c.id === q.salesPersonId)?.name || 'N/A'}</td>
+                                <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800">{customers.find(c => c.id === q.customerId)?.name || 'N/A'}</td>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800 text-right">{formatCurrency(calculateTotalAmount(q.details))}</td>
                             </tr>
                         ))}

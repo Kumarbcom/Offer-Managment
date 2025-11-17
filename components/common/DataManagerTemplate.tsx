@@ -1,9 +1,5 @@
-import React from 'react';
 
-interface SortOption {
-    value: string;
-    label: string;
-}
+import React from 'react';
 
 interface DataManagerTemplateProps<T> {
   title: string;
@@ -14,15 +10,6 @@ interface DataManagerTemplateProps<T> {
   resetForm: () => void;
   data: T[] | null;
   onExport: () => void;
-  // Optional search and sort props
-  searchTerm?: string;
-  setSearchTerm?: (value: string) => void;
-  searchPlaceholder?: string;
-  sortBy?: string;
-  setSortBy?: (value: string) => void;
-  sortOrder?: 'asc' | 'desc';
-  setSortOrder?: (value: 'asc' | 'desc') => void;
-  sortOptions?: SortOption[];
 }
 
 export const DataManagerTemplate = <T,>({
@@ -33,18 +20,8 @@ export const DataManagerTemplate = <T,>({
   isEditing,
   resetForm,
   data,
-  onExport,
-  searchTerm,
-  setSearchTerm,
-  searchPlaceholder,
-  sortBy,
-  setSortBy,
-  sortOrder,
-  setSortOrder,
-  sortOptions
+  onExport
 }: DataManagerTemplateProps<T>) => {
-  const showSearchSort = setSearchTerm && setSortBy && setSortOrder && sortOptions;
-
   return (
     <div className="space-y-8">
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -63,7 +40,7 @@ export const DataManagerTemplate = <T,>({
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">Manage {title}</h2>
             <button
                 onClick={onExport}
@@ -72,43 +49,6 @@ export const DataManagerTemplate = <T,>({
                 Export All
             </button>
         </div>
-
-        {showSearchSort && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b">
-                <div className="md:col-span-1">
-                    <label htmlFor="searchTerm" className="block text-sm font-medium text-gray-700">Search</label>
-                    <input
-                        type="text"
-                        id="searchTerm"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder={searchPlaceholder}
-                    />
-                </div>
-                <div>
-                    <label htmlFor="sortBy" className="block text-sm font-medium text-gray-700">Sort By</label>
-                    <select
-                        id="sortBy"
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                        {sortOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                    </select>
-                </div>
-                <div>
-                     <label className="block text-sm font-medium text-gray-700">Order</label>
-                     <button
-                        type="button"
-                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                        className="mt-1 w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-md shadow-sm flex items-center justify-center"
-                     >
-                        {sortOrder === 'asc' ? 'Ascending ▲' : 'Descending ▼'}
-                     </button>
-                </div>
-            </div>
-        )}
         
         {data && data.length > 0 ? (
           <div className="overflow-x-auto">
@@ -128,9 +68,7 @@ export const DataManagerTemplate = <T,>({
             </table>
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-8">
-            {searchTerm ? `No ${title.toLowerCase()} match your search.` : `No ${title.toLowerCase()} found. Add one to get started.`}
-          </p>
+          <p className="text-gray-500 text-center py-8">No {title.toLowerCase()} found. Add one to get started.</p>
         )}
       </div>
     </div>

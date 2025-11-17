@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 
 interface SearchableSelectProps<T> {
@@ -18,6 +17,7 @@ export const SearchableSelect = <T extends Record<string, any>,>(
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const isAsync = !!onSearch;
 
   const selectedOption = options.find(option => option[idKey] === value);
   
@@ -25,29 +25,21 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     if (selectedOption) {
       setSearchTerm(String(selectedOption[displayKey]));
     } else {
-       if (!onSearch) { // Do not clear search term if we are searching asynchronously
-        setSearchTerm('');
-       }
+      setSearchTerm('');
     }
-  }, [selectedOption, displayKey, onSearch]);
+  }, [selectedOption, displayKey]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         // Reset search term to selected value if dropdown is closed without selection
-        if (selectedOption) {
-            setSearchTerm(String(selectedOption[displayKey]));
-        }
+        setSearchTerm(selectedOption ? String(selectedOption[displayKey]) : '');
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef, selectedOption, displayKey]);
-
-  const filteredOptions = onSearch ? options : options.filter(option =>
-    String(option[displayKey]).toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const handleSelect = (option: T) => {
     onChange(option[idKey]);
@@ -56,16 +48,20 @@ export const SearchableSelect = <T extends Record<string, any>,>(
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTerm = e.target.value;
-    setSearchTerm(newTerm);
-    if (onSearch) {
-        onSearch(newTerm);
+    const newSearchTerm = e.target.value;
+    setSearchTerm(newSearchTerm);
+    if (isAsync) {
+      onSearch(newSearchTerm);
     }
-    if (!newTerm) {
+    if (!newSearchTerm) {
         onChange(null); // Clear selection if input is cleared
     }
     setIsOpen(true);
   }
+
+  const optionsToDisplay = isAsync ? options : options.filter(option =>
+    String(option[displayKey]).toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="relative w-full" ref={wrapperRef}>
@@ -79,9 +75,10 @@ export const SearchableSelect = <T extends Record<string, any>,>(
       />
       {isOpen && (
         <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-          {isLoading && <li className="p-2 text-gray-500">Loading...</li>}
-          {!isLoading && filteredOptions.length > 0 ? (
-            filteredOptions.map(option => (
+          {isLoading ? (
+            <li className="p-2 text-gray-500">Loading...</li>
+          ) : optionsToDisplay.length > 0 ? (
+            optionsToDisplay.map(option => (
               <li
                 key={option[idKey]}
                 className={`p-2 cursor-pointer hover:bg-indigo-100 ${option[idKey] === value ? 'bg-indigo-200' : ''}`}
@@ -90,7 +87,7 @@ export const SearchableSelect = <T extends Record<string, any>,>(
                 {String(option[displayKey])}
               </li>
             ))
-          ) : !isLoading && (
+          ) : (
             <li className="p-2 text-gray-500">{searchTerm ? 'No results found' : 'Type to search'}</li>
           )}
         </ul>

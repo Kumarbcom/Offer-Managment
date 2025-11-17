@@ -1,9 +1,22 @@
 import { supabase } from './supabaseClient';
+import type { Product } from './types';
 
-export type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'deliveryChallans' | 'users';
+type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'deliveryChallans' | 'users';
+
+const parseSupabaseError = (error: unknown, context?: string): string => {
+  const prefix = context ? `${context}: ` : '';
+  if (typeof error === 'object' && error !== null) {
+    const supabaseError = error as any;
+    let errorMessage = supabaseError.message || JSON.stringify(error);
+    if (supabaseError.details) errorMessage += `\nDetails: ${supabaseError.details}`;
+    if (supabaseError.hint) errorMessage += `\nHint: ${supabaseError.hint}`;
+    return `${prefix}${errorMessage}`;
+  }
+  return `${prefix}${String(error)}`;
+};
 
 // This function maps the app's internal camelCase names to the snake_case convention used by Supabase tables.
-export const toSupabaseTableName = (name: TableName): string => {
+const toSupabaseTableName = (name: TableName): string => {
     if (name === 'salesPersons') return 'sales_persons';
     if (name === 'deliveryChallans') return 'delivery_challans';
     return name;
@@ -17,185 +30,158 @@ export const toSupabaseTableName = (name: TableName): string => {
  */
 export async function get(tableName: TableName): Promise<any[]> {
     const supabaseTableName = toSupabaseTableName(tableName);
-    const primaryKey = tableName === 'users' ? 'name' : 'id';
-    const { data, error } = await supabase.from(supabaseTableName).select('*').order(primaryKey, { ascending: true });
+    const { data, error } = await supabase.from(supabaseTableName).select('*');
     if (error) {
-        const errorMsg = `Supabase Error (${supabaseTableName}): ${error.message}. Details: ${error.details}. Hint: ${error.hint}`;
-        console.error(`Failed to fetch data for ${tableName}:`, error);
-        throw new Error(errorMsg);
+        throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName} (from table: ${supabaseTableName})`));
     }
     return data || [];
 }
 
 /**
- * Inserts a new record into the database and returns the created record, including the database-generated ID.
+ * Efficiently synchronizes a local array of data with a Supabase table.
+ * It calculates the difference between the previous and new state and performs only the necessary create, update, or delete operations.
+ * @param tableName The name of the table to update.
+ * @param previousData The state of the data before the change.
+ * @param newData The new array of data that represents the desired state of the collection.
  */
-export const addRecord = async (tableName: TableName, record: any) => {
+export async function set<T extends { id?: number, name?: string }>(tableName: TableName, previousData: T[] | null, newData: T[]): Promise<void> {
     const supabaseTableName = toSupabaseTableName(tableName);
-    // The 'id' field is handled by the database, so it's not included in the insert payload.
-    const { id, ...recordData } = record;
+    const primaryKey = tableName === 'users' ? 'name' : 'id';
+
+    const previousDataMap = new Map<string | number, T>();
+    if (previousData) {
+        previousData.forEach(item => {
+            // FIX: Explicitly access `item.name` or `item.id` to help TypeScript infer the correct type.
+            // The original `item[primaryKey as keyof T]` was too generic for the compiler to narrow down.
+            const key = primaryKey === 'name' ? item.name : item.id;
+            if (key !== undefined) {
+                previousDataMap.set(key, item);
+            }
+        });
+    }
+
+    const newDataMap = new Map<string | number, T>();
+    newData.forEach(item => {
+        // FIX: Explicitly access `item.name` or `item.id` to help TypeScript infer the correct type.
+        // The original `item[primaryKey as keyof T]` was too generic for the compiler to narrow down.
+        const key = primaryKey === 'name' ? item.name : item.id;
+        if (key !== undefined) {
+            newDataMap.set(key, item);
+        }
+    });
+
+    const toDelete: (string | number)[] = [];
+    for (const key of previousDataMap.keys()) {
+        if (!newDataMap.has(key)) {
+            toDelete.push(key);
+        }
+    }
+
+    if (toDelete.length > 0) {
+        const { error } = await supabase.from(supabaseTableName).delete().in(primaryKey, toDelete);
+        if (error) {
+            throw new Error(parseSupabaseError(error, `Failed to delete data from ${supabaseTableName}`));
+        }
+    }
+
+    const toUpsert: T[] = [];
+    for (const [key, newItem] of newDataMap.entries()) {
+        const prevItem = previousDataMap.get(key);
+        if (!prevItem || JSON.stringify(prevItem) !== JSON.stringify(newItem)) {
+            toUpsert.push(newItem);
+        }
+    }
+
+    if (toUpsert.length > 0) {
+        const { error } = await supabase.from(supabaseTableName).upsert(toUpsert, { onConflict: primaryKey });
+        if (error) {
+            throw new Error(parseSupabaseError(error, `Failed to upsert data to ${supabaseTableName}`));
+        }
+    }
+}
+
+// --- New Scalable Functions for Products ---
+
+interface ProductQueryOptions {
+    pageLimit: number;
+    startAfterDoc: number; // For Supabase, this is the offset.
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    filters: {
+        partNo?: string;
+        description?: string;
+    };
+}
+
+export async function getProductsPaginated(options: ProductQueryOptions) {
+    const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
     
-    const { data, error } = await supabase
-        .from(supabaseTableName)
-        .insert(recordData)
-        .select()
-        .single();
-        
-    if (error) {
-        console.error(`Failed to add record to ${supabaseTableName}:`, error);
-        throw error;
-    }
-    return data;
-};
+    const offset = startAfterDoc || 0;
 
-/**
- * Updates an existing record in the database.
- */
-export const updateRecord = async (tableName: TableName, record: any) => {
-    const supabaseTableName = toSupabaseTableName(tableName);
-    const primaryKey = tableName === 'users' ? 'name' : 'id';
-    const pkValue = record[primaryKey];
-
-    const { data, error } = await supabase
-        .from(supabaseTableName)
-        .update(record)
-        .eq(primaryKey, pkValue)
-        .select()
-        .single();
-
-    if (error) {
-        console.error(`Failed to update record in ${supabaseTableName}:`, error);
-        throw error;
-    }
-    return data;
-};
-
-/**
- * Deletes one or more records from the database by their primary keys.
- */
-export const deleteRecords = async (tableName: TableName, ids: (string | number)[]) => {
-    const supabaseTableName = toSupabaseTableName(tableName);
-    const primaryKey = tableName === 'users' ? 'name' : 'id';
-
-    const { error } = await supabase
-        .from(supabaseTableName)
-        .delete()
-        .in(primaryKey, ids);
-        
-    if (error) {
-        console.error(`Failed to delete records from ${supabaseTableName}:`, error);
-        throw error;
-    }
-};
-
-/**
- * Performs a high-performance bulk insert of new records.
- * By default it strips 'id' for compatibility with SERIAL columns, but can be overridden for seeding.
- */
-export const bulkInsert = async (tableName: TableName, records: any[], keepIds = false) => {
-    const supabaseTableName = toSupabaseTableName(tableName);
-    const recordsToInsert = !keepIds ? records.map(r => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { id, ...rest } = r;
-        return rest;
-    }) : records;
-
-    const { error } = await supabase.from(supabaseTableName).insert(recordsToInsert);
-    if (error) {
-        console.error(`Failed to bulk insert to ${supabaseTableName}:`, error);
-        throw error;
-    }
-};
-
-/**
- * Seeds a table with initial data. It's a wrapper around bulkInsert with keepIds=true.
- * The function signature is designed to be a drop-in for seeding logic.
- */
-export const set = async (tableName: TableName, _previousData: any[], newData: any[]): Promise<void> => {
-    if (newData && newData.length > 0) {
-        // For seeding, we want to preserve the IDs from mock data to maintain relationships.
-        await bulkInsert(tableName, newData, true);
-    }
-};
-
-export async function getCustomersPaginated(options: {
-  page: number;
-  limit: number;
-  searchTerm: string;
-  searchCity: string;
-  sortBy: string;
-  sortOrder: 'asc' | 'desc';
-}) {
-  const { page, limit, searchTerm, searchCity, sortBy, sortOrder } = options;
-  const supabaseTableName = toSupabaseTableName('customers');
-
-  let query = supabase.from(supabaseTableName).select('*', { count: 'exact' });
-
-  if (searchTerm) {
-    query = query.ilike('name', `%${searchTerm}%`);
-  }
-  if (searchCity) {
-    query = query.ilike('city', `%${searchCity}%`);
-  }
-
-  query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
-  query = query.range(from, to);
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    const errorMsg = `Supabase Error (customers paginated): ${error.message}.`;
-    console.error(errorMsg, error);
-    throw new Error(errorMsg);
-  }
-
-  return { data: data || [], count: count || 0 };
-}
-
-
-export async function getCustomerStats() {
-    const supabaseTableName = toSupabaseTableName('customers');
-    const { data, error, count } = await supabase.from(supabaseTableName).select('id, salesPersonId', { count: 'exact' });
-
-    if (error) {
-        console.error(`Failed to fetch customer stats:`, error);
-        throw error;
-    }
-
-    const bySalesPerson = (data || []).reduce((acc, customer) => {
-        const key = customer.salesPersonId || 'unassigned';
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    return { totalCount: count || 0, bySalesPerson };
-}
-
-export async function getCustomersByIds(ids: number[]) {
-    if (ids.length === 0) return [];
-    const supabaseTableName = toSupabaseTableName('customers');
-    const { data, error } = await supabase.from(supabaseTableName).select('*').in('id', ids);
-    if (error) {
-        console.error(`Failed to fetch customers by ID:`, error);
-        throw error;
-    }
-    return data || [];
-}
-
-export async function searchCustomers(searchTerm: string) {
-    if (!searchTerm) return [];
-    const supabaseTableName = toSupabaseTableName('customers');
-    const { data, error } = await supabase
-        .from(supabaseTableName)
+    let query = supabase
+        .from('products')
         .select('*')
-        .ilike('name', `%${searchTerm}%`)
-        .limit(20);
-    if (error) {
-        console.error(`Failed to search customers:`, error);
-        throw error;
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .range(offset, offset + pageLimit - 1);
+    
+    if (filters.partNo) {
+        query = query.ilike('partNo', `${filters.partNo}%`);
     }
-    return data || [];
+    if (filters.description) {
+        query = query.ilike('description', `${filters.description}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        throw new Error(parseSupabaseError(error, "Failed to fetch products"));
+    }
+    
+    const products = (data || []) as Product[];
+    const lastVisibleDoc = offset + products.length; // The next offset
+
+    return { products, lastVisibleDoc };
+}
+
+
+export async function addProductsBatch(products: Product[]): Promise<void> {
+    const { error } = await supabase.from('products').upsert(products, { onConflict: 'id' });
+    if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
+}
+
+export async function deleteProductsBatch(productIds: number[]): Promise<void> {
+    const { error } = await supabase.from('products').delete().in('id', productIds);
+    if (error) throw new Error(parseSupabaseError(error, "Failed to delete products batch"));
+}
+
+export async function updateProduct(product: Product): Promise<void> {
+    const { id, ...productData } = product;
+    const { error } = await supabase.from('products').update(productData).eq('id', id);
+    if (error) throw new Error(parseSupabaseError(error, "Failed to update product"));
+}
+
+export async function searchProducts(term: string) {
+    if (!term) return [];
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .or(`partNo.ilike.%${term}%,description.ilike.%${term}%`)
+        .limit(50);
+
+    if (error) {
+        throw new Error(parseSupabaseError(error, "Failed to search products"));
+    }
+    return (data || []) as Product[];
+}
+
+export async function getProductsByIds(ids: number[]) {
+    if (!ids || ids.length === 0) return [];
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .in('id', ids);
+    
+    if (error) {
+        throw new Error(parseSupabaseError(error, "Failed to fetch products by IDs"));
+    }
+    return (data || []) as Product[];
 }

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, DeliveryChallan } from './types';
-import { useOnlineStorage, DataActions } from './hooks/useOnlineStorage';
+import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { SalesPersonManager } from './components/SalesPersonManager';
 import { CustomerManager } from './components/CustomerManager';
 import { ProductManager } from './components/ProductManager';
@@ -12,23 +12,15 @@ import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { UserManager } from './components/UserManager';
 import { DeliveryChallanManager } from './components/DeliveryChallanManager';
 import { DeliveryChallanForm } from './components/DeliveryChallanForm';
-import { addRecord, updateRecord, deleteRecords, bulkInsert } from './supabase';
 
 
 function App() {
-  const [users, userActions, usersLoading, usersError] = useOnlineStorage<User>('users');
-  const [salesPersons, salesPersonActions, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
-  const [products, productActions, productsLoading, productsError, refetchProducts] = useOnlineStorage<Product>('products');
-  const [quotations, quotationActions, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
-  const [deliveryChallans, challanActions, deliveryChallansLoading, deliveryChallansError] = useOnlineStorage<DeliveryChallan>('deliveryChallans');
+  const [users, setUsers, usersLoading, usersError] = useOnlineStorage<User>('users');
+  const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
+  const [customers, setCustomers, customersLoading, customersError] = useOnlineStorage<Customer>('customers');
+  const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
+  const [deliveryChallans, setDeliveryChallans, deliveryChallansLoading, deliveryChallansError] = useOnlineStorage<DeliveryChallan>('deliveryChallans');
   
-  const customerActions: DataActions<Customer> = {
-    add: (item) => addRecord('customers', item),
-    update: (item) => updateRecord('customers', item),
-    remove: (ids) => deleteRecords('customers', ids),
-    bulkAdd: (items) => bulkInsert('customers', items),
-  };
-
   const [view, setView] = useState<View>('dashboard');
   const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null);
   const [editingChallanId, setEditingChallanId] = useState<number | null>(null);
@@ -37,8 +29,8 @@ function App() {
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
   
-  const isLoadingData = usersLoading || salesPersonsLoading || productsLoading || quotationsLoading || deliveryChallansLoading;
-  const dataError = usersError || salesPersonsError || productsError || quotationsError || deliveryChallansError;
+  const isLoadingData = usersLoading || salesPersonsLoading || customersLoading || quotationsLoading || deliveryChallansLoading;
+  const dataError = usersError || salesPersonsError || customersError || quotationsError || deliveryChallansError;
 
   const handleLogin = (user: User) => {
       setCurrentUser(user);
@@ -56,7 +48,8 @@ function App() {
 
   const handlePasswordChange = async (newPassword: string) => {
     if (!currentUser || !users) return;
-    await userActions.update({ ...currentUser, password: newPassword });
+    const updatedUsers = users.map(u => u.name === currentUser.name ? { ...u, password: newPassword } : u);
+    await setUsers(updatedUsers);
     setCurrentUser(prev => prev ? { ...prev, password: newPassword } : null);
     setIsPasswordModalOpen(false);
     setIsPasswordChangeRequired(false);
@@ -110,28 +103,29 @@ function App() {
       case 'dashboard':
         return <Dashboard 
                   quotations={visibleQuotations} 
+                  customers={customers} 
                   salesPersons={salesPersons}
                   currentUser={currentUser}
                 />;
       case 'quotations':
         return <QuotationManager 
                   quotations={visibleQuotations} 
+                  customers={customers} 
                   salesPersons={salesPersons} 
                   setEditingQuotationId={setEditingQuotationId}
                   setView={setView}
-                  actions={quotationActions}
+                  setQuotations={setQuotations}
                   userRole={currentUser.role}
                   quotationFilter={quotationFilter}
                   onBackToCustomers={() => handleSetView('customers')}
                 />;
       case 'quotation-form':
         return <QuotationForm 
-                  customerActions={customerActions}
+                  customers={customers!}
+                  setCustomers={setCustomers}
                   salesPersons={salesPersons!}
-                  products={products!}
-                  productActions={productActions}
                   quotations={quotations!}
-                  quotationActions={quotationActions}
+                  setQuotations={setQuotations}
                   setView={setView}
                   editingQuotationId={editingQuotationId}
                   setEditingQuotationId={setEditingQuotationId}
@@ -139,22 +133,24 @@ function App() {
                 />;
       case 'customers':
         return currentUser.role === 'Admin' ? <CustomerManager 
-            actions={customerActions}
+            customers={customers} 
+            setCustomers={setCustomers} 
             salesPersons={salesPersons}
             quotations={quotations}
             onFilterQuotations={navigateToQuotationsWithFilter}
         /> : <div>Access Denied</div>;
       case 'products':
-        return currentUser.role === 'Admin' ? <ProductManager products={products} actions={productActions} refetch={refetchProducts} /> : <div>Access Denied</div>;
+        return currentUser.role === 'Admin' ? <ProductManager /> : <div>Access Denied</div>;
       case 'sales-persons':
-        return currentUser.role === 'Admin' ? <SalesPersonManager salesPersons={salesPersons} actions={salesPersonActions} /> : <div>Access Denied</div>;
+        return currentUser.role === 'Admin' ? <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} /> : <div>Access Denied</div>;
       case 'users':
-        return currentUser.role === 'Admin' ? <UserManager users={users} actions={userActions} currentUser={currentUser} /> : <div>Access Denied</div>;
+        return currentUser.role === 'Admin' ? <UserManager users={users} setUsers={setUsers} currentUser={currentUser} /> : <div>Access Denied</div>;
        case 'delivery-challans':
         return <DeliveryChallanManager 
                   deliveryChallans={deliveryChallans}
-                  actions={challanActions}
+                  setDeliveryChallans={setDeliveryChallans}
                   quotations={quotations}
+                  customers={customers}
                   setView={setView}
                   setEditingChallanId={setEditingChallanId}
                   userRole={currentUser.role}
@@ -162,9 +158,9 @@ function App() {
       case 'delivery-challan-form':
         return <DeliveryChallanForm 
                   challans={deliveryChallans}
-                  actions={challanActions}
+                  setChallans={setDeliveryChallans}
                   quotations={quotations}
-                  products={products}
+                  customers={customers}
                   setView={setView}
                   editingChallanId={editingChallanId}
                   setEditingChallanId={setEditingChallanId}

@@ -11,19 +11,19 @@ export interface User {
 export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'delivery-challans' | 'delivery-challan-form';
 
 export interface SalesPerson {
-  id?: number;
+  id: number;
   name: string;
   email: string;
   mobile: string;
 }
 
 export interface Customer {
-  id?: number;
+  id: number;
   name: string;
   address: string;
   city: string;
   pincode: string;
-  salesPersonId: number | null;
+  salesPersonId: number | '';
   discountStructure: {
     singleCore: number;
     multiCore: number;
@@ -43,7 +43,7 @@ export type UOM = typeof UOMS[number];
 export type Plant = typeof PLANTS[number];
 
 export interface Product {
-  id?: number;
+  id: number;
   partNo: string;
   description: string;
   hsnCode?: string;
@@ -78,17 +78,17 @@ export type ModeOfEnquiry = typeof MODES_OF_ENQUIRY[number];
 export type QuotationStatus = typeof QUOTATION_STATUSES[number];
 
 export interface Quotation {
-  id?: number;
+  id: number;
   quotationDate: string; // YYYY-MM-DD
   enquiryDate: string;   // YYYY-MM-DD
-  customerId: number | null;
+  customerId: number | '';
   contactPerson: string;
   contactNumber: string;
   otherTerms: string;
   paymentTerms: PaymentTerm;
   preparedBy: PreparedBy;
   productsBrand: ProductBrand;
-  salesPersonId: number | null;
+  salesPersonId: number | '';
   modeOfEnquiry: ModeOfEnquiry;
   status: QuotationStatus;
   comments: string;
@@ -107,10 +107,10 @@ export interface DeliveryChallanItem {
 }
 
 export interface DeliveryChallan {
-  id?: number;
+  id: number;
   challanDate: string; // YYYY-MM-DD
-  customerId: number | null;
-  quotationId: number | null;
+  customerId: number | '';
+  quotationId: number | '';
   vehicleNo: string;
   poNo: string;
   poDate: string; // YYYY-MM-DD

@@ -1,12 +1,14 @@
+
+
 import React, { useState, useEffect } from 'react';
 import type { Customer, SalesPerson } from '../types';
-import { DataActions } from '../hooks/useOnlineStorage';
 
 interface CustomerAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  actions: DataActions<Customer>;
+  onSave: (customer: Customer) => Promise<void>;
   salesPersons: SalesPerson[] | null;
+  customers: Customer[] | null;
   customerToEdit?: Customer | null;
 }
 
@@ -15,11 +17,11 @@ const emptyCustomer: Omit<Customer, 'id'> = {
   address: '',
   city: '',
   pincode: '',
-  salesPersonId: null,
+  salesPersonId: '',
   discountStructure: { singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0 },
 };
 
-export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onClose, actions, salesPersons, customerToEdit }) => {
+export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onClose, onSave, salesPersons, customers, customerToEdit }) => {
   const [formData, setFormData] = useState<Omit<Customer, 'id'> | Customer>(emptyCustomer);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -50,28 +52,35 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
         const isNumericId = name === 'salesPersonId';
         setFormData(prev => ({
             ...prev,
-            [name]: isNumericId ? (value ? parseInt(value) : null) : value
+            [name]: isNumericId ? (value ? parseInt(value) : '') : value
         }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!customers) return;
     if (!formData.name) {
       alert('Customer Name is required.');
       return;
     }
+    
+    let customerToSave: Customer;
+
+    if (customerToEdit) {
+      customerToSave = formData as Customer;
+    } else {
+      const newId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
+      customerToSave = { ...formData, id: newId } as Customer;
+    }
 
     setIsSaving(true);
     try {
-        if ('id' in formData && formData.id) {
-          await actions.update(formData as Customer);
-        } else {
-          await actions.add(formData);
-        }
+        await onSave(customerToSave);
         onClose();
     } catch (error) {
-        alert(`Failed to save customer. ${(error as Error).message}`);
+        alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the customer.');
+        console.error('Failed to save customer:', error);
     } finally {
         setIsSaving(false);
     }
@@ -90,7 +99,7 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
               </div>
               <div>
                 <label htmlFor="salesPersonId" className="block text-sm font-medium text-gray-700">Sales Person</label>
-                <select name="salesPersonId" id="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                <select name="salesPersonId" id="salesPersonId" value={formData.salesPersonId} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                   <option value="">Select Sales Person</option>
                   {salesPersons?.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
                 </select>

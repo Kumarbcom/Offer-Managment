@@ -1,48 +1,23 @@
-import React, { useState, useMemo } from 'react';
+
+
+import React, { useState, useEffect } from 'react';
 import type { SalesPerson } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
 import { DataManagerTemplate } from './common/DataManagerTemplate';
-import { DataActions } from '../hooks/useOnlineStorage';
 
 declare var XLSX: any;
 
 interface SalesPersonManagerProps {
   salesPersons: SalesPerson[] | null;
-  actions: DataActions<SalesPerson>;
+  setSalesPersons: (value: React.SetStateAction<SalesPerson[]>) => Promise<void>;
 }
 
 const emptySalesPerson: Omit<SalesPerson, 'id'> = { name: '', email: '', mobile: '' };
 
-export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPersons, actions }) => {
+export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPersons, setSalesPersons }) => {
   const [currentPerson, setCurrentPerson] = useState<Omit<SalesPerson, 'id'> | SalesPerson>(emptySalesPerson);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'id' | 'name' | 'email' | 'mobile'>('id');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-
-
-  const filteredAndSortedSalesPersons = useMemo(() => {
-    if (!salesPersons) return [];
-    return salesPersons
-        .filter(sp => 
-            sp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            sp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            sp.mobile.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        .sort((a, b) => {
-            let aVal: string | number = a[sortBy] ?? '';
-            let bVal: string | number = b[sortBy] ?? '';
-            let comparison = 0;
-            if (typeof aVal === 'string' && typeof bVal === 'string') {
-                comparison = aVal.localeCompare(bVal);
-            } else if (typeof aVal === 'number' && typeof bVal === 'number') {
-                comparison = aVal - bVal;
-            }
-            return sortOrder === 'asc' ? comparison : -comparison;
-        });
-  }, [salesPersons, searchTerm, sortBy, sortOrder]);
-
 
   const resetForm = () => {
     setIsEditing(false);
@@ -56,7 +31,7 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
   
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this sales person?")) {
-        await actions.remove([id]);
+        await setSalesPersons(prev => (prev || []).filter(p => p.id !== id));
     }
   };
 
@@ -69,13 +44,17 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
     setIsSaving(true);
     try {
       if (isEditing) {
-        await actions.update(currentPerson as SalesPerson);
+        await setSalesPersons(prev => (prev || []).map(p => p.id === (currentPerson as SalesPerson).id ? currentPerson as SalesPerson : p));
       } else {
-        await actions.add(currentPerson);
+        await setSalesPersons(prev => {
+          const prevPeople = prev || [];
+          const newId = prevPeople.length > 0 ? Math.max(...prevPeople.map(p => p.id)) + 1 : 1;
+          return [...prevPeople, { ...currentPerson, id: newId } as SalesPerson];
+        });
       }
       resetForm();
     } catch (error) {
-        alert("Failed to save sales person. Please try again.");
+        alert(error instanceof Error ? error.message : "Failed to save sales person. Please try again.");
     } finally {
         setIsSaving(false);
     }
@@ -123,7 +102,7 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
     </form>
   );
 
-  const tableRows = filteredAndSortedSalesPersons.map(person => (
+  const tableRows = salesPersons.map(person => (
     <tr key={person.id} className="hover:bg-gray-50">
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.id}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{person.name}</td>
@@ -131,17 +110,10 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{person.mobile}</td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
         <button onClick={() => handleEdit(person)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-        <button onClick={() => handleDelete(person.id!)} className="text-red-600 hover:text-red-900">Delete</button>
+        <button onClick={() => handleDelete(person.id)} className="text-red-600 hover:text-red-900">Delete</button>
       </td>
     </tr>
   ));
-
-  const sortOptions = [
-    { value: 'id', label: 'ID' },
-    { value: 'name', label: 'Name' },
-    { value: 'email', label: 'Email' },
-    { value: 'mobile', label: 'Mobile' },
-  ];
 
   return (
     <DataManagerTemplate<SalesPerson>
@@ -151,16 +123,8 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
       tableRows={tableRows}
       isEditing={isEditing}
       resetForm={resetForm}
-      data={filteredAndSortedSalesPersons}
+      data={salesPersons}
       onExport={handleExport}
-      searchTerm={searchTerm}
-      setSearchTerm={setSearchTerm}
-      searchPlaceholder="Search by name, email, mobile..."
-      sortBy={sortBy}
-      setSortBy={setSortBy as (val: string) => void}
-      sortOrder={sortOrder}
-      setSortOrder={setSortOrder}
-      sortOptions={sortOptions}
     />
   );
 };

@@ -1,11 +1,11 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
+import { useDebounce } from '../hooks/useDebounce';
+import { searchProducts } from '../supabase';
 
 interface ProductSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  products: Product[];
   onSelect: (product: Product, discount: number) => void;
 }
 
@@ -32,20 +32,28 @@ const getCurrentPriceForDate = (product: Product, date: string): PriceEntry | nu
     return [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
 };
 
-export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, onClose, products, onSelect }) => {
+export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, onClose, onSelect }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [discount, setDiscount] = useState('0');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const filteredAndSortedProducts = useMemo(() => {
-    return products
-      .filter(product => {
-        const term = searchTerm.toLowerCase();
-        if (!term) return true;
-        return product.partNo.toLowerCase().includes(term) || 
-               product.description.toLowerCase().includes(term);
-      })
-      .sort((a, b) => a.partNo.localeCompare(b.partNo));
-  }, [products, searchTerm]);
+  useEffect(() => {
+    if (debouncedSearchTerm.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    
+    const performSearch = async () => {
+      setIsLoading(true);
+      const results = await searchProducts(debouncedSearchTerm);
+      setSearchResults(results);
+      setIsLoading(false);
+    }
+    performSearch();
+  }, [debouncedSearchTerm]);
+
 
   const handleClear = () => {
     setSearchTerm('');
@@ -103,7 +111,9 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
         </div>
 
         <div className="flex-grow overflow-auto">
-          {filteredAndSortedProducts.length > 0 ? (
+          {isLoading ? (
+            <p className="text-gray-500 text-center py-8">Searching...</p>
+          ) : searchResults.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
@@ -116,7 +126,7 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAndSortedProducts.map(product => {
+                {searchResults.map(product => {
                     const today = new Date().toISOString().split('T')[0];
                     const currentPrice = getCurrentPriceForDate(product, today);
                     const discountValue = parseFloat(discount) || 0;
@@ -142,7 +152,7 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
             </table>
           ) : (
             <p className="text-gray-500 text-center py-8">
-              No products match your search criteria.
+              {debouncedSearchTerm ? 'No products match your search.' : 'Type at least 2 characters to search.'}
             </p>
           )}
         </div>

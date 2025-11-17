@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
-import { DataActions } from '../hooks/useOnlineStorage';
+import { getProductsPaginated } from '../supabase';
 
 interface ProductAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  actions: DataActions<Product>;
+  onSave: (product: Product) => Promise<void>;
   productToEdit?: Product | null;
 }
 
@@ -20,7 +20,7 @@ const emptyProductData: Omit<Product, 'id'> = {
   weight: 0,
 };
 
-export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClose, actions, productToEdit }) => {
+export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClose, onSave, productToEdit }) => {
   const [formData, setFormData] = useState<Omit<Product, 'id'> | Product>(emptyProductData);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -101,17 +101,25 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
            processedPrices[processedPrices.length - 1].validTo = '9999-12-31';
         }
     
-        const productToSave = { ...formData, prices: processedPrices };
+        const formDataWithProcessedPrices = { ...formData, prices: processedPrices };
         
-        if ('id' in productToSave && productToSave.id) {
-          await actions.update(productToSave as Product);
+        let productToSave: Product;
+
+        if ('id' in formData && formData.id) {
+          productToSave = formDataWithProcessedPrices as Product;
         } else {
-          await actions.add(productToSave);
+          const lastIdResult = await getProductsPaginated({ pageLimit: 1, startAfterDoc: 0, sortBy: 'id', sortOrder: 'desc', filters: {} });
+          const lastId = lastIdResult.products.length > 0 ? lastIdResult.products[0].id : 0;
+          const newId = lastId + 1;
+          productToSave = { ...formDataWithProcessedPrices, id: newId } as Product;
         }
+
+        await onSave(productToSave);
         onClose();
 
     } catch (error) {
-        alert('Failed to save product. Please try again.');
+        alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the product.');
+        console.error('Failed to save product:', error);
     } finally {
         setIsSaving(false);
     }

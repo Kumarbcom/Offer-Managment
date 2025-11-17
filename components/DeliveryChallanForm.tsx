@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { DeliveryChallan, DeliveryChallanItem, Customer, Quotation, Product, View, UserRole } from '../types';
 import { SearchableSelect } from './common/SearchableSelect';
-import { DataActions } from '../hooks/useOnlineStorage';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchCustomers, getCustomersByIds } from '../supabase';
+import { getProductsByIds } from '../supabase';
 
 
 interface DeliveryChallanFormProps {
   challans: DeliveryChallan[] | null;
-  actions: DataActions<DeliveryChallan>;
+  setChallans: (value: React.SetStateAction<DeliveryChallan[]>) => Promise<void>;
   quotations: Quotation[] | null;
-  products: Product[] | null;
+  customers: Customer[] | null;
   setView: (view: View) => void;
   editingChallanId: number | null;
   setEditingChallanId: (id: number | null) => void;
@@ -29,67 +28,31 @@ const createEmptyChallanItem = (): DeliveryChallanItem => ({
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
-const createNewChallan = (): Omit<DeliveryChallan, 'id'> => ({
-    challanDate: getTodayDateString(),
-    customerId: null,
-    quotationId: null,
-    vehicleNo: '',
-    poNo: '',
-    poDate: getTodayDateString(),
-    items: [createEmptyChallanItem()],
-});
-
 export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
-  challans, actions, quotations, products, setView, editingChallanId, setEditingChallanId, userRole
+  challans, setChallans, quotations, customers, setView, editingChallanId, setEditingChallanId, userRole
 }) => {
   const [formData, setFormData] = useState<Omit<DeliveryChallan, 'id'> | DeliveryChallan | null>(null);
   
-  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
-  const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
-  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  
-  const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const isReadOnly = userRole !== 'Admin' && userRole !== 'SCM';
+
+  const createNewChallan = (): Omit<DeliveryChallan, 'id'> => ({
+      challanDate: getTodayDateString(),
+      customerId: '',
+      quotationId: '',
+      vehicleNo: '',
+      poNo: '',
+      poDate: getTodayDateString(),
+      items: [createEmptyChallanItem()],
+  });
 
   useEffect(() => {
     if (editingChallanId !== null) {
       const challanToEdit = challans?.find(c => c.id === editingChallanId);
-      setFormData(challanToEdit || null);
-      if (challanToEdit?.customerId) {
-        getCustomersByIds([challanToEdit.customerId]).then(customers => {
-            if (customers.length > 0) setSelectedCustomer(customers[0]);
-        });
-      } else {
-        setSelectedCustomer(null);
-      }
+      setFormData(challanToEdit || createNewChallan());
     } else {
       setFormData(createNewChallan());
-      setSelectedCustomer(null);
     }
   }, [editingChallanId, challans]);
-
-  useEffect(() => {
-    if (debouncedCustomerSearchTerm.length < 2) {
-      setSearchedCustomers([]);
-      return;
-    }
-    const performSearch = async () => {
-      setIsSearchingCustomers(true);
-      const results = await searchCustomers(debouncedCustomerSearchTerm);
-      setSearchedCustomers(results);
-      setIsSearchingCustomers(false);
-    };
-    performSearch();
-  }, [debouncedCustomerSearchTerm]);
-
-  const customerOptions = useMemo(() => {
-    const options = [...searchedCustomers];
-    if (selectedCustomer && !options.some(c => c.id === selectedCustomer.id)) {
-        options.unshift(selectedCustomer);
-    }
-    return options;
-  }, [searchedCustomers, selectedCustomer]);
 
   const customerQuotations = useMemo(() => {
     if (!formData?.customerId || !quotations) return [];
@@ -97,39 +60,40 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
   }, [formData?.customerId, quotations]);
 
   useEffect(() => {
-    if (formData?.quotationId) {
-      const quotation = quotations?.find(q => q.id === formData.quotationId);
-      if (quotation) {
-        const newItems: DeliveryChallanItem[] = quotation.details.map(item => {
-          const product = products?.find(p => p.id === item.productId);
-          return {
-            productId: item.productId,
-            partNo: item.partNo,
-            description: item.description,
-            hsnCode: product?.hsnCode || '',
-            dispatchedQty: item.moq, // Default to MOQ
-            uom: item.uom,
-            remarks: '',
-          };
-        });
-        setFormData(prev => prev ? { ...prev, items: newItems } : null);
-      }
-    }
-  }, [formData?.quotationId, quotations, products]);
+    const syncQuotationItems = async () => {
+        if (formData?.quotationId) {
+          const quotation = quotations?.find(q => q.id === formData.quotationId);
+          if (quotation) {
+            const productIds = quotation.details.map(item => item.productId);
+            const products = await getProductsByIds(productIds);
+            const productMap = new Map(products.map(p => [p.id, p]));
+
+            const newItems: DeliveryChallanItem[] = quotation.details.map(item => {
+              const product = productMap.get(item.productId);
+              return {
+                productId: item.productId,
+                partNo: item.partNo,
+                description: item.description,
+                hsnCode: product?.hsnCode || '',
+                dispatchedQty: item.moq, // Default to MOQ
+                uom: item.uom,
+                remarks: '',
+              };
+            });
+            setFormData(prev => prev ? { ...prev, items: newItems } : null);
+          }
+        }
+    };
+    syncQuotationItems();
+  }, [formData?.quotationId, quotations]);
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const isNumericId = name === 'quotationId';
-    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
+    const isNumericId = name === 'quotationId' || name === 'customerId';
+    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : '') : value } : null);
   };
   
-  const handleCustomerChange = (customerId: number | null) => {
-    setFormData(prev => prev ? { ...prev, customerId: customerId, quotationId: null } : null);
-    const customer = customerOptions.find(c => c.id === customerId);
-    setSelectedCustomer(customer || null);
-  };
-
   const handleItemChange = (index: number, field: keyof DeliveryChallanItem, value: any) => {
       setFormData(prev => {
         if (!prev) return null;
@@ -146,16 +110,20 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly || !formData) return;
-    
-    if ('id' in formData && formData.id) {
-        await actions.update(formData as DeliveryChallan);
-    } else {
-        await actions.add(formData);
+    try {
+        if ('id' in formData && formData.id) {
+            await setChallans(prev => (prev || []).map(c => c.id === (formData as DeliveryChallan).id ? formData as DeliveryChallan : c));
+        } else {
+            const newId = (challans?.length ?? 0) > 0 ? Math.max(...challans!.map(c => c.id)) + 1 : 1;
+            await setChallans(prev => [...(prev || []), { ...formData, id: newId } as DeliveryChallan]);
+        }
+        setView('delivery-challans');
+    } catch(error) {
+        alert(error instanceof Error ? error.message : `Failed to save challan.`);
     }
-    setView('delivery-challans');
   };
 
-  if (!formData || !products) return <div>Loading...</div>;
+  if (!formData || !customers) return <div>Loading...</div>;
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
@@ -185,7 +153,10 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Customer</label>
-                <SearchableSelect options={customerOptions} value={formData.customerId} onChange={val => handleCustomerChange(val as number | null)} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers}/>
+                <select name="customerId" value={formData.customerId || ''} onChange={handleChange} className="mt-1 w-full p-2 border bg-white rounded-md">
+                    <option value="">Select Customer</option>
+                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Quotation ID</label>
