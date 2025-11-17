@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { SalesPerson } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
 import { DataManagerTemplate } from './common/DataManagerTemplate';
@@ -17,6 +16,32 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
   const [currentPerson, setCurrentPerson] = useState<Omit<SalesPerson, 'id'> | SalesPerson>(emptySalesPerson);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'id' | 'name' | 'email' | 'mobile'>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+
+  const filteredAndSortedSalesPersons = useMemo(() => {
+    if (!salesPersons) return [];
+    return salesPersons
+        .filter(sp => 
+            sp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            sp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            sp.mobile.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => {
+            const aVal = a[sortBy];
+            const bVal = b[sortBy];
+            let comparison = 0;
+            if (typeof aVal === 'string' && typeof bVal === 'string') {
+                comparison = aVal.localeCompare(bVal);
+            } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+                comparison = aVal - bVal;
+            }
+            return sortOrder === 'asc' ? comparison : -comparison;
+        });
+  }, [salesPersons, searchTerm, sortBy, sortOrder]);
+
 
   const resetForm = () => {
     setIsEditing(false);
@@ -101,7 +126,7 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
     </form>
   );
 
-  const tableRows = salesPersons.map(person => (
+  const tableRows = filteredAndSortedSalesPersons.map(person => (
     <tr key={person.id} className="hover:bg-gray-50">
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.id}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{person.name}</td>
@@ -114,6 +139,13 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
     </tr>
   ));
 
+  const sortOptions = [
+    { value: 'id', label: 'ID' },
+    { value: 'name', label: 'Name' },
+    { value: 'email', label: 'Email' },
+    { value: 'mobile', label: 'Mobile' },
+  ];
+
   return (
     <DataManagerTemplate<SalesPerson>
       title="Sales Persons"
@@ -122,8 +154,16 @@ export const SalesPersonManager: React.FC<SalesPersonManagerProps> = ({ salesPer
       tableRows={tableRows}
       isEditing={isEditing}
       resetForm={resetForm}
-      data={salesPersons}
+      data={filteredAndSortedSalesPersons}
       onExport={handleExport}
+      searchTerm={searchTerm}
+      setSearchTerm={setSearchTerm}
+      searchPlaceholder="Search by name, email, mobile..."
+      sortBy={sortBy}
+      setSortBy={setSortBy as (val: string) => void}
+      sortOrder={sortOrder}
+      setSortOrder={setSortOrder}
+      sortOptions={sortOptions}
     />
   );
 };

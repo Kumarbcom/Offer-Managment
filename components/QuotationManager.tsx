@@ -19,6 +19,8 @@ interface QuotationManagerProps {
 type SortByType = 'id' | 'quotationDate' | 'customer' | 'contactPerson' | 'salesPerson' | 'totalAmount' | 'status';
 type SortOrderType = 'asc' | 'desc';
 
+const PAGE_LIMIT = 25;
+
 const getStatusClass = (status: QuotationStatus) => {
     switch (status) {
         case 'Open': return 'bg-blue-100 text-blue-800';
@@ -35,6 +37,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const [sortBy, setSortBy] = useState<SortByType>('id');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
 
   const getCustomerName = (id: number | '') => customers?.find(c => c.id === id)?.name || 'N/A';
   const getSalesPersonName = (id: number | '') => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';
@@ -87,8 +90,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   }, [quotations, universalSearchTerm, customers, salesPersons, sortBy, sortOrder, quotationFilter]);
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [universalSearchTerm, sortBy, sortOrder, quotationFilter]);
+
+  const totalPages = Math.ceil(filteredAndSortedQuotations.length / PAGE_LIMIT);
+  const paginatedQuotations = filteredAndSortedQuotations.slice((currentPage - 1) * PAGE_LIMIT, currentPage * PAGE_LIMIT);
+
+  useEffect(() => {
     setSelectedQuotationIds(new Set());
-  }, [filteredAndSortedQuotations]);
+  }, [paginatedQuotations]);
 
   const handleAddNew = () => { setEditingQuotationId(null); setView('quotation-form'); };
   const handleEdit = (id: number) => { setEditingQuotationId(id); setView('quotation-form'); };
@@ -133,8 +143,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      const allIds = new Set(filteredAndSortedQuotations.map(q => q.id));
-      setSelectedQuotationIds(allIds);
+      const allIdsOnPage = new Set(paginatedQuotations.map(q => q.id));
+      setSelectedQuotationIds(allIdsOnPage);
     } else {
       setSelectedQuotationIds(new Set());
     }
@@ -152,7 +162,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     }
   };
 
-  const isAllSelected = selectedQuotationIds.size > 0 && selectedQuotationIds.size === filteredAndSortedQuotations.length;
+  const isAllSelectedOnPage = selectedQuotationIds.size > 0 && paginatedQuotations.every(q => selectedQuotationIds.has(q.id));
   const isCommentEditable = userRole === 'Admin' || userRole === 'Sales Person';
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
@@ -235,7 +245,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       )}
       
       <div className="overflow-x-auto mt-4 -mx-4">
-        {filteredAndSortedQuotations.length > 0 ? (
+        {paginatedQuotations.length > 0 ? (
             <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
                 <tr>
@@ -243,9 +253,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       <input
                         type="checkbox"
                         className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        checked={isAllSelected}
+                        checked={isAllSelectedOnPage}
                         onChange={handleSelectAll}
-                        aria-label="Select all quotations"
+                        aria-label="Select all quotations on this page"
                       />
                     </th>
                     <SortableHeader title="ID" sortKey="id" className="w-16" />
@@ -260,7 +270,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-                {filteredAndSortedQuotations.map(q => {
+                {paginatedQuotations.map(q => {
                   const isSelected = selectedQuotationIds.has(q.id);
                   return (
                     <tr key={q.id} className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-sm`}>
@@ -322,6 +332,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             <p className="text-slate-500 text-center py-8">{quotations.length > 0 ? 'No quotations match your search criteria.' : 'No quotations found.'}</p> 
         )}
       </div>
+      {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border border-slate-300 rounded-md bg-white hover:bg-slate-50 disabled:opacity-50">Previous</button>
+                <span>Page {currentPage} of {totalPages}</span>
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 border border-slate-300 rounded-md bg-white hover:bg-slate-50 disabled:opacity-50">Next</button>
+            </div>
+      )}
     </div>
   );
 };

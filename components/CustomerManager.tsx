@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Customer, SalesPerson, Quotation, QuotationStatus } from '../types';
 import { CustomerAddModal } from './CustomerAddModal';
 import { QUOTATION_STATUSES } from '../constants';
@@ -16,6 +15,8 @@ interface CustomerManagerProps {
 
 type SortByType = 'id' | 'name' | 'city' | 'pincode' | 'salesPerson';
 type SortOrderType = 'asc' | 'desc';
+
+const PAGE_LIMIT = 25;
 
 const calculateTotalAmount = (details: Quotation['details']): number => {
     return details.reduce((total, item) => {
@@ -42,6 +43,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const getSalesPersonName = (id: number | '') => {
     if (id === '' || !salesPersons) return 'N/A';
@@ -78,6 +80,13 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
         return sortOrder === 'asc' ? comparison : -comparison;
       });
   }, [customers, searchTerm, searchCity, sortBy, sortOrder, salesPersons]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, searchCity, sortBy, sortOrder]);
+  
+  const totalPages = Math.ceil(filteredAndSortedCustomers.length / PAGE_LIMIT);
+  const paginatedCustomers = filteredAndSortedCustomers.slice((currentPage - 1) * PAGE_LIMIT, currentPage * PAGE_LIMIT);
 
   const quotationStatsForVisibleCustomers = useMemo(() => {
     const initialStats = {
@@ -358,59 +367,68 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
             </div>
          </div>
 
-        {filteredAndSortedCustomers.length > 0 ? (
-            <div className="overflow-x-auto -mx-4">
-                <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                    <tr>
-                      {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
-                        <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
-                    {filteredAndSortedCustomers.map(customer => (
-                        <tr key={customer.id} className="hover:bg-slate-50/70">
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.id}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600 max-w-xs truncate">{customer.address}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.city}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.pincode}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">
-                                <div className="flex flex-col items-start gap-1">
-                                    {QUOTATION_STATUSES.map(status => {
-                                        const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
-                                        if (relevantQuotes.length === 0) return null;
-                                        const totalValue = relevantQuotes.reduce((sum, q) => sum + calculateTotalAmount(q.details), 0);
-                                        const colors = statusColors[status];
-                                        return (
-                                            <div
-                                                key={status}
-                                                onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
-                                                className={`cursor-pointer hover:underline ${colors.text} text-xs font-semibold`}
-                                                title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
-                                            >
-                                                <span>{status}: </span>
-                                                <span className="font-bold">{relevantQuotes.length}</span>
-                                                <span className="text-slate-400 mx-1">|</span>
-                                                <span className="font-bold">{formatCurrency(totalValue)}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
-                                <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
-                            </td>
+        {paginatedCustomers.length > 0 ? (
+            <>
+                <div className="overflow-x-auto -mx-4">
+                    <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                        <tr>
+                          {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
+                            <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              {header}
+                            </th>
+                          ))}
                         </tr>
-                    ))}
-                </tbody>
-                </table>
-            </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                        {paginatedCustomers.map(customer => (
+                            <tr key={customer.id} className="hover:bg-slate-50/70">
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.id}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600 max-w-xs truncate">{customer.address}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.city}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.pincode}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">
+                                    <div className="flex flex-col items-start gap-1">
+                                        {QUOTATION_STATUSES.map(status => {
+                                            const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
+                                            if (relevantQuotes.length === 0) return null;
+                                            const totalValue = relevantQuotes.reduce((sum, q) => sum + calculateTotalAmount(q.details), 0);
+                                            const colors = statusColors[status];
+                                            return (
+                                                <div
+                                                    key={status}
+                                                    onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
+                                                    className={`cursor-pointer hover:underline ${colors.text} text-xs font-semibold`}
+                                                    title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
+                                                >
+                                                    <span>{status}: </span>
+                                                    <span className="font-bold">{relevantQuotes.length}</span>
+                                                    <span className="text-slate-400 mx-1">|</span>
+                                                    <span className="font-bold">{formatCurrency(totalValue)}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                    <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
+                                    <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    </table>
+                </div>
+                {totalPages > 1 && (
+                    <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border border-slate-300 rounded-md bg-white hover:bg-slate-50 disabled:opacity-50">Previous</button>
+                        <span>Page {currentPage} of {totalPages}</span>
+                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 border border-slate-300 rounded-md bg-white hover:bg-slate-50 disabled:opacity-50">Next</button>
+                    </div>
+                )}
+            </>
         ) : (
           <p className="text-slate-500 text-center py-8">
             {customers.length > 0 ? 'No customers match your search criteria.' : 'No customers found. Add one to get started.'}
