@@ -1,10 +1,10 @@
 import { supabase } from './supabaseClient';
 import type { Product } from './types';
 
-export type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'deliveryChallans' | 'users';
+type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'deliveryChallans' | 'users';
 
 // This function maps the app's internal camelCase names to the snake_case convention used by Supabase tables.
-export const toSupabaseTableName = (name: TableName): string => {
+const toSupabaseTableName = (name: TableName): string => {
     if (name === 'salesPersons') return 'sales_persons';
     if (name === 'deliveryChallans') return 'delivery_challans';
     return name;
@@ -81,21 +81,7 @@ export async function set<T extends { id?: number, name?: string }>(tableName: T
     }
 
     if (toUpsert.length > 0) {
-        // Sanitize data before sending to Supabase.
-        // Convert empty strings in foreign key fields to null to prevent "invalid input syntax for type integer" errors.
-        const sanitizedData = toUpsert.map(item => {
-            const sanitizedItem = { ...item } as any; // Clone to avoid mutating original state object
-            const keysToSanitize = ['salesPersonId', 'customerId', 'quotationId'];
-            
-            for (const key of keysToSanitize) {
-                if (key in sanitizedItem && sanitizedItem[key] === '') {
-                    sanitizedItem[key] = null;
-                }
-            }
-            return sanitizedItem as T;
-        });
-
-        const { error } = await supabase.from(supabaseTableName).upsert(sanitizedData, { onConflict: primaryKey });
+        const { error } = await supabase.from(supabaseTableName).upsert(toUpsert, { onConflict: primaryKey });
         if (error) {
             const errorMsg = `Failed to upsert to ${supabaseTableName}: ${error.message}`;
             console.error(errorMsg, error);

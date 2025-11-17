@@ -16,7 +16,7 @@ const emptyCustomer: Omit<Customer, 'id'> = {
   address: '',
   city: '',
   pincode: '',
-  salesPersonId: '',
+  salesPersonId: null,
   discountStructure: { singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0 },
 };
 
@@ -51,7 +51,7 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
         const isNumericId = name === 'salesPersonId';
         setFormData(prev => ({
             ...prev,
-            [name]: isNumericId ? (value ? parseInt(value) : '') : value
+            [name]: isNumericId ? (value ? parseInt(value) : null) : value
         }));
     }
   };
@@ -78,7 +78,7 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
         await onSave(customerToSave);
         onClose();
     } catch (error) {
-        alert('Failed to save customer. Please try again.');
+        alert(`Failed to save customer. ${(error as Error).message}`);
     } finally {
         setIsSaving(false);
     }
@@ -97,7 +97,7 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
               </div>
               <div>
                 <label htmlFor="salesPersonId" className="block text-sm font-medium text-gray-700">Sales Person</label>
-                <select name="salesPersonId" id="salesPersonId" value={formData.salesPersonId} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                <select name="salesPersonId" id="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                   <option value="">Select Sales Person</option>
                   {salesPersons?.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
                 </select>

@@ -23,7 +23,7 @@ export interface Customer {
   address: string;
   city: string;
   pincode: string;
-  salesPersonId: number | '';
+  salesPersonId: number | null;
   discountStructure: {
     singleCore: number;
     multiCore: number;
@@ -81,14 +81,14 @@ export interface Quotation {
   id: number;
   quotationDate: string; // YYYY-MM-DD
   enquiryDate: string;   // YYYY-MM-DD
-  customerId: number | '';
+  customerId: number | null;
   contactPerson: string;
   contactNumber: string;
   otherTerms: string;
   paymentTerms: PaymentTerm;
   preparedBy: PreparedBy;
   productsBrand: ProductBrand;
-  salesPersonId: number | '';
+  salesPersonId: number | null;
   modeOfEnquiry: ModeOfEnquiry;
   status: QuotationStatus;
   comments: string;
@@ -109,8 +109,8 @@ export interface DeliveryChallanItem {
 export interface DeliveryChallan {
   id: number;
   challanDate: string; // YYYY-MM-DD
-  customerId: number | '';
-  quotationId: number | '';
+  customerId: number | null;
+  quotationId: number | null;
   vehicleNo: string;
   poNo: string;
   poDate: string; // YYYY-MM-DD

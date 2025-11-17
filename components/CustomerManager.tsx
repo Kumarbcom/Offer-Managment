@@ -45,8 +45,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const getSalesPersonName = (id: number | '') => {
-    if (id === '' || !salesPersons) return 'N/A';
+  const getSalesPersonName = (id: number | null) => {
+    if (id === null || !salesPersons) return 'N/A';
     return salesPersons.find(sp => sp.id === id)?.name || 'Unknown';
   };
 
@@ -207,7 +207,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
 
                     const salesPersonName = String(row['SalesPersonName'] || '').trim();
                     const salesPerson = salesPersons.find(sp => sp.name.toLowerCase() === salesPersonName.toLowerCase());
-                    const salesPersonId = salesPerson ? salesPerson.id : '';
+                    const salesPersonId = salesPerson ? salesPerson.id : null;
 
                     newId++;
                     return {
@@ -236,7 +236,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
             });
         } catch (error) {
             console.error("Error parsing Excel file:", error);
-            alert("Failed to import customers. Please check the file format and content.");
+            alert(`Failed to import customers. Please check the file format and content. Error: ${(error as Error).message}`);
         }
     };
     reader.onerror = (error) => {
@@ -382,7 +382,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-200">
                         {paginatedCustomers.map(customer => (
-                            <tr key={customer.id} className="hover:bg-slate-50/70">
+                            <tr key={customer.id} onClick={() => handleEdit(customer)} className="hover:bg-slate-50/70 cursor-pointer">
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.id}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600 max-w-xs truncate">{customer.address}</td>
@@ -390,7 +390,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.pincode}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">
-                                    <div className="flex flex-col items-start gap-1">
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1" onClick={e => e.stopPropagation()}>
                                         {QUOTATION_STATUSES.map(status => {
                                             const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
                                             if (relevantQuotes.length === 0) return null;
@@ -400,19 +400,17 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                                                 <div
                                                     key={status}
                                                     onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
-                                                    className={`cursor-pointer hover:underline ${colors.text} text-xs font-semibold`}
+                                                    className={`cursor-pointer ${colors.bg} ${colors.text} text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1`}
                                                     title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
                                                 >
-                                                    <span>{status}: </span>
-                                                    <span className="font-bold">{relevantQuotes.length}</span>
-                                                    <span className="text-slate-400 mx-1">|</span>
-                                                    <span className="font-bold">{formatCurrency(totalValue)}</span>
+                                                    <span>{status}</span>
+                                                    <span className="font-bold bg-white/50 rounded-full px-1">{relevantQuotes.length}</span>
                                                 </div>
                                             )
                                         })}
                                     </div>
                                 </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3" onClick={e => e.stopPropagation()}>
                                     <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
                                     <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
                                 </td>

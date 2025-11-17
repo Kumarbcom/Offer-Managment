@@ -78,6 +78,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
+  const [productSearch, setProductSearch] = useState<{ index: number; term: string }>({ index: -1, term: '' });
 
   const isReadOnly = userRole !== 'Admin' && userRole !== 'Sales Person';
 
@@ -108,14 +109,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       id: newId,
       quotationDate: getTodayDateString(),
       enquiryDate: getTodayDateString(),
-      customerId: '',
+      customerId: null,
       contactPerson: '',
       contactNumber: '',
       otherTerms: '± 5% Length Variation',
       paymentTerms: '100% Against Proforma Invoice',
       preparedBy: 'Kumar' as PreparedBy,
       productsBrand: 'Lapp',
-      salesPersonId: '',
+      salesPersonId: null,
       modeOfEnquiry: 'Customer Email',
       status: 'Open',
       comments: '',
@@ -135,7 +136,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             setFormData(prev => prev ? {...prev, salesPersonId: customer.salesPersonId} : null);
         }
     }
-  }, [formData?.customerId, customers, formData?.salesPersonId]);
+  }, [formData?.customerId, customers]);
 
   useEffect(() => {
     if (!formData || !formData.details.length || !products) return;
@@ -161,7 +162,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     const isNumericId = name === 'customerId' || name === 'salesPersonId';
-    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : '') : value } : null);
+    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
   };
   
   const handleItemChange = async (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
@@ -195,6 +196,45 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         await setProducts(prevProducts => prevProducts.map(p => p.id === productToUpdate!.productId ? {...p, weight: productToUpdate!.newWeight} : p));
     }
   };
+  
+  const handleSelectProduct = (index: number, productId: number | null) => {
+    setProductSearch({ index: -1, term: '' });
+    if (!productId) return;
+    const product = products.find(p => p.id === productId);
+    const customer = customers.find(c => c.id === formData?.customerId);
+
+    if (product && formData) {
+        const priceEntry = getPriceForDate(product, formData.quotationDate);
+        if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return; }
+        
+        let discount = 0;
+        // This is a simplified logic, can be expanded based on product type
+        if (customer) {
+            discount = customer.discountStructure.singleCore; // Defaulting to singleCore for now
+        }
+        
+        const price = priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp;
+        const priceSource: 'LP' | 'SP' = priceEntry.lp > 0 ? 'LP' : 'SP';
+
+        setFormData(prev => {
+            if (!prev) return null;
+            const newDetails = [...prev.details];
+            newDetails[index] = {
+                ...newDetails[index],
+                productId: product.id,
+                partNo: product.partNo,
+                description: product.description,
+                price: price,
+                priceSource: priceSource,
+                discount: discount,
+                uom: product.uom,
+                airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }
+            };
+            return { ...prev, details: newDetails };
+        });
+    }
+  };
+
 
   const handleAddItem = () => { setFormData(prev => prev ? { ...prev, details: [...prev.details, createEmptyQuotationItem()] } : null); };
   const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
@@ -298,6 +338,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     </div>
   );
 
+  const productOptions = products.map(p => ({ id: p.id, partNo: p.partNo, description: p.description }));
+
   return (
     <div className="p-2 md:p-4 bg-slate-50 min-h-screen font-sans">
       <div className="bg-white rounded-lg shadow-lg">
@@ -307,62 +349,3 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 <NavButton onClick={() => handleNavigation('first')} disabled={currentQuotationIndex <= 0}>|◀</NavButton>
                 <NavButton onClick={() => handleNavigation('prev')} disabled={currentQuotationIndex <= 0}>◀</NavButton>
                 <button onClick={() => setView('quotations')} className="bg-blue-500 hover:bg-blue-400 text-white rounded-md h-8 px-3 flex items-center justify-center font-bold text-base" title="Back to Quotations List">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
-                </button>
-                <NavButton onClick={() => handleNavigation('next')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
-                <NavButton onClick={() => handleNavigation('last')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
-            </div>
-        </header>
-        
-        <form onSubmit={handleSubmit} className="p-3 md:p-4">
-            <div className="bg-slate-50 p-2 flex flex-wrap items-center gap-2 border border-slate-200 mb-4 rounded-md">
-                {!isReadOnly && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
-                {!isReadOnly && <ActionButton onClick={handleSubmit} title="Save Quotation"><Icons.Save /><span>Save</span></ActionButton>}
-                <ActionButton onClick={() => handlePreview('standard')} title="Preview Standard"><Icons.PrintStandard /><span>Preview</span></ActionButton>
-                <ActionButton onClick={() => handlePreview('discounted')} title="Preview with Discount"><Icons.PrintDiscount /><span>Discounted</span></ActionButton>
-                <ActionButton onClick={() => handlePreview('withAirFreight')} title="Preview with Air Freight"><Icons.PrintAirFreight /><span>Air Freight</span></ActionButton>
-                <div className="h-6 border-l border-slate-300 mx-2"></div>
-                {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span>Customer</span></ActionButton>}
-                {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span>Product</span></ActionButton>}
-                {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm">
-                <div className="space-y-2">
-                    <FormField label="Quotation ID"><div className="p-2 bg-slate-50 font-bold text-slate-800 rounded-r-md border border-slate-300 h-full flex items-center">{editingQuotationId ?? "{New}"}</div></FormField>
-                    <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Customer" className='items-start'><div className={`border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect options={customers} value={formData.customerId} onChange={val => handleChange({ target: { name: 'customerId', value: String(val) } } as any)} idKey="id" displayKey="name" placeholder="Type to search customer..."/>{selectedCustomer && <div className="p-2 bg-slate-50 text-xs text-slate-600 border-t border-slate-200">{selectedCustomer.address}, {selectedCustomer.city} - {selectedCustomer.pincode}</div>}</div></FormField>
-                </div>
-                <div className="space-y-2">
-                    <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Payment"><select name="paymentTerms" value={formData.paymentTerms} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{PAYMENT_TERMS.map(t => <option key={t} value={t}>{t}</option>)}</select></FormField>
-                    <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
-                    <FormField label="Products"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
-                </div>
-                <div className="space-y-2">
-                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
-                    <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
-                    <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
-                    {selectedCustomer && <fieldset className="border-2 border-slate-200 p-2 space-y-1 rounded-md"><legend className="font-bold text-slate-700 px-1 text-xs">Customer Discounts</legend>{Object.entries(selectedCustomer.discountStructure).map(([key, value]) => <div key={key} className="flex items-center text-xs"><label className="w-1/2 bg-slate-200 text-slate-800 p-1 text-center rounded-l-sm capitalize">{key.replace(/([A-Z])/g, ' $1')}</label><div className="w-1/2 p-1 bg-slate-100 rounded-r-sm font-medium">{value}%</div></div>)}</fieldset>}
-                </div>
-            </div>
-
-            <div className="mt-6 overflow-x-auto">
-                <table className="min-w-full border-collapse border border-slate-300">
-                    <thead className="bg-slate-200 text-slate-700 text-xs font-semibold"><tr className="divide-x divide-slate-300">{['Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount %', 'Unit Price', 'Amount', 'Stock Status', 'Air Freight?', 'Weight/Mtr', 'Freight/Mtr', 'Total Freight', 'Lead Time', ''].map(h=><th key={h} className="p-2">{h}</th>)}</tr></thead>
-                    <tbody className="bg-white text-xs">{formData.details.map((item, index) => {const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); const amount = unitPrice * (item.moq || 0); const freightPerMtr = (item.airFreightDetails.weightPerMtr / 1000) * 150; const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-48 align-top p-1 text-slate-800 font-medium bg-slate-50">{item.partNo || <span className="text-slate-400">Select product...</span>}</td><td className="border-t border-slate-300 p-1 min-w-[200px] align-top text-slate-600">{item.description}</td><td className="border-t border-slate-300 align-top"><input type="number" value={item.moq} onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" value={item.req} onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-20 p-1 text-right flex-grow bg-transparent" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-1 text-slate-500" disabled><option value="LP">LP</option><option value="SP">SP</option></select></div></td><td className="border-t border-slate-300 align-top"><input type="text" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-16 p-1 text-center border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{unitPrice.toFixed(2)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.stockStatus} onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} className="w-24 p-1 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-4 w-4 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails.weightPerMtr} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-20 p-1 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top">{freightPerMtr.toFixed(2)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium">{freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails.airFreightLeadTime} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-24 p-1 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-1 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
-                    <tfoot className="bg-slate-200 text-slate-800 font-bold text-xs"><tr className="divide-x divide-slate-300"><td colSpan={2} className="p-2 text-center">Total</td><td className="p-2 text-center">{totals.moq}</td><td className="p-2 text-center">{totals.req}</td><td colSpan={3}></td><td className="p-2 text-right">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={4}></td><td className="p-2 text-right">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={2}></td></tr></tfoot>
-                </table>
-            </div>
-             <div className="flex justify-end mt-2">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-sm rounded">+ Add Row</button>}</div>
-        </form>
-      </div>
-      <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} customers={customers}/>
-      <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} products={products}/>
-      <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} products={products} onSelect={handleAddProductFromSearch}/>
-    </div>
-  );
-};
