@@ -1,13 +1,11 @@
-
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { DeliveryChallan, Quotation, Customer, View, UserRole } from '../types';
+import { getCustomersByIds } from '../supabase';
 
 interface DeliveryChallanManagerProps {
   deliveryChallans: DeliveryChallan[] | null;
   setDeliveryChallans: (challans: React.SetStateAction<DeliveryChallan[]>) => Promise<void>;
   quotations: Quotation[] | null;
-  customers: Customer[] | null;
   setView: (view: View) => void;
   setEditingChallanId: (id: number | null) => void;
   userRole: UserRole;
@@ -17,13 +15,27 @@ export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
   deliveryChallans,
   setDeliveryChallans,
   quotations,
-  customers,
   setView,
   setEditingChallanId,
   userRole,
 }) => {
 
   const canEdit = userRole === 'Admin' || userRole === 'SCM';
+  const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
+
+  useEffect(() => {
+    if (deliveryChallans && deliveryChallans.length > 0) {
+        // FIX: Refactored to create the Set before filtering. This helps TypeScript correctly infer the type of `customerIds` as `number[]` instead of `unknown[]`.
+        const customerIds = [...new Set(deliveryChallans.map(dc => dc.customerId))].filter((id): id is number => id !== null);
+        if (customerIds.length > 0) {
+            getCustomersByIds(customerIds).then(customers => {
+                const newMap = new Map<number, string>();
+                customers.forEach(c => newMap.set(c.id, c.name));
+                setCustomerMap(newMap);
+            });
+        }
+    }
+  }, [deliveryChallans]);
 
   const handleAddNew = () => {
     setEditingChallanId(null);
@@ -41,9 +53,9 @@ export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
     }
   };
   
-  const getCustomerName = (id: number | null) => customers?.find(c => c.id === id)?.name || 'N/A';
+  const getCustomerName = (id: number | null) => customerMap.get(id ?? -1) || 'N/A';
 
-  if (!deliveryChallans || !quotations || !customers) {
+  if (!deliveryChallans || !quotations) {
     return <div>Loading challan data...</div>;
   }
 

@@ -2,14 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { DeliveryChallan, DeliveryChallanItem, Customer, Quotation, Product, View, UserRole } from '../types';
 import { SearchableSelect } from './common/SearchableSelect';
 import { useDebounce } from '../hooks/useDebounce';
-import { getProductsByIds } from '../supabase';
+import { getProductsByIds, searchCustomers } from '../supabase';
 
 
 interface DeliveryChallanFormProps {
   challans: DeliveryChallan[] | null;
   setChallans: (value: React.SetStateAction<DeliveryChallan[]>) => Promise<void>;
   quotations: Quotation[] | null;
-  customers: Customer[] | null;
   setView: (view: View) => void;
   editingChallanId: number | null;
   setEditingChallanId: (id: number | null) => void;
@@ -29,9 +28,11 @@ const createEmptyChallanItem = (): DeliveryChallanItem => ({
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
 export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
-  challans, setChallans, quotations, customers, setView, editingChallanId, setEditingChallanId, userRole
+  challans, setChallans, quotations, setView, editingChallanId, setEditingChallanId, userRole
 }) => {
   const [formData, setFormData] = useState<Omit<DeliveryChallan, 'id'> | DeliveryChallan | null>(null);
+  const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
   
   const isReadOnly = userRole !== 'Admin' && userRole !== 'SCM';
 
@@ -90,9 +91,16 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const isNumericId = name === 'quotationId' || name === 'customerId';
+    const isNumericId = name === 'quotationId';
     setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
   };
+
+  const handleCustomerSearch = async (term: string) => {
+    setIsSearchingCustomers(true);
+    const results = await searchCustomers(term);
+    setSearchedCustomers(results);
+    setIsSearchingCustomers(false);
+  }
   
   const handleItemChange = (index: number, field: keyof DeliveryChallanItem, value: any) => {
       setFormData(prev => {
@@ -123,7 +131,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
     }
   };
 
-  if (!formData || !customers) return <div>Loading...</div>;
+  if (!formData) return <div>Loading...</div>;
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
@@ -153,10 +161,16 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Customer</label>
-                <select name="customerId" value={formData.customerId || ''} onChange={handleChange} className="mt-1 w-full p-2 border bg-white rounded-md">
-                    <option value="">Select Customer</option>
-                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <SearchableSelect
+                    options={searchedCustomers}
+                    value={formData.customerId}
+                    onChange={val => setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null)}
+                    idKey="id"
+                    displayKey="name"
+                    onSearch={handleCustomerSearch}
+                    isLoading={isSearchingCustomers}
+                    placeholder="Search for a customer..."
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Quotation ID</label>

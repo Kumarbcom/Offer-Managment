@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Product } from './types';
+import type { Customer, Product } from './types';
 
 type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'deliveryChallans' | 'users';
 
@@ -100,7 +100,100 @@ export async function set<T extends { id?: number, name?: string }>(tableName: T
     }
 }
 
-// --- New Scalable Functions for Products ---
+// --- New Scalable Functions for Customers ---
+
+interface CustomerQueryOptions {
+    pageLimit: number;
+    startAfterDoc: number; // offset
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    filters: {
+        name?: string;
+        city?: string;
+    };
+}
+
+export async function getCustomersPaginated(options: CustomerQueryOptions) {
+    const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
+    
+    const offset = startAfterDoc || 0;
+
+    let query = supabase
+        .from('customers')
+        .select('*', { count: 'exact' }) // Get total count
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .range(offset, offset + pageLimit - 1);
+    
+    if (filters.name) {
+        query = query.ilike('name', `%${filters.name}%`);
+    }
+    if (filters.city) {
+        query = query.ilike('city', `%${filters.city}%`);
+    }
+
+    const { data, error, count } = await query;
+    if (error) {
+        throw new Error(parseSupabaseError(error, "Failed to fetch customers"));
+    }
+    
+    return { customers: (data || []) as Customer[], count: count || 0 };
+}
+
+export async function searchCustomers(term: string): Promise<Customer[]> {
+    if (!term) return [];
+    const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .ilike('name', `%${term}%`)
+        .limit(50);
+
+    if (error) {
+        throw new Error(parseSupabaseError(error, "Failed to search customers"));
+    }
+    return (data || []) as Customer[];
+}
+
+export async function getCustomersByIds(ids: number[]): Promise<Customer[]> {
+    if (!ids || ids.length === 0) return [];
+    const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .in('id', ids);
+    
+    if (error) {
+        throw new Error(parseSupabaseError(error, "Failed to fetch customers by IDs"));
+    }
+    return (data || []) as Customer[];
+}
+
+export async function getCustomerStats() {
+    const { count, error } = await supabase
+      .from('customers')
+      .select('*', { count: 'exact', head: true });
+  
+    if (error) {
+      throw new Error(parseSupabaseError(error, "Failed to fetch customer stats"));
+    }
+    return { totalCount: count || 0 };
+}
+
+export async function upsertCustomer(customer: Omit<Customer, 'id'> | Customer) {
+    const { error } = await supabase.from('customers').upsert(customer, { onConflict: 'id' });
+    if (error) throw new Error(parseSupabaseError(error, 'Failed to upsert customer'));
+}
+
+export async function deleteCustomer(id: number) {
+    const { error } = await supabase.from('customers').delete().eq('id', id);
+    if (error) throw new Error(parseSupabaseError(error, 'Failed to delete customer'));
+}
+
+export async function addCustomersBatch(customers: Customer[]): Promise<void> {
+    const { error } = await supabase.from('customers').insert(customers);
+    if (error) throw new Error(parseSupabaseError(error, "Failed to add customers batch"));
+}
+
+
+// --- Scalable Functions for Products ---
 
 interface ProductQueryOptions {
     pageLimit: number;

@@ -9,11 +9,9 @@ import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds } from '../supabase';
 
 interface QuotationFormProps {
-  customers: Customer[];
-  setCustomers: (value: React.SetStateAction<Customer[]>) => Promise<void>;
   salesPersons: SalesPerson[];
   quotations: Quotation[];
   setQuotations: (value: React.SetStateAction<Quotation[]>) => Promise<void>;
@@ -71,7 +69,7 @@ const Icons = {
 };
 
 export const QuotationForm: React.FC<QuotationFormProps> = ({
-  customers, setCustomers, salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, userRole
+  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, userRole
 }) => {
   const [formData, setFormData] = useState<Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -84,6 +82,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
   const debouncedProductSearchTerm = useDebounce(productSearchTerm, 300);
   const [fetchedProducts, setFetchedProducts] = useState<Map<number, Product>>(new Map());
+
+  // State for async customer search
+  const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
 
   const isReadOnly = userRole !== 'Admin' && userRole !== 'Sales Person';
 
@@ -146,13 +151,27 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [editingQuotationId, quotations, createNewQuotation]);
 
   useEffect(() => {
-    if (formData && formData.customerId) {
-        const customer = customers.find(c => c.id === formData.customerId);
-        if (customer && customer.salesPersonId) {
-            setFormData(prev => prev ? {...prev, salesPersonId: customer.salesPersonId} : null);
+    const customerId = formData?.customerId;
+    if (customerId && (!selectedCustomerObj || selectedCustomerObj.id !== customerId)) {
+      getCustomersByIds([customerId]).then(customers => {
+        if (customers.length > 0) {
+          setSelectedCustomerObj(customers[0]);
+          setSearchedCustomers(prev => {
+            if (prev.some(c => c.id === customers[0].id)) return prev;
+            return [customers[0], ...prev];
+          });
         }
+      });
+    } else if (!customerId) {
+      setSelectedCustomerObj(null);
     }
-  }, [formData?.customerId, customers]);
+  }, [formData?.customerId, selectedCustomerObj]);
+
+  useEffect(() => {
+    if (selectedCustomerObj && selectedCustomerObj.salesPersonId) {
+        setFormData(prev => prev ? {...prev, salesPersonId: selectedCustomerObj.salesPersonId} : null);
+    }
+  }, [selectedCustomerObj]);
 
   useEffect(() => {
     if (!formData || !formData.details.length || fetchedProducts.size === 0) return;
@@ -188,6 +207,23 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     };
     performSearch();
   }, [debouncedProductSearchTerm]);
+  
+  useEffect(() => {
+    if (debouncedCustomerSearchTerm.length < 1) {
+      return;
+    }
+    const performSearch = async () => {
+      setIsSearchingCustomers(true);
+      const results = await searchCustomers(debouncedCustomerSearchTerm);
+      if (selectedCustomerObj && !results.some(c => c.id === selectedCustomerObj.id)) {
+        setSearchedCustomers([selectedCustomerObj, ...results]);
+      } else {
+        setSearchedCustomers(results);
+      }
+      setIsSearchingCustomers(false);
+    };
+    performSearch();
+  }, [debouncedCustomerSearchTerm, selectedCustomerObj]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -251,12 +287,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handleAddItem = () => { setFormData(prev => prev ? { ...prev, details: [...prev.details, createEmptyQuotationItem()] } : null); };
   const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
   const handleSaveCustomer = async (newCustomer: Customer) => { 
-    await setCustomers(prev => {
-        const currentCustomers = prev || [];
-        return [...currentCustomers.filter(c => c.id !== newCustomer.id), newCustomer];
-    });
-    setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null); 
-    setIsCustomerModalOpen(false); 
+    try {
+        await upsertCustomer(newCustomer);
+        setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null); 
+        setSelectedCustomerObj(newCustomer);
+        setIsCustomerModalOpen(false); 
+    } catch (error) {
+        alert(error instanceof Error ? error.message : 'Failed to save customer');
+    }
   };
   const handleSaveProduct = async (newProduct: Product) => { await addProductsBatch([newProduct]); setIsProductModalOpen(false); };
 
@@ -337,11 +375,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }, { moq: 0, req: 0, amount: 0, airFreightAmount: 0 });
   }, [formData]);
 
-  const selectedCustomer = useMemo(() => customers.find(c => c.id === formData?.customerId), [customers, formData?.customerId]);
   const selectedSalesPerson = useMemo(() => salesPersons.find(sp => sp.id === formData?.salesPersonId), [salesPersons, formData?.salesPersonId]);
 
   if (previewMode !== 'none') {
-    if (!formData || !selectedCustomer) return null;
+    if (!formData || !selectedCustomerObj) return null;
     return (
         <div className="bg-slate-100 min-h-screen">
           <div className="bg-white shadow-md p-4 mb-4 flex justify-between items-center no-print sticky top-0 z-30">
@@ -352,9 +389,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             </div>
           </div>
           <div id="print-area">
-             {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
-             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
-             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomer} salesPerson={selectedSalesPerson}/>}
+             {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson}/>}
           </div>
         </div>
     );
@@ -405,7 +442,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <FormField label="Quotation ID"><div className="p-2 bg-slate-50 font-bold text-slate-800 rounded-r-md border border-slate-300 h-full flex items-center">{editingQuotationId ?? "{New}"}</div></FormField>
                     <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
-                    <FormField label="Customer" className='items-start'><div className={`border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect options={customers} value={formData.customerId} onChange={val => setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null)} idKey="id" displayKey="name" placeholder="Type to search customer..."/>{selectedCustomer && <div className="p-2 bg-slate-50 text-xs text-slate-600 border-t border-slate-200">{selectedCustomer.address}, {selectedCustomer.city} - {selectedCustomer.pincode}</div>}</div></FormField>
+                    <FormField label="Customer" className='items-start'><div className={`border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect options={searchedCustomers} value={formData.customerId} onChange={val => { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); }} idKey="id" displayKey="name" placeholder="Type to search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers}/>{selectedCustomerObj && <div className="p-2 bg-slate-50 text-xs text-slate-600 border-t border-slate-200">{selectedCustomerObj.address}, {selectedCustomerObj.city} - {selectedCustomerObj.pincode}</div>}</div></FormField>
                 </div>
                 <div className="space-y-2">
                     <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full p-1.5 border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full" disabled={isReadOnly}/></FormField>
@@ -419,7 +456,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
                     <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
                     <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full p-1.5 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-full disabled:bg-slate-100" disabled={isReadOnly}>{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
-                    {selectedCustomer && <fieldset className="border-2 border-slate-200 p-2 space-y-1 rounded-md"><legend className="font-bold text-slate-700 px-1 text-xs">Customer Discounts</legend>{Object.entries(selectedCustomer.discountStructure).map(([key, value]) => <div key={key} className="flex items-center text-xs"><label className="w-1/2 bg-slate-200 text-slate-800 p-1 text-center rounded-l-sm capitalize">{key.replace(/([A-Z])/g, ' $1')}</label><div className="w-1/2 p-1 bg-slate-100 rounded-r-sm font-medium">{value}%</div></div>)}</fieldset>}
+                    {selectedCustomerObj && <fieldset className="border-2 border-slate-200 p-2 space-y-1 rounded-md"><legend className="font-bold text-slate-700 px-1 text-xs">Customer Discounts</legend>{Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => <div key={key} className="flex items-center text-xs"><label className="w-1/2 bg-slate-200 text-slate-800 p-1 text-center rounded-l-sm capitalize">{key.replace(/([A-Z])/g, ' $1')}</label><div className="w-1/2 p-1 bg-slate-100 rounded-r-sm font-medium">{value}%</div></div>)}</fieldset>}
                 </div>
             </div>
 
@@ -439,7 +476,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
              <div className="flex justify-end mt-2">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-sm rounded">+ Add Row</button>}</div>
         </form>
       </div>
-      <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} customers={customers}/>
+      <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
       <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} />
       <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
     </div>

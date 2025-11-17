@@ -17,7 +17,6 @@ import { DeliveryChallanForm } from './components/DeliveryChallanForm';
 function App() {
   const [users, setUsers, usersLoading, usersError] = useOnlineStorage<User>('users');
   const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
-  const [customers, setCustomers, customersLoading, customersError] = useOnlineStorage<Customer>('customers');
   const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
   const [deliveryChallans, setDeliveryChallans, deliveryChallansLoading, deliveryChallansError] = useOnlineStorage<DeliveryChallan>('deliveryChallans');
   
@@ -29,8 +28,8 @@ function App() {
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
   
-  const isLoadingData = usersLoading || salesPersonsLoading || customersLoading || quotationsLoading || deliveryChallansLoading;
-  const dataError = usersError || salesPersonsError || customersError || quotationsError || deliveryChallansError;
+  const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
+  const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
 
   const handleLogin = (user: User) => {
       setCurrentUser(user);
@@ -103,14 +102,12 @@ function App() {
       case 'dashboard':
         return <Dashboard 
                   quotations={visibleQuotations} 
-                  customers={customers} 
                   salesPersons={salesPersons}
                   currentUser={currentUser}
                 />;
       case 'quotations':
         return <QuotationManager 
                   quotations={visibleQuotations} 
-                  customers={customers} 
                   salesPersons={salesPersons} 
                   setEditingQuotationId={setEditingQuotationId}
                   setView={setView}
@@ -121,8 +118,6 @@ function App() {
                 />;
       case 'quotation-form':
         return <QuotationForm 
-                  customers={customers!}
-                  setCustomers={setCustomers}
                   salesPersons={salesPersons!}
                   quotations={quotations!}
                   setQuotations={setQuotations}
@@ -133,8 +128,6 @@ function App() {
                 />;
       case 'customers':
         return currentUser.role === 'Admin' ? <CustomerManager 
-            customers={customers} 
-            setCustomers={setCustomers} 
             salesPersons={salesPersons}
             quotations={quotations}
             onFilterQuotations={navigateToQuotationsWithFilter}
@@ -150,7 +143,6 @@ function App() {
                   deliveryChallans={deliveryChallans}
                   setDeliveryChallans={setDeliveryChallans}
                   quotations={quotations}
-                  customers={customers}
                   setView={setView}
                   setEditingChallanId={setEditingChallanId}
                   userRole={currentUser.role}
@@ -160,7 +152,6 @@ function App() {
                   challans={deliveryChallans}
                   setChallans={setDeliveryChallans}
                   quotations={quotations}
-                  customers={customers}
                   setView={setView}
                   editingChallanId={editingChallanId}
                   setEditingChallanId={setEditingChallanId}

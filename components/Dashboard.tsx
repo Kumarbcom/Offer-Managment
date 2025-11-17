@@ -1,20 +1,20 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import type { Quotation, Customer, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
+import { getCustomerStats } from '../supabase';
 
 // Forward declaration for Chart.js from CDN
 declare const Chart: any;
 
 interface DashboardProps {
   quotations: Quotation[] | null;
-  customers: Customer[] | null;
   salesPersons: SalesPerson[] | null;
   currentUser: User;
 }
 
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, salesPersons, currentUser }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, currentUser }) => {
     
   const lineChartRef = useRef<HTMLCanvasElement>(null);
   const barChartRef = useRef<HTMLCanvasElement>(null);
@@ -24,7 +24,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, sal
   const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
   const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
   const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
+  const [customerStats, setCustomerStats] = useState<{ totalCount: number } | null>(null);
     
+  useEffect(() => {
+    getCustomerStats().then(setCustomerStats).catch(console.error);
+  }, []);
+
   const calculateTotalAmount = (details: Quotation['details']): number => {
       return details.reduce((total, item) => {
           const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
@@ -140,18 +145,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, sal
     return sortedQuotations.slice(0, 5);
   }, [filteredQuotations, quotationSortType]);
 
-  const totalCustomers = customers?.length || 0;
-  const customersBySalesPerson = useMemo(() => {
-    if (!salesPersons || !customers) return [];
-    return salesPersons.map(sp => ({
-        name: sp.name,
-        count: customers.filter(c => c.salesPersonId === sp.id).length
-    }))
-  }, [customers, salesPersons]);
-
   // Line Chart Effect
   useEffect(() => {
-    if (!lineChartRef.current) return;
+    if (!lineChartRef.current || typeof Chart === 'undefined') return;
     
     const dataByDate = filteredQuotations.reduce((acc, q) => {
         const date = q.quotationDate;
@@ -182,7 +178,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, sal
   
   // Bar Chart Effect
   useEffect(() => {
-    if (!barChartRef.current || !salesPersons) return;
+    if (!barChartRef.current || !salesPersons || typeof Chart === 'undefined') return;
 
     const salesPersonColorMap: Record<string, string> = {
         'Ananthapadmanabha Phandari': '#4C51BF',
@@ -262,7 +258,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, sal
 
   // Funnel Chart Effect
     useEffect(() => {
-      if (!funnelChartRef.current) return;
+      if (!funnelChartRef.current || typeof Chart === 'undefined') return;
 
       const funnelStatuses: QuotationStatus[] = ['Open', 'PO received', 'Partial PO Received', 'Expired', 'Lost'];
       const funnelCounts = funnelStatuses
@@ -328,7 +324,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, sal
     { key: 'year', label: 'Last 1 Year' },
   ];
 
-  if (!quotations || !customers || !salesPersons) {
+  if (!quotations || !salesPersons) {
     return <div className="text-center p-8">Loading dashboard data...</div>;
   }
 
@@ -375,19 +371,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, sal
         <div className="bg-white p-2 rounded-lg shadow-md">
           <h3 className="text-base font-bold text-gray-800 mb-1">Overall At a Glance</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 text-center">
-             <div className="bg-purple-100 p-1 rounded-md flex flex-col justify-between">
-                <div>
-                  <div className="text-xl font-bold text-purple-800">{totalCustomers}</div>
-                  <div className="text-[9px] font-semibold text-purple-600 uppercase">Total Customers</div>
-                </div>
-                <div className="text-left text-[9px] mt-1 pt-1 border-t border-purple-200">
-                    {customersBySalesPerson.map(sp => (
-                        <div key={sp.name} className="flex justify-between">
-                            <span className="font-medium text-purple-700">{sp.name.split(' ')[0]}:</span>
-                            <span className="font-bold text-purple-800">{sp.count}</span>
-                        </div>
-                    ))}
-                </div>
+             <div className="bg-purple-100 p-1 rounded-md flex flex-col justify-center">
+                <div className="text-xl font-bold text-purple-800">{customerStats?.totalCount ?? '...'}</div>
+                <div className="text-[9px] font-semibold text-purple-600 uppercase">Total Customers</div>
             </div>
             <div className="bg-indigo-100 p-1 rounded-md">
               <div className="text-xl font-bold text-indigo-800">{overallStats.total.count}</div>
@@ -538,7 +524,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, sal
                         <tr>
                             <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">ID</th>
                             <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">Date</th>
-                            <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">Customer</th>
+                            <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase">Sales Person</th>
                             <th className="px-2 py-1 text-right text-[11px] font-medium text-gray-600 uppercase">Value</th>
                         </tr>
                     </thead>
@@ -547,7 +533,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, customers, sal
                             <tr key={q.id}>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs font-medium text-gray-900">{q.id}</td>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
-                                <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800">{customers.find(c => c.id === q.customerId)?.name || 'N/A'}</td>
+                                <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800">{salesPersons.find(c => c.id === q.salesPersonId)?.name || 'N/A'}</td>
                                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-800 text-right">{formatCurrency(calculateTotalAmount(q.details))}</td>
                             </tr>
                         ))}

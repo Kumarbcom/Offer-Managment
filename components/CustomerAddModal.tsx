@@ -1,14 +1,12 @@
-
-
 import React, { useState, useEffect } from 'react';
 import type { Customer, SalesPerson } from '../types';
+import { getCustomersPaginated } from '../supabase';
 
 interface CustomerAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (customer: Customer) => Promise<void>;
   salesPersons: SalesPerson[] | null;
-  customers: Customer[] | null;
   customerToEdit?: Customer | null;
 }
 
@@ -21,7 +19,7 @@ const emptyCustomer: Omit<Customer, 'id'> = {
   discountStructure: { singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0 },
 };
 
-export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onClose, onSave, salesPersons, customers, customerToEdit }) => {
+export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onClose, onSave, salesPersons, customerToEdit }) => {
   const [formData, setFormData] = useState<Omit<Customer, 'id'> | Customer>(emptyCustomer);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -59,23 +57,24 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customers) return;
     if (!formData.name) {
       alert('Customer Name is required.');
       return;
     }
     
-    let customerToSave: Customer;
-
-    if (customerToEdit) {
-      customerToSave = formData as Customer;
-    } else {
-      const newId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
-      customerToSave = { ...formData, id: newId } as Customer;
-    }
-
     setIsSaving(true);
     try {
+        let customerToSave: Customer;
+
+        if (customerToEdit) {
+          customerToSave = formData as Customer;
+        } else {
+          // Fetch last ID to generate a new one safely.
+          const lastIdResult = await getCustomersPaginated({ pageLimit: 1, startAfterDoc: 0, sortBy: 'id', sortOrder: 'desc', filters: {} });
+          const lastId = lastIdResult.customers.length > 0 ? lastIdResult.customers[0].id : 0;
+          const newId = lastId + 1;
+          customerToSave = { ...formData, id: newId } as Customer;
+        }
         await onSave(customerToSave);
         onClose();
     } catch (error) {

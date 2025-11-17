@@ -1,15 +1,13 @@
-
-
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import type { Customer, SalesPerson, Quotation, QuotationStatus } from '../types';
 import { CustomerAddModal } from './CustomerAddModal';
 import { QUOTATION_STATUSES } from '../constants';
+import { getCustomersPaginated, upsertCustomer, deleteCustomer, addCustomersBatch } from '../supabase';
+import { useDebounce } from '../hooks/useDebounce';
 
 declare var XLSX: any;
 
 interface CustomerManagerProps {
-  customers: Customer[] | null;
-  setCustomers: (value: React.SetStateAction<Customer[]>) => Promise<void>;
   salesPersons: SalesPerson[] | null;
   quotations: Quotation[] | null;
   onFilterQuotations: (filter: { customerIds: number[], status?: QuotationStatus }) => void;
@@ -17,6 +15,8 @@ interface CustomerManagerProps {
 
 type SortByType = 'id' | 'name' | 'city' | 'pincode' | 'salesPerson';
 type SortOrderType = 'asc' | 'desc';
+
+const PAGE_LIMIT = 50;
 
 const calculateTotalAmount = (details: Quotation['details']): number => {
     return details.reduce((total, item) => {
@@ -35,7 +35,12 @@ const statusColors: Record<QuotationStatus, { bg: string, text: string }> = {
 };
 
 
-export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, setCustomers, salesPersons, quotations, onFilterQuotations }) => {
+export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, quotations, onFilterQuotations }) => {
+  const [displayedCustomers, setDisplayedCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [searchCity, setSearchCity] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
@@ -44,41 +49,45 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedSearchCity = useDebounce(searchCity, 500);
+
+  const totalPages = Math.ceil(totalCount / PAGE_LIMIT);
+
+  const fetchCustomers = useCallback(async (page: number) => {
+    setIsLoading(true);
+    try {
+        const offset = (page - 1) * PAGE_LIMIT;
+        const result = await getCustomersPaginated({
+            pageLimit: PAGE_LIMIT,
+            startAfterDoc: offset,
+            sortBy,
+            sortOrder,
+            filters: { name: debouncedSearchTerm, city: debouncedSearchCity }
+        });
+        setDisplayedCustomers(result.customers);
+        setTotalCount(result.count);
+    } catch (error) {
+        alert(error instanceof Error ? error.message : 'Failed to fetch customers');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [sortBy, sortOrder, debouncedSearchTerm, debouncedSearchCity]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchCustomers(1);
+  }, [debouncedSearchTerm, debouncedSearchCity, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchCustomers(currentPage);
+  }, [currentPage, fetchCustomers]);
+
+
   const getSalesPersonName = (id: number | null) => {
     if (id === null || !salesPersons) return 'N/A';
     return salesPersons.find(sp => sp.id === id)?.name || 'Unknown';
   };
-
-  const filteredAndSortedCustomers = useMemo(() => {
-    if (!customers) return [];
-    return customers
-      .filter(customer => {
-        const nameMatch = customer.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const cityMatch = customer.city.toLowerCase().includes(searchCity.toLowerCase());
-        return nameMatch && cityMatch;
-      })
-      .sort((a, b) => {
-        let comparison = 0;
-        switch (sortBy) {
-          case 'id':
-            comparison = a.id - b.id;
-            break;
-          case 'name':
-            comparison = a.name.localeCompare(b.name);
-            break;
-          case 'city':
-            comparison = a.city.localeCompare(b.city);
-            break;
-          case 'pincode':
-            comparison = a.pincode.localeCompare(b.pincode);
-            break;
-          case 'salesPerson':
-            comparison = getSalesPersonName(a.salesPersonId).localeCompare(getSalesPersonName(b.salesPersonId));
-            break;
-        }
-        return sortOrder === 'asc' ? comparison : -comparison;
-      });
-  }, [customers, searchTerm, searchCity, sortBy, sortOrder, salesPersons]);
 
   const quotationStatsForVisibleCustomers = useMemo(() => {
     const initialStats = {
@@ -89,9 +98,9 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
       }, {} as Record<QuotationStatus, { count: number; value: number }>)
     };
 
-    if (!quotations || filteredAndSortedCustomers.length === 0) return initialStats;
+    if (!quotations || displayedCustomers.length === 0) return initialStats;
 
-    const customerIdsInView = new Set(filteredAndSortedCustomers.map(c => c.id));
+    const customerIdsInView = new Set(displayedCustomers.map(c => c.id));
     const relevantQuotations = quotations.filter(q => q.customerId !== null && customerIdsInView.has(q.customerId));
 
     return relevantQuotations.reduce((stats, q) => {
@@ -104,7 +113,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
       }
       return stats;
     }, initialStats);
-  }, [filteredAndSortedCustomers, quotations]);
+  }, [displayedCustomers, quotations]);
 
   const handleAddNew = () => {
     setCustomerToEdit(null);
@@ -118,22 +127,22 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
-        await setCustomers(prev => (prev || []).filter(c => c.id !== id));
+        try {
+            await deleteCustomer(id);
+            fetchCustomers(currentPage);
+        } catch(error) {
+            alert(error instanceof Error ? error.message : 'Failed to delete customer');
+        }
     }
   };
 
   const handleSaveCustomer = async (customer: Customer) => {
-    await setCustomers(prev => {
-        const prevCustomers = prev || [];
-        const index = prevCustomers.findIndex(c => c.id === customer.id);
-        if (index > -1) {
-            const newCustomers = [...prevCustomers];
-            newCustomers[index] = customer;
-            return newCustomers;
-        } else {
-            return [...prevCustomers, customer];
-        }
-    });
+    try {
+        await upsertCustomer(customer);
+        fetchCustomers(currentPage);
+    } catch(error) {
+        alert(error instanceof Error ? error.message : 'Failed to save customer');
+    }
   };
 
   const handleCloseModal = () => {
@@ -142,6 +151,10 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
   };
   
   const handleDownloadTemplate = () => {
+    if (typeof XLSX === 'undefined') {
+        alert('Excel library is not available. Please check your connection.');
+        return;
+    }
     const headers = [
         "Name", "Address", "City", "Pincode", "SalesPersonName", 
         "SingleCoreDiscount", "MultiCoreDiscount", "SpecialCableDiscount", "AccessoriesDiscount"
@@ -153,8 +166,12 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
   };
 
   const handleExport = () => {
-    if (!customers) return;
-    const dataToExport = customers.map(customer => ({
+    if (typeof XLSX === 'undefined') {
+        alert('Excel library is not available. Please check your connection.');
+        return;
+    }
+    if (!displayedCustomers) return;
+    const dataToExport = displayedCustomers.map(customer => ({
       Name: customer.name,
       Address: customer.address,
       City: customer.city,
@@ -169,10 +186,14 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Customers");
-    XLSX.writeFile(wb, "Customers_Export.xlsx");
+    XLSX.writeFile(wb, "Customers_Export_Visible.xlsx");
   };
 
   const handleFileUpload = (file: File) => {
+    if (typeof XLSX === 'undefined') {
+        alert('Excel library is not available. Please check your connection.');
+        return;
+    }
     const reader = new FileReader();
     reader.onload = async (e) => {
         if (!salesPersons) {
@@ -230,49 +251,60 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                 return actualHeader ? row[actualHeader] : undefined;
             };
             
-            await setCustomers(prev => {
-                const prevCustomers = prev || [];
-                const lastId = prevCustomers.length > 0 ? Math.max(...prevCustomers.map(c => c.id)) : 0;
-                let newId = lastId;
-
-                const newCustomers: Customer[] = json.map((row, index) => {
-                    const name = String(getValue(row, CANONICAL_HEADERS.NAME) || '').trim();
-                    const city = String(getValue(row, CANONICAL_HEADERS.CITY) || '').trim();
-                    
-                    if (!name || !city) {
-                        console.warn(`Skipping row ${index + 2} due to missing Name or City.`);
-                        return null;
-                    }
-
-                    const salesPersonName = String(getValue(row, CANONICAL_HEADERS.SALES_PERSON_NAME) || '').trim();
-                    const salesPerson = salesPersons.find(sp => sp.name.toLowerCase() === salesPersonName.toLowerCase());
-                    const salesPersonId = salesPerson ? salesPerson.id : null;
-
-                    newId++;
-                    return {
-                        id: newId,
-                        name: name,
-                        address: String(getValue(row, CANONICAL_HEADERS.ADDRESS) || ''),
-                        city: city,
-                        pincode: String(getValue(row, CANONICAL_HEADERS.PINCODE) || ''),
-                        salesPersonId: salesPersonId,
-                        discountStructure: {
-                            singleCore: parseFloat(getValue(row, CANONICAL_HEADERS.SINGLE_CORE_DISCOUNT)) || 0,
-                            multiCore: parseFloat(getValue(row, CANONICAL_HEADERS.MULTI_CORE_DISCOUNT)) || 0,
-                            specialCable: parseFloat(getValue(row, CANONICAL_HEADERS.SPECIAL_CABLE_DISCOUNT)) || 0,
-                            accessories: parseFloat(getValue(row, CANONICAL_HEADERS.ACCESSORIES_DISCOUNT)) || 0,
-                        },
-                    };
-                }).filter((c): c is Customer => c !== null);
-
-                if (newCustomers.length > 0) {
-                    alert(`${newCustomers.length} customers imported successfully!`);
-                    return [...prevCustomers, ...newCustomers];
-                } else {
-                    alert('No valid customers found in the file. Make sure required columns "Name" and "City" have values.');
-                    return prevCustomers;
+            const newCustomers: Omit<Customer, 'id'>[] = json.map((row, index) => {
+                const name = String(getValue(row, CANONICAL_HEADERS.NAME) || '').trim();
+                const city = String(getValue(row, CANONICAL_HEADERS.CITY) || '').trim();
+                
+                if (!name || !city) {
+                    console.warn(`Skipping row ${index + 2} due to missing Name or City.`);
+                    return null;
                 }
-            });
+
+                const salesPersonName = String(getValue(row, CANONICAL_HEADERS.SALES_PERSON_NAME) || '').trim();
+                const salesPerson = salesPersons.find(sp => sp.name.toLowerCase() === salesPersonName.toLowerCase());
+                const salesPersonId = salesPerson ? salesPerson.id : null;
+
+                return {
+                    name: name,
+                    address: String(getValue(row, CANONICAL_HEADERS.ADDRESS) || ''),
+                    city: city,
+                    pincode: String(getValue(row, CANONICAL_HEADERS.PINCODE) || ''),
+                    salesPersonId: salesPersonId,
+                    discountStructure: {
+                        singleCore: parseFloat(getValue(row, CANONICAL_HEADERS.SINGLE_CORE_DISCOUNT)) || 0,
+                        multiCore: parseFloat(getValue(row, CANONICAL_HEADERS.MULTI_CORE_DISCOUNT)) || 0,
+                        specialCable: parseFloat(getValue(row, CANONICAL_HEADERS.SPECIAL_CABLE_DISCOUNT)) || 0,
+                        accessories: parseFloat(getValue(row, CANONICAL_HEADERS.ACCESSORIES_DISCOUNT)) || 0,
+                    },
+                };
+            }).filter((c): c is Omit<Customer, 'id'> => c !== null);
+
+            if (newCustomers.length > 0) {
+                // Fetch the last ID to generate new sequential IDs.
+                const lastIdResult = await getCustomersPaginated({
+                    pageLimit: 1,
+                    startAfterDoc: 0,
+                    sortBy: 'id',
+                    sortOrder: 'desc',
+                    filters: {},
+                });
+                const lastId = lastIdResult.customers.length > 0 ? lastIdResult.customers[0].id : 0;
+                let currentId = lastId;
+
+                const customersWithIds: Customer[] = newCustomers.map(customer => {
+                    currentId++;
+                    return {
+                        ...customer,
+                        id: currentId,
+                    };
+                });
+                
+                await addCustomersBatch(customersWithIds);
+                alert(`${customersWithIds.length} customers imported successfully!`);
+                fetchCustomers(1);
+            } else {
+                alert('No valid customers found in the file. Make sure required columns "Name" and "City" have values.');
+            }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : `An issue occurred during file processing. Please check the console for details.`;
             console.error("Error importing customers:", error);
@@ -298,17 +330,17 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
     }
   };
   
-  const customerIdsInView = filteredAndSortedCustomers.map(c => c.id);
+  const customerIdsInView = displayedCustomers.map(c => c.id);
 
-  if (customers === null || salesPersons === null || quotations === null) {
-    return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading customers...</div>;
+  if (salesPersons === null || quotations === null) {
+    return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading data...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="bg-slate-50 p-2 rounded-lg shadow-sm border border-slate-200">
         <h3 className="text-base font-semibold text-slate-800 mb-1">
-            Quotation Summary for {customerIdsInView.length} Customer{customerIdsInView.length !== 1 ? 's' : ''}
+            Quotation Summary for {customerIdsInView.length} Customer{customerIdsInView.length !== 1 ? 's' : ''} on this page
         </h3>
         <div className="flex flex-wrap gap-2 items-center">
             <div
@@ -344,13 +376,13 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
 
       <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
          <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800">Customers</h2>
+            <h2 className="text-xl font-bold text-slate-800">Customers ({totalCount})</h2>
             <div className="flex flex-wrap gap-2 text-sm">
                 <button
                     onClick={handleExport}
                     className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300"
                 >
-                    Export All
+                    Export Visible
                 </button>
                 <button
                     onClick={handleDownloadTemplate}
@@ -396,7 +428,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
                     <option value="name">Customer Name</option>
                     <option value="city">City</option>
                     <option value="pincode">Pincode</option>
-                    <option value="salesPerson">Sales Person</option>
+                    <option value="salesPersonId">Sales Person</option>
                 </select>
             </div>
             <div>
@@ -407,62 +439,74 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
             </div>
          </div>
 
-        {filteredAndSortedCustomers.length > 0 ? (
-            <div className="overflow-x-auto -mx-4">
-                <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                    <tr>
-                      {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
-                        <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
-                    {filteredAndSortedCustomers.map(customer => (
-                        <tr key={customer.id} className="hover:bg-slate-50/70">
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.id}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600 max-w-xs truncate">{customer.address}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.city}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.pincode}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">
-                                <div className="flex flex-col items-start gap-1">
-                                    {QUOTATION_STATUSES.map(status => {
-                                        const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
-                                        if (relevantQuotes.length === 0) return null;
-                                        const totalValue = relevantQuotes.reduce((sum, q) => sum + calculateTotalAmount(q.details), 0);
-                                        const colors = statusColors[status];
-                                        return (
-                                            <div
-                                                key={status}
-                                                onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
-                                                className={`cursor-pointer hover:underline ${colors.text} text-xs font-semibold`}
-                                                title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
-                                            >
-                                                <span>{status}: </span>
-                                                <span className="font-bold">{relevantQuotes.length}</span>
-                                                <span className="text-slate-400 mx-1">|</span>
-                                                <span className="font-bold">{formatCurrency(totalValue)}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
-                                <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
-                            </td>
+        {isLoading ? (
+            <p className="text-slate-500 text-center py-8">Loading customers...</p>
+        ) : displayedCustomers.length > 0 ? (
+            <>
+                <div className="overflow-x-auto -mx-4">
+                    <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                        <tr>
+                          {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
+                            <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              {header}
+                            </th>
+                          ))}
                         </tr>
-                    ))}
-                </tbody>
-                </table>
-            </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                        {displayedCustomers.map(customer => (
+                            <tr key={customer.id} className="hover:bg-slate-50/70">
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.id}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600 max-w-xs truncate">{customer.address}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.city}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.pincode}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">
+                                    <div className="flex flex-col items-start gap-1">
+                                        {QUOTATION_STATUSES.map(status => {
+                                            const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
+                                            if (relevantQuotes.length === 0) return null;
+                                            const totalValue = relevantQuotes.reduce((sum, q) => sum + calculateTotalAmount(q.details), 0);
+                                            const colors = statusColors[status];
+                                            return (
+                                                <div
+                                                    key={status}
+                                                    onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
+                                                    className={`cursor-pointer hover:underline ${colors.text} text-xs font-semibold`}
+                                                    title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
+                                                >
+                                                    <span>{status}: </span>
+                                                    <span className="font-bold">{relevantQuotes.length}</span>
+                                                    <span className="text-slate-400 mx-1">|</span>
+                                                    <span className="font-bold">{formatCurrency(totalValue)}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                    <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
+                                    <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    </table>
+                </div>
+                <div className="flex justify-between items-center mt-4 text-sm">
+                    <p className="text-slate-600">Showing {displayedCustomers.length} of {totalCount} customers</p>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded-md disabled:opacity-50">Previous</button>
+                        <span>Page {currentPage} of {totalPages}</span>
+                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded-md disabled:opacity-50">Next</button>
+                    </div>
+                </div>
+            </>
         ) : (
           <p className="text-slate-500 text-center py-8">
-            {customers.length > 0 ? 'No customers match your search criteria.' : 'No customers found. Add one to get started.'}
+            {totalCount > 0 ? 'No customers match your search criteria.' : 'No customers found. Add one to get started.'}
         </p>
         )}
       </div>
@@ -472,7 +516,6 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, set
         onClose={handleCloseModal}
         onSave={handleSaveCustomer}
         salesPersons={salesPersons}
-        customers={customers}
         customerToEdit={customerToEdit}
       />
     </div>
