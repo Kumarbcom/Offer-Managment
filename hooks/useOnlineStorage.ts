@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set } from '../supabase';
+import { get, set, TableName, toSupabaseTableName } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
-import { supabaseConfig } from '../supabaseClient';
+import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
 
 type CollectionName = keyof typeof INITIAL_DATA;
@@ -33,6 +33,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
         stateRef.current = state;
     }, [state]);
 
+    // Effect for initial data fetch
     useEffect(() => {
         if (!isSupabaseConfigured) {
             if (useInMemoryFallback) {
@@ -48,8 +49,6 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
             setIsLoading(true);
             setError(null);
             try {
-                // The seeding logic is now handled globally at app startup.
-                // This hook now only fetches the data.
                 const data = await get(tableName);
                 setState(data as T[]);
             } catch (e) {
@@ -68,10 +67,58 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tableName]);
 
+    // Effect for real-time subscriptions
+    useEffect(() => {
+        if (!isSupabaseConfigured) {
+            return;
+        }
+        
+        const supabaseTableName = toSupabaseTableName(tableName as TableName);
+        const channel = supabase
+            .channel(`public:${supabaseTableName}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: supabaseTableName },
+                (payload) => {
+                    console.log(`Real-time change received on ${tableName}:`, payload);
+                    const { eventType, new: newRecord, old: oldRecord } = payload;
+                    
+                    setState(currentState => {
+                        const currentData = currentState || [];
+                        const primaryKey = tableName === 'users' ? 'name' : 'id';
+
+                        if (eventType === 'INSERT') {
+                            if (currentData.some(item => (item as any)[primaryKey] === (newRecord as any)[primaryKey])) {
+                                return currentData; // Already exists, likely from optimistic update
+                            }
+                            return [...currentData, newRecord as T];
+                        }
+                        if (eventType === 'UPDATE') {
+                            return currentData.map(item => 
+                                (item as any)[primaryKey] === (newRecord as any)[primaryKey] ? newRecord as T : item
+                            );
+                        }
+                        if (eventType === 'DELETE') {
+                             const recordId = (oldRecord as any).id ?? (oldRecord as any).name;
+                             return currentData.filter(item => (item as any)[primaryKey] !== recordId);
+                        }
+                        return currentData;
+                    });
+                }
+            )
+            .subscribe();
+            
+        // Cleanup function to remove the channel subscription when the component unmounts
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [tableName, isSupabaseConfigured]);
+
     const setValue = useCallback(async (value: SetStateAction<T[]>) => {
         const previousState = stateRef.current;
         const newState = value instanceof Function ? value(previousState!) : value;
 
+        // Optimistically update the UI
         setState(newState);
         
         if (newState === undefined) {
@@ -79,6 +126,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
             return;
         }
 
+        // Handle persistence for offline/unconfigured mode
         if (!isSupabaseConfigured) {
             if (useInMemoryFallback) {
                 setInMemoryData(newState);
@@ -88,12 +136,13 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
             return;
         }
 
+        // Persist to Supabase
         try {
             await set(tableName, previousState, newState);
         } catch (e) {
             console.error(`Supabase error on saving '${tableName}':`, e);
             setError(e as Error);
-            setState(previousState);
+            setState(previousState); // Revert on failure
             throw e;
         }
     }, [tableName, isSupabaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
