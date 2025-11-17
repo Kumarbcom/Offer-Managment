@@ -1,5 +1,6 @@
 import { db } from './firebaseConfig';
-import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, query, orderBy, limit, startAfter, where, documentId } from 'firebase/firestore';
+import type { Product } from './types';
 
 type CollectionName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'deliveryChallans' | 'users';
 
@@ -53,60 +54,142 @@ export async function set<T extends { id?: number, name?: string }>(collectionNa
     try {
         const batch = writeBatch(db);
 
-        const previousDataIds = new Set<string>();
+        // Create maps for efficient lookups. Key is the document ID.
+        const previousDataMap = new Map<string, T>();
         if (previousData) {
-             previousData.forEach(item => {
+            previousData.forEach(item => {
                 const docId = collectionName === 'users' ? String(item.name) : String(item.id);
                 if (docId && docId !== 'undefined') {
-                    previousDataIds.add(docId);
+                    previousDataMap.set(docId, item);
                 }
             });
         }
         
-        const newDataIds = new Set<string>();
+        const newDataMap = new Map<string, T>();
         newData.forEach(item => {
             const docId = collectionName === 'users' ? String(item.name) : String(item.id);
             if (docId && docId !== 'undefined') {
-                newDataIds.add(docId);
+                newDataMap.set(docId, item);
             }
         });
 
-        // 1. Determine and queue documents for deletion.
-        previousDataIds.forEach(id => {
-            if (!newDataIds.has(id)) {
+        // 1. Queue DELETES for items in previousData but not in newData.
+        for (const id of previousDataMap.keys()) {
+            if (!newDataMap.has(id)) {
                 const docRef = doc(db, collectionName, id);
                 batch.delete(docRef);
             }
-        });
+        }
 
-        // 2. Queue documents for creation or update.
-        newData.forEach(item => {
-            const docId = collectionName === 'users' ? String(item.name) : String(item.id);
-            if (!docId || docId === 'undefined') {
-                console.warn("Skipping item without an id/name:", item);
-                return;
-            }
+        // 2. Queue SETS for new or changed items in newData.
+        for (const [id, newItem] of newDataMap.entries()) {
+            const prevItem = previousDataMap.get(id);
 
-            const docRef = doc(db, collectionName, docId);
-            
-            // Prepare the data for Firestore by removing the local ID property.
-            let itemData: any;
-            if (collectionName === 'users') {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { name, ...rest } = item as any;
-                itemData = rest;
-            } else {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { id, ...rest } = item as any;
-                itemData = rest;
+            // Function to get the data payload for Firestore (without local id/name).
+            const getItemData = (item: T) => {
+                let itemData: any;
+                if (collectionName === 'users') {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { name, ...rest } = item as any;
+                    itemData = rest;
+                } else {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { id, ...rest } = item as any;
+                    itemData = rest;
+                }
+                return itemData;
+            };
+
+            // If the item is new, or if it has changed (checked via stringify), add a set operation to the batch.
+            if (!prevItem || JSON.stringify(prevItem) !== JSON.stringify(newItem)) {
+                const docRef = doc(db, collectionName, id);
+                const newItemData = getItemData(newItem);
+                batch.set(docRef, newItemData);
             }
-            
-            batch.set(docRef, itemData);
-        });
+        }
 
         await batch.commit();
     } catch (error) {
         console.error(`Failed to save data for ${collectionName}:`, error);
         throw error;
     }
+}
+
+// --- New Scalable Functions for Products ---
+
+interface ProductQueryOptions {
+    pageLimit: number;
+    startAfterDoc?: any;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    filters: {
+        partNo?: string;
+        description?: string;
+    };
+}
+
+export async function getProductsPaginated(options: ProductQueryOptions) {
+    const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
+    const collectionRef = collection(db, 'products');
+
+    let queries = [];
+
+    // NOTE: Firestore doesn't support case-insensitive "contains" search natively.
+    // This implements a "starts with" search.
+    if (filters.partNo) {
+        queries.push(where('partNo', '>=', filters.partNo.toUpperCase()));
+        queries.push(where('partNo', '<=', filters.partNo.toUpperCase() + '\uf8ff'));
+    }
+    if (filters.description) {
+        queries.push(where('description', '>=', filters.description));
+        queries.push(where('description', '<=', filters.description + '\uf8ff'));
+    }
+
+    // Add sorting. Note: If you filter on a field, you must sort by it first.
+    // We sort by the main sort field, and add partNo as a secondary sort for consistent ordering.
+    const effectiveSortBy = (filters.partNo && sortBy !== 'partNo') ? 'partNo' : sortBy;
+    queries.push(orderBy(effectiveSortBy, sortOrder));
+    if (sortBy !== effectiveSortBy) {
+         queries.push(orderBy(sortBy, sortOrder));
+    }
+
+    if (startAfterDoc) {
+        queries.push(startAfter(startAfterDoc));
+    }
+    queries.push(limit(pageLimit));
+    
+    const finalQuery = query(collectionRef, ...queries);
+
+    const snapshot = await getDocs(finalQuery);
+    const products = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: parseInt(docSnap.id, 10) } as Product));
+    const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+
+    return { products, lastVisibleDoc };
+}
+
+export async function addProductsBatch(products: Product[]): Promise<void> {
+    const batch = writeBatch(db);
+    products.forEach(product => {
+        const docRef = doc(db, 'products', String(product.id));
+        const { id, ...productData } = product;
+        batch.set(docRef, productData);
+    });
+    await batch.commit();
+}
+
+export async function deleteProductsBatch(productIds: number[]): Promise<void> {
+    const batch = writeBatch(db);
+    productIds.forEach(id => {
+        const docRef = doc(db, 'products', String(id));
+        batch.delete(docRef);
+    });
+    await batch.commit();
+}
+
+export async function updateProduct(product: Product): Promise<void> {
+    const docRef = doc(db, 'products', String(product.id));
+    const { id, ...productData } = product;
+    const batch = writeBatch(db);
+    batch.set(docRef, productData);
+    await batch.commit();
 }

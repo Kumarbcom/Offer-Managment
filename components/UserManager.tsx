@@ -37,7 +37,8 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
             };
             return [...currentUsers, newUser];
         } else {
-            return currentUsers.map(u => (u.name === editingUser.name ? editingUser as User : u));
+            // Use a merge operation to safely update the user without losing data.
+            return currentUsers.map(u => (u.name === editingUser.name ? { ...u, ...editingUser } : u));
         }
     });
 
@@ -50,7 +51,10 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
       return;
     }
     if(window.confirm(`Are you sure you want to delete user "${userName}"?`)){
-        await setUsers(prevUsers => (prevUsers || []).filter(u => u.name !== userName));
+        await setUsers(prevUsers => {
+          const currentUsers = prevUsers || [];
+          return currentUsers.filter(u => u.name !== userName);
+        });
     }
   };
 

@@ -1,31 +1,27 @@
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set } from '../firebase';
+import { get, set } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
-import { firebaseConfig } from '../firebaseConfig';
+import { supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
 
 type CollectionName = keyof typeof INITIAL_DATA;
 
-// Check if the Firebase config has been filled out.
-const isFirebaseConfigured = firebaseConfig.projectId && firebaseConfig.projectId !== "YOUR_PROJECT_ID";
-
-// A flag to ensure seeding only happens once per collection per session for Firebase.
-const seededCollections = new Set<CollectionName>();
+const isSupabaseConfigured = supabaseConfig.url && !supabaseConfig.url.includes('YOUR_PROJECT_ID');
 
 /**
  * A hook to manage data persistence.
- * It attempts to use Firebase Firestore if configured.
- * If Firebase is not configured or fails on initial load, it falls back to a different storage strategy:
+ * It attempts to use Supabase if configured.
+ * If Supabase is not configured or fails on initial load, it falls back to a different storage strategy:
  * - For the 'products' collection, it uses in-memory state to avoid local storage quota errors.
  * - For all other collections, it uses the browser's Local Storage.
  * This ensures the application is always usable out-of-the-box, even with large product catalogs.
  */
-export const useOnlineStorage = <T extends {id?: number, name?: string}>(collectionName: CollectionName): [T[] | null, (value: SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
+export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableName: CollectionName): [T[] | null, (value: SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
     
-    const initialData = INITIAL_DATA[collectionName] as unknown as T[];
-    const useInMemoryFallback = collectionName === 'products' && !isFirebaseConfigured;
+    const initialData = INITIAL_DATA[tableName] as unknown as T[];
+    const useInMemoryFallback = tableName === 'products' && !isSupabaseConfigured;
 
-    const [localData, setLocalData] = useLocalStorage<T[]>(collectionName, initialData);
+    const [localData, setLocalData] = useLocalStorage<T[]>(tableName, initialData);
     const [inMemoryData, setInMemoryData] = useState<T[]>(initialData);
 
     const [state, setState] = useState<T[] | null>(null);
@@ -38,12 +34,10 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
     }, [state]);
 
     useEffect(() => {
-        if (!isFirebaseConfigured) {
+        if (!isSupabaseConfigured) {
             if (useInMemoryFallback) {
-                // Using in-memory storage for products when Firebase is not configured.
                 setState(inMemoryData);
             } else {
-                // Using local storage for other collections.
                 setState(localData);
             }
             setIsLoading(false);
@@ -54,18 +48,13 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
             setIsLoading(true);
             setError(null);
             try {
-                let data = await get(collectionName);
-                if (data.length === 0 && !seededCollections.has(collectionName)) {
-                    console.log(`Firebase collection '${collectionName}' is empty. Seeding with initial data.`);
-                    await set(collectionName, [], initialData); // Use new set signature for seeding
-                    seededCollections.add(collectionName);
-                    data = await get(collectionName); // Re-fetch to get data with firebase IDs
-                }
+                // The seeding logic is now handled globally at app startup.
+                // This hook now only fetches the data.
+                const data = await get(tableName);
                 setState(data as T[]);
             } catch (e) {
-                console.error(`Firebase error on loading '${collectionName}':`, e);
+                console.error(`Supabase error on loading '${tableName}':`, e);
                 setError(e as Error);
-                // Fallback to local/in-memory storage on error
                 if (useInMemoryFallback) {
                     setState(inMemoryData);
                 } else {
@@ -76,15 +65,13 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
             }
         };
         fetchData();
-    // This effect should only run once when the hook mounts for a specific collection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [collectionName]);
+    }, [tableName]);
 
     const setValue = useCallback(async (value: SetStateAction<T[]>) => {
         const previousState = stateRef.current;
         const newState = value instanceof Function ? value(previousState!) : value;
 
-        // Optimistic UI update
         setState(newState);
         
         if (newState === undefined) {
@@ -92,7 +79,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
             return;
         }
 
-        if (!isFirebaseConfigured) {
+        if (!isSupabaseConfigured) {
             if (useInMemoryFallback) {
                 setInMemoryData(newState);
             } else {
@@ -102,15 +89,14 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(collect
         }
 
         try {
-            await set(collectionName, previousState, newState);
+            await set(tableName, previousState, newState);
         } catch (e) {
-            console.error(`Firebase error on saving '${collectionName}':`, e);
+            console.error(`Supabase error on saving '${tableName}':`, e);
             setError(e as Error);
-            // Revert the optimistic UI update if the async operation fails.
             setState(previousState);
             throw e;
         }
-    }, [collectionName, isFirebaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
+    }, [tableName, isSupabaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
     
     return [state, setValue, isLoading, error];
 };
