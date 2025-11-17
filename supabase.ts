@@ -187,7 +187,7 @@ export async function deleteCustomer(id: number) {
     if (error) throw new Error(parseSupabaseError(error, 'Failed to delete customer'));
 }
 
-export async function addCustomersBatch(customers: Customer[]): Promise<void> {
+export async function addCustomersBatch(customers: Omit<Customer, 'id'>[]): Promise<void> {
     const { error } = await supabase.from('customers').insert(customers);
     if (error) throw new Error(parseSupabaseError(error, "Failed to add customers batch"));
 }

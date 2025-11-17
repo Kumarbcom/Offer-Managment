@@ -280,27 +280,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
             }).filter((c): c is Omit<Customer, 'id'> => c !== null);
 
             if (newCustomers.length > 0) {
-                // Fetch the last ID to generate new sequential IDs.
-                const lastIdResult = await getCustomersPaginated({
-                    pageLimit: 1,
-                    startAfterDoc: 0,
-                    sortBy: 'id',
-                    sortOrder: 'desc',
-                    filters: {},
-                });
-                const lastId = lastIdResult.customers.length > 0 ? lastIdResult.customers[0].id : 0;
-                let currentId = lastId;
-
-                const customersWithIds: Customer[] = newCustomers.map(customer => {
-                    currentId++;
-                    return {
-                        ...customer,
-                        id: currentId,
-                    };
-                });
-                
-                await addCustomersBatch(customersWithIds);
-                alert(`${customersWithIds.length} customers imported successfully!`);
+                await addCustomersBatch(newCustomers);
+                alert(`${newCustomers.length} customers imported successfully!`);
                 fetchCustomers(1);
             } else {
                 alert('No valid customers found in the file. Make sure required columns "Name" and "City" have values.');

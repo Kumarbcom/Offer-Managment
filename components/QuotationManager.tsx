@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Quotation, Customer, SalesPerson, QuotationStatus, UserRole } from '../types';
+import type { Quotation, SalesPerson, QuotationStatus, UserRole } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
+import { getCustomersByIds } from '../supabase';
 
 declare var XLSX: any;
 
 interface QuotationManagerProps {
   quotations: Quotation[] | null;
-  customers: Customer[] | null;
   salesPersons: SalesPerson[] | null;
   setEditingQuotationId: (id: number | null) => void;
   setView: (view: 'quotation-form') => void;
@@ -30,14 +30,50 @@ const getStatusClass = (status: QuotationStatus) => {
     }
 }
 
-export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, customers, salesPersons, setEditingQuotationId, setView, setQuotations, userRole, quotationFilter, onBackToCustomers }) => {
+export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, salesPersons, setEditingQuotationId, setView, setQuotations, userRole, quotationFilter, onBackToCustomers }) => {
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
+  const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
 
-  const getCustomerName = (id: number | '') => customers?.find(c => c.id === id)?.name || 'N/A';
-  const getSalesPersonName = (id: number | '') => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';
+  useEffect(() => {
+    if (quotations) {
+      // FIX: Refactored to create the Set before filtering. This helps TypeScript correctly infer the type of `customerIdsToFetch` as `number[]` instead of `unknown[]`.
+      const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
+        .filter((id): id is number => id !== null && !customerMap.has(id));
+      
+      if (quotationFilter?.customerIds) {
+          quotationFilter.customerIds.forEach(id => {
+              if(!customerMap.has(id) && !customerIdsToFetch.includes(id)) {
+                  customerIdsToFetch.push(id);
+              }
+          });
+      }
+
+      if (customerIdsToFetch.length > 0) {
+        setIsLoadingCustomers(true);
+        getCustomersByIds(customerIdsToFetch).then(customers => {
+          setCustomerMap(prevMap => {
+            const newMap = new Map(prevMap);
+            customers.forEach(c => newMap.set(c.id, c.name));
+            return newMap;
+          });
+          setIsLoadingCustomers(false);
+        });
+      } else {
+        setIsLoadingCustomers(false);
+      }
+    }
+  }, [quotations, customerMap, quotationFilter]);
+
+  const getCustomerName = (id: number | null): string => {
+    if (id === null) return 'N/A';
+    return customerMap.get(id) || 'Loading...';
+  };
+  
+  const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';
   
   const calculateTotalAmount = (details: Quotation['details']): number => {
       return details.reduce((total, item) => {
@@ -55,7 +91,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     if (!quotations) return [];
     const preFilteredQuotations = quotationFilter
       ? quotations.filter(q => {
-          const customerMatch = !quotationFilter.customerIds || quotationFilter.customerIds.includes(q.customerId as number);
+          const customerMatch = !quotationFilter.customerIds || (q.customerId !== null && quotationFilter.customerIds.includes(q.customerId));
           const statusMatch = !quotationFilter.status || q.status === quotationFilter.status;
           return customerMatch && statusMatch;
         })
@@ -84,7 +120,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         }
         return sortOrder === 'asc' ? comparison : -comparison;
       });
-  }, [quotations, universalSearchTerm, customers, salesPersons, sortBy, sortOrder, quotationFilter]);
+  }, [quotations, universalSearchTerm, customerMap, salesPersons, sortBy, sortOrder, quotationFilter]);
 
   useEffect(() => {
     setSelectedQuotationIds(new Set());
@@ -172,11 +208,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     const { customerIds, status } = quotationFilter;
     let desc = "Showing ";
     desc += status ? `'${status}' quotations ` : "all quotations ";
-    if (customerIds && customerIds.length > 0) desc += customerIds.length === 1 ? `for ${customers?.find(c => c.id === customerIds[0])?.name}` : `for ${customerIds.length} customers`;
+    if (customerIds && customerIds.length > 0) {
+        const customerName = customerIds.length === 1 ? getCustomerName(customerIds[0]) : '';
+        desc += customerIds.length === 1 ? `for ${customerName}` : `for ${customerIds.length} customers`;
+    }
     return desc + ".";
-  }, [quotationFilter, customers]);
+  }, [quotationFilter, customerMap]);
 
-  if (quotations === null || customers === null || salesPersons === null) return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading quotations...</div>;
+  if (quotations === null || salesPersons === null || isLoadingCustomers) return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading quotations...</div>;
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
