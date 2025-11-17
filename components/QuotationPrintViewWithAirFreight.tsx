@@ -58,7 +58,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
             
             <div className="my-4 text-sm">
                 <p className="font-semibold mb-1">Dear Sir / Madam,</p>
-                <p>Please find below our favourable offer for your requirement for Cables & Accessories.</p>
+                <p>Please find below our favourable offer for your requirement for {quotation.productsBrand} Products.</p>
             </div>
 
             <table className="w-full text-left text-[10px]">
@@ -67,7 +67,8 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         <th className="p-1 font-semibold border">Sl. No</th>
                         <th className="p-1 font-semibold border">Part No</th>
                         <th className="p-1 font-semibold border">Description</th>
-                        <th className="p-1 font-semibold border text-center">Qty</th>
+                        <th className="p-1 font-semibold border text-center">MOQ</th>
+                        <th className="p-1 font-semibold border text-center">REQ</th>
                         <th className="p-1 font-semibold border text-center">UOM</th>
                         <th className="p-1 font-semibold border text-right">Unit Price (₹)</th>
                         <th className="p-1 font-semibold border text-right">Amount (₹)</th>
@@ -91,6 +92,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                                 <td className="p-1 border font-medium">{item.partNo}</td>
                                 <td className="p-1 border max-w-xs">{item.description}</td>
                                 <td className="p-1 border text-center">{item.moq}</td>
+                                <td className="p-1 border text-center">{item.req}</td>
                                 <td className="p-1 border text-center">{item.uom}</td>
                                 <td className="p-1 border text-right">{unitPrice.toFixed(2)}</td>
                                 <td className="p-1 border text-right">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

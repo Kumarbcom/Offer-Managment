@@ -109,7 +109,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, []);
 
   const createNewQuotation = useCallback((): Quotation => {
-    const newId = quotations.length > 0 ? Math.max(...quotations.map(q => q.id)) + 1 : 1;
+    const safeQuotations = quotations || [];
+    const newId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) + 1 : 1;
     return {
       id: newId,
       quotationDate: getTodayDateString(),
@@ -249,7 +250,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleAddItem = () => { setFormData(prev => prev ? { ...prev, details: [...prev.details, createEmptyQuotationItem()] } : null); };
   const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
-  const handleSaveCustomer = async (newCustomer: Customer) => { await setCustomers(prev => [...prev.filter(c => c.id !== newCustomer.id), newCustomer]); setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null); setIsCustomerModalOpen(false); };
+  const handleSaveCustomer = async (newCustomer: Customer) => { 
+    await setCustomers(prev => {
+        const currentCustomers = prev || [];
+        return [...currentCustomers.filter(c => c.id !== newCustomer.id), newCustomer];
+    });
+    setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null); 
+    setIsCustomerModalOpen(false); 
+  };
   const handleSaveProduct = async (newProduct: Product) => { await addProductsBatch([newProduct]); setIsProductModalOpen(false); };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -259,10 +267,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
     try {
       const isNew = editingQuotationId === null;
-      const idToSave = isNew ? (quotations.length > 0 ? Math.max(...quotations.map(q => q.id)) + 1 : 1) : editingQuotationId;
+      const safeQuotations = quotations || [];
+      const idToSave = isNew ? (safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) + 1 : 1) : editingQuotationId;
       let quotationToSave = { ...formData, id: idToSave };
       
-      await setQuotations(prev => isNew ? [...prev, quotationToSave] : prev.map(q => q.id === idToSave ? quotationToSave : q));
+      await setQuotations(prev => {
+          const currentQuotations = prev || [];
+          if (isNew) {
+              return [...currentQuotations, quotationToSave];
+          }
+          return currentQuotations.map(q => q.id === idToSave ? quotationToSave : q);
+      });
+
       if(isNew) {
           setEditingQuotationId(quotationToSave.id);
           const url = new URL(window.location.href); url.searchParams.set('id', String(quotationToSave.id)); window.history.pushState({}, '', url);
