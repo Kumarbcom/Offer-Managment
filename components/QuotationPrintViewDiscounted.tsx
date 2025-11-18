@@ -52,11 +52,14 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
     return (
         <div className="bg-white p-8 font-sans text-xs text-slate-800 print-wrapper">
             <div className="print-main-content">
-                <header className="text-center pb-4 border-b-2 border-slate-800">
-                    <h1 className="text-2xl font-bold text-slate-900 uppercase">Siddhi Kabel Corporation Pvt Ltd</h1>
-                    <p className="text-slate-600"># 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085.</p>
-                    <p className="text-slate-600">Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com</p>
-                    <p className="text-slate-600">CIN: U52100KA2008PTC047982 | GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29</p>
+                <header className="flex justify-between items-center pb-4 border-b-2 border-slate-800">
+                    <img src="assets/LOGO.jpg" alt="Siddhi Logo" className="w-32 h-auto"/>
+                    <div className="text-right">
+                        <h1 className="text-2xl font-bold text-slate-900 uppercase">Siddhi Kabel Corporation Pvt Ltd</h1>
+                        <p className="text-slate-600"># 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085.</p>
+                        <p className="text-slate-600">Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com</p>
+                        <p className="text-slate-600">CIN: U52100KA2008PTC047982 | GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29</p>
+                    </div>
                 </header>
 
                 <div className="text-center my-4">
@@ -152,11 +155,11 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                 </div>
             </div>
 
-            <footer className="mt-8 pt-4 flex justify-between items-end border-t print-footer">
+            <footer className="mt-4 pt-2 flex justify-between items-end border-t print-footer">
                 <p className="text-slate-500 text-xs">This is a computer-generated document.</p>
-                <div className="text-center text-sm">
+                <div className="text-center text-xs">
                     <p className="font-bold">For Siddhi Kable Corporation Pvt Ltd,</p>
-                    <div className="h-16 signature-space"></div>
+                    <div className="h-12 signature-space"></div>
                     <div className="border-t border-slate-400 pt-1">
                         <p>{quotation.preparedBy}</p>
                         <p>({preparerDesignation})</p>

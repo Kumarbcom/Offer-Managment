@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo } from 'react';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, DeliveryChallan } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
@@ -216,9 +218,12 @@ function App() {
             <header className="bg-white shadow-sm sticky top-0 z-20">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-wrap justify-between items-center py-3 gap-4">
-                        <div className="flex items-center space-x-4">
-                            <h1 className="text-xl md:text-2xl font-bold text-gray-800">Offer Management Pro</h1>
-                            <span className="text-sm text-gray-500 font-medium pt-1 hidden sm:inline">Welcome, {currentUser.name} ({currentUser.role})</span>
+                        <div className="flex items-center">
+                            <img src="assets/LOGO.jpg" alt="Siddhi Logo" className="h-12 w-auto mr-4"/>
+                            <div>
+                                <h1 className="text-xl md:text-2xl font-bold text-gray-800">Offer Management Pro</h1>
+                                <span className="text-sm text-gray-500 font-medium pt-1 hidden sm:inline">Welcome, {currentUser.name} ({currentUser.role})</span>
+                            </div>
                         </div>
                         <div className="flex items-center space-x-2">
                             <nav className="flex flex-wrap space-x-1">

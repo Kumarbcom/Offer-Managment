@@ -113,7 +113,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
                 if (status === 'CHANNEL_ERROR' || err) {
                     const subError = new Error(`Subscription error on channel ${channelName}: Real-time updates for '${tableName}' might not be working. Ensure replication is enabled for the '${supabaseTableName}' table in your Supabase project settings.`);
                     console.error(subError, err);
-                    setError(subError);
+                    // Do not set a fatal error for subscription issues. The app can still work with fetched data.
                 }
             });
 
