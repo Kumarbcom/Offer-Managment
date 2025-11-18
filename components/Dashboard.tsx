@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import type { Quotation, Customer, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomerStats, getCustomersByIds } from '../supabase';
+import { getCustomersByIds } from '../supabase';
 
 // Forward declaration for Chart.js from CDN
 declare const Chart: any;
@@ -24,13 +24,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
   const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
   const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
   const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
-  const [customerStats, setCustomerStats] = useState<{ totalCount: number } | null>(null);
   const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
     
-  useEffect(() => {
-    getCustomerStats().then(setCustomerStats).catch(console.error);
-  }, []);
-
   useEffect(() => {
     if (quotations) {
         const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
@@ -92,6 +87,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
       return quotationDate >= startDate && quotationDate <= today;
     });
   }, [quotations, selectedSalesPersonId, selectedDateRange, currentUser.role]);
+
+  const uniqueCustomerCount = useMemo(() => {
+    if (!filteredQuotations) return 0;
+    const customerIds = new Set(filteredQuotations.map(q => q.customerId).filter(id => id !== null));
+    return customerIds.size;
+  }, [filteredQuotations]);
 
 
   // Statistics Calculations using filtered data
@@ -391,8 +392,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
           <h3 className="text-base font-bold text-gray-800 mb-1">Overall At a Glance</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 text-center">
              <div className="bg-purple-100 p-1 rounded-md flex flex-col justify-center">
-                <div className="text-xl font-bold text-purple-800">{customerStats?.totalCount ?? '...'}</div>
-                <div className="text-[9px] font-semibold text-purple-600 uppercase">Total Customers</div>
+                <div className="text-xl font-bold text-purple-800">{uniqueCustomerCount}</div>
+                <div className="text-[9px] font-semibold text-purple-600 uppercase">Customers in Filter</div>
             </div>
             <div className="bg-indigo-100 p-1 rounded-md">
               <div className="text-xl font-bold text-indigo-800">{overallStats.total.count}</div>

@@ -141,6 +141,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       console.error('Failed to update comment:', error);
     }
   };
+
+  const handleStatusChange = async (id: number, newStatus: QuotationStatus) => {
+    try {
+      await setQuotations(prev => (prev || []).map(q => q.id === id ? { ...q, status: newStatus } : q))
+    } catch(error) {
+      alert(error instanceof Error ? error.message : 'Failed to update status.');
+      console.error('Failed to update status:', error);
+    }
+  };
   
   const handleExport = () => {
     if(!filteredAndSortedQuotations || filteredAndSortedQuotations.length === 0) { alert("No data to export."); return; }
@@ -327,9 +336,19 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         <td className="px-3 py-2 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-slate-600">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(q.status)}`}>
-                                {q.status}
-                            </span>
+                            <select
+                                value={q.status}
+                                onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none ${getStatusClass(q.status)}`}
+                                aria-label={`Change status for quotation ${q.id}`}
+                            >
+                                {QUOTATION_STATUSES.map(status => (
+                                    <option key={status} value={status} className="bg-white text-black font-semibold">
+                                        {status}
+                                    </option>
+                                ))}
+                            </select>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-slate-600 w-48">
                             <input 

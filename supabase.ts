@@ -110,6 +110,7 @@ interface CustomerQueryOptions {
     filters: {
         name?: string;
         city?: string;
+        salesPersonId?: number;
     };
 }
 
@@ -129,6 +130,9 @@ export async function getCustomersPaginated(options: CustomerQueryOptions) {
     }
     if (filters.city) {
         query = query.ilike('city', `%${filters.city}%`);
+    }
+    if (filters.salesPersonId) {
+        query = query.eq('salesPersonId', filters.salesPersonId);
     }
 
     const { data, error, count } = await query;

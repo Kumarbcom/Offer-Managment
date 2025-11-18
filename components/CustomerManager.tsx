@@ -43,6 +43,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
   
   const [searchTerm, setSearchTerm] = useState('');
   const [searchCity, setSearchCity] = useState('');
+  const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<'all' | number>('all');
   const [sortBy, setSortBy] = useState<SortByType>('id');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('asc');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -66,7 +67,11 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
             startAfterDoc: offset,
             sortBy,
             sortOrder,
-            filters: { name: debouncedSearchTerm, city: debouncedSearchCity }
+            filters: { 
+                name: debouncedSearchTerm, 
+                city: debouncedSearchCity,
+                salesPersonId: selectedSalesPersonId === 'all' ? undefined : selectedSalesPersonId
+            }
         });
         setDisplayedCustomers(result.customers);
         setTotalCount(result.count);
@@ -75,12 +80,12 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
     } finally {
         setIsLoading(false);
     }
-  }, [sortBy, sortOrder, debouncedSearchTerm, debouncedSearchCity]);
+  }, [sortBy, sortOrder, debouncedSearchTerm, debouncedSearchCity, selectedSalesPersonId]);
   
   useEffect(() => {
     setCurrentPage(1);
     fetchCustomers(1);
-  }, [debouncedSearchTerm, debouncedSearchCity, sortBy, sortOrder]);
+  }, [debouncedSearchTerm, debouncedSearchCity, sortBy, sortOrder, selectedSalesPersonId]);
 
   useEffect(() => {
     fetchCustomers(currentPage);
@@ -347,7 +352,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
          </div>
          {isUploading && ( <div className="my-2 p-2 text-center text-sm font-semibold text-indigo-700 bg-indigo-100 rounded-md" role="status">{uploadProgress}</div> )}
          
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
+         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>
                 <label htmlFor="searchTerm" className="block text-xs font-medium text-slate-600">Search by Name</label>
                 <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. ABC Corp" />
@@ -357,8 +362,22 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                 <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. Bangalore" />
             </div>
             <div>
+                <label htmlFor="salesPersonFilter" className="block text-xs font-medium text-slate-600">Filter by Sales Person</label>
+                <select 
+                    id="salesPersonFilter" 
+                    value={selectedSalesPersonId} 
+                    onChange={e => setSelectedSalesPersonId(e.target.value === 'all' ? 'all' : Number(e.target.value))} 
+                    className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+                >
+                    <option value="all">All Sales Persons</option>
+                    {salesPersons?.map(sp => (
+                        <option key={sp.id} value={sp.id}>{sp.name}</option>
+                    ))}
+                </select>
+            </div>
+            <div>
                 <label htmlFor="sortBy" className="block text-xs font-medium text-slate-600">Sort By</label>
-                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
+                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm bg-white">
                     <option value="id">ID</option>
                     <option value="name">Customer Name</option>
                     <option value="city">City</option>

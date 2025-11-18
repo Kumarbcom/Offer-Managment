@@ -327,7 +327,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (isReadOnly || !formData || !formData.customerId) {
+    if (!formData || !formData.customerId) {
         alert("Please select a customer."); return;
     }
     try {
@@ -481,7 +481,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 <div className="space-y-2">
                     <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
                     <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
-                    <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}>{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
+                    <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100">{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
                     {selectedCustomerObj && <fieldset className="border-2 border-slate-200 p-2 space-y-1 rounded-md"><legend className="font-bold text-slate-700 px-1 text-xs">Customer Discounts</legend>{Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => <div key={key} className="flex items-center text-xs"><label className="w-1/2 bg-slate-200 text-slate-800 p-1 text-center rounded-l-sm capitalize">{key.replace(/([A-Z])/g, ' $1')}</label><div className="w-1/2 p-1 bg-slate-100 rounded-r-sm font-medium">{value}%</div></div>)}</fieldset>}
                 </div>
             </div>
