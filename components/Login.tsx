@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { User } from '../types';
 
@@ -30,10 +29,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
       <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
-        <div className="flex justify-center mb-6">
-            <img src="assets/LOGO.jpg" alt="Siddhi Logo" className="h-20 w-auto"/>
-        </div>
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Login to Your Account</h2>
+        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Login</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700">
