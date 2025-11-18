@@ -68,6 +68,9 @@ const Icons = {
     Trash: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>,
 };
 
+// FIX: Moved FormField outside of the QuotationForm component.
+// Defining a component inside another causes it to be recreated on every render,
+// leading to loss of state and focus in child input elements.
 const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
     <div className={`flex items-stretch ${className}`}>
         <label className="w-1/3 bg-slate-100 text-slate-600 font-semibold text-sm flex items-center justify-center text-center p-2 rounded-l-md border border-r-0 border-slate-300">
@@ -230,6 +233,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       setSearchedProducts(results);
       setIsSearchingProducts(false);
     };
+    // FIX: Also run search when debounced term is empty to repopulate the initial list
     performSearch();
   }, [debouncedProductSearchTerm]);
   
@@ -244,6 +248,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }
       setIsSearchingCustomers(false);
     };
+    // FIX: Also run search when debounced term is empty to repopulate the initial list
     performSearch();
   }, [debouncedCustomerSearchTerm, selectedCustomerObj]);
 
@@ -341,7 +346,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
       if(isNew) {
           setEditingQuotationId(quotationToSave.id);
-          const url = new URL(window.location.href); url.searchParams.set('id', String(quotationToSave.id)); window.history.pushState({}, '', url);
+          const url = new URL(window.location.href);
+          if (!url.protocol.startsWith('blob')) {
+            url.searchParams.set('id', String(quotationToSave.id));
+            window.history.pushState({}, '', url);
+          }
       }
       alert("Quotation saved successfully!");
     } catch (error) {
@@ -350,7 +359,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   };
   
-  const handleNewButtonClick = () => { if (isReadOnly) return; setEditingQuotationId(null); const url = new URL(window.location.href); url.searchParams.delete('id'); window.history.pushState({}, '', url); }
+  const handleNewButtonClick = () => { if (isReadOnly) return; setEditingQuotationId(null); const url = new URL(window.location.href); if (!url.protocol.startsWith('blob')) { url.searchParams.delete('id'); window.history.pushState({}, '', url); } }
   
   const handleAddProductFromSearch = (product: Product, discount: number) => {
     setFormData(prev => {
@@ -382,7 +391,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       
       const newId = quotations[newIndex].id;
       setEditingQuotationId(newId);
-      const url = new URL(window.location.href); url.searchParams.set('id', String(newId)); window.history.pushState({}, '', url);
+      const url = new URL(window.location.href);
+      if (!url.protocol.startsWith('blob')) {
+        url.searchParams.set('id', String(newId));
+        window.history.pushState({}, '', url);
+      }
   };
   
   const totals = useMemo(() => {

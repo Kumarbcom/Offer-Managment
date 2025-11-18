@@ -65,19 +65,22 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                 <table className="w-full text-left text-[10px]">
                     <thead className="bg-slate-100 text-slate-600 uppercase">
                         <tr>
-                            <th className="p-1 font-semibold border">Sl. No</th>
-                            <th className="p-1 font-semibold border">Part No</th>
-                            <th className="p-1 font-semibold border">Description</th>
-                            <th className="p-1 font-semibold border text-center">MOQ</th>
-                            <th className="p-1 font-semibold border text-center">REQ</th>
-                            <th className="p-1 font-semibold border text-center">UOM</th>
-                            <th className="p-1 font-semibold border text-right">Unit Price (₹)</th>
+                            <th className="p-1 font-semibold border align-middle" rowSpan={2}>Sl. No</th>
+                            <th className="p-1 font-semibold border align-middle" rowSpan={2}>Part No</th>
+                            <th className="p-1 font-semibold border align-middle" rowSpan={2}>Description</th>
+                            <th className="p-1 font-semibold border align-middle text-center" rowSpan={2}>MOQ</th>
+                            <th className="p-1 font-semibold border align-middle text-center" rowSpan={2}>REQ</th>
+                            <th className="p-1 font-semibold border align-middle text-center" rowSpan={2}>UOM</th>
+                            <th className="p-1 font-semibold border align-middle text-right" rowSpan={2}>Unit Price (₹)</th>
+                            <th className="p-1 font-semibold border align-middle text-right" rowSpan={2}>Amount (₹)</th>
+                            <th className="p-1 font-semibold border align-middle text-center" rowSpan={2}>Stock Status</th>
+                            <th className="p-1 font-semibold border text-center" colSpan={3}>Air Freight Details</th>
+                            <th className="p-1 font-semibold border align-middle text-right" rowSpan={2}>Total (₹)</th>
+                        </tr>
+                        <tr>
+                            <th className="p-1 font-semibold border text-right">Per Unit (₹)</th>
                             <th className="p-1 font-semibold border text-right">Amount (₹)</th>
-                            <th className="p-1 font-semibold border text-center">Stock Status</th>
-                            <th className="p-1 font-semibold border text-right">Airfreight/Unit (₹)</th>
-                            <th className="p-1 font-semibold border text-right">Airfreight Amount (₹)</th>
                             <th className="p-1 font-semibold border text-center">Lead Time</th>
-                            <th className="p-1 font-semibold border text-right">Total (₹)</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
