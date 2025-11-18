@@ -56,8 +56,8 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
                 }
                 setState(data as T[]);
             } catch (e) {
-                console.error(`Supabase error on loading '${tableName}':`, e);
-                setError(e as Error);
+                console.warn(`Supabase error on loading '${tableName}', falling back to local data. Error:`, e);
+                // Do not set a fatal error. Let the app continue with fallback data.
                 if (useInMemoryFallback) {
                     setState(inMemoryData);
                 } else {
@@ -74,51 +74,58 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
         const channelName = `table-changes-${tableName}`;
         const primaryKey = tableName === 'users' ? 'name' : 'id';
 
-        const channel = supabase
-            .channel(channelName)
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: supabaseTableName },
-                (payload: any) => {
-                    const currentState = stateRef.current || [];
-                    switch (payload.eventType) {
-                        case 'INSERT': {
-                            const newRecord = payload.new as T;
-                            // Add if not already present (handles local echo)
-                            if (!currentState.some(item => (item as any)[primaryKey] === (newRecord as any)[primaryKey])) {
-                                setState(prev => [...(prev || []), newRecord]);
+        let channel: any;
+        try {
+            channel = supabase
+                .channel(channelName)
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: supabaseTableName },
+                    (payload: any) => {
+                        const currentState = stateRef.current || [];
+                        switch (payload.eventType) {
+                            case 'INSERT': {
+                                const newRecord = payload.new as T;
+                                // Add if not already present (handles local echo)
+                                if (!currentState.some(item => (item as any)[primaryKey] === (newRecord as any)[primaryKey])) {
+                                    setState(prev => [...(prev || []), newRecord]);
+                                }
+                                break;
                             }
-                            break;
-                        }
-                        case 'UPDATE': {
-                            const updatedRecord = payload.new as T;
-                            setState(prev => (prev || []).map(item =>
-                                (item as any)[primaryKey] === (updatedRecord as any)[primaryKey] ? updatedRecord : item
-                            ));
-                            break;
-                        }
-                        case 'DELETE': {
-                            const oldRecord = payload.old as Partial<T>;
-                            const recordIdToDelete = (oldRecord as any)[primaryKey];
-                            setState(prev => (prev || []).filter(item => (item as any)[primaryKey] !== recordIdToDelete));
-                            break;
+                            case 'UPDATE': {
+                                const updatedRecord = payload.new as T;
+                                setState(prev => (prev || []).map(item =>
+                                    (item as any)[primaryKey] === (updatedRecord as any)[primaryKey] ? updatedRecord : item
+                                ));
+                                break;
+                            }
+                            case 'DELETE': {
+                                const oldRecord = payload.old as Partial<T>;
+                                const recordIdToDelete = (oldRecord as any)[primaryKey];
+                                setState(prev => (prev || []).filter(item => (item as any)[primaryKey] !== recordIdToDelete));
+                                break;
+                            }
                         }
                     }
-                }
-            )
-            .subscribe((status: string, err?: Error) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log(`Successfully subscribed to real-time updates for ${tableName}`);
-                }
-                if (status === 'CHANNEL_ERROR' || err) {
-                    const subError = new Error(`Subscription error on channel ${channelName}: Real-time updates for '${tableName}' might not be working. Ensure replication is enabled for the '${supabaseTableName}' table in your Supabase project settings.`);
-                    console.error(subError, err);
-                    setError(subError);
-                }
-            });
+                )
+                .subscribe((status: string, err?: Error) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log(`Successfully subscribed to real-time updates for ${tableName}`);
+                    }
+                    if (status === 'CHANNEL_ERROR' || err) {
+                        const subError = new Error(`Subscription error on channel ${channelName}: Real-time updates for '${tableName}' might not be working. Ensure replication is enabled for the '${supabaseTableName}' table in your Supabase project settings.`);
+                        console.warn(subError, err);
+                        // Do not set a fatal error for subscription issues.
+                    }
+                });
+        } catch(subError) {
+             console.warn(`Failed to initialize subscription for ${tableName}. Real-time updates will be disabled. Error:`, subError);
+        }
 
         return () => {
-            supabase.removeChannel(channel);
+            if (channel) {
+                supabase.removeChannel(channel);
+            }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tableName]);
@@ -146,10 +153,14 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
         try {
             await set(tableName, previousState, newState);
         } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
             console.error(`Supabase error on saving '${tableName}':`, e);
-            setError(e as Error);
+            
+            // Revert optimistic update on failure.
             setState(previousState);
-            throw e;
+            
+            // Notify user of the failure but do not crash the app.
+            alert(`Failed to save changes for ${tableName}. Your changes have been reverted. Please check your connection and try again.\n\nError: ${errorMessage}`);
         }
     }, [tableName, isSupabaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
     

@@ -32,6 +32,8 @@ export const DeliveryChallanManager: React.FC<DeliveryChallanManagerProps> = ({
                 const newMap = new Map<number, string>();
                 customers.forEach(c => newMap.set(c.id, c.name));
                 setCustomerMap(newMap);
+            }).catch(error => {
+                console.error("DeliveryChallanManager: Failed to fetch customer names:", error);
             });
         }
     }

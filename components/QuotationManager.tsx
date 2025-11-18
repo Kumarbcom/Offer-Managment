@@ -61,6 +61,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             return newMap;
           });
           setIsLoadingCustomers(false);
+        }).catch(error => {
+            console.error("QuotationManager: Failed to fetch customer names:", error);
+            setIsLoadingCustomers(false);
         });
       } else {
         setIsLoadingCustomers(false);

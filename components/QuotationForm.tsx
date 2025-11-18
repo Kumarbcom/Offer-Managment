@@ -153,6 +153,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         searchCustomers('').then(results => {
             setSearchedCustomers(results);
             setIsSearchingCustomers(false);
+        }).catch(err => {
+            console.error(err);
+            setIsSearchingCustomers(false);
         });
     }
   }, [searchedCustomers.length, isSearchingCustomers]);
@@ -162,6 +165,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           setIsSearchingProducts(true);
           searchProducts('').then(results => {
               setSearchedProducts(results);
+              setIsSearchingProducts(false);
+          }).catch(err => {
+              console.error(err);
               setIsSearchingProducts(false);
           });
       }
@@ -176,7 +182,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     if (productIds.length > 0) {
         getProductsByIds(productIds).then(products => {
             setFetchedProducts(new Map(products.map(p => [p.id, p])));
-        });
+        }).catch(error => console.error("QuotationForm: Failed to fetch product details:", error));
     } else {
         setFetchedProducts(new Map());
     }
@@ -193,7 +199,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             return [customers[0], ...prev];
           });
         }
-      });
+      }).catch(error => console.error("QuotationForm: Failed to fetch selected customer:", error));
     } else if (!customerId) {
       setSelectedCustomerObj(null);
     }
