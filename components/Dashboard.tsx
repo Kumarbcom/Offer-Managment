@@ -19,6 +19,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
   const lineChartRef = useRef<HTMLCanvasElement>(null);
   const barChartRef = useRef<HTMLCanvasElement>(null);
   const funnelChartRef = useRef<HTMLCanvasElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<number | 'all'>('all');
   const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
@@ -164,6 +165,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
     return sortedQuotations.slice(0, 5);
   }, [filteredQuotations, quotationSortType]);
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const result = e.target?.result as string;
+            localStorage.setItem('company_logo', result);
+            alert('Logo updated successfully! It will now appear on print views.');
+        };
+        reader.readAsDataURL(file);
+    }
+  };
 
   // Line Chart Effect
   useEffect(() => {
@@ -387,6 +401,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             </div>
         </div>
         
+        {currentUser.role === 'Admin' && (
+            <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-700">Admin Configuration</span>
+                <div className="flex items-center gap-2">
+                    <input 
+                        type="file" 
+                        ref={logoInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleLogoUpload}
+                    />
+                    <button 
+                        onClick={() => logoInputRef.current?.click()}
+                        className="text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-md font-semibold transition-colors"
+                    >
+                        Upload Letterhead Logo
+                    </button>
+                </div>
+            </div>
+        )}
+
         {/* Overall Statistics */}
         <div className="bg-white p-2 rounded-lg shadow-md">
           <h3 className="text-base font-bold text-gray-800 mb-1">Overall At a Glance</h3>

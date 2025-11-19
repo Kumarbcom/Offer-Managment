@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
 
@@ -15,6 +15,8 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
 };
 
 export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson }) => {
+    const [logoUrl] = useState(() => localStorage.getItem('company_logo'));
+
     const totals = quotation.details.reduce((acc, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         const amount = unitPrice * item.moq;
@@ -31,11 +33,17 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
     return (
         <div className="bg-white p-8 font-sans text-xs text-slate-800 print-wrapper">
             <div className="print-main-content">
-                <header className="text-center pb-4 border-b-2 border-slate-800">
-                    <h1 className="text-2xl font-bold text-slate-900 uppercase">Siddhi Kabel Corporation Pvt Ltd</h1>
-                    <p className="text-slate-600"># 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085.</p>
-                    <p className="text-slate-600">Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com</p>
-                    <p className="text-slate-600">CIN: U52100KA2008PTC047982 | GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29</p>
+                <header className="flex items-start justify-between pb-4 border-b-2 border-slate-800 relative">
+                    <div className="w-32 h-24 flex items-center justify-center shrink-0">
+                         {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-xs text-slate-300 border border-dashed border-slate-200 p-2 text-center rounded">Logo Area</div>}
+                    </div>
+                    <div className="flex-1 text-center px-4">
+                        <h1 className="text-2xl font-bold text-slate-900 uppercase leading-tight">Siddhi Kabel Corporation Pvt Ltd</h1>
+                        <p className="text-slate-600 text-xs mt-1"># 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085.</p>
+                        <p className="text-slate-600 text-xs">Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com</p>
+                        <p className="text-slate-600 text-xs">CIN: U52100KA2008PTC047982 | GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29</p>
+                    </div>
+                    <div className="w-32 shrink-0"></div>
                 </header>
 
                 <div className="text-center my-4">
