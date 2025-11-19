@@ -57,7 +57,7 @@
       .print-wrapper {
         display: flex;
         flex-direction: column;
-        min-height: 240mm;
+        min-height: 220mm; /* Reduced to pull footer up */
       }
       .print-main-content {
         flex-grow: 1;
@@ -68,28 +68,29 @@
         page-break-before: auto !important;
       }
       #print-area h1 {
-        font-size: 15pt !important;
-        margin-bottom: 4px !important;
+        font-size: 12pt !important; /* Reduced for single line */
+        margin-bottom: 2px !important;
         white-space: nowrap !important;
+        overflow: hidden;
       }
       #print-area h2 {
-        font-size: 14pt !important;
-        margin-top: 10px !important;
-        margin-bottom: 10px !important;
+        font-size: 10pt !important;
+        margin-top: 5px !important;
+        margin-bottom: 5px !important;
       }
       #print-area p,
       #print-area ol {
-        line-height: 1.3 !important;
+        line-height: 1.2 !important;
       }
       #print-area table {
         font-size: 7pt !important;
       }
       #print-area th,
       #print-area td {
-        padding: 2px !important;
+        padding: 1px 2px !important;
       }
       #print-area .signature-space {
-        height: 30px !important;
+        height: 25px !important;
       }
     }
   </style>

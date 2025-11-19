@@ -12,6 +12,7 @@ import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { UserManager } from './components/UserManager';
 import { DeliveryChallanManager } from './components/DeliveryChallanManager';
 import { DeliveryChallanForm } from './components/DeliveryChallanForm';
+import { Reports } from './components/Reports';
 
 
 function App() {
@@ -31,52 +32,53 @@ function App() {
   const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
   const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
 
-  // Deep Linking Effect
+  // Handle Deep Linking for Quotations
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get('id');
-    if (id && !isNaN(Number(id))) {
-        setEditingQuotationId(Number(id));
-        setView('quotation-form');
+    if (!isLoadingData && currentUser) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const quotationId = urlParams.get('id');
+        if (quotationId) {
+            const id = parseInt(quotationId, 10);
+            if (!isNaN(id)) {
+                const exists = quotations?.some(q => q.id === id);
+                if (exists) {
+                    setEditingQuotationId(id);
+                    setView('quotation-form');
+                }
+            }
+        }
     }
-  }, []);
+  }, [isLoadingData, currentUser, quotations]);
 
   const handleLogin = (user: User) => {
-      setCurrentUser(user);
-      if (user.password === '123456') {
-        setIsPasswordChangeRequired(true);
-        setIsPasswordModalOpen(true);
-      }
+    setCurrentUser(user);
+    if (user.password === '123456') {
+      setIsPasswordChangeRequired(true);
+      setIsPasswordModalOpen(true);
+    }
   };
 
   const handleLogout = () => {
-      setCurrentUser(null);
-      setIsPasswordChangeRequired(false);
-      setView('dashboard');
+    setCurrentUser(null);
+    setView('dashboard');
+    setEditingQuotationId(null);
+    setQuotationFilter(null);
+    // Clean up URL on logout
+    const url = new URL(window.location.href);
+    if (!url.protocol.startsWith('blob')) {
+        url.searchParams.delete('id');
+        window.history.pushState({}, '', url);
+    }
   };
 
   const handlePasswordChange = async (newPassword: string) => {
-    if (!currentUser || !users) return;
-    const updatedUsers = users.map(u => u.name === currentUser.name ? { ...u, password: newPassword } : u);
-    await setUsers(updatedUsers);
-    setCurrentUser(prev => prev ? { ...prev, password: newPassword } : null);
-    setIsPasswordModalOpen(false);
-    setIsPasswordChangeRequired(false);
-    alert('Password updated successfully!');
-  };
-  
-  const handleSetView = (targetView: View) => {
-    if (targetView !== 'quotations' && targetView !== 'quotation-form') {
-      setQuotationFilter(null);
+    if (currentUser && users) {
+      const updatedUsers = users.map(u => u.name === currentUser.name ? { ...u, password: newPassword } : u);
+      await setUsers(updatedUsers);
+      setIsPasswordModalOpen(false);
+      setIsPasswordChangeRequired(false);
+      setCurrentUser({ ...currentUser, password: newPassword });
     }
-    if (targetView === 'quotations') {
-      setEditingQuotationId(null);
-      // Clear ID from URL when going back to list
-      const url = new URL(window.location.href);
-      url.searchParams.delete('id');
-      window.history.pushState({}, '', url);
-    }
-    setView(targetView);
   };
 
   const navigateToQuotationsWithFilter = (filter: { customerIds?: number[], status?: QuotationStatus }) => {
@@ -84,199 +86,99 @@ function App() {
     setView('quotations');
   };
   
-  const salesPersonUser = useMemo(() => {
-    if (currentUser?.role === 'Sales Person') {
-        return salesPersons?.find(sp => sp.name === currentUser.name);
+  const handleSetView = (newView: View) => {
+    setView(newView);
+    // Clear deep link parameter when navigating away manually
+    if (newView === 'quotations') {
+       const url = new URL(window.location.href);
+        if (!url.protocol.startsWith('blob')) {
+            url.searchParams.delete('id');
+            window.history.pushState({}, '', url);
+        }
     }
-    return null;
-  }, [currentUser, salesPersons]);
+  }
 
-  const visibleQuotations = useMemo(() => {
-    if (!quotations) return null;
-    if (currentUser?.role === 'Sales Person' && salesPersonUser) {
-        return quotations.filter(q => q.salesPersonId === salesPersonUser.id);
-    }
-    return quotations;
-  }, [currentUser, quotations, salesPersonUser]);
-  
-  const renderLoadingScreen = (message: string = 'Loading application data...') => (
-     <div className="flex items-center justify-center min-h-screen bg-slate-100">
-        <div className="text-center p-8 bg-white rounded-lg shadow-md">
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">Offer Management Pro</h1>
-            <p className="text-lg text-gray-600">{message}</p>
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="p-8 bg-white rounded-lg shadow-md">
+          <p className="text-lg text-gray-700 font-semibold">Loading Application Data...</p>
         </div>
-    </div>
-  );
+      </div>
+    );
+  }
 
-  const renderView = () => {
-    if (!currentUser) return null;
-    if (isLoadingData) return <div className="text-center p-8">Loading...</div>;
-
-    switch (view) {
-      case 'dashboard':
-        return <Dashboard 
-                  quotations={visibleQuotations} 
-                  salesPersons={salesPersons}
-                  currentUser={currentUser}
-                />;
-      case 'quotations':
-        return <QuotationManager 
-                  quotations={visibleQuotations} 
-                  salesPersons={salesPersons} 
-                  setEditingQuotationId={setEditingQuotationId}
-                  setView={setView}
-                  setQuotations={setQuotations}
-                  userRole={currentUser.role}
-                  quotationFilter={quotationFilter}
-                  onBackToCustomers={() => handleSetView('customers')}
-                />;
-      case 'quotation-form':
-        return <QuotationForm 
-                  salesPersons={salesPersons!}
-                  quotations={quotations!}
-                  setQuotations={setQuotations}
-                  setView={setView}
-                  editingQuotationId={editingQuotationId}
-                  setEditingQuotationId={setEditingQuotationId}
-                  userRole={currentUser.role}
-                />;
-      case 'customers':
-        return currentUser.role === 'Admin' ? <CustomerManager 
-            salesPersons={salesPersons}
-            quotations={quotations}
-            onFilterQuotations={navigateToQuotationsWithFilter}
-        /> : <div>Access Denied</div>;
-      case 'products':
-        return currentUser.role === 'Admin' ? <ProductManager /> : <div>Access Denied</div>;
-      case 'sales-persons':
-        return currentUser.role === 'Admin' ? <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} /> : <div>Access Denied</div>;
-      case 'users':
-        return currentUser.role === 'Admin' ? <UserManager users={users} setUsers={setUsers} currentUser={currentUser} /> : <div>Access Denied</div>;
-       case 'delivery-challans':
-        return <DeliveryChallanManager 
-                  deliveryChallans={deliveryChallans}
-                  setDeliveryChallans={setDeliveryChallans}
-                  quotations={quotations}
-                  setView={setView}
-                  setEditingChallanId={setEditingChallanId}
-                  userRole={currentUser.role}
-                />;
-      case 'delivery-challan-form':
-        return <DeliveryChallanForm 
-                  challans={deliveryChallans}
-                  setChallans={setDeliveryChallans}
-                  quotations={quotations}
-                  setView={setView}
-                  editingChallanId={editingChallanId}
-                  setEditingChallanId={setEditingChallanId}
-                  userRole={currentUser.role}
-                />
-      default:
-        return <div>Select a view</div>;
-    }
-  };
-  
-  const navItems: { name: string; view: View, roles: User['role'][] }[] = [
-      { name: 'Dashboard', view: 'dashboard', roles: ['Admin', 'Management', 'Sales Person', 'SCM', 'Viewer'] },
-      { name: 'Quotations', view: 'quotations', roles: ['Admin', 'Management', 'Sales Person', 'SCM', 'Viewer'] },
-      { name: 'Delivery Challans', view: 'delivery-challans', roles: ['Admin', 'SCM'] },
-      { name: 'Customers', view: 'customers', roles: ['Admin'] },
-      { name: 'Products', view: 'products', roles: ['Admin'] },
-      { name: 'Sales Persons', view: 'sales-persons', roles: ['Admin'] },
-      { name: 'Users', view: 'users', roles: ['Admin'] },
-  ];
+  if (dataError) {
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-red-50">
+        <div className="p-8 bg-white rounded-lg shadow-md border border-red-200">
+          <h2 className="text-xl text-red-700 font-bold mb-2">Error Loading Data</h2>
+          <p className="text-gray-700">{dataError.message}</p>
+          <button onClick={() => window.location.reload()} className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return <Login onLogin={handleLogin} users={users} isLoading={usersLoading} />;
   }
-  
-  const visibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));
-  
-  const mainAppClass = `min-h-screen bg-slate-100 font-sans ${isPasswordChangeRequired ? 'filter blur-sm pointer-events-none' : ''}`;
-
-  if (dataError) {
-      return renderLoadingScreen(`Error connecting to the database: ${dataError.message}`);
-  }
-
-  if (isLoadingData) {
-      return renderLoadingScreen();
-  }
-
-  if (view === 'quotation-form' || view === 'delivery-challan-form') {
-      return (
-        <>
-            <PasswordChangeModal
-                isOpen={isPasswordModalOpen}
-                onClose={() => !isPasswordChangeRequired && setIsPasswordModalOpen(false)}
-                onSave={handlePasswordChange}
-                isForced={isPasswordChangeRequired}
-            />
-            <div className={mainAppClass}>
-                {renderView()}
-            </div>
-        </>
-      )
-  }
 
   return (
-    <>
-        <PasswordChangeModal
-            isOpen={isPasswordModalOpen}
-            onClose={() => !isPasswordChangeRequired && setIsPasswordModalOpen(false)}
-            onSave={handlePasswordChange}
-            isForced={isPasswordChangeRequired}
-        />
-        <div className={mainAppClass}>
-            <header className="bg-white shadow-sm sticky top-0 z-20">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-wrap justify-between items-center py-3 gap-4">
-                        <div className="flex items-center space-x-4">
-                            <h1 className="text-xl md:text-2xl font-bold text-gray-800">Offer Management Pro</h1>
-                            <span className="text-sm text-gray-500 font-medium pt-1 hidden sm:inline">Welcome, {currentUser.name} ({currentUser.role})</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <nav className="flex flex-wrap space-x-1">
-                                {visibleNavItems.map(item => (
-                                    <button
-                                        key={item.view}
-                                        onClick={() => handleSetView(item.view)}
-                                        className={`px-3 py-2 text-sm font-semibold rounded-md transition duration-300 ${
-                                            view === item.view
-                                            ? 'bg-blue-600 text-white shadow'
-                                            : 'text-slate-600 hover:bg-slate-200'
-                                        }`}
-                                    >
-                                        {item.name}
-                                    </button>
-                                ))}
-                            </nav>
-                             <button
-                                onClick={() => setIsPasswordModalOpen(true)}
-                                className="p-2 text-sm font-semibold rounded-md transition duration-300 text-slate-600 hover:bg-slate-200"
-                                title="Change Password"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v-2l1-1 1-1 1.257-1.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-                                </svg>
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className="p-2 text-sm font-semibold rounded-md transition duration-300 text-red-600 hover:bg-red-100"
-                                title="Logout"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-            <main className="container mx-auto p-4 md:p-8">
-                {renderView()}
-            </main>
+    <div className="min-h-screen flex flex-col bg-gray-100">
+      <nav className="bg-slate-800 text-white shadow-lg no-print">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex justify-between h-14">
+            <div className="flex items-center space-x-4 overflow-x-auto no-scrollbar">
+              <span className="font-bold text-lg tracking-wide mr-2 whitespace-nowrap">Offer Management</span>
+              <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Dashboard</button>
+              <button onClick={() => handleSetView('customers')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'customers' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Customers</button>
+              <button onClick={() => handleSetView('products')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'products' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Products</button>
+              <button onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'quotations' || view === 'quotation-form' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Quotations</button>
+              <button onClick={() => handleSetView('delivery-challans')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'delivery-challans' || view === 'delivery-challan-form' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Challans</button>
+              {(currentUser.role === 'Admin' || currentUser.role === 'Sales Person' || currentUser.role === 'Management') && (
+                <button onClick={() => handleSetView('reports')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'reports' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Reports</button>
+              )}
+              {currentUser.role === 'Admin' && (
+                <>
+                    <button onClick={() => handleSetView('sales-persons')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'sales-persons' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Sales Persons</button>
+                    <button onClick={() => handleSetView('users')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'users' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Users</button>
+                </>
+              )}
+            </div>
+            <div className="flex items-center space-x-3 ml-4">
+              <span className="text-sm text-slate-300 hidden sm:inline">Hello, {currentUser.name}</span>
+              <button onClick={() => setIsPasswordModalOpen(true)} className="text-slate-400 hover:text-white" title="Change Password">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                 </svg>
+              </button>
+              <button onClick={handleLogout} className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Logout</button>
+            </div>
+          </div>
         </div>
-    </>
+      </nav>
+
+      <main className="flex-grow max-w-7xl w-full mx-auto py-6 sm:px-6 lg:px-8">
+        {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
+        {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter}/>}
+        {view === 'products' && <ProductManager />}
+        {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
+        {view === 'quotations' && <QuotationManager quotations={quotations} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} userRole={currentUser.role} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
+        {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} userRole={currentUser.role} />}
+        {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
+        {view === 'delivery-challans' && <DeliveryChallanManager deliveryChallans={deliveryChallans} setDeliveryChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
+        {view === 'delivery-challan-form' && <DeliveryChallanForm challans={deliveryChallans} setChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} editingChallanId={editingChallanId} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
+        {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
+      </main>
+
+      <PasswordChangeModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        onSave={handlePasswordChange}
+        isForced={isPasswordChangeRequired}
+      />
+    </div>
   );
 }
 
