@@ -31,7 +31,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
     return (
-        <div className="bg-white p-8 font-sans text-xs text-slate-800 print-wrapper">
+        <div className="bg-white p-6 font-sans text-xs text-slate-800 print-wrapper">
             <div className="print-main-content">
                 <header className="flex items-center justify-between pb-2 border-b-2 border-slate-800 relative">
                     <div className="w-20 h-16 flex items-center justify-center shrink-0">
@@ -46,11 +46,11 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                     <div className="w-20 shrink-0"></div>
                 </header>
 
-                <div className="text-center my-4">
-                    <h2 className="text-2xl font-bold text-slate-800 uppercase tracking-wider underline">QUOTATION</h2>
+                <div className="text-center my-2">
+                    <h2 className="text-xl font-bold text-slate-800 uppercase tracking-wider underline">QUOTATION</h2>
                 </div>
 
-                <section className="grid grid-cols-2 gap-4 my-4">
+                <section className="grid grid-cols-2 gap-4 my-2">
                     <div className="space-y-0.5 border p-2 rounded-md">
                         <p className="font-bold text-slate-600">BILLED TO:</p>
                         <p className="font-bold text-base text-slate-900">{customer.name}</p>
@@ -65,12 +65,12 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                     </div>
                 </section>
                 
-                <div className="my-4 text-sm">
+                <div className="my-2 text-sm">
                     <p className="font-semibold mb-1">Dear Sir / Madam,</p>
                     <p>Please find below our favourable offer for your requirement for {quotation.productsBrand} Products.</p>
                 </div>
 
-                <table className="w-full text-left text-[10px]">
+                <table className="w-full text-left text-[9px]">
                     <thead className="bg-slate-100 text-slate-600 uppercase">
                         <tr>
                             <th className="p-1 font-semibold border align-middle" rowSpan={2}>Sl. No</th>
@@ -136,9 +136,9 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                     </div>
                 </section>
 
-                <section className="border border-slate-200 p-2 rounded-md mt-4 print-no-break">
-                    <h3 className="font-bold text-slate-800 mb-1 text-sm">Terms & Conditions:</h3>
-                     <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
+                <section className="border border-slate-200 p-2 rounded-md mt-2 print-no-break">
+                    <h3 className="font-bold text-slate-800 mb-1 text-xs">Terms & Conditions:</h3>
+                     <ol className="list-decimal list-inside space-y-0.5 text-slate-700 text-[10px]">
                         <li><span className="font-semibold">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
                         <li><span className="font-semibold">Goods Service Tax:</span> GST 18% Or As Applicable at the Time of Delivery.</li>
                         <li><span className="font-semibold">Delivery:</span> As Mentioned Above, Subject to Prior Sales.</li>
@@ -149,13 +149,13 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                     </ol>
                 </section>
 
-                <div className="mt-4 text-sm">
+                <div className="mt-2 text-sm">
                     <p>Hope the above mentioned details are in line with your requirement, for any further clarification please feel free and contact us.</p>
                     <p className="mt-2">Thanking you,</p>
                 </div>
             </div>
 
-            <footer className="mt-8 pt-4 flex justify-between items-end border-t print-footer">
+            <footer className="mt-4 pt-2 flex justify-between items-end border-t print-footer">
                 <p className="text-slate-500 text-xs">This is a computer-generated document.</p>
                 <div className="text-center text-sm">
                     <p className="font-bold">For Siddhi Kable Corporation Pvt Ltd,</p>
