@@ -54,17 +54,17 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
     return (
         <div className="bg-white p-8 font-sans text-xs text-slate-800 print-wrapper">
             <div className="print-main-content">
-                <header className="flex items-start justify-between pb-4 border-b-2 border-slate-800 relative">
-                    <div className="w-24 h-20 flex items-center justify-center shrink-0">
-                         {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-xs text-slate-300 border border-dashed border-slate-200 p-2 text-center rounded">Logo Area</div>}
+                <header className="flex items-center justify-between pb-2 border-b-2 border-slate-800 relative">
+                    <div className="w-20 h-16 flex items-center justify-center shrink-0">
+                         {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[10px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo (Upload in Dashboard)</div>}
                     </div>
-                    <div className="flex-1 text-center px-4">
-                        <h1 className="text-lg font-bold text-slate-900 uppercase leading-tight">Siddhi Kabel Corporation Pvt Ltd</h1>
+                    <div className="flex-1 text-center px-2">
+                        <h1 className="text-xl font-bold text-slate-900 uppercase leading-tight whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</h1>
                         <p className="text-slate-600 text-xs mt-1"># 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085.</p>
                         <p className="text-slate-600 text-xs">Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com</p>
                         <p className="text-slate-600 text-xs">CIN: U52100KA2008PTC047982 | GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29</p>
                     </div>
-                    <div className="w-24 shrink-0"></div>
+                    <div className="w-20 shrink-0"></div>
                 </header>
 
                 <div className="text-center my-4">
