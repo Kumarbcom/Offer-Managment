@@ -35,12 +35,13 @@
         top: 0 !important;
         width: 100% !important;
         height: auto !important;
-        font-size: 9pt !important;
+        font-size: 8pt !important;
         color: black !important;
+        line-height: 1.1 !important;
       }
       @page {
         size: A4;
-        margin: 10mm;
+        margin: 5mm;
       }
       body {
         margin: 0 !important;
@@ -56,39 +57,41 @@
       .print-wrapper {
         display: flex;
         flex-direction: column;
-        min-height: 250mm;
+        min-height: 285mm;
       }
       .print-main-content {
         flex-grow: 1;
       }
       .print-footer {
         margin-top: auto;
-        padding-top: 10px;
+        padding-top: 5px;
         page-break-before: auto !important;
+        border-top: 1px solid #cbd5e1;
       }
       #print-area h1 {
-        font-size: 16pt !important;
-        margin-bottom: 4px !important;
+        font-size: 15pt !important;
+        margin-bottom: 2px !important;
         white-space: nowrap !important;
+        line-height: 1.2 !important;
       }
       #print-area h2 {
-        font-size: 14pt !important;
-        margin-top: 10px !important;
-        margin-bottom: 10px !important;
+        font-size: 12pt !important;
+        margin-top: 5px !important;
+        margin-bottom: 5px !important;
       }
       #print-area p,
       #print-area ol {
-        line-height: 1.3 !important;
+        line-height: 1.2 !important;
       }
       #print-area table {
-        font-size: 8pt !important;
+        font-size: 7pt !important;
       }
       #print-area th,
       #print-area td {
-        padding: 3px !important;
+        padding: 2px !important;
       }
       #print-area .signature-space {
-        height: 40px !important;
+        height: 30px !important;
       }
     }
   </style>
