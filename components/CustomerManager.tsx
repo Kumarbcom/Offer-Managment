@@ -10,7 +10,7 @@ declare var XLSX: any;
 interface CustomerManagerProps {
   salesPersons: SalesPerson[] | null;
   quotations: Quotation[] | null;
-  onFilterQuotations: (filter: { customerIds: number[], status?: QuotationStatus }) => void;
+  onFilterQuotations: (filter: { customerIds?: number[], status?: QuotationStatus }) => void;
 }
 
 type SortByType = 'id' | 'name' | 'city' | 'pincode' | 'salesPerson';
@@ -97,7 +97,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
     return salesPersons.find(sp => sp.id === id)?.name || 'Unknown';
   };
 
-  const quotationStatsForVisibleCustomers = useMemo(() => {
+  const allQuotationStats = useMemo(() => {
     const initialStats = {
       total: { count: 0, value: 0 },
       byStatus: QUOTATION_STATUSES.reduce((acc, status) => {
@@ -106,12 +106,9 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
       }, {} as Record<QuotationStatus, { count: number; value: number }>)
     };
 
-    if (!quotations || displayedCustomers.length === 0) return initialStats;
+    if (!quotations) return initialStats;
 
-    const customerIdsInView = new Set(displayedCustomers.map(c => c.id));
-    const relevantQuotations = quotations.filter(q => q.customerId !== null && customerIdsInView.has(q.customerId));
-
-    return relevantQuotations.reduce((stats, q) => {
+    return quotations.reduce((stats, q) => {
       const value = calculateTotalAmount(q.details);
       stats.total.count++;
       stats.total.value += value;
@@ -121,7 +118,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
       }
       return stats;
     }, initialStats);
-  }, [displayedCustomers, quotations]);
+  }, [quotations]);
 
   const handleAddNew = () => {
     setCustomerToEdit(null);
@@ -271,8 +268,6 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
       reader.readAsArrayBuffer(file);
   };
   
-  const customerIdsInView = displayedCustomers.map(c => c.id);
-
   if (salesPersons === null || quotations === null) {
     return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading data...</div>;
   }
@@ -281,27 +276,27 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
     <div className="space-y-6">
       <div className="bg-slate-50 p-2 rounded-lg shadow-sm border border-slate-200">
         <h3 className="text-base font-semibold text-slate-800 mb-1">
-            Quotation Summary for {customerIdsInView.length} Customer{customerIdsInView.length !== 1 ? 's' : ''} on this page
+            Overall Quotation Summary
         </h3>
         <div className="flex flex-wrap gap-2 items-center">
             <div
-                onClick={() => onFilterQuotations({ customerIds: customerIdsInView })}
+                onClick={() => onFilterQuotations({ })}
                 className="cursor-pointer text-blue-700 hover:text-blue-900 transition-colors text-sm font-semibold p-1 rounded-md hover:bg-blue-100/50"
-                title={`View all ${quotationStatsForVisibleCustomers.total.count} quotations`}
+                title={`View all ${allQuotationStats.total.count} quotations`}
             >
                 <span>Total Enquiries: </span>
-                <span className="font-bold">{quotationStatsForVisibleCustomers.total.count}</span>
+                <span className="font-bold">{allQuotationStats.total.count}</span>
                 <span className="text-slate-400 mx-1">|</span>
-                <span className="font-bold">{formatCurrency(quotationStatsForVisibleCustomers.total.value)}</span>
+                <span className="font-bold">{formatCurrency(allQuotationStats.total.value)}</span>
             </div>
             {QUOTATION_STATUSES.map(status => {
-                const stats = quotationStatsForVisibleCustomers.byStatus[status];
+                const stats = allQuotationStats.byStatus[status];
                 if (stats.count === 0) return null;
                 const colors = statusColors[status];
                 return (
                     <div
                         key={status}
-                        onClick={() => onFilterQuotations({ customerIds: customerIdsInView, status: status })}
+                        onClick={() => onFilterQuotations({ status: status })}
                         className={`cursor-pointer ${colors.text} hover:bg-opacity-80 transition-opacity text-sm font-semibold p-1 rounded-md hover:bg-current/10`}
                         title={`View ${stats.count} '${status}' quotations`}
                     >

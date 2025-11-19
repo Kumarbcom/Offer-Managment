@@ -354,6 +354,34 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             url.searchParams.set('id', String(quotationToSave.id));
             window.history.pushState({}, '', url);
           }
+
+          // WhatsApp Notification Logic
+          const salesPerson = salesPersons.find(sp => sp.id === formData.salesPersonId);
+          if (salesPerson && salesPerson.mobile) {
+             if (window.confirm(`Quotation saved. Do you want to notify ${salesPerson.name} on WhatsApp?`)) {
+                 const totalValue = formData.details.reduce((sum, item) => {
+                    const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+                    return sum + (unitPrice * item.moq);
+                 }, 0);
+
+                 const appUrl = window.location.origin + window.location.pathname + `?id=${idToSave}`;
+                 
+                 const message = `*New Quotation Generated*\n` +
+                                `QTN No: ${idToSave}\n` +
+                                `Date: ${formData.quotationDate}\n` +
+                                `Customer: ${selectedCustomerObj?.name || 'N/A'}\n` +
+                                `Contact: ${formData.contactPerson} (${formData.contactNumber})\n` +
+                                `Value: ₹${totalValue.toLocaleString('en-IN', {maximumFractionDigits: 0})}\n` +
+                                `Link: ${appUrl}`;
+                
+                 let phone = salesPerson.mobile.replace(/\D/g, '');
+                 // Assuming Indian numbers if not starting with country code
+                 if (phone.length === 10) phone = '91' + phone;
+
+                 const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                 window.open(whatsappUrl, '_blank');
+             }
+          }
       }
       alert("Quotation saved successfully!");
     } catch (error) {

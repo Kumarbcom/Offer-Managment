@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, DeliveryChallan } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { SalesPersonManager } from './components/SalesPersonManager';
@@ -31,6 +31,16 @@ function App() {
   const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
   const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
 
+  // Deep Linking Effect
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+    if (id && !isNaN(Number(id))) {
+        setEditingQuotationId(Number(id));
+        setView('quotation-form');
+    }
+  }, []);
+
   const handleLogin = (user: User) => {
       setCurrentUser(user);
       if (user.password === '123456') {
@@ -61,11 +71,15 @@ function App() {
     }
     if (targetView === 'quotations') {
       setEditingQuotationId(null);
+      // Clear ID from URL when going back to list
+      const url = new URL(window.location.href);
+      url.searchParams.delete('id');
+      window.history.pushState({}, '', url);
     }
     setView(targetView);
   };
 
-  const navigateToQuotationsWithFilter = (filter: { customerIds: number[], status?: QuotationStatus }) => {
+  const navigateToQuotationsWithFilter = (filter: { customerIds?: number[], status?: QuotationStatus }) => {
     setQuotationFilter(filter);
     setView('quotations');
   };
