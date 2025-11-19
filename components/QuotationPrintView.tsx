@@ -51,46 +51,46 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
     return (
-        <div className="bg-white p-2 font-sans text-[9px] text-slate-800 print-wrapper">
+        <div className="bg-white p-2 font-sans text-xs text-slate-800 print-wrapper">
             <div className="print-main-content">
-                <header className="flex items-center justify-between pb-1 border-b-2 border-slate-800 relative">
+                <header className="flex items-center justify-between pb-2 border-b-2 border-slate-800 relative">
                     <div className="w-20 h-12 flex items-center justify-center shrink-0">
-                         {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[8px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo</div>}
+                         {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[10px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo (Upload in Dashboard)</div>}
                     </div>
                     <div className="flex-1 text-center px-2">
                         <h1 className="text-xl font-bold text-slate-900 uppercase leading-tight whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</h1>
-                        <p className="text-slate-600 text-[9px] mt-0.5"># 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085.</p>
-                        <p className="text-slate-600 text-[9px]">Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com</p>
-                        <p className="text-slate-600 text-[9px]">CIN: U52100KA2008PTC047982 | GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29</p>
+                        <p className="text-slate-600 text-xs mt-1"># 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085.</p>
+                        <p className="text-slate-600 text-xs">Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com</p>
+                        <p className="text-slate-600 text-xs">CIN: U52100KA2008PTC047982 | GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29</p>
                     </div>
                     <div className="w-20 shrink-0"></div>
                 </header>
 
-                <div className="text-center my-1">
+                <div className="text-center my-2">
                     <h2 className="text-lg font-bold text-slate-800 uppercase tracking-wider underline">QUOTATION</h2>
                 </div>
 
-                <section className="grid grid-cols-2 gap-2 my-1 text-[9px]">
-                    <div className="space-y-0.5 border p-1 rounded-md">
+                <section className="grid grid-cols-2 gap-4 my-2">
+                    <div className="space-y-0.5 border p-2 rounded-md">
                         <p className="font-bold text-slate-600">BILLED TO:</p>
-                        <p className="font-bold text-[10px] text-slate-900">{customer.name}</p>
+                        <p className="font-bold text-base text-slate-900">{customer.name}</p>
                         <p>{customer.address}</p>
                         <p>{customer.city} - {customer.pincode}</p>
                         <p><span className="font-semibold">Attn:</span> {quotation.contactPerson}</p>
                     </div>
-                    <div className="text-right space-y-0.5 border p-1 rounded-md">
+                    <div className="text-right space-y-0.5 border p-2 rounded-md">
                         <p><span className="font-semibold">Quotation No:</span> SKC/QTN/{quotation.id}</p>
                         <p><span className="font-semibold">Date:</span> {new Date(quotation.quotationDate).toLocaleDateString('en-GB')}</p>
                         <p><span className="font-semibold">Enquiry Date:</span> {new Date(quotation.enquiryDate).toLocaleDateString('en-GB')}</p>
                     </div>
                 </section>
                 
-                <div className="my-1 text-[9px]">
-                    <p className="font-semibold mb-0.5">Dear Sir / Madam,</p>
+                <div className="my-2 text-sm">
+                    <p className="font-semibold mb-1">Dear Sir / Madam,</p>
                     <p>Please find below our favourable offer for your requirement for {quotation.productsBrand} Products.</p>
                 </div>
 
-                <table className="w-full text-left text-[8px]">
+                <table className="w-full text-left text-[10px]">
                     <thead className="bg-slate-100 text-slate-600 uppercase">
                         <tr>
                             <th className="p-1 font-semibold border">Sl. No</th>
@@ -125,20 +125,20 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                     </tbody>
                 </table>
                 
-                <section className="flex justify-end mt-1">
+                <section className="flex justify-end mt-2">
                     <div className="w-1/3">
-                        <div className="flex justify-between p-1 bg-slate-100 rounded-md">
-                            <span className="font-bold text-[9px]">Total Amount</span>
-                            <span className="font-bold text-[9px]">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <div className="flex justify-between p-2 bg-slate-100 rounded-md">
+                            <span className="font-bold text-sm">Total Amount</span>
+                            <span className="font-bold text-sm">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
                 </section>
 
-                <p className="font-semibold my-1 text-[9px]">Amount in Words: {numberToWords(totalAmount)}</p>
+                <p className="font-semibold my-2 text-sm">Amount in Words: {numberToWords(totalAmount)}</p>
 
-                <section className="border border-slate-200 p-1 rounded-md mt-1 print-no-break">
-                    <h3 className="font-bold text-slate-800 mb-0.5 text-[9px]">Terms & Conditions:</h3>
-                    <ol className="list-decimal list-inside space-y-0 text-slate-700 text-[8px]">
+                <section className="border border-slate-200 p-2 rounded-md mt-2 print-no-break">
+                    <h3 className="font-bold text-slate-800 mb-1 text-sm">Terms & Conditions:</h3>
+                    <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
                         <li><span className="font-semibold">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
                         <li><span className="font-semibold">Goods Service Tax:</span> GST 18% Or As Applicable at the Time of Delivery.</li>
                         <li><span className="font-semibold">Delivery:</span> As Mentioned Above, Subject to Prior Sales.</li>
@@ -149,18 +149,18 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                     </ol>
                 </section>
                 
-                <div className="mt-1 text-[9px]">
+                <div className="mt-2 text-sm">
                     <p>Hope the above mentioned details are in line with your requirement, for any further clarification please feel free and contact us.</p>
                     <p className="mt-1">Thanking you,</p>
                 </div>
             </div>
 
-            <footer className="mt-auto pt-1 flex justify-between items-end print-footer">
-                <p className="text-slate-500 text-[8px]">This is a computer-generated document.</p>
-                <div className="text-center text-[9px]">
+            <footer className="mt-2 pt-2 flex justify-between items-end border-t print-footer">
+                <p className="text-slate-500 text-xs">This is a computer-generated document.</p>
+                <div className="text-center text-sm">
                     <p className="font-bold">For Siddhi Kable Corporation Pvt Ltd,</p>
-                    <div className="h-10 signature-space"></div>
-                    <div className="border-t border-slate-400 pt-0.5">
+                    <div className="h-16 signature-space"></div>
+                    <div className="border-t border-slate-400 pt-1">
                         <p>{quotation.preparedBy}</p>
                         <p>({preparerDesignation})</p>
                     </div>
