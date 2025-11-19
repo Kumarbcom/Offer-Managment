@@ -3,8 +3,9 @@ import type { Quotation, Customer, SalesPerson, QuotationStatus, User } from '..
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
 
-// Forward declaration for Chart.js from CDN
+// Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
+declare const ChartDataLabels: any;
 
 interface DashboardProps {
   quotations: Quotation[] | null;
@@ -13,6 +14,12 @@ interface DashboardProps {
 }
 
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatCurrencyCompact = (value: number) => {
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+    if (value >= 1000) return `₹${(value / 1000).toFixed(1)}k`;
+    return `₹${Math.round(value)}`;
+}
 
 export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, currentUser }) => {
     
@@ -154,7 +161,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     let sortedQuotations = [...filteredQuotations];
 
     if (quotationSortType === 'latest') {
-        sortedQuotations.sort((a, b) => new Date(b.quotationDate).getTime() - new Date(a.quotationDate).getTime());
+        // FIX: Added tie-breaker using ID to ensure newly created quotations (on same date) appear first
+        sortedQuotations.sort((a, b) => {
+            const dateDiff = new Date(b.quotationDate).getTime() - new Date(a.quotationDate).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            return b.id - a.id;
+        });
     } else { // 'highestValue'
         sortedQuotations.sort((a, b) => {
             const valueA = calculateTotalAmount(a.details);
@@ -195,17 +207,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const ctx = lineChartRef.current.getContext('2d');
     const chartInstance = new Chart(ctx, {
         type: 'line',
+        plugins: [typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : {}],
         data: {
             labels: sortedDates,
             datasets: [{
                 label: 'Quotation Value',
                 data: chartData,
                 borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.5)',
                 tension: 0.1,
-                fill: false
+                fill: false,
+                pointRadius: 5,
+                pointHoverRadius: 7
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            layout: { padding: { top: 20 } },
+            plugins: {
+                datalabels: {
+                    align: 'top',
+                    anchor: 'end',
+                    color: '#666',
+                    font: { size: 10, weight: 'bold' },
+                    formatter: (value: number) => formatCurrencyCompact(value)
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context: any) {
+                            return `Value: ${formatCurrency(context.parsed.y)}`;
+                        }
+                    }
+                }
+            }
+        }
     });
     return () => chartInstance.destroy();
   }, [filteredQuotations]);
@@ -243,11 +279,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const ctx = barChartRef.current.getContext('2d');
     const chartInstance = new Chart(ctx, {
         type: 'bar',
+        plugins: [typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : {}],
         data: { labels: sortedDates, datasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: { padding: { top: 20 } },
             plugins: {
+                datalabels: {
+                    display: (context: any) => {
+                        return context.dataset.data[context.dataIndex] > 0;
+                    },
+                    color: '#fff',
+                    font: { size: 9, weight: 'bold' },
+                    formatter: (value: number) => {
+                         if (barChartMode === 'value') return formatCurrencyCompact(value);
+                         return value;
+                    }
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context: any) {
@@ -275,10 +324,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     ticks: {
                         callback: function(value: any) {
                             if (barChartMode === 'value') {
-                                if (Number(value) >= 10000000) return `₹${(Number(value) / 10000000).toFixed(2)}Cr`;
-                                if (Number(value) >= 100000) return `₹${(Number(value) / 100000).toFixed(2)}L`;
-                                if (Number(value) >= 1000) return `₹${(Number(value) / 1000).toFixed(2)}k`;
-                                return `₹${value}`;
+                                return formatCurrencyCompact(Number(value));
                             }
                             return Number.isInteger(value) ? value : null;
                         }
@@ -303,7 +349,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         .filter(item => item.count > 0)
         .sort((a, b) => b.count - a.count);
 
-      const funnelLabels = funnelCounts.map(item => `${item.status} (${item.count})`);
+      const funnelLabels = funnelCounts.map(item => `${item.status}`);
       const funnelData = funnelCounts.map(item => item.count);
       const maxDataValue = funnelData.length > 0 ? funnelData[0] : 0;
 
@@ -321,12 +367,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
       const ctx = funnelChartRef.current.getContext('2d');
       const chartInstance = new Chart(ctx, {
         type: 'bar',
+        plugins: [typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : {}],
         data: {
           labels: funnelLabels,
           datasets: [
-            { data: spacerData, backgroundColor: 'rgba(0,0,0,0)', stack: 'funnel' },
-            { data: funnelData, backgroundColor: funnelColors, stack: 'funnel' },
-            { data: spacerData, backgroundColor: 'rgba(0,0,0,0)', stack: 'funnel' }
+            { data: spacerData, backgroundColor: 'rgba(0,0,0,0)', stack: 'funnel', datalabels: { display: false } },
+            { 
+                data: funnelData, 
+                backgroundColor: funnelColors, 
+                stack: 'funnel',
+                datalabels: {
+                    color: '#000',
+                    anchor: 'center',
+                    align: 'center',
+                    font: { weight: 'bold' }
+                }
+            },
+            { data: spacerData, backgroundColor: 'rgba(0,0,0,0)', stack: 'funnel', datalabels: { display: false } }
           ]
         },
         options: {
@@ -343,7 +400,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
               stacked: true,
               beginAtZero: true,
               grid: { display: false },
-              ticks: { font: { size: 12, weight: 'bold' } }
+              ticks: { font: { size: 11, weight: 'bold' } }
             }
           }
         }
@@ -485,27 +542,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         <td className="px-2 py-1 whitespace-nowrap text-xs font-medium text-gray-900">{stat.name}</td>
                         <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
                             <div className="font-semibold text-gray-800">{stat.total.count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrency(stat.total.value)}</div>
+                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat.total.value)}</div>
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
                             <div className="text-gray-800">{stat['Open'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrency(stat['Open'].value)}</div>
+                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['Open'].value)}</div>
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
                             <div className="text-gray-800">{stat['PO received'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrency(stat['PO received'].value)}</div>
+                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['PO received'].value)}</div>
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
                             <div className="text-gray-800">{stat['Partial PO Received'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrency(stat['Partial PO Received'].value)}</div>
+                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['Partial PO Received'].value)}</div>
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
                             <div className="text-gray-800">{stat['Lost'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrency(stat['Lost'].value)}</div>
+                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['Lost'].value)}</div>
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
                             <div className="text-gray-800">{stat['Expired'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrency(stat['Expired'].value)}</div>
+                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['Expired'].value)}</div>
                         </td>
                     </tr>
                     ))}

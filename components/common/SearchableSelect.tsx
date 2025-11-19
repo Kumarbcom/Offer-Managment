@@ -75,14 +75,14 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     <div className="relative w-full h-full" ref={wrapperRef}>
       <input
         type="text"
-        className="w-full h-full p-2 border border-transparent hover:border-gray-300 focus:border-gray-300 focus:outline-none"
+        className="w-full h-full px-2 py-1 text-xs border border-transparent hover:border-gray-300 focus:border-gray-300 focus:outline-none bg-transparent truncate"
         value={searchTerm}
         onChange={handleInputChange}
         onFocus={handleFocus}
         placeholder={placeholder}
       />
       {isOpen && (
-        <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+        <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg text-xs">
           {isLoading ? (
             <li className="p-2 text-gray-500">Loading...</li>
           ) : optionsToDisplay.length > 0 ? (

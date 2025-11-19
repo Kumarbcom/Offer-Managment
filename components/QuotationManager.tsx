@@ -40,7 +40,6 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
   useEffect(() => {
     if (quotations) {
-      // FIX: Refactored to create the Set before filtering. This helps TypeScript correctly infer the type of `customerIdsToFetch` as `number[]` instead of `unknown[]`.
       const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
         .filter((id): id is number => id !== null && !customerMap.has(id));
       
@@ -210,7 +209,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
   const SortableHeader: React.FC<{ title: string; sortKey: SortByType; className?: string }> = ({ title, sortKey, className = '' }) => (
-    <th className={`px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 ${className}`} onClick={() => handleSort(sortKey)}>
+    <th className={`px-2 py-1 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 ${className}`} onClick={() => handleSort(sortKey)}>
         <div className="flex items-center"><span>{title}</span>{sortBy === sortKey && <span className="ml-1 text-slate-800">{sortOrder === 'asc' ? '▲' : '▼'}</span>}</div>
     </th>
   );
@@ -227,61 +226,61 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     return desc + ".";
   }, [quotationFilter, customerMap]);
 
-  if (quotations === null || salesPersons === null || isLoadingCustomers) return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading quotations...</div>;
+  if (quotations === null || salesPersons === null || isLoadingCustomers) return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading...</div>;
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-       <div className="flex flex-wrap gap-4 justify-between items-center pb-3 border-b border-slate-200">
-        <h2 className="text-xl font-bold text-slate-800">Quotations</h2>
-        <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 sm:w-auto w-full">
+    <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
+       <div className="flex flex-wrap gap-2 justify-between items-center pb-2 border-b border-slate-200">
+        <h2 className="text-lg font-bold text-slate-800">Quotations</h2>
+        <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 sm:w-auto w-full text-xs">
             <div className="relative flex-grow">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-2">
-                    <svg className="w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none">
+                    <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none">
                         <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path>
                     </svg>
                 </span>
                 <input 
                     type="text" 
                     id="universalSearch" 
-                    className="block w-full pl-9 pr-3 py-1 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                    className="block w-full pl-8 pr-2 py-1 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs" 
                     placeholder="Search..." 
                     value={universalSearchTerm} 
                     onChange={(e) => setUniversalSearchTerm(e.target.value)}
                 />
             </div>
-            <button onClick={handleExport} className="inline-flex items-center gap-2 justify-center px-3 py-1.5 border border-transparent text-sm font-semibold rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+            <button onClick={handleExport} className="inline-flex items-center gap-1 justify-center px-2 py-1 border border-transparent text-xs font-semibold rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
                 <span>Export</span>
             </button>
             {userRole === 'Admin' && (
-                <button onClick={handleAddNew} className="inline-flex items-center gap-2 justify-center px-3 py-1.5 border border-transparent text-sm font-semibold rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                    <span>Add New</span>
+                <button onClick={handleAddNew} className="inline-flex items-center gap-1 justify-center px-2 py-1 border border-transparent text-xs font-semibold rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                    <span>New</span>
                 </button>
             )}
         </div>
       </div>
       
       {quotationFilter && (
-        <div className="text-sm text-slate-600 mt-2 flex items-center gap-4 bg-slate-50 p-2 rounded-md" role="alert">
-            <span className="font-medium">Filter Applied:</span>
+        <div className="text-xs text-slate-600 mt-2 flex items-center gap-2 bg-slate-50 p-1.5 rounded-md" role="alert">
+            <span className="font-medium">Filter:</span>
             <span>{filterDescription}</span>
-            {onBackToCustomers && <button onClick={onBackToCustomers} className="text-blue-600 hover:underline font-semibold ml-auto">Back to Customers</button>}
+            {onBackToCustomers && <button onClick={onBackToCustomers} className="text-blue-600 hover:underline font-semibold ml-auto">Back</button>}
         </div>
       )}
 
       {selectedQuotationIds.size > 0 && (
-        <div className="my-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center gap-4">
+        <div className="my-2 p-2 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center gap-2 text-xs">
           <div className="font-semibold text-blue-800">
-            {selectedQuotationIds.size} quotation{selectedQuotationIds.size > 1 ? 's' : ''} selected.
+            {selectedQuotationIds.size} selected.
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-slate-700">Change status to:</span>
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="font-medium text-slate-700">Set status:</span>
             {QUOTATION_STATUSES.map(status => (
               <button
                 key={status}
                 onClick={() => handleBulkStatusChange(status)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${getStatusClass(status)} hover:opacity-80`}
+                className={`px-2 py-0.5 font-semibold rounded-md transition-colors ${getStatusClass(status)} hover:opacity-80`}
               >
                 {status}
               </button>
@@ -290,61 +289,60 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         </div>
       )}
       
-      <div className="overflow-x-auto mt-4 -mx-4">
+      <div className="overflow-x-auto mt-2 -mx-2">
         {filteredAndSortedQuotations.length > 0 ? (
             <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
                 <tr>
-                    <th className="px-3 py-2">
+                    <th className="px-2 py-1 w-8">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="h-3 w-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                         checked={isAllSelected}
                         onChange={handleSelectAll}
-                        aria-label="Select all quotations"
+                        aria-label="Select all"
                       />
                     </th>
-                    <SortableHeader title="ID" sortKey="id" className="w-16" />
+                    <SortableHeader title="ID" sortKey="id" className="w-12" />
                     <SortableHeader title="Date" sortKey="quotationDate" />
                     <SortableHeader title="Customer" sortKey="customer" />
-                    <SortableHeader title="Contact Details" sortKey="contactPerson" />
+                    <SortableHeader title="Contact" sortKey="contactPerson" />
                     <SortableHeader title="Sales Person" sortKey="salesPerson" />
                     <SortableHeader title="Amount" sortKey="totalAmount" className="text-right" />
                     <SortableHeader title="Status" sortKey="status" />
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Comments</th>
-                    <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-2 py-1 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Comments</th>
+                    <th className="px-2 py-1 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
                 {filteredAndSortedQuotations.map(q => {
                   const isSelected = selectedQuotationIds.has(q.id);
                   return (
-                    <tr key={q.id} className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-sm`}>
-                        <td className="px-3 py-2">
+                    <tr key={q.id} className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-xs`}>
+                        <td className="px-2 py-1">
                           <input
                             type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            className="h-3 w-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                             checked={isSelected}
                             onChange={() => handleSelectOne(q.id)}
                             aria-label={`Select quotation ${q.id}`}
                           />
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-slate-600">{q.id}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
-                        <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{getCustomerName(q.customerId)}</td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-slate-800">{q.contactPerson}</div>
-                            <div className="text-xs text-slate-500">{q.contactNumber}</div>
+                        <td className="px-2 py-1 whitespace-nowrap text-slate-600">{q.id}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-slate-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
+                        <td className="px-2 py-1 whitespace-nowrap font-medium text-slate-800 max-w-[150px] truncate" title={getCustomerName(q.customerId)}>{getCustomerName(q.customerId)}</td>
+                        <td className="px-2 py-1 whitespace-nowrap">
+                            <div className="text-slate-800 truncate max-w-[100px]" title={q.contactPerson}>{q.contactPerson}</div>
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-slate-600">
+                        <td className="px-2 py-1 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR', maximumFractionDigits: 0})}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-slate-600">
                             <select
                                 value={q.status}
                                 onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
                                 onClick={(e) => e.stopPropagation()}
-                                className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none ${getStatusClass(q.status)}`}
-                                aria-label={`Change status for quotation ${q.id}`}
+                                className={`px-1.5 py-0.5 text-[10px] leading-4 font-bold rounded-full border-0 cursor-pointer focus:ring-1 focus:ring-blue-500 focus:outline-none ${getStatusClass(q.status)}`}
+                                aria-label={`Change status`}
                             >
                                 {QUOTATION_STATUSES.map(status => (
                                     <option key={status} value={status} className="bg-white text-black font-semibold">
@@ -353,34 +351,30 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                                 ))}
                             </select>
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-slate-600 w-48">
+                        <td className="px-2 py-1 whitespace-nowrap text-slate-600 max-w-[120px]">
                             <input 
                                 type="text" 
-                                value={q.comments || ''} 
-                                onBlur={(e) => handleCommentChange(q.id, e.target.value)}
-                                onChange={(e) => {
-                                  // This is a controlled-uncontrolled component. We update on blur.
-                                  // We only need to provide an onChange to avoid React warnings.
-                                  // The state will be updated locally by the browser until blur.
-                                }}
-                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                                 defaultValue={q.comments || ''}
-                                className="w-full p-1 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-md text-sm focus:outline-none disabled:bg-transparent disabled:border-transparent" 
-                                placeholder="Add comment..." 
+                                onBlur={(e) => handleCommentChange(q.id, e.target.value)}
+                                onChange={() => {}}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                                className="w-full p-0.5 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-sm text-xs focus:outline-none disabled:bg-transparent disabled:border-transparent truncate" 
+                                placeholder="..." 
                                 disabled={!isCommentEditable}
+                                title={q.comments || ''}
                             />
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-2 py-1 whitespace-nowrap text-right text-xs font-medium">
                             <div className="flex items-center justify-end space-x-2">
                                 <button onClick={() => handleEdit(q.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title={canEdit ? 'Edit' : 'View'}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
                                         <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
                                     </svg>
                                 </button>
                                 {userRole === 'Admin' && (
                                     <button onClick={() => handleDelete(q.id)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
                                         </svg>
                                     </button>
@@ -392,7 +386,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             </tbody>
             </table>
         ) : ( 
-            <p className="text-slate-500 text-center py-8">{quotations.length > 0 ? 'No quotations match your search criteria.' : 'No quotations found.'}</p> 
+            <p className="text-slate-500 text-center py-8 text-xs">{quotations.length > 0 ? 'No quotations match.' : 'No quotations found.'}</p> 
         )}
       </div>
     </div>
