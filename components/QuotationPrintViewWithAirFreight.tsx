@@ -20,7 +20,8 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
     const totals = quotation.details.reduce((acc, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         const amount = unitPrice * item.moq;
-        const freightAmount = item.airFreight ? (item.airFreightDetails.weightPerMtr / 1000 * 150) * item.moq : 0;
+        // Safety Check: Ensure airFreightDetails exists before accessing
+        const freightAmount = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * 150) * item.moq : 0;
         
         acc.totalAmount += amount;
         acc.totalFreight += freightAmount;
@@ -95,7 +96,8 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         {quotation.details.map((item, index) => {
                             const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
                             const amount = unitPrice * item.moq;
-                            const freightPerUnit = item.airFreight ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0;
+                            // Safety Check: Ensure airFreightDetails exists
+                            const freightPerUnit = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0;
                             const freightAmount = freightPerUnit * item.moq;
                             const totalWithFreight = amount + freightAmount;
                             return (
@@ -111,7 +113,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                                     <td className="p-1 border text-center">{item.stockStatus}</td>
                                     <td className="p-1 border text-right">{freightPerUnit > 0 ? freightPerUnit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
                                     <td className="p-1 border text-right">{freightAmount > 0 ? freightAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
-                                    <td className="p-1 border text-center">{item.airFreight ? item.airFreightDetails.airFreightLeadTime : '-'}</td>
+                                    <td className="p-1 border text-center">{(item.airFreight && item.airFreightDetails) ? item.airFreightDetails.airFreightLeadTime : '-'}</td>
                                     <td className="p-1 border text-right font-medium">{totalWithFreight.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                 </tr>
                             );

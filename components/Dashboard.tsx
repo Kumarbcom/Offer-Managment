@@ -288,7 +288,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             plugins: {
                 datalabels: {
                     display: (context: any) => {
-                        return (context.dataset.data[context.dataIndex] as number) > 0;
+                        // Safe cast with fallback
+                        return (Number(context.dataset.data[context.dataIndex]) || 0) > 0;
                     },
                     color: '#fff',
                     font: { size: 9, weight: 'bold' },

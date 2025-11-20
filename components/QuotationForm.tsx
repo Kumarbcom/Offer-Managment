@@ -172,16 +172,28 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   useEffect(() => {
     const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
-    const initialQuotation = quotationToEdit || createNewQuotation();
+    // Use structured clone or deep copy to avoid mutating state directly if objects are shared
+    let initialQuotation = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : createNewQuotation();
+    
+    // Sanitize and patch missing fields for legacy data to prevent Uncaught TypeErrors
+    if (initialQuotation.details) {
+        initialQuotation.details = initialQuotation.details.map((item: QuotationItem) => ({
+            ...item,
+            airFreightDetails: item.airFreightDetails || { weightPerMtr: 0, airFreightLeadTime: '' }
+        }));
+    }
+
     setFormData(initialQuotation);
 
-    const productIds = initialQuotation.details.map(d => d.productId).filter(id => id > 0);
-    if (productIds.length > 0) {
-        getProductsByIds(productIds).then(products => {
-            setFetchedProducts(new Map(products.map(p => [p.id, p])));
-        }).catch(error => console.error("QuotationForm: Failed to fetch product details:", error));
-    } else {
-        setFetchedProducts(new Map());
+    if (initialQuotation.details) {
+        const productIds = initialQuotation.details.map((d: QuotationItem) => d.productId).filter((id: number) => id > 0);
+        if (productIds.length > 0) {
+            getProductsByIds(productIds).then(products => {
+                setFetchedProducts(new Map(products.map(p => [p.id, p])));
+            }).catch(error => console.error("QuotationForm: Failed to fetch product details:", error));
+        } else {
+            setFetchedProducts(new Map());
+        }
     }
   }, [editingQuotationId, quotations, createNewQuotation]);
 
@@ -209,7 +221,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [selectedCustomerObj]);
 
   useEffect(() => {
-    if (!formData || !formData.details.length || fetchedProducts.size === 0) return;
+    if (!formData || !formData.details?.length || fetchedProducts.size === 0) return;
     let wasUpdated = false;
     const newDetails = formData.details.map(item => {
         if (item.productId > 0) {
@@ -236,7 +248,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       setSearchedProducts(results);
       setIsSearchingProducts(false);
     };
-    // FIX: Also run search when debounced term is empty to repopulate the initial list
     performSearch();
   }, [debouncedProductSearchTerm]);
   
@@ -251,7 +262,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }
       setIsSearchingCustomers(false);
     };
-    // FIX: Also run search when debounced term is empty to repopulate the initial list
     performSearch();
   }, [debouncedCustomerSearchTerm, selectedCustomerObj]);
 
@@ -267,6 +277,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         const newDetails = prev.details.map((item, i) => {
             if (i === index) {
                 const updatedItem = { ...item };
+                if (!updatedItem.airFreightDetails) updatedItem.airFreightDetails = { weightPerMtr: 0, airFreightLeadTime: '' }; // Safety init
+                
                 if (field.startsWith('airFreightDetails.')) {
                     const subField = field.split('.')[1] as keyof QuotationItem['airFreightDetails'];
                     updatedItem.airFreightDetails = { ...updatedItem.airFreightDetails, [subField]: value };
@@ -364,7 +376,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     return sum + (unitPrice * item.moq);
                  }, 0);
 
-                 const appUrl = window.location.origin + window.location.pathname + `?id=${idToSave}`;
+                 const appUrl = window.location.href.split('?')[0] + `?id=${idToSave}`;
                  
                  const message = `*New Quotation Generated*\n` +
                                 `QTN No: ${idToSave}\n` +
@@ -375,7 +387,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                 `Link: ${appUrl}`;
                 
                  let phone = salesPerson.mobile.replace(/\D/g, '');
-                 // Assuming Indian numbers if not starting with country code
                  if (phone.length === 10) phone = '91' + phone;
 
                  const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -436,7 +447,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           acc.moq += item.moq || 0;
           acc.req += item.req || 0;
           acc.amount += unitPrice * item.moq || 0;
-          acc.airFreightAmount += item.airFreight ? (item.airFreightDetails.weightPerMtr / 1000 * 150) * item.moq : 0;
+          // Safe access with optional chaining for airFreightDetails
+          const weight = item.airFreightDetails?.weightPerMtr || 0;
+          acc.airFreightAmount += item.airFreight ? (weight / 1000 * 150) * item.moq : 0;
           return acc;
       }, { moq: 0, req: 0, amount: 0, airFreightAmount: 0 });
   }, [formData]);
@@ -515,20 +528,23 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
                     <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
                     <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100">{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
-                    {selectedCustomerObj && <div className="flex flex-wrap gap-1 mt-1 text-[10px] border border-slate-200 p-1 rounded bg-slate-50">{Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => value > 0 && <div key={key} className="px-1 bg-slate-200 rounded"><span className="font-semibold capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>: {value}%</div>)}</div>}
+                    {selectedCustomerObj && <div className="flex flex-wrap gap-1 mt-1 text-[10px] border border-slate-200 p-1 rounded bg-slate-50">{Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => (value as number) > 0 && <div key={key} className="px-1 bg-slate-200 rounded"><span className="font-semibold capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>: {value}%</div>)}</div>}
                 </div>
             </div>
 
             <div className="mt-3 overflow-x-auto">
                 <table className="min-w-full border-collapse border border-slate-300 text-[11px]">
                     <thead className="bg-slate-200 text-slate-700 font-semibold"><tr className="divide-x divide-slate-300">{['Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Disc%', 'Net Price', 'Amount', 'Stock', 'Air?', 'Wt/M', 'Fr/M', 'Total Fr', 'Lead Time', ''].map(h=><th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}</tr></thead>
-                    <tbody className="bg-white text-xs">{formData.details.map((item, index) => {const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); const amount = unitPrice * (item.moq || 0); const freightPerMtr = (item.airFreightDetails.weightPerMtr / 1000) * 150; const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
+                    <tbody className="bg-white text-xs">{formData.details.map((item, index) => {const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); const amount = unitPrice * (item.moq || 0); 
+                    // SAFE GUARD for airFreightDetails
+                    const freightPerMtr = item.airFreightDetails && item.airFreightDetails.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000) * 150 : 0; 
+                    const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
                     const currentProduct = fetchedProducts.get(item.productId);
                     const optionsForSelect = [...searchedProducts];
                     if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
                         optionsForSelect.unshift(currentProduct);
                     }
-                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-40 align-top"><div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => handleProductSelect(index, val)} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} /></div></td><td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td><td className="border-t border-slate-300 align-top"><input type="number" value={item.moq} onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" value={item.req} onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100 h-6"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-0 text-[10px] text-slate-500 h-full" disabled><option value="LP">L</option><option value="SP">S</option></select></div></td><td className="border-t border-slate-300 align-top"><input type="text" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.stockStatus} onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-3 w-3 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails.weightPerMtr} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-12 p-0.5 text-right h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top h-6">{freightPerMtr.toFixed(0)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6">{freightTotal.toLocaleString('en-IN')}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails.airFreightLeadTime} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
+                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-40 align-top"><div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => handleProductSelect(index, val)} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} /></div></td><td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td><td className="border-t border-slate-300 align-top"><input type="number" value={item.moq} onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" value={item.req} onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100 h-6"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-0 text-[10px] text-slate-500 h-full" disabled><option value="LP">L</option><option value="SP">S</option></select></div></td><td className="border-t border-slate-300 align-top"><input type="text" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.stockStatus} onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-3 w-3 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-12 p-0.5 text-right h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top h-6">{freightPerMtr.toFixed(0)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6">{freightTotal.toLocaleString('en-IN')}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails?.airFreightLeadTime || ''} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
                     <tfoot className="bg-slate-200 text-slate-800 font-bold text-xs"><tr className="divide-x divide-slate-300"><td colSpan={2} className="p-1 text-center">Total</td><td className="p-1 text-center">{totals.moq}</td><td className="p-1 text-center">{totals.req}</td><td colSpan={3}></td><td className="p-1 text-right">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={4}></td><td className="p-1 text-right">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={2}></td></tr></tfoot>
                 </table>
             </div>
