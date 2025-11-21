@@ -464,14 +464,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const selectedSalesPerson = useMemo(() => salesPersons.find(sp => sp.id === formData?.salesPersonId), [salesPersons, formData?.salesPersonId]);
 
   const handleGridKeyDown = (e: React.KeyboardEvent, index: number, field: string) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown' || e.key === 'Enter') {
         e.preventDefault();
         const nextEl = inputRefs.current[`${index + 1}-${field}`];
-        if (nextEl) nextEl.focus();
+        if (nextEl) {
+            nextEl.focus();
+            nextEl.select();
+        }
     } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         const prevEl = inputRefs.current[`${index - 1}-${field}`];
-        if (prevEl) prevEl.focus();
+        if (prevEl) {
+             prevEl.focus();
+             prevEl.select();
+        }
     }
   };
 
@@ -590,6 +596,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             value={item.moq} 
                             onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} 
                             onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
+                            onFocus={(e) => e.target.select()}
                             className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
                             disabled={isReadOnly}
                         />
@@ -601,6 +608,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             value={item.req} 
                             onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} 
                             onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
+                            onFocus={(e) => e.target.select()}
                             className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
                             disabled={isReadOnly}
                         />
@@ -615,6 +623,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             value={item.discount} 
                             onChange={e => handleItemChange(index, 'discount', e.target.value)} 
                             onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
+                            onFocus={(e) => e.target.select()}
                             className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
                             disabled={isReadOnly}
                         />
@@ -629,6 +638,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             value={item.stockStatus} 
                             onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} 
                             onKeyDown={(e) => handleGridKeyDown(e, index, 'stockStatus')}
+                            onFocus={(e) => e.target.select()}
                             className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
                             disabled={isReadOnly}
                         />
