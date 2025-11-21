@@ -11,6 +11,8 @@ import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFre
 import { useDebounce } from '../hooks/useDebounce';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds } from '../supabase';
 
+declare var XLSX: any;
+
 interface QuotationFormProps {
   salesPersons: SalesPerson[];
   quotations: Quotation[];
@@ -66,6 +68,7 @@ const Icons = {
     AddProduct: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" /></svg>,
     SearchProduct: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>,
     Trash: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>,
+    Excel: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>,
 };
 
 const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
@@ -427,6 +430,37 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   };
   
   const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !formData.customerId) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
+  
+  const handleExportExcel = () => {
+      if (!formData || !formData.details.length) {
+          alert("No data to export.");
+          return;
+      }
+
+      const data = formData.details.map((item, index) => {
+          const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+          const amount = unitPrice * (item.moq || 0);
+          return {
+              'Sl No': index + 1,
+              'Part No': item.partNo,
+              'Description': item.description,
+              'MOQ': item.moq,
+              'REQ': item.req,
+              'UOM': item.uom,
+              'List Price': item.price,
+              'Discount %': item.discount,
+              'Net Unit Price': unitPrice,
+              'Total Amount': amount,
+              'Stock Status': item.stockStatus,
+              'Air Freight': item.airFreight ? 'Yes' : 'No'
+          };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Quotation Details");
+      XLSX.writeFile(wb, `Quotation_${formData.id || 'New'}_Details.xlsx`);
+  };
 
   const currentQuotationIndex = useMemo(() => editingQuotationId === null ? -1 : quotations.findIndex(q => q.id === editingQuotationId), [editingQuotationId, quotations]);
 
@@ -528,6 +562,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 <ActionButton onClick={() => handlePreview('discounted')} title="Preview with Discount"><Icons.PrintDiscount /><span>Discounted</span></ActionButton>
                 <ActionButton onClick={() => handlePreview('withAirFreight')} title="Preview with Air Freight"><Icons.PrintAirFreight /><span>Air Freight</span></ActionButton>
                 <div className="h-5 border-l border-slate-300 mx-1"></div>
+                <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span>Export Excel</span></ActionButton>
+                <div className="h-5 border-l border-slate-300 mx-1"></div>
                 {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span>Customer</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span>Product</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
@@ -614,7 +650,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         />
                     </td>
                     
-                    <td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100 h-6"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-0 text-[10px] text-slate-500 h-full" disabled><option value="LP">L</option><option value="SP">S</option></select></div></td>
+                    <td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100 h-6"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-0 text-[10px] text-slate-500 h-full" disabled><option value="LP">L</option><option value="SP">S</option></select></div></td>
                     
                     <td className="border-t border-slate-300 align-top">
                         <input 
@@ -644,8 +680,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         />
                     </td>
                     
-                    <td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-3 w-3 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-12 p-0.5 text-right h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top h-6">{freightPerMtr.toFixed(0)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6">{freightTotal.toLocaleString('en-IN')}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails?.airFreightLeadTime || ''} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
-                    <tfoot className="bg-slate-200 text-slate-800 font-bold text-xs"><tr className="divide-x divide-slate-300"><td colSpan={2} className="p-1 text-center">Total</td><td className="p-1 text-center">{totals.moq}</td><td className="p-1 text-center">{totals.req}</td><td colSpan={3}></td><td className="p-1 text-right whitespace-nowrap">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={4}></td><td className="p-1 text-right">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={2}></td></tr></tfoot>
+                    <td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-3 w-3 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-12 p-0.5 text-right h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top h-6">{freightPerMtr.toFixed(0)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails?.airFreightLeadTime || ''} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
+                    <tfoot className="bg-slate-200 text-slate-800 font-bold text-xs"><tr className="divide-x divide-slate-300"><td colSpan={2} className="p-1 text-center">Total</td><td className="p-1 text-center">{totals.moq}</td><td className="p-1 text-center">{totals.req}</td><td colSpan={3}></td><td className="p-1 text-right whitespace-nowrap">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={4}></td><td className="p-1 text-right whitespace-nowrap">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={2}></td></tr></tfoot>
                 </table>
             </div>
              <div className="flex justify-end mt-2">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-xs rounded">+ Add Row</button>}</div>
