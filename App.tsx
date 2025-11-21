@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, DeliveryChallan } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
@@ -28,6 +29,7 @@ function App() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(() => localStorage.getItem('company_logo'));
   
   const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
   const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
@@ -81,6 +83,15 @@ function App() {
     }
   };
 
+  const handleLogoUpload = (url: string | null) => {
+    setLogoUrl(url);
+    if (url) {
+        localStorage.setItem('company_logo', url);
+    } else {
+        localStorage.removeItem('company_logo');
+    }
+  };
+
   const navigateToQuotationsWithFilter = (filter: { customerIds?: number[], status?: QuotationStatus }) => {
     setQuotationFilter(filter);
     setView('quotations');
@@ -127,10 +138,13 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       <nav className="bg-slate-800 text-white shadow-lg no-print">
-        <div className={view === 'quotation-form' ? "w-full px-4" : "max-w-7xl mx-auto px-4"}>
+        <div className="w-full px-4">
           <div className="flex justify-between h-14">
             <div className="flex items-center space-x-4 overflow-x-auto no-scrollbar">
-              <span className="font-bold text-lg tracking-wide mr-2 whitespace-nowrap">Offer Management</span>
+              <div className="flex items-center gap-2 mr-2">
+                  {logoUrl && <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain bg-white rounded p-0.5" />}
+                  <span className="font-bold text-xl tracking-wide whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</span>
+              </div>
               <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Dashboard</button>
               <button onClick={() => handleSetView('customers')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'customers' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Customers</button>
               <button onClick={() => handleSetView('products')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'products' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Products</button>
@@ -159,8 +173,8 @@ function App() {
         </div>
       </nav>
 
-      <main className={view === 'quotation-form' ? "flex-grow w-full mx-auto p-2" : "flex-grow max-w-7xl w-full mx-auto py-6 sm:px-6 lg:px-8"}>
-        {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
+      <main className="flex-grow w-full mx-auto p-2">
+        {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
         {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter}/>}
         {view === 'products' && <ProductManager />}
         {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}

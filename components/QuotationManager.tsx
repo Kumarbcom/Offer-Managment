@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Quotation, SalesPerson, QuotationStatus, UserRole } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
@@ -77,7 +78,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   
   const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';
   
-  const calculateTotalAmount = (details: Quotation['details']): number => {
+  const calculateTotalAmount = (details: Quotation['details'] | undefined): number => {
+      if (!details || !Array.isArray(details)) return 0;
       return details.reduce((total, item) => {
           const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
           return total + (unitPrice * item.moq);
@@ -357,7 +359,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         <td className="px-2 py-1 whitespace-nowrap text-slate-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
                         <td className="px-2 py-1 whitespace-nowrap font-medium text-slate-800 max-w-[150px] truncate" title={getCustomerName(q.customerId)}>{getCustomerName(q.customerId)}</td>
                         <td className="px-2 py-1 whitespace-nowrap">
-                            <div className="text-slate-800 truncate max-w-[100px]" title={q.contactPerson}>{q.contactPerson}</div>
+                            <div className="font-medium text-slate-800 truncate max-w-[120px]" title={q.contactPerson}>{q.contactPerson}</div>
+                            <div className="text-[10px] text-slate-500">{q.contactNumber}</div>
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
                         <td className="px-2 py-1 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR', maximumFractionDigits: 0})}</td>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
@@ -44,7 +45,7 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
 export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson }) => {
     const [logoUrl] = useState(() => localStorage.getItem('company_logo'));
 
-    const totalAmount = quotation.details.reduce((sum, item) => {
+    const totalAmount = (quotation.details || []).reduce((sum, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         return sum + (unitPrice * item.moq);
     }, 0);
@@ -77,7 +78,7 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                         <p className="font-bold text-base text-slate-900">{customer.name}</p>
                         <p>{customer.address}</p>
                         <p>{customer.city} - {customer.pincode}</p>
-                        <p><span className="font-semibold">Attn:</span> {quotation.contactPerson}</p>
+                        <p><span className="font-semibold">Attn:</span> {quotation.contactPerson} ({quotation.contactNumber})</p>
                     </div>
                     <div className="text-right space-y-0.5 border p-2 rounded-md">
                         <p><span className="font-semibold">Quotation No:</span> SKC/QTN/{quotation.id}</p>
@@ -108,7 +109,7 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                        {quotation.details.map((item, index) => {
+                        {(quotation.details || []).map((item, index) => {
                             const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
                             const amount = unitPrice * item.moq;
                             return (

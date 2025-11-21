@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Quotation, SalesPerson, User } from '../types';
 import { getCustomersByIds } from '../supabase';
@@ -75,6 +76,7 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
   }, [filteredQuotations, customerMap]);
 
   const calculateTotal = (q: Quotation) => {
+    if (!q || !q.details || !Array.isArray(q.details)) return 0;
     return q.details.reduce((sum, item) => {
       const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
       return sum + (unitPrice * item.moq);

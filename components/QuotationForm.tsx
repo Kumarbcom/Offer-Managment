@@ -538,7 +538,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   if (!formData) return <div className="p-8 text-center text-xs">Loading form...</div>;
 
   return (
-    <div className="p-2 bg-slate-50 min-h-screen font-sans">
+    <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
       <div className="bg-white rounded-lg shadow-lg">
         <header className="bg-slate-800 text-white px-3 py-2 flex justify-between items-center rounded-t-lg">
            <h1 className="text-sm font-bold uppercase tracking-wide">Quotation Details</h1>
@@ -681,15 +681,26 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     </td>
                     
                     <td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-3 w-3 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-12 p-0.5 text-right h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top h-6">{freightPerMtr.toFixed(0)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails?.airFreightLeadTime || ''} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
-                    <tfoot className="bg-slate-200 text-slate-800 font-bold text-xs"><tr className="divide-x divide-slate-300"><td colSpan={2} className="p-1 text-center">Total</td><td className="p-1 text-center">{totals.moq}</td><td className="p-1 text-center">{totals.req}</td><td colSpan={3}></td><td className="p-1 text-right whitespace-nowrap">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={4}></td><td className="p-1 text-right whitespace-nowrap">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={2}></td></tr></tfoot>
                 </table>
             </div>
-             <div className="flex justify-end mt-2">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-xs rounded">+ Add Row</button>}</div>
+             <div className="flex justify-end mt-2 mb-4">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-xs rounded">+ Add Row</button>}</div>
         </form>
       </div>
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
       <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} />
       <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
+      
+      <div className="fixed bottom-0 left-0 w-full bg-slate-800 text-white p-2 shadow-inner z-40 flex items-center justify-between px-6 text-xs font-medium">
+          <div className="flex gap-6">
+              <div>Total MOQ: <span className="font-bold text-yellow-400 ml-1">{totals.moq}</span></div>
+              <div>Total REQ: <span className="font-bold text-yellow-400 ml-1">{totals.req}</span></div>
+          </div>
+          <div className="flex gap-6">
+              <div>Amount: <span className="font-bold text-green-400 ml-1">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+              <div>Air Freight: <span className="font-bold text-blue-400 ml-1">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+              <div className="border-l border-slate-600 pl-4">Grand Total: <span className="font-bold text-white text-sm ml-1">{(totals.amount + totals.airFreightAmount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+          </div>
+      </div>
     </div>
   );
 };
