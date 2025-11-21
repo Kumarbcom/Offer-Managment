@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Quotation, SalesPerson, QuotationStatus, UserRole } from '../types';
+import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
 
@@ -12,7 +12,7 @@ interface QuotationManagerProps {
   setEditingQuotationId: (id: number | null) => void;
   setView: (view: 'quotation-form') => void;
   setQuotations: (value: React.SetStateAction<Quotation[]>) => Promise<void>;
-  userRole: UserRole;
+  currentUser: User;
   quotationFilter: { customerIds?: number[], status?: QuotationStatus } | null;
   onBackToCustomers?: () => void;
 }
@@ -31,13 +31,15 @@ const getStatusClass = (status: QuotationStatus) => {
     }
 }
 
-export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, salesPersons, setEditingQuotationId, setView, setQuotations, userRole, quotationFilter, onBackToCustomers }) => {
+export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, salesPersons, setEditingQuotationId, setView, setQuotations, currentUser, quotationFilter, onBackToCustomers }) => {
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
   const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+
+  const userRole = currentUser.role;
 
   useEffect(() => {
     if (quotations) {
@@ -93,6 +95,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
   const filteredAndSortedQuotations = useMemo(() => {
     if (!quotations) return [];
+
+    // 1. Identify Current Sales Person ID if applicable
+    let currentSalesPersonId: number | undefined;
+    if (userRole === 'Sales Person') {
+        currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
+    }
+
     const preFilteredQuotations = quotationFilter
       ? quotations.filter(q => {
           const customerMatch = !quotationFilter.customerIds || (q.customerId !== null && quotationFilter.customerIds.includes(q.customerId));
@@ -100,8 +109,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
           return customerMatch && statusMatch;
         })
       : quotations;
+    
     return preFilteredQuotations
       .filter(q => {
+        // 2. Role-Based Restriction
+        if (userRole === 'Sales Person' && currentSalesPersonId !== undefined) {
+             if (q.salesPersonId !== currentSalesPersonId) return false;
+        }
+
+        // 3. Search Logic
         if (!universalSearchTerm) return true;
         const term = universalSearchTerm.toLowerCase();
         return String(q.id).includes(term) 
@@ -124,7 +140,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         }
         return sortOrder === 'asc' ? comparison : -comparison;
       });
-  }, [quotations, universalSearchTerm, customerMap, salesPersons, sortBy, sortOrder, quotationFilter]);
+  }, [quotations, universalSearchTerm, customerMap, salesPersons, sortBy, sortOrder, quotationFilter, userRole, currentUser]);
 
   useEffect(() => {
     setSelectedQuotationIds(new Set());
@@ -279,7 +295,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
                 <span>Export</span>
             </button>
-            {userRole === 'Admin' && (
+            {/* NEW BUTTON VISIBILITY: Only Admin or current Sales Person can create new */}
+            {(userRole === 'Admin' || userRole === 'Sales Person') && (
                 <button onClick={handleAddNew} className="inline-flex items-center gap-1 justify-center px-2 py-1 border border-transparent text-xs font-semibold rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
                     <span>New</span>

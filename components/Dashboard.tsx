@@ -101,11 +101,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         if (startDate) {
             startDate.setHours(0, 0, 0, 0); // Start of the day
         }
+        
+        // Determine if current user is restricted
+        let currentSalesPersonId: number | undefined;
+        if (currentUser.role === 'Sales Person') {
+             currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
+        }
 
-        // `quotations` prop is already pre-filtered for Sales Person role
         return quotations.filter(q => {
-            // Sales person filter from slicer (only if not a sales person user)
-            const salesPersonMatch = currentUser.role === 'Sales Person' || selectedSalesPersonId === 'all' || q.salesPersonId === selectedSalesPersonId;
+            let salesPersonMatch = true;
+            
+            if (currentUser.role === 'Sales Person') {
+                if (currentSalesPersonId !== undefined) {
+                     salesPersonMatch = q.salesPersonId === currentSalesPersonId;
+                } else {
+                    // Should not happen if data is correct, but fail safe
+                    salesPersonMatch = false;
+                }
+            } else {
+                 // Admin / Manager logic
+                 salesPersonMatch = selectedSalesPersonId === 'all' || q.salesPersonId === selectedSalesPersonId;
+            }
+            
             if (!salesPersonMatch) return false;
 
             if (selectedDateRange === 'all' || !startDate) {
@@ -115,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             const quotationDate = new Date(q.quotationDate);
             return quotationDate >= startDate && quotationDate <= today;
         });
-    }, [quotations, selectedSalesPersonId, selectedDateRange, currentUser.role]);
+    }, [quotations, selectedSalesPersonId, selectedDateRange, currentUser, salesPersons]);
 
     const uniqueCustomerCount = useMemo(() => {
         if (!filteredQuotations) return 0;

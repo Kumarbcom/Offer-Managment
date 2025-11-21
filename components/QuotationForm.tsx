@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy } from '../types';
+import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy, User } from '../types';
 import { PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES } from '../constants';
 import { CustomerAddModal } from './CustomerAddModal';
 import { ProductAddModal } from './ProductAddModal';
@@ -22,7 +22,7 @@ interface QuotationFormProps {
   setView: (view: View) => void;
   editingQuotationId: number | null;
   setEditingQuotationId: (id: number | null) => void;
-  userRole: UserRole;
+  currentUser: User;
 }
 
 const createEmptyQuotationItem = (): QuotationItem => ({
@@ -83,7 +83,7 @@ const FormField: React.FC<{ label: string; children: React.ReactNode; className?
 );
 
 export const QuotationForm: React.FC<QuotationFormProps> = ({
-  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, userRole
+  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser
 }) => {
   const [formData, setFormData] = useState<Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -108,7 +108,23 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // Refs for grid inputs
   const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
-  const isReadOnly = userRole !== 'Admin' && userRole !== 'Sales Person';
+  const userRole = currentUser.role;
+  
+  // Logic to determine if the user can edit this quotation
+  const isReadOnly = useMemo(() => {
+      if (userRole === 'Admin') return false;
+      if (userRole === 'Sales Person') {
+          // If creating new, it's editable
+          if (editingQuotationId === null) return false;
+          // If editing, check ownership
+          const currentSalesPersonId = salesPersons.find(sp => sp.name === currentUser.name)?.id;
+          // If formData is not loaded yet, default to readonly until we check ownership
+          if (!formData) return true;
+          return formData.salesPersonId !== currentSalesPersonId;
+      }
+      return true; // Other roles are read-only
+  }, [userRole, editingQuotationId, formData, salesPersons, currentUser]);
+
 
   const getPriceForDate = useCallback((product: Product, date: string): PriceEntry | null => {
     if (!product || !product.prices) return null;
@@ -134,6 +150,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const createNewQuotation = useCallback((): Quotation => {
     const safeQuotations = quotations || [];
     const newId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) + 1 : 1;
+    
+    // Auto-assign Sales Person ID if the current user is a Sales Person
+    let defaultSalesPersonId: number | null = null;
+    if (userRole === 'Sales Person') {
+        const me = salesPersons.find(sp => sp.name === currentUser.name);
+        if (me) defaultSalesPersonId = me.id;
+    }
+
     return {
       id: newId,
       quotationDate: getTodayDateString(),
@@ -145,13 +169,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       paymentTerms: '100% Against Proforma Invoice',
       preparedBy: 'Kumar' as PreparedBy,
       productsBrand: 'Lapp',
-      salesPersonId: null,
+      salesPersonId: defaultSalesPersonId,
       modeOfEnquiry: 'Customer Email',
       status: 'Open',
       comments: '',
       details: [createEmptyQuotationItem()],
     };
-  }, [quotations]);
+  }, [quotations, userRole, salesPersons, currentUser]);
   
   const handleCustomerOpen = useCallback(() => {
     if (searchedCustomers.length === 0 && !isSearchingCustomers) {
@@ -228,10 +252,12 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [formData?.customerId, selectedCustomerObj]);
 
   useEffect(() => {
-    if (selectedCustomerObj && selectedCustomerObj.salesPersonId) {
+    if (selectedCustomerObj && selectedCustomerObj.salesPersonId && editingQuotationId === null) {
+        // Only auto-update sales person on NEW quotations when a customer is selected
+        // For existing quotations, we preserve the original sales person
         setFormData(prev => prev ? {...prev, salesPersonId: selectedCustomerObj.salesPersonId} : null);
     }
-  }, [selectedCustomerObj]);
+  }, [selectedCustomerObj, editingQuotationId]);
 
   useEffect(() => {
     if (!formData || !formData.details?.length || fetchedProducts.size === 0) return;
@@ -391,7 +417,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   };
   
-  const handleNewButtonClick = () => { if (isReadOnly) return; setEditingQuotationId(null); const url = new URL(window.location.href); if (!url.protocol.startsWith('blob')) { url.searchParams.delete('id'); window.history.pushState({}, '', url); } }
+  const handleNewButtonClick = () => { if (isReadOnly && userRole !== 'Sales Person') return; setEditingQuotationId(null); const url = new URL(window.location.href); if (!url.protocol.startsWith('blob')) { url.searchParams.delete('id'); window.history.pushState({}, '', url); } }
   
   const handleAddProductFromSearch = (product: Product, discount: number) => {
     setFormData(prev => {
@@ -535,7 +561,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         
         <form onSubmit={handleSubmit} className="p-2">
             <div className="bg-slate-50 p-1 flex flex-wrap items-center gap-2 border border-slate-200 mb-2 rounded-md shadow-sm">
-                {!isReadOnly && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
+                {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={handleSubmit} title="Save Quotation"><Icons.Save /><span>Save</span></ActionButton>}
                 <div className="h-5 border-l border-slate-300 mx-1"></div>
                 <ActionButton onClick={() => handlePreview('standard')} title="Preview Standard"><Icons.PrintStandard /><span>Preview</span></ActionButton>
@@ -548,13 +574,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span>Product</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
             </div>
+            
+            {isReadOnly && userRole === 'Sales Person' && formData.id !== 0 && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs text-yellow-700">
+                    <p className="font-bold">View Only Mode</p>
+                    <p>You are viewing a quotation created by another Sales Person. You cannot edit this.</p>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-2 gap-y-1 text-xs">
                 <div className="space-y-1">
                     <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-slate-800 rounded-r-md border border-slate-300 h-full flex items-center text-xs">{editingQuotationId ?? "{New}"}</div></FormField>
                     <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" disabled={isReadOnly}/></FormField>
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" disabled={isReadOnly}/></FormField>
-                    <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
+                    <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
                      {selectedCustomerObj && (
                         <div className="ml-[33.33%] pl-1 text-[10px] text-slate-500 whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address}, ${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`}>
                             {selectedCustomerObj.address}, {selectedCustomerObj.city} - {selectedCustomerObj.pincode}
@@ -603,7 +636,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
                         optionsForSelect.unshift(currentProduct);
                     }
-                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-40 align-top"><div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => handleProductSelect(index, val)} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} /></div></td><td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td>
+                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-40 align-top"><div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} /></div></td><td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td>
                     
                     <td className="border-t border-slate-300 align-top">
                         <input 
