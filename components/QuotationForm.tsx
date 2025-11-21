@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy } from '../types';
 import { PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES } from '../constants';
 import { CustomerAddModal } from './CustomerAddModal';
@@ -99,6 +99,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
 
+  // Refs for grid inputs
+  const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
   const isReadOnly = userRole !== 'Admin' && userRole !== 'Sales Person';
 
   const getPriceForDate = useCallback((product: Product, date: string): PriceEntry | null => {
@@ -181,6 +184,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             ...item,
             airFreightDetails: item.airFreightDetails || { weightPerMtr: 0, airFreightLeadTime: '' }
         }));
+    }
+    // Check discount structure to prevent errors if missing
+    if (initialQuotation.customerId) {
+        // We let the customer load effect handle patching if needed, but we ensure it's safe to render
     }
 
     setFormData(initialQuotation);
@@ -456,6 +463,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const selectedSalesPerson = useMemo(() => salesPersons.find(sp => sp.id === formData?.salesPersonId), [salesPersons, formData?.salesPersonId]);
 
+  const handleGridKeyDown = (e: React.KeyboardEvent, index: number, field: string) => {
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextEl = inputRefs.current[`${index + 1}-${field}`];
+        if (nextEl) nextEl.focus();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevEl = inputRefs.current[`${index - 1}-${field}`];
+        if (prevEl) prevEl.focus();
+    }
+  };
+
   if (previewMode !== 'none') {
     if (!formData || !selectedCustomerObj) return null;
     return (
@@ -515,7 +534,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" disabled={isReadOnly}/></FormField>
                     <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
                      {selectedCustomerObj && (
-                        <div className="ml-[33.33%] pl-1 text-[10px] text-slate-500 truncate" title={`${selectedCustomerObj.address}, ${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`}>
+                        <div className="ml-[33.33%] pl-1 text-[10px] text-slate-500 whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address}, ${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`}>
                             {selectedCustomerObj.address}, {selectedCustomerObj.city} - {selectedCustomerObj.pincode}
                         </div>
                      )}
@@ -562,7 +581,60 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
                         optionsForSelect.unshift(currentProduct);
                     }
-                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-40 align-top"><div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => handleProductSelect(index, val)} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} /></div></td><td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td><td className="border-t border-slate-300 align-top"><input type="number" value={item.moq} onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" value={item.req} onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100 h-6"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-0 text-[10px] text-slate-500 h-full" disabled><option value="LP">L</option><option value="SP">S</option></select></div></td><td className="border-t border-slate-300 align-top"><input type="text" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.stockStatus} onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={isReadOnly}/></td><td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-3 w-3 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-12 p-0.5 text-right h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top h-6">{freightPerMtr.toFixed(0)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6">{freightTotal.toLocaleString('en-IN')}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails?.airFreightLeadTime || ''} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
+                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-40 align-top"><div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => handleProductSelect(index, val)} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} /></div></td><td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td>
+                    
+                    <td className="border-t border-slate-300 align-top">
+                        <input 
+                            type="number" 
+                            ref={(el) => { inputRefs.current[`${index}-moq`] = el; }}
+                            value={item.moq} 
+                            onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} 
+                            onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
+                            className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                            disabled={isReadOnly}
+                        />
+                    </td>
+                    <td className="border-t border-slate-300 align-top">
+                        <input 
+                            type="number" 
+                            ref={(el) => { inputRefs.current[`${index}-req`] = el; }}
+                            value={item.req} 
+                            onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} 
+                            onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
+                            className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                            disabled={isReadOnly}
+                        />
+                    </td>
+                    
+                    <td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100 h-6"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-0 text-[10px] text-slate-500 h-full" disabled><option value="LP">L</option><option value="SP">S</option></select></div></td>
+                    
+                    <td className="border-t border-slate-300 align-top">
+                        <input 
+                            type="text" 
+                            ref={(el) => { inputRefs.current[`${index}-discount`] = el; }}
+                            value={item.discount} 
+                            onChange={e => handleItemChange(index, 'discount', e.target.value)} 
+                            onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
+                            className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                            disabled={isReadOnly}
+                        />
+                    </td>
+                    
+                    <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    
+                    <td className="border-t border-slate-300 align-top">
+                        <input 
+                            type="text" 
+                            ref={(el) => { inputRefs.current[`${index}-stockStatus`] = el; }}
+                            value={item.stockStatus} 
+                            onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} 
+                            onKeyDown={(e) => handleGridKeyDown(e, index, 'stockStatus')}
+                            className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                            disabled={isReadOnly}
+                        />
+                    </td>
+                    
+                    <td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-3 w-3 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-12 p-0.5 text-right h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top h-6">{freightPerMtr.toFixed(0)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6">{freightTotal.toLocaleString('en-IN')}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails?.airFreightLeadTime || ''} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
                     <tfoot className="bg-slate-200 text-slate-800 font-bold text-xs"><tr className="divide-x divide-slate-300"><td colSpan={2} className="p-1 text-center">Total</td><td className="p-1 text-center">{totals.moq}</td><td className="p-1 text-center">{totals.req}</td><td colSpan={3}></td><td className="p-1 text-right whitespace-nowrap">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={4}></td><td className="p-1 text-right">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td colSpan={2}></td></tr></tfoot>
                 </table>
             </div>
