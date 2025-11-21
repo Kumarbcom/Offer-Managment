@@ -127,7 +127,7 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       <nav className="bg-slate-800 text-white shadow-lg no-print">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className={view === 'quotation-form' ? "w-full px-4" : "max-w-7xl mx-auto px-4"}>
           <div className="flex justify-between h-14">
             <div className="flex items-center space-x-4 overflow-x-auto no-scrollbar">
               <span className="font-bold text-lg tracking-wide mr-2 whitespace-nowrap">Offer Management</span>
@@ -159,7 +159,7 @@ function App() {
         </div>
       </nav>
 
-      <main className="flex-grow max-w-7xl w-full mx-auto py-6 sm:px-6 lg:px-8">
+      <main className={view === 'quotation-form' ? "flex-grow w-full mx-auto p-2" : "flex-grow max-w-7xl w-full mx-auto py-6 sm:px-6 lg:px-8"}>
         {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
         {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter}/>}
         {view === 'products' && <ProductManager />}

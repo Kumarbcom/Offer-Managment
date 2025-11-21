@@ -14,11 +14,13 @@ interface DashboardProps {
 }
 
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const formatCurrencyCompact = (value: number) => {
-    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
-    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
-    if (value >= 1000) return `₹${(value / 1000).toFixed(1)}k`;
-    return `₹${Math.round(value)}`;
+const formatCurrencyCompact = (value: number | null | undefined) => {
+    const val = Number(value);
+    if (isNaN(val) || val === 0) return '₹0';
+    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
+    if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k`;
+    return `₹${Math.round(val)}`;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, currentUser }) => {
@@ -161,7 +163,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     let sortedQuotations = [...filteredQuotations];
 
     if (quotationSortType === 'latest') {
-        // FIX: Added tie-breaker using ID to ensure newly created quotations (on same date) appear first
         sortedQuotations.sort((a, b) => {
             const dateDiff = new Date(b.quotationDate).getTime() - new Date(a.quotationDate).getTime();
             if (dateDiff !== 0) return dateDiff;
@@ -191,7 +192,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     }
   };
 
-  // Line Chart Effect
+  // --- Charts Effects ---
+
+  // 1. Line Chart
   useEffect(() => {
     if (!lineChartRef.current || typeof Chart === 'undefined') return;
     
@@ -246,7 +249,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     return () => chartInstance.destroy();
   }, [filteredQuotations]);
   
-  // Bar Chart Effect
+  // 2. Bar Chart
   useEffect(() => {
     if (!barChartRef.current || !salesPersons || typeof Chart === 'undefined') return;
 
@@ -288,8 +291,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             plugins: {
                 datalabels: {
                     display: (context: any) => {
-                        // Safe cast with fallback
-                        return (Number(context.dataset.data[context.dataIndex]) || 0) > 0;
+                         const val = Number(context.dataset.data[context.dataIndex]);
+                         return !isNaN(val) && val > 0;
                     },
                     color: '#fff',
                     font: { size: 9, weight: 'bold' },
@@ -302,15 +305,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     callbacks: {
                         label: function(context: any) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
+                            if (label) label += ': ';
                             if (context.parsed.y !== null) {
-                                if (barChartMode === 'value') {
-                                    label += formatCurrency(context.parsed.y);
-                                } else {
-                                    label += context.parsed.y;
-                                }
+                                if (barChartMode === 'value') label += formatCurrency(context.parsed.y);
+                                else label += context.parsed.y;
                             }
                             return label;
                         }
@@ -324,9 +322,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     beginAtZero: true,
                     ticks: {
                         callback: function(value: any) {
-                            if (barChartMode === 'value') {
-                                return formatCurrencyCompact(Number(value));
-                            }
+                            if (barChartMode === 'value') return formatCurrencyCompact(Number(value));
                             return Number.isInteger(value) ? value : null;
                         }
                     }
@@ -337,7 +333,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     return () => chartInstance.destroy();
   }, [filteredQuotations, salesPersons, barChartMode]);
 
-  // Funnel Chart Effect
+  // 3. Funnel Chart
     useEffect(() => {
       if (!funnelChartRef.current || typeof Chart === 'undefined') return;
 
@@ -381,7 +377,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     color: '#000',
                     anchor: 'center',
                     align: 'center',
-                    font: { weight: 'bold' }
+                    font: { weight: 'bold' },
+                    display: true
                 }
             },
             { data: spacerData, backgroundColor: 'rgba(0,0,0,0)', stack: 'funnel', datalabels: { display: false } }
@@ -408,6 +405,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
       });
       return () => chartInstance.destroy();
   }, [overallStats]);
+
 
   const dateRanges: { key: 'all' | 'week' | 'month' | 'year'; label: string }[] = [
     { key: 'all', label: 'All Time' },
@@ -520,59 +518,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             </div>
           </div>
         </div>
-
-        {/* Sales Person Table Section */}
-        <div className="bg-white p-2 rounded-lg shadow-md">
-            <h3 className="text-base font-bold text-gray-800 mb-2">Statistics by Sales Person</h3>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-100">
-                    <tr>
-                    <th className="px-2 py-1 text-left text-[11px] font-medium text-gray-600 uppercase tracking-wider">Sales Person</th>
-                    <th className="px-2 py-1 text-center text-[11px] font-medium text-gray-600 uppercase tracking-wider">Total</th>
-                    <th className="px-2 py-1 text-center text-[11px] font-medium text-gray-600 uppercase tracking-wider">Open</th>
-                    <th className="px-2 py-1 text-center text-[11px] font-medium text-gray-600 uppercase tracking-wider">PO Received</th>
-                    <th className="px-2 py-1 text-center text-[11px] font-medium text-gray-600 uppercase tracking-wider">Partial PO</th>
-                    <th className="px-2 py-1 text-center text-[11px] font-medium text-gray-600 uppercase tracking-wider">Lost</th>
-                    <th className="px-2 py-1 text-center text-[11px] font-medium text-gray-600 uppercase tracking-wider">Expired</th>
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                    {salesPersonStats.map(stat => (
-                    <tr key={stat.id}>
-                        <td className="px-2 py-1 whitespace-nowrap text-xs font-medium text-gray-900">{stat.name}</td>
-                        <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
-                            <div className="font-semibold text-gray-800">{stat.total.count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat.total.value)}</div>
-                        </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
-                            <div className="text-gray-800">{stat['Open'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['Open'].value)}</div>
-                        </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
-                            <div className="text-gray-800">{stat['PO received'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['PO received'].value)}</div>
-                        </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
-                            <div className="text-gray-800">{stat['Partial PO Received'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['Partial PO Received'].value)}</div>
-                        </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
-                            <div className="text-gray-800">{stat['Lost'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['Lost'].value)}</div>
-                        </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-xs text-center">
-                            <div className="text-gray-800">{stat['Expired'].count}</div>
-                            <div className="text-[11px] text-gray-500">{formatCurrencyCompact(stat['Expired'].value)}</div>
-                        </td>
-                    </tr>
-                    ))}
-                </tbody>
-                </table>
-            </div>
-        </div>
         
-        {/* Charts Row */}
+        {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div className="bg-white p-2 rounded-lg shadow-md">
                 <h3 className="text-base font-bold text-gray-800 mb-2">Quotation Status Funnel</h3>
@@ -586,25 +533,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 <div className="flex justify-between items-center mb-2">
                     <h3 className="text-base font-bold text-gray-800">Daily Enquiries</h3>
                      <div className="inline-flex rounded-md shadow-sm">
-                        <button
-                            type="button"
-                            onClick={() => setBarChartMode('count')}
-                            className={`relative inline-flex items-center px-3 py-1 text-xs font-medium rounded-l-md border border-gray-300
-                                ${barChartMode === 'count' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                        >
-                            By Count
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setBarChartMode('value')}
-                            className={`relative -ml-px inline-flex items-center px-3 py-1 text-xs font-medium rounded-r-md border border-gray-300
-                                ${barChartMode === 'value' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                        >
-                            By Value
-                        </button>
+                        <button type="button" onClick={() => setBarChartMode('count')} className={`relative inline-flex items-center px-2 py-1 text-[10px] font-medium rounded-l-md border border-gray-300 ${barChartMode === 'count' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>By Count</button>
+                        <button type="button" onClick={() => setBarChartMode('value')} className={`relative -ml-px inline-flex items-center px-2 py-1 text-[10px] font-medium rounded-r-md border border-gray-300 ${barChartMode === 'value' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>By Value</button>
                     </div>
                 </div>
                 <div className="h-48"><canvas ref={barChartRef}></canvas></div>
+            </div>
+        </div>
+
+        {/* Sales Person Stats Table */}
+        <div className="bg-white p-2 rounded-lg shadow-md flex flex-col">
+            <h3 className="text-base font-bold text-gray-800 mb-2">Statistics by Sales Person</h3>
+            <div className="overflow-x-auto flex-grow">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-100">
+                        <tr>
+                        <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-600 uppercase tracking-wider">Sales Person</th>
+                        <th className="px-2 py-1 text-center text-[10px] font-medium text-gray-600 uppercase tracking-wider">Total</th>
+                        <th className="px-2 py-1 text-center text-[10px] font-medium text-gray-600 uppercase tracking-wider">Open</th>
+                        <th className="px-2 py-1 text-center text-[10px] font-medium text-gray-600 uppercase tracking-wider">PO Rec.</th>
+                        <th className="px-2 py-1 text-center text-[10px] font-medium text-gray-600 uppercase tracking-wider">Partial</th>
+                        <th className="px-2 py-1 text-center text-[10px] font-medium text-gray-600 uppercase tracking-wider">Lost</th>
+                        <th className="px-2 py-1 text-center text-[10px] font-medium text-gray-600 uppercase tracking-wider">Exp.</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {salesPersonStats.map(stat => (
+                        <tr key={stat.id}>
+                            <td className="px-2 py-1 whitespace-nowrap text-[10px] font-medium text-gray-900">{stat.name}</td>
+                            <td className="px-2 py-0.5 whitespace-nowrap text-[10px] text-center bg-slate-50">
+                                <div className="font-bold text-gray-800">{stat.total.count}</div>
+                                <div className="text-[9px] text-gray-500">{formatCurrencyCompact(stat.total.value)}</div>
+                            </td>
+                            <td className="px-2 py-0.5 whitespace-nowrap text-[10px] text-center text-blue-600 font-medium">{stat['Open'].count}</td>
+                            <td className="px-2 py-0.5 whitespace-nowrap text-[10px] text-center text-green-600 font-medium">{stat['PO received'].count}</td>
+                            <td className="px-2 py-0.5 whitespace-nowrap text-[10px] text-center text-teal-600 font-medium">{stat['Partial PO Received'].count}</td>
+                            <td className="px-2 py-0.5 whitespace-nowrap text-[10px] text-center text-rose-600 font-medium">{stat['Lost'].count}</td>
+                            <td className="px-2 py-0.5 whitespace-nowrap text-[10px] text-center text-yellow-600 font-medium">{stat['Expired'].count}</td>
+                        </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
         
@@ -613,22 +582,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             <div className="flex justify-between items-center mb-2">
                 <h3 className="text-base font-bold text-gray-800">Recent Activity</h3>
                 <div className="inline-flex rounded-md shadow-sm">
-                    <button
-                        type="button"
-                        onClick={() => setQuotationSortType('latest')}
-                        className={`relative inline-flex items-center px-3 py-1 text-xs font-medium rounded-l-md border border-gray-300
-                            ${quotationSortType === 'latest' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                    >
-                        Latest 5
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setQuotationSortType('highestValue')}
-                        className={`relative -ml-px inline-flex items-center px-3 py-1 text-xs font-medium rounded-r-md border border-gray-300
-                            ${quotationSortType === 'highestValue' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                    >
-                        Top 5 by Value
-                    </button>
+                    <button type="button" onClick={() => setQuotationSortType('latest')} className={`relative inline-flex items-center px-3 py-1 text-xs font-medium rounded-l-md border border-gray-300 ${quotationSortType === 'latest' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Latest 5</button>
+                    <button type="button" onClick={() => setQuotationSortType('highestValue')} className={`relative -ml-px inline-flex items-center px-3 py-1 text-xs font-medium rounded-r-md border border-gray-300 ${quotationSortType === 'highestValue' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Top 5 by Value</button>
                 </div>
             </div>
             <div className="overflow-x-auto">

@@ -8,6 +8,32 @@ interface QuotationPrintViewProps {
     salesPerson?: SalesPerson;
 }
 
+const numberToWords = (num: number): string => {
+    if (num === 0) return 'Zero';
+    const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const number = parseFloat(num.toFixed(2));
+    const integerPart = Math.floor(number);
+    if (integerPart > 999999999) return "Number too large";
+    
+    const toWords = (n: number): string => {
+        let str = '';
+        if (n >= 10000000) { str += toWords(Math.floor(n / 10000000)) + ' Crore '; n %= 10000000; }
+        if (n >= 100000) { str += toWords(Math.floor(n / 100000)) + ' Lakh '; n %= 100000; }
+        if (n >= 1000) { str += toWords(Math.floor(n / 1000)) + ' Thousand '; n %= 1000; }
+        if (n >= 100) { str += toWords(Math.floor(n / 100)) + ' Hundred '; n %= 100; }
+        if (n > 0) {
+            if (str !== '') str += 'and ';
+            if (n < 20) str += a[n];
+            else { str += b[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' : '') + a[n % 10]; }
+        }
+        return str.trim();
+    };
+
+    const words = toWords(integerPart);
+    return `Rupees ${words.charAt(0).toUpperCase() + words.slice(1)} Only`;
+}
+
 const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
     'Kumar': 'Sales Coordinator',
     'Vandita': 'Sales Coordinator',
@@ -137,6 +163,8 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         </div>
                     </div>
                 </section>
+
+                <p className="font-semibold my-2 text-sm">Amount in Words: {numberToWords(grandTotal)}</p>
 
                 <section className="border border-slate-200 p-2 rounded-md mt-2 print-no-break">
                     <h3 className="font-bold text-slate-800 mb-1 text-sm">Terms & Conditions:</h3>
