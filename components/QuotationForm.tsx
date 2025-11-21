@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy } from '../types';
 import { PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES } from '../constants';
 import { CustomerAddModal } from './CustomerAddModal';
 import { ProductAddModal } from './ProductAddModal';
 import { ProductSearchModal } from './ProductSearchModal';
+import { QuotationSuccessModal } from './QuotationSuccessModal';
 import { SearchableSelect } from './common/SearchableSelect';
 import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
@@ -88,6 +90,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
+  const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
   
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
@@ -376,35 +379,12 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             url.searchParams.set('id', String(quotationToSave.id));
             window.history.pushState({}, '', url);
           }
-
-          // WhatsApp Notification Logic
-          const salesPerson = salesPersons.find(sp => sp.id === formData.salesPersonId);
-          if (salesPerson && salesPerson.mobile) {
-             if (window.confirm(`Quotation saved. Do you want to notify ${salesPerson.name} on WhatsApp?`)) {
-                 const totalValue = formData.details.reduce((sum, item) => {
-                    const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-                    return sum + (unitPrice * item.moq);
-                 }, 0);
-
-                 const appUrl = window.location.href.split('?')[0] + `?id=${idToSave}`;
-                 
-                 const message = `*New Quotation Generated*\n` +
-                                `QTN No: ${idToSave}\n` +
-                                `Date: ${formData.quotationDate}\n` +
-                                `Customer: ${selectedCustomerObj?.name || 'N/A'}\n` +
-                                `Contact: ${formData.contactPerson} (${formData.contactNumber})\n` +
-                                `Value: ₹${totalValue.toLocaleString('en-IN', {maximumFractionDigits: 0})}\n` +
-                                `Link: ${appUrl}`;
-                
-                 let phone = salesPerson.mobile.replace(/\D/g, '');
-                 if (phone.length === 10) phone = '91' + phone;
-
-                 const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-                 window.open(whatsappUrl, '_blank');
-             }
-          }
+          // Show success modal only for new quotations
+          setSuccessModalData(quotationToSave);
+      } else {
+          alert("Quotation updated successfully!");
       }
-      alert("Quotation saved successfully!");
+      
     } catch (error) {
       alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the quotation.');
       console.error('Failed to save quotation:', error);
@@ -689,6 +669,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
       <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} />
       <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
+      <QuotationSuccessModal 
+         isOpen={!!successModalData} 
+         onClose={() => setSuccessModalData(null)} 
+         quotation={successModalData} 
+         customer={selectedCustomerObj}
+         salesPerson={salesPersons.find(sp => sp.id === successModalData?.salesPersonId) || null}
+         onPrint={() => { setSuccessModalData(null); handlePreview('standard'); }}
+      />
       
       <div className="fixed bottom-0 left-0 w-full bg-slate-800 text-white p-2 shadow-inner z-40 flex items-center justify-between px-6 text-xs font-medium">
           <div className="flex gap-6">

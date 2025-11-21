@@ -14,6 +14,7 @@ import { UserManager } from './components/UserManager';
 import { DeliveryChallanManager } from './components/DeliveryChallanManager';
 import { DeliveryChallanForm } from './components/DeliveryChallanForm';
 import { Reports } from './components/Reports';
+import { CalendarView } from './components/CalendarView';
 
 
 function App() {
@@ -22,14 +23,20 @@ function App() {
   const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
   const [deliveryChallans, setDeliveryChallans, deliveryChallansLoading, deliveryChallansError] = useOnlineStorage<DeliveryChallan>('deliveryChallans');
   
-  const [view, setView] = useState<View>('dashboard');
+  const [view, setView] = useState<View | 'calendar'>('dashboard');
   const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null);
   const [editingChallanId, setEditingChallanId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(() => localStorage.getItem('company_logo'));
+  const [logoUrl, setLogoUrl] = useState<string | null>(() => {
+      try {
+          return localStorage.getItem('company_logo');
+      } catch (e) {
+          return null;
+      }
+  });
   
   const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
   const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
@@ -85,10 +92,15 @@ function App() {
 
   const handleLogoUpload = (url: string | null) => {
     setLogoUrl(url);
-    if (url) {
-        localStorage.setItem('company_logo', url);
-    } else {
-        localStorage.removeItem('company_logo');
+    try {
+        if (url) {
+            localStorage.setItem('company_logo', url);
+        } else {
+            localStorage.removeItem('company_logo');
+        }
+    } catch (e) {
+        console.error("Failed to save logo to local storage:", e);
+        alert("Failed to save logo locally (likely due to size limits). It will be reset on reload.");
     }
   };
 
@@ -97,7 +109,7 @@ function App() {
     setView('quotations');
   };
   
-  const handleSetView = (newView: View) => {
+  const handleSetView = (newView: View | 'calendar') => {
     setView(newView);
     // Clear deep link parameter when navigating away manually
     if (newView === 'quotations') {
@@ -135,25 +147,37 @@ function App() {
     return <Login onLogin={handleLogin} users={users} isLoading={usersLoading} />;
   }
 
+  const BottomNavItem = ({ active, label, icon, onClick }: { active: boolean, label: string, icon: React.ReactNode, onClick: () => void }) => (
+    <button 
+      onClick={onClick} 
+      className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${active ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+    >
+      {icon}
+      <span className="text-[10px] font-medium">{label}</span>
+    </button>
+  );
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
-      <nav className="bg-slate-800 text-white shadow-lg no-print">
+      {/* Top Navigation (Desktop) */}
+      <nav className="bg-slate-800 text-white shadow-lg no-print hidden md:block">
         <div className="w-full px-4">
           <div className="flex justify-between h-14">
             <div className="flex items-center space-x-4 overflow-x-auto no-scrollbar">
               <div className="flex items-center gap-2 mr-2">
                   {logoUrl && <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain bg-white rounded p-0.5" />}
-                  <span className="font-bold text-xl tracking-wide whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</span>
+                  <span className="font-bold text-xl tracking-wide whitespace-nowrap">Offer Mgmt Pro</span>
               </div>
               <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Dashboard</button>
               <button onClick={() => handleSetView('customers')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'customers' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Customers</button>
               <button onClick={() => handleSetView('products')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'products' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Products</button>
               <button onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'quotations' || view === 'quotation-form' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Quotations</button>
+              <button onClick={() => handleSetView('calendar')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Calendar</button>
               <button onClick={() => handleSetView('delivery-challans')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'delivery-challans' || view === 'delivery-challan-form' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Challans</button>
               {(currentUser.role === 'Admin' || currentUser.role === 'Sales Person' || currentUser.role === 'Management') && (
                 <button onClick={() => handleSetView('reports')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'reports' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Reports</button>
               )}
-              {currentUser.role === 'Admin' && (
+               {currentUser.role === 'Admin' && (
                 <>
                     <button onClick={() => handleSetView('sales-persons')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'sales-persons' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Sales Persons</button>
                     <button onClick={() => handleSetView('users')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'users' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Users</button>
@@ -173,18 +197,42 @@ function App() {
         </div>
       </nav>
 
-      <main className="flex-grow w-full mx-auto p-2">
+      {/* Mobile Header */}
+      <div className="bg-slate-800 text-white p-3 flex justify-between items-center md:hidden shadow-md no-print z-10 sticky top-0">
+          <div className="flex items-center gap-2">
+             {logoUrl && <img src={logoUrl} alt="Logo" className="h-6 w-auto bg-white rounded p-0.5" />}
+             <span className="font-bold text-lg">Offer Mgmt</span>
+          </div>
+          <div className="flex items-center gap-2">
+             <span className="text-xs text-slate-300 truncate max-w-[80px]">{currentUser.name}</span>
+             <button onClick={handleLogout} className="text-rose-400 hover:text-rose-200">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+             </button>
+          </div>
+      </div>
+
+      <main className="flex-grow w-full mx-auto p-2 mb-16 md:mb-0">
         {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
         {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter}/>}
         {view === 'products' && <ProductManager />}
         {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
         {view === 'quotations' && <QuotationManager quotations={quotations} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} userRole={currentUser.role} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
         {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} userRole={currentUser.role} />}
+        {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} />}
         {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
         {view === 'delivery-challans' && <DeliveryChallanManager deliveryChallans={deliveryChallans} setDeliveryChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
         {view === 'delivery-challan-form' && <DeliveryChallanForm challans={deliveryChallans} setChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} editingChallanId={editingChallanId} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
         {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-1 md:hidden z-50 no-print">
+          <BottomNavItem active={view === 'dashboard'} label="Home" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>} onClick={() => handleSetView('dashboard')} />
+          <BottomNavItem active={view === 'quotations' || view === 'quotation-form'} label="Quotes" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>} onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} />
+          <BottomNavItem active={view === 'calendar'} label="Calendar" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>} onClick={() => handleSetView('calendar')} />
+          <BottomNavItem active={view === 'customers'} label="Customers" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} onClick={() => handleSetView('customers')} />
+          <BottomNavItem active={view === 'products'} label="Products" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>} onClick={() => handleSetView('products')} />
+      </div>
 
       <PasswordChangeModal
         isOpen={isPasswordModalOpen}

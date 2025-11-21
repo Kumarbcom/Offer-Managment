@@ -235,6 +235,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 maintainAspectRatio: false,
                 layout: { padding: { top: 20 } },
                 plugins: {
+                    legend: { display: false },
                     datalabels: {
                         align: 'top',
                         anchor: 'end',
@@ -295,6 +296,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 maintainAspectRatio: false,
                 layout: { padding: { top: 20 } },
                 plugins: {
+                    legend: { display: false },
                     datalabels: {
                         display: (context: any) => {
                             const val = Number(context.dataset.data[context.dataIndex]);
@@ -537,10 +539,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
 
     const dateRanges: { key: 'all' | 'week' | 'month' | 'year'; label: string }[] = [
-        { key: 'all', label: 'All Time' },
-        { key: 'week', label: 'Last 1 Week' },
-        { key: 'month', label: 'Last 1 Month' },
-        { key: 'year', label: 'Last 1 Year' },
+        { key: 'all', label: 'All' },
+        { key: 'week', label: '1 Wk' },
+        { key: 'month', label: '1 Mo' },
+        { key: 'year', label: '1 Yr' },
     ];
 
     if (!quotations || !salesPersons) {
@@ -548,20 +550,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     }
 
     return (
-        <div className="space-y-3 p-3">
+        <div className="space-y-3 p-1 md:p-3">
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-slate-100"
             >
-                <div className="flex items-center gap-3">
-                    <div className="bg-indigo-600 p-1.5 rounded-lg shadow-sm">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-indigo-600 p-1.5 rounded-lg shadow-sm">
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Dashboard</h2>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-800 tracking-tight">Dashboard</h2>
-                        <p className="text-[10px] text-slate-500">Overview of your sales performance</p>
-                    </div>
+                    {/* Logo Upload for Admin - Moved for visibility */}
+                     {currentUser.role === 'Admin' && (
+                        <div className="relative inline-flex items-center md:hidden">
+                            <input type="file" id="logo-upload-mobile" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                            <label htmlFor="logo-upload-mobile" className="p-2 bg-slate-50 rounded-full text-indigo-600 border border-slate-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </label>
+                        </div>
+                    )}
                 </div>
 
                 {/* Slicer Controls */}
@@ -585,13 +599,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         </div>
                     </div>
 
-                    <div className="inline-flex bg-slate-100 p-1 rounded-lg">
+                    <div className="inline-flex bg-slate-100 p-1 rounded-lg w-full md:w-auto justify-between md:justify-start">
                         {dateRanges.map((range) => (
                             <button
                                 key={range.key}
                                 type="button"
                                 onClick={() => setSelectedDateRange(range.key)}
-                                className={`relative inline-flex items-center px-4 py-1.5 text-xs font-semibold rounded-md transition-all duration-200
+                                className={`relative inline-flex items-center justify-center flex-1 md:flex-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200
                                 ${selectedDateRange === range.key
                                         ? 'bg-white text-indigo-600 shadow-sm'
                                         : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}
@@ -603,7 +617,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     </div>
 
                      {currentUser.role === 'Admin' && (
-                        <div className="relative inline-flex items-center">
+                        <div className="relative hidden md:inline-flex items-center">
                             <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={handleLogoChange} />
                             <label htmlFor="logo-upload" className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors shadow-sm h-full" title="Upload Company Logo">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -628,25 +642,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             </motion.div>
 
             {/* Overall Statistics Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
                  <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-center items-center hover:shadow-md transition-shadow"
+                    className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[80px]"
                 >
                     <div className="text-2xl font-bold text-slate-700 mb-0.5">{uniqueCustomerCount}</div>
-                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Active Customers</div>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center">Active Customers</div>
                 </motion.div>
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-2 rounded-xl shadow-sm text-white flex flex-col justify-center items-center hover:shadow-md transition-shadow"
+                    className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-2 rounded-xl shadow-sm text-white flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[80px]"
                 >
-                    <div className="text-2xl font-bold">{overallStats.total.count}</div>
+                    <div className="text-xl md:text-2xl font-bold">{overallStats.total.count}</div>
                     <div className="text-[10px] font-medium opacity-90">{formatCurrencyCompact(overallStats.total.value)}</div>
-                    <div className="text-[9px] font-bold opacity-75 uppercase tracking-wider mt-1">Total Enquiries</div>
+                    <div className="text-[9px] font-bold opacity-75 uppercase tracking-wider mt-1 text-center">Total Enquiries</div>
                 </motion.div>
                 {QUOTATION_STATUSES.map((status, i) => {
                     const colors: Record<string, string> = {
@@ -662,18 +676,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 + (i * 0.05) }}
-                            className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colors[status].split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow`}
+                            className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colors[status].split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[80px]`}
                         >
-                            <div className="text-xl font-bold text-slate-700">{overallStats[status].count}</div>
+                            <div className="text-lg md:text-xl font-bold text-slate-700">{overallStats[status].count}</div>
                             <div className={`text-[10px] font-semibold ${colors[status].split(' ')[1]} mt-0.5`}>{formatCurrencyCompact(overallStats[status].value)}</div>
-                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">{status}</div>
+                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center truncate w-full">{status}</div>
                         </motion.div>
                     )
                 })}
             </div>
 
             {/* Charts Row 1: Funnel, Value Trend, Top 5 Customers */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -681,7 +695,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
                     <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wide">Quotation Funnel</h3>
-                    <div className="h-48"><canvas ref={funnelChartRef}></canvas></div>
+                    <div className="h-40 md:h-48"><canvas ref={funnelChartRef}></canvas></div>
                 </motion.div>
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -690,7 +704,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
                     <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wide">Value Trend</h3>
-                    <div className="h-48"><canvas ref={lineChartRef}></canvas></div>
+                    <div className="h-40 md:h-48"><canvas ref={lineChartRef}></canvas></div>
                 </motion.div>
                  <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -699,12 +713,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
                     <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wide">Top 5 Customers</h3>
-                    <div className="h-48"><canvas ref={topCustomersChartRef}></canvas></div>
+                    <div className="h-40 md:h-48"><canvas ref={topCustomersChartRef}></canvas></div>
                 </motion.div>
             </div>
 
             {/* Row 2: Daily Enquiries, Order Status, Sales Person Stats, Recent Activity */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
                 {/* 1. Daily Enquiries */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -719,7 +733,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <button type="button" onClick={() => setBarChartMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
                         </div>
                     </div>
-                    <div className="h-48"><canvas ref={barChartRef}></canvas></div>
+                    <div className="h-40 md:h-48"><canvas ref={barChartRef}></canvas></div>
                 </motion.div>
 
                 {/* 2. Order Status */}
@@ -736,7 +750,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <button type="button" onClick={() => setOrderStatusMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
                         </div>
                     </div>
-                    <div className="h-48"><canvas ref={statusPieChartRef}></canvas></div>
+                    <div className="h-40 md:h-48"><canvas ref={statusPieChartRef}></canvas></div>
                 </motion.div>
 
                 {/* 3. Compact Sales Person Stats Table */}
@@ -757,9 +771,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                     <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tot</th>
                                     <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Opn</th>
                                     <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">PO</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Par</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lst</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Exp</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-100">
@@ -774,15 +785,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
                                             <span className={`text-[10px] font-medium ${stat['PO received'].count > 0 ? 'text-green-700' : 'text-slate-300'}`}>{stat['PO received'].count}</span>
-                                        </td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-teal-700' : 'text-slate-300'}`}>{stat['Partial PO Received'].count}</span>
-                                        </td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Lost'].count > 0 ? 'text-rose-700' : 'text-slate-300'}`}>{stat['Lost'].count}</span>
-                                        </td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Expired'].count > 0 ? 'text-amber-700' : 'text-slate-300'}`}>{stat['Expired'].count}</span>
                                         </td>
                                     </tr>
                                 ))}
@@ -799,7 +801,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
                 >
                     <div className="p-2 border-b border-slate-100 flex justify-between items-center">
-                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Recent Activity</h3>
+                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Recent</h3>
                         <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
                             <button type="button" onClick={() => setQuotationSortType('latest')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${quotationSortType === 'latest' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>New</button>
                             <button type="button" onClick={() => setQuotationSortType('highestValue')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${quotationSortType === 'highestValue' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Top</button>
@@ -824,7 +826,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                             <div className="text-[10px] font-semibold text-slate-700 truncate max-w-[80px]" title={q.customerId ? customerMap.get(q.customerId) : ''}>{q.customerId ? customerMap.get(q.customerId) || '...' : 'N/A'}</div>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-right">
-                                            <div className="text-[10px] font-bold text-slate-700">{formatCurrency(calculateTotalAmount(q.details))}</div>
+                                            <div className="text-[10px] font-bold text-slate-700">{formatCurrencyCompact(calculateTotalAmount(q.details))}</div>
                                         </td>
                                     </tr>
                                 ))}
@@ -832,7 +834,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         </table>
                         {recentQuotations.length === 0 && (
                             <div className="flex flex-col items-center justify-center h-32 text-slate-400">
-                                <svg className="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z"></path></svg>
                                 <p className="text-xs">No data</p>
                             </div>
                         )}
