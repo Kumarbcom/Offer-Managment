@@ -498,7 +498,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   };
   
   const totals = useMemo(() => {
-      if (!formData) return { moq: 0, req: 0, amount: 0, airFreightAmount: 0 };
+      if (!formData || !formData.details) return { moq: 0, req: 0, amount: 0, airFreightAmount: 0 };
       return formData.details.reduce((acc, item) => {
           const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
           acc.moq += item.moq || 0;
@@ -645,7 +645,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             {gridColumns.map(h => <th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}
                         </tr>
                     </thead>
-                    <tbody className="bg-white text-xs">{formData.details.map((item, index) => {
+                    <tbody className="bg-white text-xs">{(formData.details || []).map((item, index) => {
                         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); 
                         const amount = unitPrice * (item.moq || 0); 
                         const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000) * 150 : 0; 

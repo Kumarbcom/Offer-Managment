@@ -184,7 +184,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     if(!filteredAndSortedQuotations || filteredAndSortedQuotations.length === 0) { alert("No data to export."); return; }
     const dataToExport = filteredAndSortedQuotations.flatMap(q => {
         const quotationTotal = calculateTotalAmount(q.details);
-        return q.details.map(item => {
+        return (q.details || []).map(item => {
             const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
             return {
                 'Quotation ID': q.id, 'Date': new Date(q.quotationDate).toLocaleDateString(), 'Customer': getCustomerName(q.customerId), 'Contact Person': q.contactPerson, 'Contact No': q.contactNumber, 'Sales Person': getSalesPersonName(q.salesPersonId), 'Status': q.status, 'Total Amount': quotationTotal,
