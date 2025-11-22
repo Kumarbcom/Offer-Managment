@@ -104,14 +104,24 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   // Refs for grid inputs
   const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   const userRole = currentUser.role;
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Logic to determine if the user can edit this quotation
   const isReadOnly = useMemo(() => {
+      // Sales Person on Mobile can ONLY view
+      if (userRole === 'Sales Person' && isMobile) return true;
+      
       if (userRole === 'Admin') return false;
       if (userRole === 'Sales Person') {
           // If creating new, it's editable
@@ -123,7 +133,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           return formData.salesPersonId !== currentSalesPersonId;
       }
       return true; // Other roles are read-only
-  }, [userRole, editingQuotationId, formData, salesPersons, currentUser]);
+  }, [userRole, editingQuotationId, formData, salesPersons, currentUser, isMobile]);
 
 
   const getPriceForDate = useCallback((product: Product, date: string): PriceEntry | null => {
@@ -543,6 +553,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   if (!formData) return <div className="p-8 text-center text-xs">Loading form...</div>;
 
+  // Define Grid Columns based on user request
+  const gridColumns = ['SL No', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount%', 'Unit Price', 'Amount', 'Stock Status', 'Air per Unit', 'Air Freight Amt', 'Air Lead Time'];
+  if (!isReadOnly) gridColumns.push('');
+
   return (
     <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
       <div className="bg-white rounded-lg shadow-lg">
@@ -575,7 +589,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
             </div>
             
-            {isReadOnly && userRole === 'Sales Person' && formData.id !== 0 && (
+            {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs text-yellow-700">
                     <p className="font-bold">View Only Mode</p>
                     <p>You are viewing a quotation created by another Sales Person. You cannot edit this.</p>
@@ -626,74 +640,157 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
             <div className="mt-3 overflow-x-auto">
                 <table className="min-w-full border-collapse border border-slate-300 text-[11px]">
-                    <thead className="bg-slate-200 text-slate-700 font-semibold"><tr className="divide-x divide-slate-300">{['Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Disc%', 'Net Price', 'Amount', 'Stock', 'Air?', 'Wt/M', 'Fr/M', 'Total Fr', 'Lead Time', ''].map(h=><th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}</tr></thead>
-                    <tbody className="bg-white text-xs">{formData.details.map((item, index) => {const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); const amount = unitPrice * (item.moq || 0); 
-                    // SAFE GUARD for airFreightDetails with optional chaining
-                    const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000) * 150 : 0; 
-                    const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
-                    const currentProduct = fetchedProducts.get(item.productId);
-                    const optionsForSelect = [...searchedProducts];
-                    if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
-                        optionsForSelect.unshift(currentProduct);
-                    }
-                    return (<tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50"><td className="border-t border-slate-300 w-40 align-top"><div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} /></div></td><td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td>
-                    
-                    <td className="border-t border-slate-300 align-top">
-                        <input 
-                            type="number" 
-                            ref={(el) => { inputRefs.current[`${index}-moq`] = el; }}
-                            value={item.moq} 
-                            onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} 
-                            onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
-                            onFocus={(e) => e.target.select()}
-                            className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
-                            disabled={isReadOnly}
-                        />
-                    </td>
-                    <td className="border-t border-slate-300 align-top">
-                        <input 
-                            type="number" 
-                            ref={(el) => { inputRefs.current[`${index}-req`] = el; }}
-                            value={item.req} 
-                            onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} 
-                            onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
-                            onFocus={(e) => e.target.select()}
-                            className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
-                            disabled={isReadOnly}
-                        />
-                    </td>
-                    
-                    <td className="border-t border-slate-300 align-top"><div className="flex items-center bg-slate-100 h-6"><input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap" disabled/><select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-0 text-[10px] text-slate-500 h-full" disabled><option value="LP">L</option><option value="SP">S</option></select></div></td>
-                    
-                    <td className="border-t border-slate-300 align-top">
-                        <input 
-                            type="text" 
-                            ref={(el) => { inputRefs.current[`${index}-discount`] = el; }}
-                            value={item.discount} 
-                            onChange={e => handleItemChange(index, 'discount', e.target.value)} 
-                            onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
-                            onFocus={(e) => e.target.select()}
-                            className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
-                            disabled={isReadOnly}
-                        />
-                    </td>
-                    
-                    <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    
-                    <td className="border-t border-slate-300 align-top">
-                        <input 
-                            type="text" 
-                            ref={(el) => { inputRefs.current[`${index}-stockStatus`] = el; }}
-                            value={item.stockStatus} 
-                            onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} 
-                            onKeyDown={(e) => handleGridKeyDown(e, index, 'stockStatus')}
-                            onFocus={(e) => e.target.select()}
-                            className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
-                            disabled={isReadOnly}
-                        />
-                    </td>
-                    
-                    <td className="border-t border-slate-300 text-center align-top pt-1"><input type="checkbox" checked={item.airFreight} onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} className="h-3 w-3 disabled:bg-slate-100" disabled={isReadOnly}/></td><td className="border-t border-slate-300 align-top"><input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-12 p-0.5 text-right h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top h-6">{freightPerMtr.toFixed(0)}</td><td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">{freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td><td className="border-t border-slate-300 align-top"><input type="text" value={item.airFreightDetails?.airFreightLeadTime || ''} onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" disabled={!item.airFreight || isReadOnly}/></td><td className="border-t border-slate-300 text-center align-middle">{!isReadOnly && <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item"><Icons.Trash /></button>}</td></tr>);})}</tbody>
+                    <thead className="bg-slate-200 text-slate-700 font-semibold">
+                        <tr className="divide-x divide-slate-300">
+                            {gridColumns.map(h => <th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white text-xs">{formData.details.map((item, index) => {
+                        const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); 
+                        const amount = unitPrice * (item.moq || 0); 
+                        const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000) * 150 : 0; 
+                        const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
+                        const currentProduct = fetchedProducts.get(item.productId);
+                        const optionsForSelect = [...searchedProducts];
+                        if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
+                            optionsForSelect.unshift(currentProduct);
+                        }
+                        return (
+                        <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50">
+                            {/* SL No */}
+                            <td className="border-t border-slate-300 p-1 text-center bg-slate-50">{index + 1}</td>
+                            
+                            {/* Part No */}
+                            <td className="border-t border-slate-300 w-40 align-top">
+                                <div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}>
+                                    <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
+                                </div>
+                            </td>
+                            
+                            {/* Description */}
+                            <td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td>
+                            
+                            {/* MOQ */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="number" 
+                                    ref={(el) => { inputRefs.current[`${index}-moq`] = el; }}
+                                    value={item.moq} 
+                                    onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    disabled={isReadOnly}
+                                />
+                            </td>
+
+                            {/* REQ */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="number" 
+                                    ref={(el) => { inputRefs.current[`${index}-req`] = el; }}
+                                    value={item.req} 
+                                    onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    disabled={isReadOnly}
+                                />
+                            </td>
+                            
+                            {/* Price (LP/SP) */}
+                            <td className="border-t border-slate-300 align-top">
+                                <div className="flex items-center bg-slate-100 h-6">
+                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap" disabled/>
+                                    <select value={item.priceSource} className="bg-transparent border-l border-slate-200 p-0 text-[10px] text-slate-500 h-full" disabled>
+                                        <option value="LP">L</option><option value="SP">S</option>
+                                    </select>
+                                </div>
+                            </td>
+                            
+                            {/* Discount % */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="text" 
+                                    ref={(el) => { inputRefs.current[`${index}-discount`] = el; }}
+                                    value={item.discount} 
+                                    onChange={e => handleItemChange(index, 'discount', e.target.value)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    disabled={isReadOnly}
+                                />
+                            </td>
+                            
+                            {/* Unit Price */}
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">
+                                {unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+
+                            {/* Amount */}
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">
+                                {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            
+                            {/* Stock Status */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="text" 
+                                    ref={(el) => { inputRefs.current[`${index}-stockStatus`] = el; }}
+                                    value={item.stockStatus} 
+                                    onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'stockStatus')}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    disabled={isReadOnly}
+                                />
+                            </td>
+                            
+                            {/* Air per Unit (with Checkbox for toggle if editable) */}
+                            <td className="border-t border-slate-300 align-top min-w-[100px]">
+                                <div className="flex items-center gap-1 h-6 px-1">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={item.airFreight} 
+                                        onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} 
+                                        className="h-3 w-3 disabled:bg-slate-100" 
+                                        disabled={isReadOnly}
+                                        title="Toggle Air Freight"
+                                    />
+                                    {!isReadOnly && item.airFreight ? (
+                                         <input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-full p-0.5 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded text-xs" title="Weight (kg/m) for calculation"/>
+                                    ) : (
+                                        <span className="text-right flex-grow text-[10px]">{freightPerMtr.toFixed(2)}</span>
+                                    )}
+                                </div>
+                            </td>
+
+                            {/* Air Freight Amt */}
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">
+                                {freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </td>
+
+                            {/* Air Lead Time */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="text" 
+                                    value={item.airFreightDetails?.airFreightLeadTime || ''} 
+                                    onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} 
+                                    className="w-20 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    disabled={!item.airFreight || isReadOnly}
+                                />
+                            </td>
+
+                            {/* Actions */}
+                            {!isReadOnly && (
+                                <td className="border-t border-slate-300 text-center align-middle">
+                                    <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item">
+                                        <Icons.Trash />
+                                    </button>
+                                </td>
+                            )}
+                        </tr>
+                    );})}</tbody>
                 </table>
             </div>
              <div className="flex justify-end mt-2 mb-4">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-xs rounded">+ Add Row</button>}</div>

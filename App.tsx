@@ -157,41 +157,44 @@ function App() {
     </button>
   );
 
+  const headerBtnClass = (isActive: boolean) => 
+    `px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide transition-colors ${isActive ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`;
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {/* Top Navigation (Desktop) */}
       <nav className="bg-slate-800 text-white shadow-lg no-print hidden md:block">
-        <div className="w-full px-4">
-          <div className="flex justify-between h-14">
-            <div className="flex items-center space-x-4 overflow-x-auto no-scrollbar">
-              <div className="flex items-center gap-2 mr-2">
-                  {logoUrl && <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain bg-white rounded p-0.5" />}
-                  <span className="font-bold text-xl tracking-wide whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</span>
+        <div className="w-full px-2">
+          <div className="flex justify-between h-12">
+            <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 mr-2 shrink-0">
+                  {logoUrl && <img src={logoUrl} alt="Logo" className="h-7 w-auto object-contain bg-white rounded p-0.5" />}
+                  <span className="font-bold text-base tracking-wide whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</span>
               </div>
-              <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Dashboard</button>
-              <button onClick={() => handleSetView('customers')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'customers' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Customers</button>
-              <button onClick={() => handleSetView('products')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'products' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Products</button>
-              <button onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'quotations' || view === 'quotation-form' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Quotations</button>
-              <button onClick={() => handleSetView('calendar')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Calendar</button>
-              <button onClick={() => handleSetView('delivery-challans')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'delivery-challans' || view === 'delivery-challan-form' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Challans</button>
+              <button onClick={() => handleSetView('dashboard')} className={headerBtnClass(view === 'dashboard')}>Dashboard</button>
+              <button onClick={() => handleSetView('customers')} className={headerBtnClass(view === 'customers')}>Customers</button>
+              <button onClick={() => handleSetView('products')} className={headerBtnClass(view === 'products')}>Products</button>
+              <button onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} className={headerBtnClass(view === 'quotations' || view === 'quotation-form')}>Quotations</button>
+              <button onClick={() => handleSetView('calendar')} className={headerBtnClass(view === 'calendar')}>Calendar</button>
+              <button onClick={() => handleSetView('delivery-challans')} className={headerBtnClass(view === 'delivery-challans' || view === 'delivery-challan-form')}>Challans</button>
               {(currentUser.role === 'Admin' || currentUser.role === 'Sales Person' || currentUser.role === 'Management') && (
-                <button onClick={() => handleSetView('reports')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'reports' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Reports</button>
+                <button onClick={() => handleSetView('reports')} className={headerBtnClass(view === 'reports')}>Reports</button>
               )}
                {currentUser.role === 'Admin' && (
                 <>
-                    <button onClick={() => handleSetView('sales-persons')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'sales-persons' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Sales Persons</button>
-                    <button onClick={() => handleSetView('users')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${view === 'users' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}>Users</button>
+                    <button onClick={() => handleSetView('sales-persons')} className={headerBtnClass(view === 'sales-persons')}>Sales</button>
+                    <button onClick={() => handleSetView('users')} className={headerBtnClass(view === 'users')}>Users</button>
                 </>
               )}
             </div>
-            <div className="flex items-center space-x-3 ml-4">
-              <span className="text-sm text-slate-300 hidden sm:inline">Hello, {currentUser.name}</span>
+            <div className="flex items-center space-x-2 ml-2 shrink-0">
+              <span className="text-xs text-slate-300 hidden lg:inline">Hello, {currentUser.name}</span>
               <button onClick={() => setIsPasswordModalOpen(true)} className="text-slate-400 hover:text-white" title="Change Password">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                  </svg>
               </button>
-              <button onClick={handleLogout} className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Logout</button>
+              <button onClick={handleLogout} className="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors">Logout</button>
             </div>
           </div>
         </div>
@@ -214,11 +217,11 @@ function App() {
       <main className="flex-grow w-full mx-auto p-2 mb-16 md:mb-0">
         {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
         {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter}/>}
-        {view === 'products' && <ProductManager />}
+        {view === 'products' && <ProductManager currentUser={currentUser} />}
         {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
         {view === 'quotations' && <QuotationManager quotations={quotations} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
         {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} />}
-        {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} />}
+        {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
         {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
         {view === 'delivery-challans' && <DeliveryChallanManager deliveryChallans={deliveryChallans} setDeliveryChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
         {view === 'delivery-challan-form' && <DeliveryChallanForm challans={deliveryChallans} setChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} editingChallanId={editingChallanId} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
@@ -228,10 +231,10 @@ function App() {
       {/* Mobile Bottom Navigation */}
       <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-1 md:hidden z-50 no-print">
           <BottomNavItem active={view === 'dashboard'} label="Home" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>} onClick={() => handleSetView('dashboard')} />
-          <BottomNavItem active={view === 'quotations' || view === 'quotation-form'} label="Quotes" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>} onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} />
+          <BottomNavItem active={view === 'quotations' || view === 'quotation-form'} label="Quote" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>} onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} />
           <BottomNavItem active={view === 'calendar'} label="Calendar" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>} onClick={() => handleSetView('calendar')} />
-          <BottomNavItem active={view === 'customers'} label="Customers" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} onClick={() => handleSetView('customers')} />
           <BottomNavItem active={view === 'products'} label="Products" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>} onClick={() => handleSetView('products')} />
+          <BottomNavItem active={false} label="Back" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>} onClick={() => handleSetView('dashboard')} />
       </div>
 
       <PasswordChangeModal

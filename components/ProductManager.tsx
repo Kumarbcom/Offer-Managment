@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { Product, PriceEntry } from '../types';
+
+
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { ProductAddModal } from './ProductAddModal';
 import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct } from '../supabase';
@@ -7,9 +9,10 @@ import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProd
 declare var XLSX: any;
 
 interface ProductManagerProps {
+    currentUser: User;
 }
 
-type SortByType = 'id' | 'partNo' | 'description' | 'hsnCode';
+type SortByType = 'id' | 'partNo' | 'description' | 'hsnCode' | 'price';
 type SortOrderType = 'asc' | 'desc';
 
 const PAGE_LIMIT = 50;
@@ -37,6 +40,12 @@ const getCurrentPrice = (product: Product): PriceEntry | null => {
     return [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
 };
 
+const getEffectivePriceValue = (product: Product): number => {
+    const price = getCurrentPrice(product);
+    if (!price) return 0;
+    return price.lp > 0 ? price.lp : price.sp;
+};
+
 // Memoized ProductRow component to prevent unnecessary re-renders
 const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; }) => {
     const currentPrice = getCurrentPrice(product);
@@ -61,7 +70,7 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
 });
 
 
-export const ProductManager: React.FC<ProductManagerProps> = () => {
+export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) => {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -70,8 +79,10 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchDescription, setSearchDescription] = useState('');
-  const [sortBy, setSortBy] = useState<SortByType>('id');
-  const [sortOrder, setSortOrder] = useState<SortOrderType>('asc');
+  // Default sort to 'price' as requested for searches, though we default the UI to 'lp' behavior manually
+  const [sortBy, setSortBy] = useState<SortByType>('price'); 
+  const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
+  const [discount, setDiscount] = useState<string>('0'); // Mobile discount state
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
@@ -81,6 +92,8 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
+  const canManageProducts = currentUser.role !== 'Sales Person';
+
   const fetchProducts = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) {
         if (!hasMore || isLoadingMore) return;
@@ -94,15 +107,31 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
         const pageToFetch = isLoadMore ? currentPage + 1 : 1;
         const offset = (pageToFetch - 1) * PAGE_LIMIT;
 
+        // If sorting by price, we fall back to ID sorting on backend and sort client-side 
+        // because price is nested in a JSON array.
+        const backendSortBy = sortBy === 'price' ? 'id' : sortBy;
+
         const result = await getProductsPaginated({
             pageLimit: PAGE_LIMIT,
             startAfterDoc: offset,
-            sortBy,
+            sortBy: backendSortBy,
             sortOrder,
             filters: { partNo: searchTerm, description: searchDescription }
         });
         
-        setDisplayedProducts(prev => isLoadMore ? [...prev, ...result.products] : result.products);
+        setDisplayedProducts(prev => {
+            const combined = isLoadMore ? [...prev, ...result.products] : result.products;
+            // Client-side sort for price if selected
+            if (sortBy === 'price') {
+                return combined.sort((a, b) => {
+                    const priceA = getEffectivePriceValue(a);
+                    const priceB = getEffectivePriceValue(b);
+                    return sortOrder === 'asc' ? priceA - priceB : priceB - priceA;
+                });
+            }
+            return combined;
+        });
+
         setCurrentPage(pageToFetch);
         setHasMore(result.products.length === PAGE_LIMIT);
 
@@ -312,7 +341,16 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
       <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
          <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-slate-800">Products</h2>
-            <div className="flex flex-wrap gap-2 text-sm">
+            {/* Mobile-only Upload/Add buttons compact row */}
+            {canManageProducts && (
+            <div className="flex md:hidden gap-2">
+                <button onClick={handleAddNew} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">Add</button>
+                <button onClick={handleUploadClick} className="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold">Upload</button>
+            </div>
+            )}
+            
+            {/* Desktop Buttons */}
+            <div className="hidden md:flex flex-wrap gap-2 text-sm">
                 <button onClick={handleExport} disabled={isUploading} className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Export Visible</button>
                 <button onClick={handleDownloadTemplate} disabled={isUploading} className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Template</button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
@@ -332,7 +370,35 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
             </div>
          )}
          
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
+         {/* Mobile Search and Discount */}
+         <div className="block md:hidden space-y-3 mb-4 border-b pb-4 border-slate-100">
+             <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Universal Search</label>
+                <input 
+                    type="text" 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    className="w-full mt-1 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Search Part No or Description..."
+                />
+             </div>
+             <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Discount %</label>
+                <div className="relative">
+                    <input 
+                        type="number" 
+                        value={discount} 
+                        onChange={e => setDiscount(e.target.value)} 
+                        className="w-full mt-1 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        placeholder="0"
+                    />
+                    <span className="absolute right-3 top-3 text-slate-400 text-sm">%</span>
+                </div>
+             </div>
+         </div>
+
+         {/* Desktop Filters */}
+         <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>
                 <label htmlFor="searchTerm" className="block text-xs font-medium text-slate-600">Search Part No (use * for OR)</label>
                 <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. OLFLEX*UNITRONIC" />
@@ -344,6 +410,7 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
             <div>
                 <label htmlFor="sortBy" className="block text-xs font-medium text-slate-600">Sort By</label>
                 <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    <option value="price">Price (LP)</option>
                     <option value="id">ID</option>
                     <option value="partNo">Part No</option>
                     <option value="description">Description</option>
@@ -358,7 +425,52 @@ export const ProductManager: React.FC<ProductManagerProps> = () => {
             </div>
          </div>
 
-        <div className="overflow-x-auto -mx-4">
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-3">
+            {displayedProducts.map(product => {
+                const currentPrice = getCurrentPrice(product);
+                const lp = currentPrice?.lp || 0;
+                const sp = currentPrice?.sp || 0;
+                const basePrice = lp > 0 ? lp : sp;
+                const discountVal = parseFloat(discount) || 0;
+                const discountedPrice = basePrice * (1 - discountVal / 100);
+                
+                return (
+                    <div key={product.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-sm font-bold text-indigo-700">{product.partNo}</h3>
+                            <div className="text-xs text-slate-400">#{product.id}</div>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">{product.description}</p>
+                        
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2">
+                            <div>
+                                <p className="text-[10px] text-slate-500 uppercase">Standard Price</p>
+                                <div className="flex gap-2 text-xs font-medium">
+                                    <span className={lp > 0 ? "text-slate-800" : "text-slate-400"}>LP: {lp > 0 ? lp.toFixed(2) : '-'}</span>
+                                    <span className={sp > 0 ? "text-slate-800" : "text-slate-400"}>SP: {sp > 0 ? sp.toFixed(2) : '-'}</span>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] text-slate-500 uppercase">Discounted Price</p>
+                                <p className="text-sm font-bold text-green-600">
+                                    {discountedPrice.toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}
+                                </p>
+                            </div>
+                        </div>
+                        {canManageProducts && (
+                        <div className="flex justify-end gap-3 mt-2 pt-2 border-t border-slate-50">
+                            <button onClick={() => handleEdit(product)} className="text-indigo-600 text-xs font-semibold">Edit</button>
+                            <button onClick={() => handleDelete(product.id)} className="text-rose-600 text-xs font-semibold">Delete</button>
+                        </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto -mx-4">
             <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
                 <tr>
