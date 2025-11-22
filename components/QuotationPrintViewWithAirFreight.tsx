@@ -58,6 +58,13 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
     const grandTotal = totals.totalAmount + totals.totalFreight;
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
+    const getPartNoLink = (partNo: string) => {
+        if (quotation.productsBrand === 'Lapp' && partNo) {
+            return `https://products.lappgroup.com/online-catalogue.html?q=${encodeURIComponent(partNo)}`;
+        }
+        return null;
+    };
+
     return (
         <div className="bg-white p-2 font-sans text-xs text-slate-800 print-wrapper">
             <div className="print-main-content">
@@ -127,10 +134,20 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                             const freightPerUnit = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0;
                             const freightAmount = freightPerUnit * item.moq;
                             const totalWithFreight = amount + freightAmount;
+                            const partNoUrl = getPartNoLink(item.partNo);
+
                             return (
                                 <tr key={index}>
                                     <td className="p-1 border text-center">{index + 1}</td>
-                                    <td className="p-1 border font-medium">{item.partNo}</td>
+                                    <td className="p-1 border font-medium">
+                                         {partNoUrl ? (
+                                            <a href={partNoUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'none' }}>
+                                                {item.partNo}
+                                            </a>
+                                        ) : (
+                                            item.partNo
+                                        )}
+                                    </td>
                                     <td className="p-1 border max-w-xs">{item.description}</td>
                                     <td className="p-1 border text-center">{item.moq}</td>
                                     <td className="p-1 border text-center">{item.req}</td>
