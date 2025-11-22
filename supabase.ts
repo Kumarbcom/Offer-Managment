@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 import type { Customer, Product } from './types';
 
@@ -208,6 +209,7 @@ interface ProductQueryOptions {
     filters: {
         partNo?: string;
         description?: string;
+        universal?: string;
     };
 }
 
@@ -222,18 +224,34 @@ export async function getProductsPaginated(options: ProductQueryOptions) {
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
-    if (filters.partNo) {
-        const terms = filters.partNo.split('*').map(term => term.trim()).filter(Boolean);
-        if (terms.length > 0) {
-            const orFilter = terms.map(term => `partNo.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
-            query = query.or(orFilter);
+    if (filters.universal) {
+        // Fuzzy search: Remove spaces/punctuation and interleave with %
+        // e.g., "3 G 2.5" -> "3G25" -> "%3%G%2%5%"
+        // This matches "3G2.5", "3G2,5", "3 G 2.5" etc.
+        const cleanInput = filters.universal.replace(/[\s,.-]/g, '');
+        if (cleanInput.length > 0) {
+            const fuzzyTerm = cleanInput.split('').join('%');
+            const pattern = `%${fuzzyTerm}%`;
+            query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
+        } else {
+             // If user typed only spaces or punctuation, try standard contains on raw term
+             const pattern = `%${filters.universal}%`;
+             query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
         }
-    }
-    if (filters.description) {
-        const terms = filters.description.split('*').map(term => term.trim()).filter(Boolean);
-        if (terms.length > 0) {
-            const orFilter = terms.map(term => `description.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
-            query = query.or(orFilter);
+    } else {
+        if (filters.partNo) {
+            const terms = filters.partNo.split('*').map(term => term.trim()).filter(Boolean);
+            if (terms.length > 0) {
+                const orFilter = terms.map(term => `partNo.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
+                query = query.or(orFilter);
+            }
+        }
+        if (filters.description) {
+            const terms = filters.description.split('*').map(term => term.trim()).filter(Boolean);
+            if (terms.length > 0) {
+                const orFilter = terms.map(term => `description.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
+                query = query.or(orFilter);
+            }
         }
     }
 

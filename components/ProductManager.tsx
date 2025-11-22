@@ -81,7 +81,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const [searchDescription, setSearchDescription] = useState('');
   // Default sort to 'price' as requested for searches, though we default the UI to 'lp' behavior manually
   const [sortBy, setSortBy] = useState<SortByType>('price'); 
-  const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
+  const [sortOrder, setSortOrder] = useState<SortOrderType>('asc');
   const [discount, setDiscount] = useState<string>('0'); // Mobile discount state
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,7 +92,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const canManageProducts = currentUser.role !== 'Sales Person';
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchProducts = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) {
@@ -110,13 +117,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         // If sorting by price, we fall back to ID sorting on backend and sort client-side 
         // because price is nested in a JSON array.
         const backendSortBy = sortBy === 'price' ? 'id' : sortBy;
+        
+        const filters: any = {};
+        if (isMobile) {
+            // In mobile, the single 'searchTerm' input acts as a universal fuzzy search
+            if (searchTerm) filters.universal = searchTerm;
+        } else {
+            if (searchTerm) filters.partNo = searchTerm;
+            if (searchDescription) filters.description = searchDescription;
+        }
 
         const result = await getProductsPaginated({
             pageLimit: PAGE_LIMIT,
             startAfterDoc: offset,
             sortBy: backendSortBy,
             sortOrder,
-            filters: { partNo: searchTerm, description: searchDescription }
+            filters: filters
         });
         
         setDisplayedProducts(prev => {
@@ -142,7 +158,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         setIsLoading(false);
         setIsLoadingMore(false);
     }
-  }, [sortBy, sortOrder, searchTerm, searchDescription, hasMore, isLoadingMore, currentPage]);
+  }, [sortBy, sortOrder, searchTerm, searchDescription, hasMore, isLoadingMore, currentPage, isMobile]);
 
 
   useEffect(() => {
@@ -152,7 +168,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     }, 300); 
 
     return () => { if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current) };
-  }, [searchTerm, searchDescription, sortBy, sortOrder]);
+  }, [searchTerm, searchDescription, sortBy, sortOrder, isMobile]);
 
 
   const handleAddNew = useCallback(() => { setProductToEdit(null); setIsModalOpen(true); }, []);

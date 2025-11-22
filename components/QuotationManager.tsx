@@ -419,7 +419,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 <div className="flex justify-end items-center pt-2 border-t border-slate-100 mt-2">
                     <div className="flex gap-3">
                          <button onClick={() => handleEdit(q.id)} className="text-indigo-600 font-semibold text-xs">
-                            {userRole === 'Sales Person' ? 'View Details' : 'Edit'}
+                            {userRole === 'Admin' ? 'Edit' : 'View Details'}
                          </button>
                          {userRole === 'Admin' && <button onClick={() => handleDelete(q.id)} className="text-rose-600 font-semibold text-xs">Delete</button>}
                     </div>
@@ -478,6 +478,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         <td className="px-2 py-1 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
                         <td className="px-2 py-1 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR', maximumFractionDigits: 0})}</td>
                         <td className="px-2 py-1 whitespace-nowrap text-slate-600">
+                            {canEdit ? (
                             <select
                                 value={q.status}
                                 onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
@@ -491,6 +492,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                                     </option>
                                 ))}
                             </select>
+                            ) : (
+                                <div className={`text-[10px] px-2 py-0.5 rounded-full font-bold inline-block ${getStatusClass(q.status)}`}>{q.status}</div>
+                            )}
                         </td>
                         <td className="px-2 py-1 whitespace-nowrap text-slate-600 max-w-[120px]">
                             <input 

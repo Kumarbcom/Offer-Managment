@@ -226,7 +226,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ quotations, salesPer
         <div className="flex justify-end items-center pt-2 border-t border-slate-200/50 mt-2">
             <div className="flex gap-3">
                     <button onClick={() => onSelectQuotation(q.id)} className="text-indigo-600 font-semibold text-xs">
-                    {userRole === 'Sales Person' ? 'View Details' : 'Edit'}
+                    {userRole === 'Admin' ? 'Edit' : 'View Details'}
                     </button>
             </div>
         </div>
