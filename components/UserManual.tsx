@@ -3,7 +3,10 @@ import React, { useState } from 'react';
 
 const Section: React.FC<{ title: string; id: string; children: React.ReactNode }> = ({ title, id, children }) => (
     <div id={id} className="mb-12 scroll-mt-20">
-        <h2 className="text-2xl font-bold text-slate-800 mb-4 border-b pb-2">{title}</h2>
+        <h2 className="text-2xl font-bold text-slate-800 mb-4 border-b pb-2 flex items-center gap-2">
+            <ManualIcon type={id} className="w-6 h-6 text-indigo-600"/>
+            {title}
+        </h2>
         {children}
     </div>
 );
@@ -17,31 +20,24 @@ const SubSection: React.FC<{ title: string; children: React.ReactNode }> = ({ ti
 
 const UIWireframe: React.FC<{ type: 'login' | 'dashboard' | 'table' | 'form' | 'calendar' | 'mobile' }> = ({ type }) => {
     const stroke = "#94a3b8"; // slate-400
-    const fill = "#f8fafc"; // slate-50
     const darkFill = "#1e293b"; // slate-800 (Header)
     const accent = "#6366f1"; // indigo-500
-    const green = "#22c55e";
-    const orange = "#f97316";
     
     return (
-        <div className="w-full h-72 bg-slate-100 flex items-center justify-center p-4 border border-slate-300 rounded-lg overflow-hidden relative my-4 shadow-inner">
+        <div className="w-full h-80 bg-slate-100 flex items-center justify-center p-4 border border-slate-300 rounded-lg overflow-hidden relative my-4 shadow-inner">
             <svg width="100%" height="100%" viewBox="0 0 600 350" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
                 {type === 'login' && (
                     <g>
-                        {/* Background */}
                         <rect x="0" y="0" width="600" height="350" fill="#f1f5f9" />
-                        {/* Login Box */}
                         <rect x="200" y="50" width="200" height="250" rx="8" fill="white" filter="drop-shadow(0 4px 6px rgb(0 0 0 / 0.1))" />
                         <text x="300" y="90" textAnchor="middle" fontSize="18" fill="#1e293b" fontWeight="bold" fontFamily="sans-serif">Login</text>
                         
-                        {/* Inputs */}
                         <text x="220" y="125" fontSize="10" fill="#64748b" fontFamily="sans-serif">Username</text>
                         <rect x="220" y="130" width="160" height="30" rx="4" fill="white" stroke="#cbd5e1" strokeWidth="1"/>
                         
                         <text x="220" y="180" fontSize="10" fill="#64748b" fontFamily="sans-serif">Password</text>
                         <rect x="220" y="185" width="160" height="30" rx="4" fill="white" stroke="#cbd5e1" strokeWidth="1"/>
                         
-                        {/* Button */}
                         <rect x="220" y="240" width="160" height="30" rx="4" fill={accent} />
                         <text x="300" y="260" textAnchor="middle" fontSize="12" fill="white" fontFamily="sans-serif" dominantBaseline="middle" fontWeight="bold">Sign In</text>
                     </g>
@@ -50,38 +46,48 @@ const UIWireframe: React.FC<{ type: 'login' | 'dashboard' | 'table' | 'form' | '
                 {type === 'dashboard' && (
                     <g>
                         {/* Header */}
-                        <rect x="10" y="10" width="580" height="40" rx="4" fill="white" stroke="#e2e8f0" />
-                        <rect x="20" y="20" width="20" height="20" rx="4" fill={accent}/>
-                        <text x="50" y="35" fontSize="14" fill="#1e293b" fontWeight="bold" fontFamily="sans-serif">Dashboard</text>
+                        <rect x="10" y="10" width="580" height="40" rx="4" fill={darkFill} />
+                        <text x="30" y="35" fontSize="14" fill="white" fontWeight="bold" fontFamily="sans-serif">Siddhi Kabel Corp</text>
                         
                         {/* Slicers */}
-                        <rect x="400" y="18" width="100" height="24" rx="4" fill="#f1f5f9" stroke="#cbd5e1"/>
-                        <rect x="510" y="18" width="70" height="24" rx="4" fill="#f1f5f9" stroke="#cbd5e1"/>
+                        <rect x="400" y="18" width="100" height="24" rx="4" fill="white" opacity="0.2"/>
+                        <rect x="510" y="18" width="70" height="24" rx="4" fill="white" opacity="0.2"/>
 
                         {/* Top Stats Row */}
                         <g transform="translate(10, 60)">
-                            <rect x="0" y="0" width="80" height="60" rx="6" fill="white" stroke="#e2e8f0"/>
-                            <text x="40" y="25" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#334155">25</text>
-                            <text x="40" y="45" textAnchor="middle" fontSize="8" fill="#94a3b8">CUSTOMERS</text>
+                            {/* Active Customers */}
+                            <rect x="0" y="0" width="75" height="60" rx="6" fill="white" stroke="#e2e8f0"/>
+                            <circle cx="37.5" cy="20" r="8" fill="#e2e8f0"/>
+                            <text x="37.5" y="45" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#334155">25</text>
 
-                            <rect x="90" y="0" width="80" height="60" rx="6" fill="#4f46e5"/>
-                            <text x="130" y="25" textAnchor="middle" fontSize="16" fontWeight="bold" fill="white">102</text>
-                            <text x="130" y="45" textAnchor="middle" fontSize="8" fill="white" opacity="0.8">ENQUIRIES</text>
+                            {/* Enquiries */}
+                            <rect x="85" y="0" width="75" height="60" rx="6" fill="#4f46e5"/>
+                            <text x="122.5" y="35" textAnchor="middle" fontSize="14" fontWeight="bold" fill="white">102</text>
 
-                            <rect x="180" y="0" width="80" height="60" rx="6" fill="white" stroke="#e2e8f0" strokeLeft="4" strokeColor="#3b82f6"/>
-                            <rect x="180" y="0" width="4" height="60" fill="#3b82f6"/> {/* Border left accent */}
-                            <text x="220" y="25" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#334155">45</text>
-                            <text x="220" y="45" textAnchor="middle" fontSize="8" fill="#3b82f6">OPEN</text>
+                            {/* Open */}
+                            <rect x="170" y="0" width="75" height="60" rx="6" fill="white" stroke="#e2e8f0" strokeWidth="1"/>
+                            <rect x="170" y="0" width="4" height="60" fill="#3b82f6"/> 
+                            <text x="207.5" y="35" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#334155">45</text>
 
-                            <rect x="270" y="0" width="80" height="60" rx="6" fill="white" stroke="#e2e8f0"/>
-                            <rect x="270" y="0" width="4" height="60" fill="#22c55e"/>
-                            <text x="310" y="25" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#334155">12</text>
-                            <text x="310" y="45" textAnchor="middle" fontSize="8" fill="#22c55e">PO REC</text>
+                            {/* PO */}
+                            <rect x="255" y="0" width="75" height="60" rx="6" fill="white" stroke="#e2e8f0"/>
+                            <rect x="255" y="0" width="4" height="60" fill="#22c55e"/>
+                            <text x="292.5" y="35" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#334155">12</text>
                             
-                            <rect x="360" y="0" width="80" height="60" rx="6" fill="white" stroke="#e2e8f0"/>
-                            <rect x="360" y="0" width="4" height="60" fill="#14b8a6"/>
-                            <text x="400" y="25" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#334155">5</text>
-                            <text x="400" y="45" textAnchor="middle" fontSize="8" fill="#14b8a6">PARTIAL</text>
+                            {/* Partial */}
+                            <rect x="340" y="0" width="75" height="60" rx="6" fill="white" stroke="#e2e8f0"/>
+                            <rect x="340" y="0" width="4" height="60" fill="#14b8a6"/>
+                            <text x="377.5" y="35" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#334155">5</text>
+
+                             {/* Lost */}
+                            <rect x="425" y="0" width="75" height="60" rx="6" fill="white" stroke="#e2e8f0"/>
+                            <rect x="425" y="0" width="4" height="60" fill="#f43f5e"/>
+                            <text x="462.5" y="35" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#334155">2</text>
+
+                             {/* Expired */}
+                            <rect x="510" y="0" width="75" height="60" rx="6" fill="white" stroke="#e2e8f0"/>
+                            <rect x="510" y="0" width="4" height="60" fill="#f59e0b"/>
+                            <text x="547.5" y="35" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#334155">1</text>
                         </g>
 
                         {/* Charts Row */}
@@ -89,17 +95,18 @@ const UIWireframe: React.FC<{ type: 'login' | 'dashboard' | 'table' | 'form' | '
                             {/* Funnel */}
                             <rect x="0" y="0" width="180" height="120" rx="6" fill="white" stroke="#e2e8f0"/>
                             <text x="10" y="20" fontSize="10" fontWeight="bold" fill="#64748b">FUNNEL</text>
-                            <path d="M20 40 L160 40 L140 60 L40 60 Z" fill="#3b82f6"/>
-                            <path d="M40 65 L140 65 L120 85 L60 85 Z" fill="#22c55e"/>
-                            <path d="M60 90 L120 90 L100 110 L80 110 Z" fill="#f43f5e"/>
+                            <rect x="20" y="30" width="140" height="15" fill="#3b82f6"/>
+                            <rect x="30" y="50" width="120" height="15" fill="#22c55e"/>
+                            <rect x="40" y="70" width="100" height="15" fill="#14b8a6"/>
+                            <rect x="50" y="90" width="80" height="15" fill="#f43f5e"/>
 
                             {/* Trend */}
                             <rect x="190" y="0" width="180" height="120" rx="6" fill="white" stroke="#e2e8f0"/>
-                            <text x="200" y="20" fontSize="10" fontWeight="bold" fill="#64748b">TREND</text>
+                            <text x="200" y="20" fontSize="10" fontWeight="bold" fill="#64748b">VALUE TREND</text>
                             <polyline points="200,100 230,80 260,90 290,50 320,70 350,40" fill="none" stroke="#0ea5e9" strokeWidth="2"/>
 
                             {/* Top Customers */}
-                            <rect x="380" y="0" width="190" height="120" rx="6" fill="white" stroke="#e2e8f0"/>
+                            <rect x="380" y="0" width="200" height="120" rx="6" fill="white" stroke="#e2e8f0"/>
                             <text x="390" y="20" fontSize="10" fontWeight="bold" fill="#64748b">TOP CUSTOMERS</text>
                             <rect x="390" y="35" width="100" height="10" rx="2" fill="#8b5cf6"/>
                             <rect x="390" y="55" width="140" height="10" rx="2" fill="#8b5cf6"/>
@@ -108,18 +115,25 @@ const UIWireframe: React.FC<{ type: 'login' | 'dashboard' | 'table' | 'form' | '
 
                         {/* Performance Table */}
                         <g transform="translate(10, 260)">
-                            <rect x="0" y="0" width="570" height="80" rx="6" fill="white" stroke="#e2e8f0"/>
+                            <rect x="0" y="0" width="580" height="80" rx="6" fill="white" stroke="#e2e8f0"/>
                             <text x="10" y="20" fontSize="10" fontWeight="bold" fill="#64748b">PERFORMANCE</text>
-                            <line x1="0" y1="30" x2="570" y2="30" stroke="#e2e8f0"/>
-                            <text x="10" y="45" fontSize="8" fill="#64748b">Name</text>
-                            <text x="100" y="45" fontSize="8" fill="#64748b">Total</text>
-                            <text x="150" y="45" fontSize="8" fill="#64748b">Open</text>
-                            <text x="200" y="45" fontSize="8" fill="#64748b">PO</text>
+                            <line x1="0" y1="30" x2="580" y2="30" stroke="#e2e8f0"/>
                             
-                            <text x="10" y="65" fontSize="9" fontWeight="bold" fill="#334155">Sales Person 1</text>
+                            <text x="10" y="45" fontSize="9" fontWeight="bold" fill="#64748b">Name</text>
+                            <text x="100" y="45" fontSize="9" fontWeight="bold" fill="#64748b">Tot</text>
+                            <text x="150" y="45" fontSize="9" fontWeight="bold" fill="#64748b">Opn</text>
+                            <text x="200" y="45" fontSize="9" fontWeight="bold" fill="#64748b">PO</text>
+                            <text x="250" y="45" fontSize="9" fontWeight="bold" fill="#64748b">Part</text>
+                            <text x="300" y="45" fontSize="9" fontWeight="bold" fill="#64748b">Lst</text>
+                            <text x="350" y="45" fontSize="9" fontWeight="bold" fill="#64748b">Exp</text>
+                            
+                            <text x="10" y="65" fontSize="9" fontWeight="bold" fill="#334155">Ananth</text>
                             <text x="100" y="65" fontSize="9" fill="#334155">50</text>
                             <text x="150" y="65" fontSize="9" fill="#3b82f6">20</text>
                             <text x="200" y="65" fontSize="9" fill="#22c55e">10</text>
+                            <text x="250" y="65" fontSize="9" fill="#14b8a6">5</text>
+                            <text x="300" y="65" fontSize="9" fill="#f43f5e">2</text>
+                            <text x="350" y="65" fontSize="9" fill="#f59e0b">13</text>
                         </g>
                     </g>
                 )}
@@ -338,6 +352,21 @@ const UIWireframe: React.FC<{ type: 'login' | 'dashboard' | 'table' | 'form' | '
     );
 };
 
+const ManualIcon: React.FC<{ type: string, className?: string }> = ({ type, className = "w-5 h-5 mr-2" }) => {
+    switch (type) {
+        case 'introduction': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg>;
+        case 'getting-started': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" /></svg>;
+        case 'dashboard': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clipRule="evenodd" /></svg>;
+        case 'customers': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M8.25 6.75a3.75 3.75 0 117.5 0 3.75 3.75 0 01-7.5 0zM15.75 9.75a3 3 0 116 0 3 3 0 01-6 0zM2.25 9.75a3 3 0 116 0 3 3 0 01-6 0zM6.31 15.117A6.745 6.745 0 0112 12a6.745 6.745 0 016.709 7.498.75.75 0 01-.372.568A12.696 12.696 0 0112 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 01-.372-.568 6.787 6.787 0 011.019-4.38z" clipRule="evenodd" /><path d="M5.082 14.254a8.287 8.287 0 00-1.308 5.135 9.687 9.687 0 01-1.764-.44l-.115-.04a.563.563 0 01-.373-.487l-.01-.121a3.75 3.75 0 013.57-4.047zM20.226 19.389a8.287 8.287 0 00-1.308-5.135 3.75 3.75 0 013.57 4.047l-.01.121a.563.563 0 01-.373.486l-.115.04c-.567.2-1.156.349-1.764.441z" /></svg>;
+        case 'products': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M12.378 1.602a.75.75 0 00-.756 0L3 6.632l9 5.25 9-5.25-8.622-5.03zM21.75 7.93l-9 5.25v9l8.628-5.032a.75.75 0 00.372-.648V7.93zM11.25 22.18v-9l-9-5.25v8.57a.75.75 0 00.372.648l8.628 5.033z" /></svg>;
+        case 'quotations': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z" clipRule="evenodd" /><path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" /></svg>;
+        case 'calendar': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" /></svg>;
+        case 'mobile-app': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M10.5 18.75a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z" /><path fillRule="evenodd" d="M8.625.75A3.375 3.375 0 005.25 4.125v15.75a3.375 3.375 0 003.375 3.375h6.75a3.375 3.375 0 003.375-3.375V4.125A3.375 3.375 0 0015.375.75h-6.75zM7.5 4.125C7.5 3.504 8.004 3 8.625 3h6.75c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-6.75A1.125 1.125 0 017.5 19.875V4.125z" clipRule="evenodd" /></svg>;
+        case 'admin': return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08zm3.094 8.016a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>;
+        default: return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm11.378-3.917c-.89-.777-2.366-.777-3.255 0a.75.75 0 01-.988-1.129c1.454-1.272 3.776-1.272 5.23 0 1.513 1.324 1.513 3.518 0 4.842a3.75 3.75 0 01-.837.552c-.676.328-1.028.774-1.028 1.152v.75a.75.75 0 01-1.5 0v-.75c0-1.279 1.06-2.107 1.875-2.502.182-.088.351-.199.503-.331.83-.727.83-1.857 0-2.584zM12 18a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg>;
+    }
+}
+
 export const UserManual: React.FC = () => {
     const [activeSection, setActiveSection] = useState('introduction');
 
@@ -364,25 +393,35 @@ export const UserManual: React.FC = () => {
     return (
         <div className="flex flex-col md:flex-row min-h-screen bg-white rounded-lg shadow-lg overflow-hidden">
             {/* Sidebar Navigation */}
-            <aside className="w-full md:w-64 bg-slate-50 border-r border-slate-200 p-4 hidden md:block sticky top-0 h-screen overflow-y-auto">
-                <h3 className="font-bold text-lg text-slate-800 mb-4 uppercase tracking-wider">User Manual</h3>
-                <nav className="space-y-1">
-                    {sections.map((section) => (
-                        <button
-                            key={section.id}
-                            onClick={() => scrollToSection(section.id)}
-                            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeSection === section.id ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            {section.title}
-                        </button>
-                    ))}
-                </nav>
+            <aside className="w-full md:w-64 bg-slate-50 border-r border-slate-200 hidden md:block sticky top-0 h-screen overflow-y-auto">
+                <div className="p-4">
+                    <h3 className="font-bold text-lg text-slate-800 mb-6 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-2">
+                        <ManualIcon type="introduction" className="w-6 h-6 text-indigo-600"/>
+                        User Manual
+                    </h3>
+                    <nav className="space-y-1">
+                        {sections.map((section) => (
+                            <button
+                                key={section.id}
+                                onClick={() => scrollToSection(section.id)}
+                                className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all flex items-center ${
+                                    activeSection === section.id 
+                                    ? 'bg-indigo-50 text-indigo-700 border-r-4 border-indigo-600 font-bold shadow-sm' 
+                                    : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900'
+                                }`}
+                            >
+                                <ManualIcon type={section.id} className={`w-5 h-5 mr-3 ${activeSection === section.id ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                {section.title}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
             </aside>
 
             {/* Main Content */}
             <main className="flex-1 p-6 md:p-10 overflow-y-auto h-screen scroll-smooth">
                 <div className="max-w-4xl mx-auto pb-20">
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-2">Offer Management System</h1>
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Offer Management System</h1>
                     <p className="text-lg text-slate-600 mb-8">Comprehensive User Guide for Siddhi Kabel Corporation Pvt Ltd.</p>
 
                     <Section id="introduction" title="1. Introduction">
@@ -409,97 +448,3 @@ export const UserManual: React.FC = () => {
                         <p className="mb-4">The Dashboard provides a bird's-eye view of your sales activities.</p>
                         
                         <SubSection title="Key Metrics & Charts">
-                            <p>At the top, you will see cards displaying metrics like <strong>Active Customers</strong> and <strong>Total Enquiries</strong>. Below that, interactive charts visualize trends:</p>
-                            <ul className="list-disc list-inside ml-4 mb-2">
-                                <li><strong>Quotation Funnel:</strong> Visualizes the drop-off from Open quotes to POs.</li>
-                                <li><strong>Value Trend:</strong> Line chart showing quotation value over time.</li>
-                                <li><strong>Daily Enquiries:</strong> Bar chart showing activity per day.</li>
-                            </ul>
-                            <UIWireframe type="dashboard"/>
-                        </SubSection>
-
-                        <SubSection title="Filtering Data">
-                            <p>Use the dropdowns at the top to filter data by <strong>Sales Person</strong> (Admin only) or by <strong>Time Period</strong> (Week, Month, Year).</p>
-                        </SubSection>
-                    </Section>
-
-                    <Section id="customers" title="4. Managing Customers">
-                        <p className="mb-4">Navigate to the <strong>Customers</strong> tab to manage your client base.</p>
-                        
-                        <SubSection title="Searching & Filtering">
-                            <p>Use the search bars to find customers by <strong>Name</strong> or <strong>City</strong>. The list displays customer details and quick actions.</p>
-                            <UIWireframe type="table"/>
-                        </SubSection>
-
-                        <SubSection title="Adding a Customer">
-                            <p>Click "Add New" to open the customer form. Ensure you set the <strong>Discount Structure</strong> (Single Core, Multi Core, etc.) as these percentages will auto-apply to new quotations.</p>
-                        </SubSection>
-                    </Section>
-
-                    <Section id="products" title="5. Product Management">
-                        <p className="mb-4">The <strong>Products</strong> tab holds your master price list.</p>
-                        
-                        <SubSection title="Searching Products">
-                            <p>
-                                <strong>Desktop:</strong> Search by Part No or Description. You can use <code>*</code> as a wildcard (e.g., <code>CABLE*POWER</code>).<br/>
-                                <strong>Mobile:</strong> Use the "Universal Search" bar which supports fuzzy matching (e.g., "3G2.5" matches "3 G 2.5").
-                            </p>
-                            <UIWireframe type="table"/>
-                        </SubSection>
-                    </Section>
-
-                    <Section id="quotations" title="6. Creating Quotations">
-                        <p className="mb-4">This is the core feature of the application.</p>
-
-                        <SubSection title="Creating a New Quote">
-                            <ol className="list-decimal list-inside space-y-2 ml-4 mb-4">
-                                <li>Go to the <strong>Quotations</strong> tab and click <strong>New</strong>.</li>
-                                <li><strong>Select Customer:</strong> Search for the customer. Address and discounts load automatically.</li>
-                                <li><strong>Add Items:</strong> Type in the "Part No" field to search or use the search icon. Prices (LP/SP) are auto-fetched based on the quotation date.</li>
-                                <li><strong>Air Freight (Optional):</strong> Check the "Air Freight" box on a line item to calculate air transport costs based on weight.</li>
-                            </ol>
-                            <UIWireframe type="form"/>
-                        </SubSection>
-
-                        <SubSection title="Printing / Previewing">
-                            <p>Click the "Preview" buttons to generate a printable view. You can choose between Standard, Discounted, or Air Freight templates. Part Numbers in the print view are hyperlinked to the Lapp Group catalogue.</p>
-                        </SubSection>
-                    </Section>
-
-                    <Section id="calendar" title="7. Calendar & Reminders">
-                        <p className="mb-4">The Calendar view helps track follow-ups.</p>
-                        <ul className="list-disc list-inside ml-4 mb-4">
-                            <li><strong>Green Dots:</strong> Quotations created on that day.</li>
-                            <li><strong>Orange Dots:</strong> Follow-up reminders (5 days after creation).</li>
-                        </ul>
-                        <UIWireframe type="calendar"/>
-                    </Section>
-
-                    <Section id="mobile-app" title="8. Mobile App Features">
-                        <p className="mb-4">The app is optimized for mobile devices.</p>
-                        
-                        <SubSection title="Mobile Navigation & Cards">
-                            <p>A bottom navigation bar allows quick switching. Tables are replaced by card views for better readability on small screens.</p>
-                            <p>Sales Persons can view quotations, change status, and add comments directly from the card view.</p>
-                            <UIWireframe type="mobile"/>
-                        </SubSection>
-                    </Section>
-
-                    <Section id="admin" title="9. Admin Features">
-                        <p className="mb-4">Admins have exclusive access to:</p>
-                        <ul className="list-disc list-inside ml-4">
-                            <li><strong>User Management:</strong> Create/Edit users and assign roles.</li>
-                            <li><strong>Excel Upload:</strong> Bulk upload Products and Customers via Excel.</li>
-                            <li><strong>Logo Management:</strong> Upload/Change the company logo on the Dashboard.</li>
-                        </ul>
-                    </Section>
-
-                    <div className="mt-12 border-t pt-6 text-center text-slate-500 text-sm">
-                        <p>Offer Management System v1.0</p>
-                        <p>&copy; {new Date().getFullYear()} Siddhi Kabel Corporation Pvt Ltd.</p>
-                    </div>
-                </div>
-            </main>
-        </div>
-    );
-};

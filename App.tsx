@@ -158,52 +158,91 @@ function App() {
     </button>
   );
 
+  // Updated styling for header buttons with shadow and better active state
   const headerBtnClass = (isActive: boolean) => 
-    `px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide transition-colors ${isActive ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`;
+    `flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all duration-300 transform ${
+      isActive 
+        ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/40 scale-105 ring-1 ring-indigo-400/50' 
+        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+    }`;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {/* Top Navigation (Desktop) */}
-      <nav className="bg-slate-800 text-white shadow-lg no-print hidden md:block">
-        <div className="w-full px-2">
-          <div className="flex justify-between h-12">
-            <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar">
-              <div className="flex items-center gap-2 mr-2 shrink-0">
-                  {logoUrl && <img src={logoUrl} alt="Logo" className="h-7 w-auto object-contain bg-white rounded p-0.5" />}
-                  <span className="font-bold text-base tracking-wide whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</span>
+      <nav className="bg-slate-900 text-white shadow-xl no-print hidden md:block z-20">
+        <div className="w-full px-4">
+          <div className="flex justify-between h-12 items-center">
+            <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-1">
+              <div className="flex items-center gap-2 mr-4 shrink-0 border-r border-slate-700 pr-4">
+                  {logoUrl && <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain bg-white rounded p-0.5" />}
+                  <span className="font-bold text-base tracking-wide whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300">Siddhi Kabel Corp.</span>
               </div>
-              <button onClick={() => handleSetView('dashboard')} className={headerBtnClass(view === 'dashboard')}>Dashboard</button>
-              <button onClick={() => handleSetView('customers')} className={headerBtnClass(view === 'customers')}>Customers</button>
-              <button onClick={() => handleSetView('products')} className={headerBtnClass(view === 'products')}>Products</button>
-              <button onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} className={headerBtnClass(view === 'quotations' || view === 'quotation-form')}>Quotations</button>
-              <button onClick={() => handleSetView('calendar')} className={headerBtnClass(view === 'calendar')}>Calendar</button>
-              <button onClick={() => handleSetView('delivery-challans')} className={headerBtnClass(view === 'delivery-challans' || view === 'delivery-challan-form')}>Challans</button>
+              <button onClick={() => handleSetView('dashboard')} className={headerBtnClass(view === 'dashboard')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+                Dashboard
+              </button>
+              {/* Moved Quotations here */}
+              <button onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} className={headerBtnClass(view === 'quotations' || view === 'quotation-form')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>
+                Quotations
+              </button>
+              <button onClick={() => handleSetView('customers')} className={headerBtnClass(view === 'customers')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg>
+                Customers
+              </button>
+              <button onClick={() => handleSetView('products')} className={headerBtnClass(view === 'products')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 01-.293.707l-4 4C.817 14.761 2.165 17.5 4.25 17.5h11.5c2.085 0 3.433-2.739 1.543-4.621l-4-4a1 1 0 01-.293-.707V4.414L13.707 3.707A1 1 0 0013 2H7zm2 6.172V4h2v4.172a3 3 0 00.879 2.12l1.027 1.028a4 4 0 00-2.171.102l-.47.156a4 4 0 01-2.53 0l-.47-.156a4 4 0 00-2.172-.102l1.027-1.028A3 3 0 009 8.172z" clipRule="evenodd" /></svg>
+                Products
+              </button>
+              <button onClick={() => handleSetView('calendar')} className={headerBtnClass(view === 'calendar')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>
+                Calendar
+              </button>
+              <button onClick={() => handleSetView('delivery-challans')} className={headerBtnClass(view === 'delivery-challans' || view === 'delivery-challan-form')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /><path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" /></svg>
+                Challans
+              </button>
               {(currentUser.role === 'Admin' || currentUser.role === 'Sales Person' || currentUser.role === 'Management') && (
-                <button onClick={() => handleSetView('reports')} className={headerBtnClass(view === 'reports')}>Reports</button>
+                <button onClick={() => handleSetView('reports')} className={headerBtnClass(view === 'reports')}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" /><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" /></svg>
+                    Reports
+                </button>
               )}
                {currentUser.role === 'Admin' && (
                 <>
-                    <button onClick={() => handleSetView('sales-persons')} className={headerBtnClass(view === 'sales-persons')}>Sales</button>
-                    <button onClick={() => handleSetView('users')} className={headerBtnClass(view === 'users')}>Users</button>
+                    <button onClick={() => handleSetView('sales-persons')} className={headerBtnClass(view === 'sales-persons')}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>
+                        Sales
+                    </button>
+                    <button onClick={() => handleSetView('users')} className={headerBtnClass(view === 'users')}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" /></svg>
+                        Users
+                    </button>
                 </>
               )}
-              <button onClick={() => handleSetView('user-manual')} className={headerBtnClass(view === 'user-manual')}>Help</button>
+              <button onClick={() => handleSetView('user-manual')} className={headerBtnClass(view === 'user-manual')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                Help
+              </button>
             </div>
-            <div className="flex items-center space-x-2 ml-2 shrink-0">
-              <span className="text-xs text-slate-300 hidden lg:inline">Hello, {currentUser.name}</span>
-              <button onClick={() => setIsPasswordModalOpen(true)} className="text-slate-400 hover:text-white" title="Change Password">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <div className="flex items-center space-x-4 ml-4 shrink-0">
+              <div className="flex flex-col items-end">
+                  <span className="text-xs text-slate-400 font-medium">Logged in as</span>
+                  <span className="text-xs font-bold text-white">{currentUser.name}</span>
+              </div>
+              <button onClick={() => setIsPasswordModalOpen(true)} className="text-slate-400 hover:text-white transition-colors p-1 rounded-full hover:bg-slate-800" title="Change Password">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                  </svg>
               </button>
-              <button onClick={handleLogout} className="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors">Logout</button>
+              <button onClick={handleLogout} className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg transform hover:scale-105">Logout</button>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Mobile Header */}
-      <div className="bg-slate-800 text-white p-3 flex justify-between items-center md:hidden shadow-md no-print z-10 sticky top-0">
+      <div className="bg-slate-900 text-white p-3 flex justify-between items-center md:hidden shadow-md no-print z-10 sticky top-0">
           <div className="flex items-center gap-2">
              {logoUrl && <img src={logoUrl} alt="Logo" className="h-6 w-auto bg-white rounded p-0.5" />}
              <span className="font-bold text-lg truncate max-w-[200px]">Siddhi Kabel Corp.</span>
