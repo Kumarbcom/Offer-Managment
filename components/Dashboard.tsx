@@ -20,7 +20,7 @@ interface DashboardProps {
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatCurrencyCompact = (value: number | null | undefined) => {
     const val = Number(value);
-    if (isNaN(val) || val === 0) return '₹0';
+    if (isNaN(val) || val === 0) return '0'; // Return simple 0 for cleaner look in table when 0
     if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
     if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
     if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k`;
@@ -39,7 +39,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
     const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
     const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
-    const [orderStatusMode, setOrderStatusMode] = useState<'count' | 'value'>('value'); // Default to Value
+    const [orderStatusMode, setOrderStatusMode] = useState<'count' | 'value'>('value');
+    const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count'); // New state for Performance Table
     const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
 
     useEffect(() => {
@@ -194,6 +195,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             };
         });
     }, [filteredQuotations, salesPersons]);
+
+    const performanceTotals = useMemo(() => {
+        const totals = {
+            total: { count: 0, value: 0 },
+            'Open': { count: 0, value: 0 },
+            'PO received': { count: 0, value: 0 },
+            'Partial PO Received': { count: 0, value: 0 },
+            'Lost': { count: 0, value: 0 },
+            'Expired': { count: 0, value: 0 },
+        };
+
+        salesPersonStats.forEach(stat => {
+            totals.total.count += stat.total.count;
+            totals.total.value += stat.total.value;
+            
+            totals['Open'].count += stat['Open'].count;
+            totals['Open'].value += stat['Open'].value;
+
+            totals['PO received'].count += stat['PO received'].count;
+            totals['PO received'].value += stat['PO received'].value;
+
+            totals['Partial PO Received'].count += stat['Partial PO Received'].count;
+            totals['Partial PO Received'].value += stat['Partial PO Received'].value;
+
+            totals['Lost'].count += stat['Lost'].count;
+            totals['Lost'].value += stat['Lost'].value;
+
+            totals['Expired'].count += stat['Expired'].count;
+            totals['Expired'].value += stat['Expired'].value;
+        });
+        return totals;
+    }, [salesPersonStats]);
 
     const recentQuotations = useMemo(() => {
         let sortedQuotations = [...filteredQuotations];
@@ -562,6 +595,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         { key: 'year', label: '1 Yr' },
     ];
 
+    const getCellValue = (data: { count: number, value: number }) => {
+        return performanceMode === 'count' ? data.count : formatCurrencyCompact(data.value);
+    };
+
     if (!quotations || !salesPersons) {
         return <div className="text-center p-8">Loading dashboard data...</div>;
     }
@@ -612,7 +649,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             ))}
                         </select>
                         <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </div>
 
@@ -777,8 +814,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     transition={{ delay: 0.65 }}
                     className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
                 >
-                    <div className="p-2 border-b border-slate-100">
+                    <div className="p-2 border-b border-slate-100 flex justify-between items-center">
                         <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Performance</h3>
+                        <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
+                            <button type="button" onClick={() => setPerformanceMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${performanceMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Cnt</button>
+                            <button type="button" onClick={() => setPerformanceMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${performanceMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
+                        </div>
                     </div>
                     <div className="overflow-x-auto flex-grow">
                         <table className="min-w-full divide-y divide-slate-100">
@@ -798,26 +839,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                     <tr key={stat.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-2 py-1 whitespace-nowrap text-[10px] font-medium text-slate-700">{stat.name.split(' ')[0]}</td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center bg-slate-50/50">
-                                            <div className="font-bold text-slate-800 text-[10px]">{stat.total.count}</div>
+                                            <div className="font-bold text-slate-800 text-[10px]">{getCellValue(stat.total)}</div>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Open'].count > 0 ? 'text-blue-700' : 'text-slate-300'}`}>{stat['Open'].count}</span>
+                                            <span className={`text-[10px] font-medium ${stat['Open'].count > 0 ? 'text-blue-700' : 'text-slate-300'}`}>{getCellValue(stat['Open'])}</span>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['PO received'].count > 0 ? 'text-green-700' : 'text-slate-300'}`}>{stat['PO received'].count}</span>
+                                            <span className={`text-[10px] font-medium ${stat['PO received'].count > 0 ? 'text-green-700' : 'text-slate-300'}`}>{getCellValue(stat['PO received'])}</span>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-teal-700' : 'text-slate-300'}`}>{stat['Partial PO Received'].count}</span>
+                                            <span className={`text-[10px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-teal-700' : 'text-slate-300'}`}>{getCellValue(stat['Partial PO Received'])}</span>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Lost'].count > 0 ? 'text-rose-700' : 'text-slate-300'}`}>{stat['Lost'].count}</span>
+                                            <span className={`text-[10px] font-medium ${stat['Lost'].count > 0 ? 'text-rose-700' : 'text-slate-300'}`}>{getCellValue(stat['Lost'])}</span>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Expired'].count > 0 ? 'text-amber-700' : 'text-slate-300'}`}>{stat['Expired'].count}</span>
+                                            <span className={`text-[10px] font-medium ${stat['Expired'].count > 0 ? 'text-amber-700' : 'text-slate-300'}`}>{getCellValue(stat['Expired'])}</span>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
+                            <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
+                                <tr>
+                                    <td className="px-2 py-1 text-[10px] text-slate-700">TOTAL</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-slate-800">{getCellValue(performanceTotals.total)}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-blue-800">{getCellValue(performanceTotals['Open'])}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-green-800">{getCellValue(performanceTotals['PO received'])}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-teal-800">{getCellValue(performanceTotals['Partial PO Received'])}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-rose-800">{getCellValue(performanceTotals['Lost'])}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-amber-800">{getCellValue(performanceTotals['Expired'])}</td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </motion.div>
