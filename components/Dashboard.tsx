@@ -788,6 +788,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                     <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tot</th>
                                     <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Opn</th>
                                     <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">PO</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Part</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lst</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Exp</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-100">
@@ -802,6 +805,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
                                             <span className={`text-[10px] font-medium ${stat['PO received'].count > 0 ? 'text-green-700' : 'text-slate-300'}`}>{stat['PO received'].count}</span>
+                                        </td>
+                                        <td className="px-2 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[10px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-teal-700' : 'text-slate-300'}`}>{stat['Partial PO Received'].count}</span>
+                                        </td>
+                                        <td className="px-2 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[10px] font-medium ${stat['Lost'].count > 0 ? 'text-rose-700' : 'text-slate-300'}`}>{stat['Lost'].count}</span>
+                                        </td>
+                                        <td className="px-2 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[10px] font-medium ${stat['Expired'].count > 0 ? 'text-amber-700' : 'text-slate-300'}`}>{stat['Expired'].count}</span>
                                         </td>
                                     </tr>
                                 ))}
