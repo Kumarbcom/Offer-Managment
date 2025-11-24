@@ -261,6 +261,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         }, {} as Record<string, number>);
 
         const sortedDates = Object.keys(dataByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+        
+        // Create compact labels (DD/MM)
+        const compactLabels = sortedDates.map(dateStr => {
+            const date = new Date(dateStr);
+            return `${date.getDate()}/${date.getMonth() + 1}`;
+        });
+
         const chartData = sortedDates.map(date => dataByDate[date]);
 
         const ctx = lineChartRef.current.getContext('2d');
@@ -268,7 +275,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             type: 'line',
             plugins: [typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : {}],
             data: {
-                labels: sortedDates,
+                labels: compactLabels,
                 datasets: [{
                     label: 'Quotation Value',
                     data: chartData,
@@ -327,6 +334,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         }, {} as Record<string, Record<string, number>>);
 
         const sortedDates = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+        // Compact labels for bar chart as well
+        const compactLabels = sortedDates.map(dateStr => {
+            const date = new Date(dateStr);
+            return `${date.getDate()}/${date.getMonth() + 1}`;
+        });
 
         const datasets = salesPersons.map(sp => {
             return {
@@ -340,7 +352,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         const chartInstance = new Chart(ctx, {
             type: 'bar',
             plugins: [typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : {}],
-            data: { labels: sortedDates, datasets },
+            data: { labels: compactLabels, datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,

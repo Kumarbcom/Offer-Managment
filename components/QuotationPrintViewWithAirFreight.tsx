@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
 
@@ -7,6 +7,7 @@ interface QuotationPrintViewProps {
     quotation: Quotation;
     customer: Customer;
     salesPerson?: SalesPerson;
+    logoUrl: string | null;
 }
 
 const numberToWords = (num: number): string => {
@@ -41,9 +42,7 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
     'Ranjan': 'Sales Coordinator',
 };
 
-export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson }) => {
-    const [logoUrl] = useState(() => localStorage.getItem('company_logo'));
-
+export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson, logoUrl }) => {
     const totals = (quotation.details || []).reduce((acc, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         const amount = unitPrice * item.moq;
@@ -141,7 +140,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                                     <td className="p-1 border text-center">{index + 1}</td>
                                     <td className="p-1 border font-medium">
                                          {partNoUrl ? (
-                                            <a href={partNoUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'none' }}>
+                                            <a href={partNoUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
                                                 {item.partNo}
                                             </a>
                                         ) : (

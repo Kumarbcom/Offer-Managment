@@ -1,3 +1,4 @@
+
 import type { UOMS, PLANTS, PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES, SALES_PERSON_NAMES } from './constants';
 
 export type UserRole = 'Admin' | 'Sales Person' | 'Management' | 'SCM' | 'Viewer';
@@ -8,7 +9,7 @@ export interface User {
   role: UserRole;
 }
 
-export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'delivery-challans' | 'delivery-challan-form' | 'reports';
+export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'delivery-challans' | 'delivery-challan-form' | 'reports' | 'user-manual';
 
 export interface SalesPerson {
   id: number;

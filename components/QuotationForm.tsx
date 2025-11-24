@@ -23,6 +23,7 @@ interface QuotationFormProps {
   editingQuotationId: number | null;
   setEditingQuotationId: (id: number | null) => void;
   currentUser: User;
+  logoUrl?: string | null;
 }
 
 const createEmptyQuotationItem = (): QuotationItem => ({
@@ -83,7 +84,7 @@ const FormField: React.FC<{ label: string; children: React.ReactNode; className?
 );
 
 export const QuotationForm: React.FC<QuotationFormProps> = ({
-  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser
+  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl
 }) => {
   const [formData, setFormData] = useState<Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -543,9 +544,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             </div>
           </div>
           <div id="print-area">
-             {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson}/>}
-             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson}/>}
-             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson}/>}
+             {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
           </div>
         </div>
     );

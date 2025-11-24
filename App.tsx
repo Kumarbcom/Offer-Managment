@@ -15,6 +15,7 @@ import { DeliveryChallanManager } from './components/DeliveryChallanManager';
 import { DeliveryChallanForm } from './components/DeliveryChallanForm';
 import { Reports } from './components/Reports';
 import { CalendarView } from './components/CalendarView';
+import { UserManual } from './components/UserManual';
 
 
 function App() {
@@ -186,6 +187,7 @@ function App() {
                     <button onClick={() => handleSetView('users')} className={headerBtnClass(view === 'users')}>Users</button>
                 </>
               )}
+              <button onClick={() => handleSetView('user-manual')} className={headerBtnClass(view === 'user-manual')}>Help</button>
             </div>
             <div className="flex items-center space-x-2 ml-2 shrink-0">
               <span className="text-xs text-slate-300 hidden lg:inline">Hello, {currentUser.name}</span>
@@ -207,6 +209,9 @@ function App() {
              <span className="font-bold text-lg truncate max-w-[200px]">Siddhi Kabel Corp.</span>
           </div>
           <div className="flex items-center gap-2">
+             <button onClick={() => handleSetView('user-manual')} className="text-slate-300 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+             </button>
              <span className="text-xs text-slate-300 truncate max-w-[80px]">{currentUser.name}</span>
              <button onClick={handleLogout} className="text-rose-400 hover:text-rose-200">
                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -220,12 +225,13 @@ function App() {
         {view === 'products' && <ProductManager currentUser={currentUser} />}
         {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
         {view === 'quotations' && <QuotationManager quotations={quotations} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
-        {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} />}
+        {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
         {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
         {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
         {view === 'delivery-challans' && <DeliveryChallanManager deliveryChallans={deliveryChallans} setDeliveryChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
         {view === 'delivery-challan-form' && <DeliveryChallanForm challans={deliveryChallans} setChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} editingChallanId={editingChallanId} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
         {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
+        {view === 'user-manual' && <UserManual />}
       </main>
 
       {/* Mobile Bottom Navigation */}
