@@ -71,7 +71,7 @@ const Icons = {
     Save: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-600">
             <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-            <path d="M3.75 12h16.5a.75.75 0 010 1.5H3.75a.75.75 0 010-1.5z" className="hidden" /> {/* Added distinct floppy shape if needed, but sticking to stylized representation */}
+            <path d="M3.75 12h16.5a.75.75 0 010 1.5H3.75a.75.75 0 010-1.5z" className="hidden" />
             <path d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-9a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0112 9V5.25a1.5 1.5 0 00-1.5-1.5h-3z" /> 
         </svg>
     ),
@@ -92,12 +92,12 @@ const Icons = {
     ),
     AddCustomer: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-teal-600">
-            <path d="M5.25 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM2.25 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM18.75 7.5a.75.75 0 00-1.5 0v2.25H15a.75.75 0 000 1.5h2.25v2.25a.75.75 0 001.5 0v-2.25H21a.75.75 0 000-1.5h-2.25V7.5z" />
+            <path d="M5.25 6.375a4.125 4.125 0 1 18.25 0 4.125 4.125 0 01-8.25 0zM2.25 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122zM18.75 7.5a.75.75 0 00-1.5 0v2.25H15a.75.75 0 000 1.5h2.25v2.25a.75.75 0 001.5 0v-2.25H21a.75.75 0 000-1.5h-2.25V7.5z" />
         </svg>
     ),
     AddProduct: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-amber-500">
-            <path d="M12.378 1.602a.75.75 0 00-.756 0L3 6.632l9 5.25 9-5.25-8.622-5.03zM21.75 7.93l-9 5.25v9l8.628-5.032a.75.75 0 00.372-.648V7.93zM11.25 22.18v-9l-9-5.25v8.57a.75.75 0 00.372.648l8.628 5.033z" />
+            <path d="M12.378 1.602a.75.75 0 00-.756 0L3 6.632l9 5.25 9-5.25-8.622-5.03zM21.75 7.93l-9 5.25v9l8.628-5.032a.75.75 0 0 0.372-.648V7.93zM11.25 22.18v-9l-9-5.25v8.57a.75.75 0 00.372.648l8.628 5.033z" />
         </svg>
     ),
     SearchProduct: () => (
@@ -150,6 +150,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   // Refs for grid inputs
   const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  
+  // Ref to track the last edited ID to detect navigation vs background update
+  const prevEditingIdRef = useRef<number | null | undefined>(undefined);
 
   const userRole = currentUser.role;
 
@@ -256,20 +259,40 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [searchedProducts.length, isSearchingProducts]);
 
   useEffect(() => {
+    // Ensure we don't overwrite local changes when the background data refreshes (Multi-user fix)
+    // We only want to re-initialize if the User intentionally navigates to a different Quotation ID.
+    const isSameId = prevEditingIdRef.current === editingQuotationId;
+    const hasData = formData !== null;
+    
+    // If ID hasn't changed (user didn't navigate), and we already have data, 
+    // ignore background updates to 'quotations' list.
+    if (isSameId && hasData) {
+        return;
+    }
+    
+    // Update tracked ID
+    if (!isSameId) {
+        prevEditingIdRef.current = editingQuotationId;
+    }
+
     const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
+    
+    // If editingQuotationId is set (not New), but we can't find it in the list:
+    // It might be that 'quotations' list hasn't loaded yet. We shouldn't init as New/Empty in that case.
+    if (editingQuotationId !== null && !quotationToEdit && quotations.length === 0) {
+        // Wait for data to load
+        return;
+    }
+
     // Use structured clone or deep copy to avoid mutating state directly if objects are shared
     let initialQuotation = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : createNewQuotation();
     
-    // Sanitize and patch missing fields for legacy data to prevent Uncaught TypeErrors
+    // Sanitize and patch missing fields for legacy data
     if (initialQuotation.details) {
         initialQuotation.details = initialQuotation.details.map((item: QuotationItem) => ({
             ...item,
             airFreightDetails: item.airFreightDetails || { weightPerMtr: 0, airFreightLeadTime: '' }
         }));
-    }
-    // Check discount structure to prevent errors if missing
-    if (initialQuotation.customerId) {
-        // We let the customer load effect handle patching if needed, but we ensure it's safe to render
     }
 
     setFormData(initialQuotation);
@@ -451,6 +474,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       });
 
       if(isNew) {
+          // IMPORTANT: Manually update local form state immediately after save to prevent race condition
+          // where the component might re-initialize with empty data while waiting for the ID prop update.
+          setFormData(quotationToSave);
+          prevEditingIdRef.current = quotationToSave.id;
+
           setEditingQuotationId(quotationToSave.id);
           const url = new URL(window.location.href);
           if (!url.protocol.startsWith('blob')) {
