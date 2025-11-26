@@ -261,15 +261,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [searchedProducts.length, isSearchingProducts]);
 
   useEffect(() => {
-    // Session Lock Logic:
-    // If we are already editing a specific session (either a valid ID or NULL for new),
-    // and we already have local form data, we must IGNORE any props updates (like background syncs)
-    // to prevent wiping out the user's work.
-    const isSameSession = currentSessionIdRef.current === editingQuotationId;
-    const hasLocalData = formData !== null;
-
-    if (isSameSession && hasLocalData) {
-        return;
+    // STRICT SESSION LOCK:
+    // If we are currently editing a session (editingQuotationId is set, or 0/null for draft),
+    // and we have local form data, we MUST ignore background updates from 'quotations' prop.
+    // This prevents other users' actions (like saving a new quote) from wiping out the current user's draft.
+    
+    // Check if we are already in a session
+    if (currentSessionIdRef.current !== undefined) {
+        // If the requested ID (editingQuotationId) matches the current session, 
+        // DO NOT re-initialize from props. Keep local state.
+        if (currentSessionIdRef.current === editingQuotationId && formData !== null) {
+            return;
+        }
     }
 
     // Start new session
@@ -461,12 +464,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
     try {
       const isNew = editingQuotationId === null || formData.id === 0;
+      
+      // Get the LATEST quotations list from props to ensure ID uniqueness.
+      // NOTE: 'quotations' prop might be slightly stale if a background update just happened, 
+      // but typical latency is low. For true safety, backend generation is best, 
+      // but here we use max+1 on client side.
       const safeQuotations = quotations || [];
       
-      // Calculate ID on save using the LATEST data from props to avoid collisions
       let idToSave = formData.id;
       if (isNew) {
           // Find max ID in current list and increment. If list empty, start at 1.
+          // This ensures that even if 'quotations' updated in background (which we ignored in useEffect),
+          // we are now using the fresh list to calc the ID.
           const maxId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) : 0;
           idToSave = maxId + 1;
       }
@@ -476,6 +485,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       await setQuotations(prev => {
           const currentQuotations = prev || [];
           if (isNew) {
+              // Check AGAIN inside the setter just in case 'quotations' prop was stale but 'prev' is fresh
+              const freshMaxId = currentQuotations.length > 0 ? Math.max(...currentQuotations.map(q => q.id)) : 0;
+              if (freshMaxId >= idToSave) {
+                  quotationToSave.id = freshMaxId + 1;
+              }
               return [...currentQuotations, quotationToSave];
           }
           return currentQuotations.map(q => q.id === idToSave ? quotationToSave : q);
@@ -507,7 +521,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   };
   
-  const handleNewButtonClick = () => { if (isReadOnly && userRole !== 'Sales Person') return; setEditingQuotationId(null); const url = new URL(window.location.href); if (!url.protocol.startsWith('blob')) { url.searchParams.delete('id'); window.history.pushState({}, '', url); } }
+  const handleNewButtonClick = () => { 
+      if (isReadOnly && userRole !== 'Sales Person') return;
+      setEditingQuotationId(null); 
+      const url = new URL(window.location.href); 
+      if (!url.protocol.startsWith('blob')) { 
+          url.searchParams.delete('id'); 
+          window.history.pushState({}, '', url); 
+      } 
+  }
   
   const handleAddProductFromSearch = (product: Product, discount: number) => {
     setFormData(prev => {

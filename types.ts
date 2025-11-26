@@ -9,7 +9,7 @@ export interface User {
   role: UserRole;
 }
 
-export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'delivery-challans' | 'delivery-challan-form' | 'reports' | 'user-manual';
+export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form';
 
 export interface SalesPerson {
   id: number;
@@ -95,7 +95,6 @@ export interface Quotation {
   comments: string;
   details: QuotationItem[];
 }
-
 
 export interface DeliveryChallanItem {
   productId: number;

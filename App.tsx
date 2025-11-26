@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, DeliveryChallan } from './types';
+import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { SalesPersonManager } from './components/SalesPersonManager';
 import { CustomerManager } from './components/CustomerManager';
@@ -11,8 +11,6 @@ import { Dashboard } from './components/Dashboard';
 import { Login } from './components/Login';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { UserManager } from './components/UserManager';
-import { DeliveryChallanManager } from './components/DeliveryChallanManager';
-import { DeliveryChallanForm } from './components/DeliveryChallanForm';
 import { Reports } from './components/Reports';
 import { CalendarView } from './components/CalendarView';
 import { UserManual } from './components/UserManual';
@@ -22,11 +20,9 @@ function App() {
   const [users, setUsers, usersLoading, usersError] = useOnlineStorage<User>('users');
   const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
   const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
-  const [deliveryChallans, setDeliveryChallans, deliveryChallansLoading, deliveryChallansError] = useOnlineStorage<DeliveryChallan>('deliveryChallans');
   
   const [view, setView] = useState<View | 'calendar'>('dashboard');
   const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null);
-  const [editingChallanId, setEditingChallanId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
@@ -39,8 +35,8 @@ function App() {
       }
   });
   
-  const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
-  const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
+  const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading;
+  const dataError = usersError || salesPersonsError || quotationsError;
 
   // Handle Deep Linking for Quotations
   useEffect(() => {
@@ -198,10 +194,6 @@ function App() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>
                 Calendar
               </button>
-              <button onClick={() => handleSetView('delivery-challans')} className={headerBtnClass(view === 'delivery-challans' || view === 'delivery-challan-form')}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /><path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" /></svg>
-                Challans
-              </button>
               {(currentUser.role === 'Admin' || currentUser.role === 'Sales Person' || currentUser.role === 'Management') && (
                 <button onClick={() => handleSetView('reports')} className={headerBtnClass(view === 'reports')}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" /><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" /></svg>
@@ -267,8 +259,6 @@ function App() {
         {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
         {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
         {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
-        {view === 'delivery-challans' && <DeliveryChallanManager deliveryChallans={deliveryChallans} setDeliveryChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
-        {view === 'delivery-challan-form' && <DeliveryChallanForm challans={deliveryChallans} setChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} editingChallanId={editingChallanId} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
         {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
         {view === 'user-manual' && <UserManual />}
       </main>

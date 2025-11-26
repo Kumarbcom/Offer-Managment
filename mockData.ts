@@ -1,4 +1,5 @@
-import type { SalesPerson, Customer, Product, Quotation, DeliveryChallan } from './types';
+
+import type { SalesPerson, Customer, Product, Quotation } from './types';
 
 export const MOCK_SALES_PERSONS: SalesPerson[] = [
   { id: 1, name: 'Ananthapadmanabha Phandari', email: 'ap@example.com', mobile: '9876543210' },
@@ -148,5 +149,3 @@ export const MOCK_QUOTATIONS: Quotation[] = [
     ],
   },
 ];
-
-export const MOCK_DELIVERY_CHALLANS: DeliveryChallan[] = [];

@@ -268,7 +268,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
     // --- Charts Effects ---
 
-    // 1. Line Chart
+    // 1. Line Chart (Vibrant Gradient)
     useEffect(() => {
         if (!lineChartRef.current || typeof Chart === 'undefined') return;
 
@@ -279,13 +279,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         }, {} as Record<string, number>);
 
         const sortedDates = Object.keys(dataByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-        
-        // Create compact labels (DD/MM)
         const compactLabels = sortedDates.map(dateStr => {
             const date = new Date(dateStr);
             return `${date.getDate()}/${date.getMonth() + 1}`;
         });
-
         const chartData = sortedDates.map(date => dataByDate[date]);
 
         const ctx = lineChartRef.current.getContext('2d');
@@ -297,13 +294,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 datasets: [{
                     label: 'Quotation Value',
                     data: chartData,
-                    borderColor: '#000000', // Black line
-                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                    tension: 0.1,
-                    fill: false,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    pointBackgroundColor: '#000000'
+                    borderColor: '#6366f1', // Indigo 500
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#4f46e5',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
                 }]
             },
             options: {
@@ -315,28 +314,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     datalabels: {
                         align: 'top',
                         anchor: 'end',
-                        color: '#000000', // Black labels
+                        color: '#4338ca', // Indigo 800
                         font: { size: 11, weight: 'bold' },
                         formatter: (value: number) => formatCurrencyCompact(value),
-                        offset: 2
+                        offset: 4
                     },
                     tooltip: {
-                        callbacks: {
-                            label: function (context: any) {
-                                return `Value: ${formatCurrency(context.parsed.y)}`;
-                            }
-                        }
+                        backgroundColor: '#1e293b',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        callbacks: { label: (c: any) => `Value: ${formatCurrency(c.parsed.y)}` }
                     }
                 },
                 scales: {
                     x: {
-                        ticks: { color: '#000000', font: { size: 11, weight: 'bold' } },
+                        ticks: { color: '#334155', font: { size: 11, weight: 'bold' } },
                         grid: { display: false }
                     },
                     y: {
-                        ticks: { color: '#000000', font: { size: 10 }, callback: (val: number) => formatCurrencyCompact(val) },
-                        border: { dash: [4, 4], color: '#000000' },
-                        grid: { color: '#e2e8f0' }
+                        ticks: { color: '#64748b', font: { size: 10 }, callback: (val: number) => formatCurrencyCompact(val) },
+                        border: { display: false },
+                        grid: { color: '#f1f5f9' }
                     }
                 }
             }
@@ -344,15 +342,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         return () => chartInstance.destroy();
     }, [filteredQuotations]);
 
-    // 2. Bar Chart
+    // 2. Bar Chart (Vibrant Colors)
     useEffect(() => {
         if (!barChartRef.current || !salesPersons || typeof Chart === 'undefined') return;
 
-        const salesPersonColorMap: Record<string, string> = {
-            'Ananthapadmanabha Phandari': '#4C51BF',
-            'Giridhar': '#ED64A6',
-            'Office': '#F56565',
-            'Veeresh': '#48BB78',
+        const vibrantColors: Record<string, string> = {
+            'Ananthapadmanabha Phandari': '#8b5cf6', // Violet
+            'Giridhar': '#ec4899', // Pink
+            'Office': '#f43f5e', // Rose
+            'Veeresh': '#10b981', // Emerald
         };
 
         const dailyData = filteredQuotations.reduce((acc, q) => {
@@ -365,19 +363,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         }, {} as Record<string, Record<string, number>>);
 
         const sortedDates = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-        // Compact labels for bar chart as well
         const compactLabels = sortedDates.map(dateStr => {
             const date = new Date(dateStr);
             return `${date.getDate()}/${date.getMonth() + 1}`;
         });
 
-        const datasets = salesPersons.map(sp => {
-            return {
-                label: sp.name,
-                data: sortedDates.map(date => dailyData[date][sp.name] || 0),
-                backgroundColor: salesPersonColorMap[sp.name] || '#A0AEC0',
-            };
-        });
+        const datasets = salesPersons.map(sp => ({
+            label: sp.name,
+            data: sortedDates.map(date => dailyData[date][sp.name] || 0),
+            backgroundColor: vibrantColors[sp.name] || '#cbd5e1',
+            borderRadius: 4,
+            barPercentage: 0.7
+        }));
 
         const ctx = barChartRef.current.getContext('2d');
         const chartInstance = new Chart(ctx, {
@@ -397,43 +394,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         },
                         color: '#fff',
                         font: { size: 10, weight: 'bold' },
-                        formatter: (value: number) => {
-                            if (barChartMode === 'value') return formatCurrencyCompact(value);
-                            return value;
-                        }
+                        formatter: (value: number) => barChartMode === 'value' ? formatCurrencyCompact(value) : value,
+                        textShadowBlur: 2,
+                        textShadowColor: 'rgba(0,0,0,0.3)'
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context: any) {
-                                let label = context.dataset.label || '';
-                                if (label) label += ': ';
-                                if (context.parsed.y !== null) {
-                                    if (barChartMode === 'value') label += formatCurrency(context.parsed.y);
-                                    else label += context.parsed.y;
-                                }
-                                return label;
-                            }
-                        }
-                    }
+                    tooltip: { backgroundColor: '#1e293b', bodyFont: { size: 12 } }
                 },
                 scales: {
-                    x: { 
-                        stacked: true,
-                        ticks: { color: '#000000', font: { size: 11, weight: 'bold' } },
-                        grid: { display: false }
-                    },
+                    x: { stacked: true, ticks: { color: '#334155', font: { size: 11, weight: 'bold' } }, grid: { display: false } },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        ticks: {
-                            color: '#000000',
-                            font: { size: 10 },
-                            callback: function (value: any) {
-                                if (barChartMode === 'value') return formatCurrencyCompact(Number(value));
-                                return Number.isInteger(value) ? value : null;
-                            }
-                        },
-                        grid: { color: '#e2e8f0' }
+                        ticks: { color: '#64748b', font: { size: 10 }, callback: (value: any) => barChartMode === 'value' ? formatCurrencyCompact(Number(value)) : (Number.isInteger(value) ? value : null) },
+                        grid: { color: '#f1f5f9' },
+                        border: { display: false }
                     }
                 }
             }
@@ -441,31 +415,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         return () => chartInstance.destroy();
     }, [filteredQuotations, salesPersons, barChartMode]);
 
-    // 3. Funnel Chart
+    // 3. Funnel Chart (Vibrant)
     useEffect(() => {
         if (!funnelChartRef.current || typeof Chart === 'undefined') return;
 
         const funnelStatuses: QuotationStatus[] = ['Open', 'PO received', 'Partial PO Received', 'Expired', 'Lost'];
         const funnelCounts = funnelStatuses
-            .map(status => ({
-                status,
-                count: overallStats[status].count
-            }))
+            .map(status => ({ status, count: overallStats[status].count }))
             .filter(item => item.count > 0)
             .sort((a, b) => b.count - a.count);
 
-        const funnelLabels = funnelCounts.map(item => `${item.status}`);
+        const funnelLabels = funnelCounts.map(item => item.status);
         const funnelData = funnelCounts.map(item => item.count);
         const maxDataValue = funnelData.length > 0 ? funnelData[0] : 0;
-
         const spacerData = funnelData.map(value => (maxDataValue - value) / 2);
 
         const colorMap: Record<QuotationStatus, string> = {
-            'Open': '#4299E1',
-            'PO received': '#48BB78',
-            'Partial PO Received': '#38B2AC',
-            'Expired': '#ECC94B',
-            'Lost': '#F56565',
+            'Open': '#3b82f6', // Blue 500
+            'PO received': '#22c55e', // Green 500
+            'Partial PO Received': '#14b8a6', // Teal 500
+            'Expired': '#f59e0b', // Amber 500
+            'Lost': '#ef4444', // Red 500
         };
         const funnelColors = funnelCounts.map(item => colorMap[item.status]);
 
@@ -476,52 +446,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             data: {
                 labels: funnelLabels,
                 datasets: [
-                    { data: spacerData, backgroundColor: 'rgba(0,0,0,0)', stack: 'funnel', datalabels: { display: false } },
+                    { data: spacerData, backgroundColor: 'transparent', stack: 'funnel', datalabels: { display: false } },
                     {
                         data: funnelData,
                         backgroundColor: funnelColors,
                         stack: 'funnel',
+                        borderRadius: 6,
                         datalabels: {
-                            color: '#000000', // Changed to black for visibility on colors (or check contrast) - sticking to white on dark bars, but user asked for black. Let's use white for contrast on bars, but black for axis.
+                            color: '#fff',
                             anchor: 'center',
                             align: 'center',
                             font: { weight: 'bold', size: 12 },
                             display: true,
-                            textShadowBlur: 2,
-                            textShadowColor: 'rgba(0,0,0,0.3)'
+                            textShadowBlur: 4,
+                            textShadowColor: 'rgba(0,0,0,0.5)'
                         }
                     },
-                    { data: spacerData, backgroundColor: 'rgba(0,0,0,0)', stack: 'funnel', datalabels: { display: false } }
+                    { data: spacerData, backgroundColor: 'transparent', stack: 'funnel', datalabels: { display: false } }
                 ]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { filter: (tooltipItem: any) => tooltipItem.datasetIndex === 1 }
-                },
-                scales: {
-                    x: { stacked: true, display: false },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        grid: { display: false },
-                        ticks: { color: '#000000', font: { size: 11, weight: 'bold' } }
-                    }
-                }
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { stacked: true, display: false }, y: { stacked: true, display: false } }
             }
         });
         return () => chartInstance.destroy();
     }, [overallStats]);
 
-    // 4. Status Distribution Donut Chart (Order Status)
+    // 4. Donut Chart (Vibrant)
     useEffect(() => {
         if (!statusPieChartRef.current || typeof Chart === 'undefined') return;
 
         const statusData = QUOTATION_STATUSES.map(status => overallStats[status][orderStatusMode]);
-
         const ctx = statusPieChartRef.current.getContext('2d');
         const chartInstance = new Chart(ctx, {
             type: 'doughnut',
@@ -530,80 +489,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 labels: QUOTATION_STATUSES,
                 datasets: [{
                     data: statusData,
-                    backgroundColor: [
-                        '#4299E1', // Open - Blue
-                        '#48BB78', // PO Received - Green
-                        '#38B2AC', // Partial PO - Teal
-                        '#F56565', // Lost - Red
-                        '#ECC94B'  // Expired - Yellow
-                    ],
-                    borderWidth: 1,
-                    borderColor: '#ffffff'
+                    backgroundColor: ['#3b82f6', '#22c55e', '#14b8a6', '#f59e0b', '#ef4444'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '60%',
                 plugins: {
-                    legend: { 
-                        position: 'right', 
-                        labels: { 
-                            boxWidth: 10, 
-                            font: { size: 11, weight: 'bold' },
-                            color: '#000000' // Black legend
-                        } 
-                    },
+                    legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11, weight: 'bold' }, color: '#1e293b', padding: 10 } },
                     datalabels: {
                         display: (ctx: any) => {
                             const val = Number(ctx.dataset.data[ctx.dataIndex]);
                             return !isNaN(val) && val > 0;
                         },
-                        color: '#000000', // Black labels on pie
+                        color: '#fff', // White for better contrast on vibrant colors
                         font: { weight: 'bold', size: 11 },
-                        formatter: (value: number, ctx: any) => {
-                            if (orderStatusMode === 'value') return formatCurrencyCompact(value);
-                            // For count, show number
-                            return value;
-                        },
-                        anchor: 'end',
-                        align: 'start',
-                        offset: -10
+                        formatter: (value: number) => orderStatusMode === 'value' ? formatCurrencyCompact(value) : value,
+                        textShadowBlur: 3,
+                        textShadowColor: 'rgba(0,0,0,0.5)'
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context: any) {
-                                let label = context.label || '';
-                                if (label) label += ': ';
-                                if (context.parsed !== null) {
-                                    if (orderStatusMode === 'value') label += formatCurrency(context.parsed);
-                                    else label += context.parsed;
-                                }
-                                return label;
-                            }
-                        }
-                    }
+                    tooltip: { backgroundColor: '#1e293b' }
                 }
             }
         });
         return () => chartInstance.destroy();
     }, [overallStats, orderStatusMode]);
 
-    // 5. Top Customers Bar Chart
+    // 5. Top Customers (Vibrant Bar)
     useEffect(() => {
         if (!topCustomersChartRef.current || typeof Chart === 'undefined') return;
 
-        // Calculate value per customer
         const customerValues = new Map<string, number>();
         filteredQuotations.forEach(q => {
             const customerName = q.customerId ? customerMap.get(q.customerId) || 'Unknown' : 'Unknown';
-            const value = calculateTotalAmount(q.details);
-            customerValues.set(customerName, (customerValues.get(customerName) || 0) + value);
+            customerValues.set(customerName, (customerValues.get(customerName) || 0) + calculateTotalAmount(q.details));
         });
 
-        const sortedCustomers = [...customerValues.entries()]
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5);
-
+        const sortedCustomers = [...customerValues.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
         const ctx = topCustomersChartRef.current.getContext('2d');
         const chartInstance = new Chart(ctx, {
             type: 'bar',
@@ -613,40 +539,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 datasets: [{
                     label: 'Total Value',
                     data: sortedCustomers.map(c => c[1]),
-                    backgroundColor: '#805AD5', // Purple
-                    borderRadius: 4
+                    backgroundColor: '#d946ef', // Fuchsia 500
+                    borderRadius: 4,
+                    barThickness: 20
                 }]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { right: 40 } }, // Add padding for labels
+                layout: { padding: { right: 45 } },
                 plugins: {
                     legend: { display: false },
                     datalabels: {
                         anchor: 'end',
                         align: 'right',
                         formatter: (value: number) => formatCurrencyCompact(value),
-                        color: '#000000', // Black labels
+                        color: '#a21caf', // Fuchsia 700
                         font: { weight: 'bold', size: 11 },
                         offset: 4
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context: any) {
-                                return formatCurrency(context.parsed.x);
-                            }
-                        }
-                    }
+                    tooltip: { backgroundColor: '#1e293b' }
                 },
-                scales: {
-                    x: { display: false },
-                    y: {
-                        grid: { display: false },
-                        ticks: { color: '#000000', font: { size: 11, weight: '600' }, autoSkip: false }
-                    }
-                }
+                scales: { x: { display: false }, y: { grid: { display: false }, ticks: { color: '#334155', font: { size: 11, weight: '600' }, autoSkip: false } } }
             }
         });
         return () => chartInstance.destroy();
