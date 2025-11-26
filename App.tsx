@@ -163,7 +163,7 @@ function App() {
     `flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all duration-300 transform ${
       isActive 
         ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/40 scale-105 ring-1 ring-indigo-400/50' 
-        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+        : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
     }`;
 
   return (

@@ -37,7 +37,7 @@ const StatusIcon = ({ status, className }: { status: string, className?: string 
         case 'Partial PO Received': // Teal - Pie chart
             return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M2.25 13.5a8.25 8.25 0 0 1 8.25-8.25.75.75 0 0 1 .75.75v6.75H18a.75.75 0 0 1 .75.75 8.25 8.25 0 0 1-16.5 0Z" clipRule="evenodd" /><path fillRule="evenodd" d="M12.75 3a.75.75 0 0 1 .75-.75 8.25 8.25 0 0 1 8.25 8.25.75.75 0 0 1-.75.75h-7.5a.75.75 0 0 1-.75-.75V3Z" clipRule="evenodd" /></svg>;
         case 'Lost': // Red - Archive box x mark
-            return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" /><path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.133 2.845a.75.75 0 0 1 1.06 0l1.72 1.72 1.72-1.72a.75.75 0 1 1 1.06 1.06l-1.72 1.72 1.72 1.72a.75.75 0 1 1-1.06 1.06L12 15.685l-1.72 1.72a.75.75 0 1 1-1.06-1.06l1.72-1.72-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>;
+            return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" /><path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.133 2.845a.75.75 0 0 1 1.06 0l1.72 1.72 1.72-1.72a.75.75 0 1 1 1.06 1.06l-1.72 1.72 1.72 1.72a.75.75 0 1 1-1.06-1.06L12 15.685l-1.72 1.72a.75.75 0 1 1-1.06-1.06l1.72-1.72-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>;
         case 'Expired': // Amber - Clock alert
             return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clipRule="evenodd" /></svg>;
         default:
@@ -297,26 +297,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 datasets: [{
                     label: 'Quotation Value',
                     data: chartData,
-                    borderColor: 'rgb(75, 192, 192)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: '#000000', // Black line
+                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
                     tension: 0.1,
                     fill: false,
                     pointRadius: 5,
-                    pointHoverRadius: 7
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#000000'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { top: 20 } },
+                layout: { padding: { top: 25, right: 15, left: 5 } },
                 plugins: {
                     legend: { display: false },
                     datalabels: {
                         align: 'top',
                         anchor: 'end',
-                        color: '#666',
-                        font: { size: 10, weight: 'bold' },
-                        formatter: (value: number) => formatCurrencyCompact(value)
+                        color: '#000000', // Black labels
+                        font: { size: 11, weight: 'bold' },
+                        formatter: (value: number) => formatCurrencyCompact(value),
+                        offset: 2
                     },
                     tooltip: {
                         callbacks: {
@@ -324,6 +326,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                 return `Value: ${formatCurrency(context.parsed.y)}`;
                             }
                         }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#000000', font: { size: 11, weight: 'bold' } },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: '#000000', font: { size: 10 }, callback: (val: number) => formatCurrencyCompact(val) },
+                        border: { dash: [4, 4], color: '#000000' },
+                        grid: { color: '#e2e8f0' }
                     }
                 }
             }
@@ -383,7 +396,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             return !isNaN(val) && val > 0;
                         },
                         color: '#fff',
-                        font: { size: 9, weight: 'bold' },
+                        font: { size: 10, weight: 'bold' },
                         formatter: (value: number) => {
                             if (barChartMode === 'value') return formatCurrencyCompact(value);
                             return value;
@@ -404,16 +417,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     }
                 },
                 scales: {
-                    x: { stacked: true },
+                    x: { 
+                        stacked: true,
+                        ticks: { color: '#000000', font: { size: 11, weight: 'bold' } },
+                        grid: { display: false }
+                    },
                     y: {
                         stacked: true,
                         beginAtZero: true,
                         ticks: {
+                            color: '#000000',
+                            font: { size: 10 },
                             callback: function (value: any) {
                                 if (barChartMode === 'value') return formatCurrencyCompact(Number(value));
                                 return Number.isInteger(value) ? value : null;
                             }
-                        }
+                        },
+                        grid: { color: '#e2e8f0' }
                     }
                 }
             }
@@ -462,11 +482,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         backgroundColor: funnelColors,
                         stack: 'funnel',
                         datalabels: {
-                            color: '#000',
+                            color: '#000000', // Changed to black for visibility on colors (or check contrast) - sticking to white on dark bars, but user asked for black. Let's use white for contrast on bars, but black for axis.
                             anchor: 'center',
                             align: 'center',
-                            font: { weight: 'bold' },
-                            display: true
+                            font: { weight: 'bold', size: 12 },
+                            display: true,
+                            textShadowBlur: 2,
+                            textShadowColor: 'rgba(0,0,0,0.3)'
                         }
                     },
                     { data: spacerData, backgroundColor: 'rgba(0,0,0,0)', stack: 'funnel', datalabels: { display: false } }
@@ -486,7 +508,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         stacked: true,
                         beginAtZero: true,
                         grid: { display: false },
-                        ticks: { font: { size: 11, weight: 'bold' } }
+                        ticks: { color: '#000000', font: { size: 11, weight: 'bold' } }
                     }
                 }
             }
@@ -515,26 +537,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         '#F56565', // Lost - Red
                         '#ECC94B'  // Expired - Yellow
                     ],
-                    borderWidth: 1
+                    borderWidth: 1,
+                    borderColor: '#ffffff'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } },
+                    legend: { 
+                        position: 'right', 
+                        labels: { 
+                            boxWidth: 10, 
+                            font: { size: 11, weight: 'bold' },
+                            color: '#000000' // Black legend
+                        } 
+                    },
                     datalabels: {
                         display: (ctx: any) => {
                             const val = Number(ctx.dataset.data[ctx.dataIndex]);
                             return !isNaN(val) && val > 0;
                         },
-                        color: '#fff',
-                        font: { weight: 'bold', size: 10 },
+                        color: '#000000', // Black labels on pie
+                        font: { weight: 'bold', size: 11 },
                         formatter: (value: number, ctx: any) => {
                             if (orderStatusMode === 'value') return formatCurrencyCompact(value);
                             // For count, show number
                             return value;
-                        }
+                        },
+                        anchor: 'end',
+                        align: 'start',
+                        offset: -10
                     },
                     tooltip: {
                         callbacks: {
@@ -588,14 +621,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { right: 40 } }, // Add padding for labels
                 plugins: {
                     legend: { display: false },
                     datalabels: {
                         anchor: 'end',
-                        align: 'end',
+                        align: 'right',
                         formatter: (value: number) => formatCurrencyCompact(value),
-                        color: '#4A5568',
-                        font: { weight: 'bold', size: 10 }
+                        color: '#000000', // Black labels
+                        font: { weight: 'bold', size: 11 },
+                        offset: 4
                     },
                     tooltip: {
                         callbacks: {
@@ -609,7 +644,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     x: { display: false },
                     y: {
                         grid: { display: false },
-                        ticks: { font: { size: 10 } }
+                        ticks: { color: '#000000', font: { size: 11, weight: '600' }, autoSkip: false }
                     }
                 }
             }
@@ -630,7 +665,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     };
 
     if (!quotations || !salesPersons) {
-        return <div className="text-center p-8">Loading dashboard data...</div>;
+        return <div className="text-center p-8 text-black">Loading dashboard data...</div>;
     }
 
     return (
@@ -646,7 +681,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Dashboard</h2>
+                            <h2 className="text-lg font-bold text-black tracking-tight">Dashboard</h2>
                         </div>
                     </div>
                     {/* Logo Upload for Admin - Moved for visibility */}
@@ -670,7 +705,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             aria-label="Filter by Sales Person"
                             value={selectedSalesPersonId}
                             onChange={(e) => setSelectedSalesPersonId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                            className="block w-full pl-4 pr-10 py-2.5 text-sm border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent rounded-lg bg-slate-50 text-slate-700 font-medium transition-all hover:bg-slate-100 disabled:opacity-60 disabled:cursor-not-allowed appearance-none"
+                            className="block w-full pl-4 pr-10 py-2.5 text-sm border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent rounded-lg bg-slate-50 text-black font-medium transition-all hover:bg-slate-100 disabled:opacity-60 disabled:cursor-not-allowed appearance-none"
                             disabled={currentUser.role === 'Sales Person'}
                         >
                             <option value="all">All Sales Persons</option>
@@ -679,7 +714,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             ))}
                         </select>
                         <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path></svg>
+                            <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </div>
 
@@ -692,7 +727,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                 className={`relative inline-flex items-center justify-center flex-1 md:flex-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200
                                 ${selectedDateRange === range.key
                                         ? 'bg-white text-indigo-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}
+                                        : 'text-black hover:text-indigo-600 hover:bg-slate-200/50'}
                             `}
                             >
                                 {range.label}
@@ -703,7 +738,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                      {currentUser.role === 'Admin' && (
                         <div className="relative hidden md:inline-flex items-center">
                             <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={handleLogoChange} />
-                            <label htmlFor="logo-upload" className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors shadow-sm h-full" title="Upload Company Logo">
+                            <label htmlFor="logo-upload" className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-md text-black hover:bg-slate-50 cursor-pointer transition-colors shadow-sm h-full" title="Upload Company Logo">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
@@ -733,11 +768,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     transition={{ delay: 0.1 }}
                     className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-indigo-500 mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-indigo-600 mb-1">
                         <path d="M4.5 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM14.25 8.625a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM1.5 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM17.25 19.128l-.001.144a2.25 2.25 0 0 1-.233.96 10.088 10.088 0 0 0 5.06-1.01.75.75 0 0 0 .42-.643 4.875 4.875 0 0 0-6.957-4.611 8.586 8.586 0 0 1 1.71 5.157v.003Z" />
                     </svg>
-                    <div className="text-2xl font-bold text-slate-700 mb-0.5">{uniqueCustomerCount}</div>
-                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center">Active Customers</div>
+                    <div className="text-2xl font-bold text-black mb-0.5">{uniqueCustomerCount}</div>
+                    <div className="text-[9px] font-bold text-black uppercase tracking-wider text-center">Active Customers</div>
                 </motion.div>
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -745,13 +780,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     transition={{ delay: 0.15 }}
                     className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-2 rounded-xl shadow-sm text-white flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white opacity-90 mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white mb-1">
                         <path fillRule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875ZM12.75 12a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V18a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V12Z" clipRule="evenodd" />
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
                     <div className="text-xl md:text-2xl font-bold">{overallStats.total.count}</div>
-                    <div className="text-[10px] font-medium opacity-90">{formatCurrencyCompact(overallStats.total.value)}</div>
-                    <div className="text-[9px] font-bold opacity-75 uppercase tracking-wider mt-1 text-center">Total Enquiries</div>
+                    <div className="text-[10px] font-medium opacity-100">{formatCurrencyCompact(overallStats.total.value)}</div>
+                    <div className="text-[9px] font-bold uppercase tracking-wider mt-1 text-center">Total Enquiries</div>
                 </motion.div>
                 {QUOTATION_STATUSES.map((status, i) => {
                     const colors: Record<string, string> = {
@@ -771,9 +806,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colors[status].split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]`}
                         >
                             <StatusIcon status={status} className={`w-7 h-7 mb-1 ${iconColor}`} />
-                            <div className="text-lg md:text-xl font-bold text-slate-700">{overallStats[status].count}</div>
-                            <div className={`text-[10px] font-semibold ${iconColor} mt-0.5`}>{formatCurrencyCompact(overallStats[status].value)}</div>
-                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center truncate w-full">{status}</div>
+                            <div className="text-lg md:text-xl font-bold text-black">{overallStats[status].count}</div>
+                            <div className={`text-[10px] font-semibold text-black mt-0.5`}>{formatCurrencyCompact(overallStats[status].value)}</div>
+                            <div className="text-[9px] font-bold text-black uppercase tracking-wider mt-1 text-center truncate w-full">{status}</div>
                         </motion.div>
                     )
                 })}
@@ -787,7 +822,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     transition={{ delay: 0.4 }}
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
-                    <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wide">Quotation Funnel</h3>
+                    <h3 className="text-xs font-bold text-black mb-4 uppercase tracking-wide">Quotation Funnel</h3>
                     <div className="h-40 md:h-48"><canvas ref={funnelChartRef}></canvas></div>
                 </motion.div>
                 <motion.div
@@ -796,7 +831,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     transition={{ delay: 0.45 }}
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
-                    <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wide">Value Trend</h3>
+                    <h3 className="text-xs font-bold text-black mb-4 uppercase tracking-wide">Value Trend</h3>
                     <div className="h-40 md:h-48"><canvas ref={lineChartRef}></canvas></div>
                 </motion.div>
                  <motion.div
@@ -805,7 +840,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     transition={{ delay: 0.5 }}
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
-                    <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wide">Top 5 Customers</h3>
+                    <h3 className="text-xs font-bold text-black mb-4 uppercase tracking-wide">Top 5 Customers</h3>
                     <div className="h-40 md:h-48"><canvas ref={topCustomersChartRef}></canvas></div>
                 </motion.div>
             </div>
@@ -820,10 +855,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Daily Enquiries</h3>
+                        <h3 className="text-xs font-bold text-black uppercase tracking-wide">Daily Enquiries</h3>
                         <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
-                            <button type="button" onClick={() => setBarChartMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Cnt</button>
-                            <button type="button" onClick={() => setBarChartMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
+                            <button type="button" onClick={() => setBarChartMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>Cnt</button>
+                            <button type="button" onClick={() => setBarChartMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>Val</button>
                         </div>
                     </div>
                     <div className="h-40 md:h-48"><canvas ref={barChartRef}></canvas></div>
@@ -837,10 +872,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Order Status</h3>
+                        <h3 className="text-xs font-bold text-black uppercase tracking-wide">Order Status</h3>
                         <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
-                            <button type="button" onClick={() => setOrderStatusMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>No</button>
-                            <button type="button" onClick={() => setOrderStatusMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
+                            <button type="button" onClick={() => setOrderStatusMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>No</button>
+                            <button type="button" onClick={() => setOrderStatusMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>Val</button>
                         </div>
                     </div>
                     <div className="h-40 md:h-48"><canvas ref={statusPieChartRef}></canvas></div>
@@ -854,59 +889,59 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
                 >
                     <div className="p-2 border-b border-slate-100 flex justify-between items-center">
-                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Performance</h3>
+                        <h3 className="text-xs font-bold text-black uppercase tracking-wide">Performance</h3>
                         <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
-                            <button type="button" onClick={() => setPerformanceMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${performanceMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Cnt</button>
-                            <button type="button" onClick={() => setPerformanceMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${performanceMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
+                            <button type="button" onClick={() => setPerformanceMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${performanceMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>Cnt</button>
+                            <button type="button" onClick={() => setPerformanceMode('value')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${performanceMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>Val</button>
                         </div>
                     </div>
                     <div className="overflow-x-auto flex-grow">
                         <table className="min-w-full divide-y divide-slate-100">
                             <thead className="bg-slate-50">
                                 <tr>
-                                    <th className="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Name</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tot</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Opn</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">PO</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Part</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lst</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Exp</th>
+                                    <th className="px-2 py-2 text-left text-[10px] font-bold text-black uppercase tracking-wider">Name</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Tot</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Opn</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">PO</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Part</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Lst</th>
+                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Exp</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-100">
                                 {salesPersonStats.map(stat => (
                                     <tr key={stat.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-2 py-1 whitespace-nowrap text-[10px] font-medium text-slate-700">{stat.name.split(' ')[0]}</td>
+                                        <td className="px-2 py-1 whitespace-nowrap text-[10px] font-medium text-black">{stat.name.split(' ')[0]}</td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center bg-slate-50/50">
-                                            <div className="font-bold text-slate-800 text-[10px]">{getCellValue(stat.total)}</div>
+                                            <div className="font-bold text-black text-[10px]">{getCellValue(stat.total)}</div>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Open'].count > 0 ? 'text-blue-700' : 'text-slate-300'}`}>{getCellValue(stat['Open'])}</span>
+                                            <span className={`text-[10px] font-medium ${stat['Open'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Open'])}</span>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['PO received'].count > 0 ? 'text-green-700' : 'text-slate-300'}`}>{getCellValue(stat['PO received'])}</span>
+                                            <span className={`text-[10px] font-medium ${stat['PO received'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['PO received'])}</span>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-teal-700' : 'text-slate-300'}`}>{getCellValue(stat['Partial PO Received'])}</span>
+                                            <span className={`text-[10px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Partial PO Received'])}</span>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Lost'].count > 0 ? 'text-rose-700' : 'text-slate-300'}`}>{getCellValue(stat['Lost'])}</span>
+                                            <span className={`text-[10px] font-medium ${stat['Lost'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Lost'])}</span>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Expired'].count > 0 ? 'text-amber-700' : 'text-slate-300'}`}>{getCellValue(stat['Expired'])}</span>
+                                            <span className={`text-[10px] font-medium ${stat['Expired'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Expired'])}</span>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
                                 <tr>
-                                    <td className="px-2 py-1 text-[10px] text-slate-700">TOTAL</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-slate-800">{getCellValue(performanceTotals.total)}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-blue-800">{getCellValue(performanceTotals['Open'])}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-green-800">{getCellValue(performanceTotals['PO received'])}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-teal-800">{getCellValue(performanceTotals['Partial PO Received'])}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-rose-800">{getCellValue(performanceTotals['Lost'])}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-amber-800">{getCellValue(performanceTotals['Expired'])}</td>
+                                    <td className="px-2 py-1 text-[10px] text-black">TOTAL</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals.total)}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Open'])}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['PO received'])}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Partial PO Received'])}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Lost'])}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Expired'])}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -921,19 +956,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
                 >
                     <div className="p-2 border-b border-slate-100 flex justify-between items-center">
-                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Recent</h3>
+                        <h3 className="text-xs font-bold text-black uppercase tracking-wide">Recent</h3>
                         <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
-                            <button type="button" onClick={() => setQuotationSortType('latest')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${quotationSortType === 'latest' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>New</button>
-                            <button type="button" onClick={() => setQuotationSortType('highestValue')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${quotationSortType === 'highestValue' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Top</button>
+                            <button type="button" onClick={() => setQuotationSortType('latest')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${quotationSortType === 'latest' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>New</button>
+                            <button type="button" onClick={() => setQuotationSortType('highestValue')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${quotationSortType === 'highestValue' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>Top</button>
                         </div>
                     </div>
                     <div className="overflow-x-auto flex-grow">
                         <table className="min-w-full divide-y divide-slate-100">
                             <thead className="bg-slate-50">
                                 <tr>
-                                    <th className="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">ID</th>
-                                    <th className="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Cust</th>
-                                    <th className="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Val</th>
+                                    <th className="px-2 py-2 text-left text-[10px] font-bold text-black uppercase">ID</th>
+                                    <th className="px-2 py-2 text-left text-[10px] font-bold text-black uppercase">Cust</th>
+                                    <th className="px-2 py-2 text-right text-[10px] font-bold text-black uppercase">Val</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-100">
@@ -943,17 +978,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                             <div className="text-[10px] font-bold text-indigo-600">#{q.id}</div>
                                         </td>
                                         <td className="px-2 py-1">
-                                            <div className="text-[10px] font-semibold text-slate-700 truncate max-w-[80px]" title={q.customerId ? customerMap.get(q.customerId) : ''}>{q.customerId ? customerMap.get(q.customerId) || '...' : 'N/A'}</div>
+                                            <div className="text-[10px] font-semibold text-black truncate max-w-[80px]" title={q.customerId ? customerMap.get(q.customerId) : ''}>{q.customerId ? customerMap.get(q.customerId) || '...' : 'N/A'}</div>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-right">
-                                            <div className="text-[10px] font-bold text-slate-700">{formatCurrencyCompact(calculateTotalAmount(q.details))}</div>
+                                            <div className="text-[10px] font-bold text-black">{formatCurrencyCompact(calculateTotalAmount(q.details))}</div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                         {recentQuotations.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-32 text-slate-400">
+                            <div className="flex flex-col items-center justify-center h-32 text-black">
                                 <p className="text-xs">No data</p>
                             </div>
                         )}

@@ -55,7 +55,7 @@ const ActionButton: React.FC<{ onClick: () => void; disabled?: boolean; children
         onClick={onClick}
         disabled={disabled}
         title={title}
-        className="flex items-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:shadow-md transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold text-black hover:bg-slate-50 hover:shadow-md transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
     >
         {children}
     </button>
@@ -92,7 +92,7 @@ const Icons = {
     ),
     AddCustomer: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-teal-600">
-            <path d="M5.25 6.375a4.125 4.125 0 1 18.25 0 4.125 4.125 0 01-8.25 0zM2.25 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122zM18.75 7.5a.75.75 0 00-1.5 0v2.25H15a.75.75 0 000 1.5h2.25v2.25a.75.75 0 001.5 0v-2.25H21a.75.75 0 000-1.5h-2.25V7.5z" />
+            <path d="M5.25 6.375a4.125 4.125 0 1 18.25 0 4.125 4.125 0 01-8.25 0zM2.25 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122zM18.75 7.5a.75.75 0 00-1.5 0v2.25H15a.75.75 0 000 1.5h2.25v2.25a.75.75 0 001.5 0v-2.25H21a.75.75 0 000-1.5h-2.25V7.5z" />
         </svg>
     ),
     AddProduct: () => (
@@ -109,7 +109,7 @@ const Icons = {
     Trash: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>,
     Excel: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-green-600">
-            <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM9.763 9.51a2.25 2.25 0 013.828-1.351.75.75 0 001.06-1.06 3.75 3.75 0 00-6.38 2.252c-.033.307-.052.618-.057.933l-.024 1.399c-.003.158-.003.316.002.473l.024 1.4c.005.315.024.626.057.933a3.75 3.75 0 006.38 2.252.75.75 0 00-1.06-1.06 2.25 2.25 0 01-3.828-1.351l-.025-1.402a9.55 9.55 0 01-.001-.472l.025-1.402z" clipRule="evenodd" /> {/* Stylized generic sheet */}
+            <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM9.763 9.51a2.25 2.25 0 013.828-1.351.75.75 0 011.06-1.06 3.75 3.75 0 00-6.38 2.252c-.033.307-.052.618-.057.933l-.024 1.399c-.003.158-.003.316.002.473l.024 1.4c.005.315.024.626.057.933a3.75 3.75 0 006.38 2.252.75.75 0 00-1.06-1.06 2.25 2.25 0 01-3.828-1.351l-.025-1.402a9.55 9.55 0 01-.001-.472l.025-1.402z" clipRule="evenodd" /> {/* Stylized generic sheet */}
             <path d="M11.5 9.5a.5.5 0 01.5.5v4a.5.5 0 01-.5.5H9.5a.5.5 0 01-.5-.5v-4a.5.5 0 01.5-.5h2z" />
         </svg>
     ),
@@ -117,10 +117,10 @@ const Icons = {
 
 const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
     <div className={`flex items-stretch h-7 ${className}`}>
-        <label className="w-1/3 bg-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide flex items-center justify-center text-center px-1 rounded-l-md border border-r-0 border-slate-300 leading-tight whitespace-normal">
+        <label className="w-1/3 bg-slate-200 text-black font-bold text-[10px] uppercase tracking-wide flex items-center justify-center text-center px-1 rounded-l-md border border-r-0 border-slate-300 leading-tight whitespace-normal">
             {label}
         </label>
-        <div className="w-2/3 h-full relative group text-xs shadow-sm rounded-r-md">{children}</div>
+        <div className="w-2/3 h-full relative group text-xs shadow-sm rounded-r-md text-black">{children}</div>
     </div>
 );
 
@@ -203,8 +203,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, []);
 
   const createNewQuotation = useCallback((): Quotation => {
-    const safeQuotations = quotations || [];
-    const newId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) + 1 : 1;
+    // For NEW quotations, we set ID to 0 initially (Offline Mode).
+    // Real ID is generated only on SAVE to prevent collisions and background reset issues.
     
     // Auto-assign Sales Person ID if the current user is a Sales Person
     let defaultSalesPersonId: number | null = null;
@@ -214,7 +214,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
 
     return {
-      id: newId,
+      id: 0, // 0 indicates "New/Pending"
       quotationDate: getTodayDateString(),
       enquiryDate: getTodayDateString(),
       customerId: null,
@@ -230,7 +230,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       comments: '',
       details: [createEmptyQuotationItem()],
     };
-  }, [quotations, userRole, salesPersons, currentUser]);
+  }, [userRole, salesPersons, currentUser]); // Removed 'quotations' dependency to prevent resets
   
   const handleCustomerOpen = useCallback(() => {
     if (searchedCustomers.length === 0 && !isSearchingCustomers) {
@@ -460,9 +460,17 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         alert("Please select a customer."); return;
     }
     try {
-      const isNew = editingQuotationId === null;
+      const isNew = editingQuotationId === null || formData.id === 0;
       const safeQuotations = quotations || [];
-      const idToSave = isNew ? (safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) + 1 : 1) : editingQuotationId;
+      
+      // Calculate ID on save using the LATEST data to avoid collisions
+      let idToSave = formData.id;
+      if (isNew) {
+          // Find max ID in current list and increment. If list empty, start at 1.
+          const maxId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) : 0;
+          idToSave = maxId + 1;
+      }
+      
       let quotationToSave = { ...formData, id: idToSave };
       
       await setQuotations(prev => {
@@ -606,7 +614,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     return (
         <div className="bg-slate-100 min-h-screen">
           <div className="bg-white shadow-md p-2 mb-4 flex justify-between items-center no-print sticky top-0 z-30">
-            <h2 className="text-lg font-bold text-slate-800">Preview</h2>
+            <h2 className="text-lg font-bold text-black">Preview</h2>
             <div className="flex items-center space-x-2">
               <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Print</button>
               <button onClick={() => setPreviewMode('none')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Close</button>
@@ -621,7 +629,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     );
   }
 
-  if (!formData) return <div className="p-8 text-center text-xs">Loading form...</div>;
+  if (!formData) return <div className="p-8 text-center text-xs text-black">Loading form...</div>;
 
   // Define Grid Columns based on user request
   const gridColumns = ['SL No', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount%', 'Unit Price', 'Amount', 'Stock Status', 'Air per Unit', 'Air Freight Amt', 'Air Lead Time'];
@@ -668,30 +676,30 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-2 gap-y-1 text-xs">
                 <div className="space-y-1">
-                    <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-slate-800 rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId ?? "{New}"}</div></FormField>
-                    <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm" disabled={isReadOnly}/></FormField>
-                    <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm" disabled={isReadOnly}/></FormField>
-                    <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
+                    <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId ?? (formData.id > 0 ? formData.id : "New")}</div></FormField>
+                    <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
                      {selectedCustomerObj && (
-                        <div className="ml-[33.33%] pl-1 text-[10px] text-slate-500 whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address}, ${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`}>
+                        <div className="ml-[33.33%] pl-1 text-[10px] text-black whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address}, ${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`}>
                             {selectedCustomerObj.address}, {selectedCustomerObj.city} - {selectedCustomerObj.pincode}
                         </div>
                      )}
                 </div>
                 <div className="space-y-1">
-                    <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm" disabled={isReadOnly}/></FormField>
-                    <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm" disabled={isReadOnly}/></FormField>
-                    <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm" disabled={isReadOnly}/></FormField>
-                    <FormField label="Payment"><select name="paymentTerms" value={formData.paymentTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100" disabled={isReadOnly}>{PAYMENT_TERMS.map(t => <option key={t} value={t}>{t}</option>)}</select></FormField>
-                    <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
+                    <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Payment"><select name="paymentTerms" value={formData.paymentTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PAYMENT_TERMS.map(t => <option key={t} value={t}>{t}</option>)}</select></FormField>
+                    <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
                 </div>
                 <div className="space-y-1">
-                    <FormField label="Products Brand"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
-                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
-                    <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
-                    <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100">{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
+                    <FormField label="Products Brand"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
+                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
+                    <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
+                    <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black">{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
                     {selectedCustomerObj && selectedCustomerObj.discountStructure && (
-                        <div className="flex flex-wrap gap-1 mt-1 text-[10px] border border-slate-200 p-1 rounded bg-slate-50">
+                        <div className="flex flex-wrap gap-1 mt-1 text-[10px] border border-slate-200 p-1 rounded bg-slate-50 text-black">
                             {Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => {
                                 const val = Number(value);
                                 if (!isNaN(val) && val > 0) {
@@ -710,15 +718,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
             <div className="mt-3 overflow-x-auto">
                 <table className="min-w-full border-collapse border border-slate-300 text-[11px]">
-                    <thead className="bg-slate-200 text-slate-700 font-semibold">
+                    <thead className="bg-slate-200 text-black font-semibold">
                         <tr className="divide-x divide-slate-300">
                             {gridColumns.map(h => <th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}
                         </tr>
                     </thead>
-                    <tbody className="bg-white text-xs">{(formData.details || []).map((item, index) => {
+                    <tbody className="bg-white text-xs text-black">{(formData.details || []).map((item, index) => {
                         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); 
                         const amount = unitPrice * (item.moq || 0); 
-                        const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000) * 150 : 0; 
+                        const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0; 
                         const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
                         const currentProduct = fetchedProducts.get(item.productId);
                         const optionsForSelect = [...searchedProducts];
@@ -728,17 +736,17 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         return (
                         <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50">
                             {/* SL No */}
-                            <td className="border-t border-slate-300 p-1 text-center bg-slate-50">{index + 1}</td>
+                            <td className="border-t border-slate-300 p-1 text-center bg-slate-50 text-black">{index + 1}</td>
                             
                             {/* Part No */}
                             <td className="border-t border-slate-300 w-40 align-top">
-                                <div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''}`}>
+                                <div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
                                     <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
                                 </div>
                             </td>
                             
                             {/* Description */}
-                            <td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-slate-600 truncate" title={item.description}>{item.description}</td>
+                            <td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-black truncate" title={item.description}>{item.description}</td>
                             
                             {/* MOQ */}
                             <td className="border-t border-slate-300 align-top">
@@ -749,7 +757,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
                                     onFocus={(e) => e.target.select()}
-                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={isReadOnly}
                                 />
                             </td>
@@ -763,7 +771,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
                                     onFocus={(e) => e.target.select()}
-                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={isReadOnly}
                                 />
                             </td>
@@ -771,10 +779,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             {/* Price (LP/SP) */}
                             <td className="border-t border-slate-300 align-top">
                                 <div className="flex items-center bg-slate-100 h-6">
-                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap" disabled/>
+                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black" disabled/>
                                     <select 
                                         value={item.priceSource} 
-                                        className="bg-transparent border-l border-slate-200 p-0 text-[9px] text-slate-500 h-full appearance-none text-center w-6 focus:outline-none" 
+                                        className="bg-transparent border-l border-slate-200 p-0 text-[9px] text-black h-full appearance-none text-center w-6 focus:outline-none" 
                                         disabled
                                     >
                                         <option value="LP">LP</option><option value="SP">SP</option>
@@ -791,18 +799,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     onChange={e => handleItemChange(index, 'discount', e.target.value)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
                                     onFocus={(e) => e.target.select()}
-                                    className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={isReadOnly}
                                 />
                             </td>
                             
                             {/* Unit Price */}
-                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
                                 {unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
 
                             {/* Amount */}
-                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
                                 {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             
@@ -815,7 +823,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'stockStatus')}
                                     onFocus={(e) => e.target.select()}
-                                    className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={isReadOnly}
                                 />
                             </td>
@@ -832,15 +840,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         title="Toggle Air Freight"
                                     />
                                     {!isReadOnly && item.airFreight ? (
-                                         <input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-full p-0.5 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded text-xs" title="Weight (kg/m) for calculation"/>
+                                         <input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-full p-0.5 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded text-xs text-black" title="Weight (kg/m) for calculation"/>
                                     ) : (
-                                        <span className="text-right flex-grow text-[10px]">{freightPerMtr.toFixed(2)}</span>
+                                        <span className="text-right flex-grow text-[10px] text-black">{freightPerMtr.toFixed(2)}</span>
                                     )}
                                 </div>
                             </td>
 
                             {/* Air Freight Amt */}
-                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap">
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
                                 {freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </td>
 
@@ -850,7 +858,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     type="text" 
                                     value={item.airFreightDetails?.airFreightLeadTime || ''} 
                                     onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} 
-                                    className="w-20 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs" 
+                                    className="w-20 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={!item.airFreight || isReadOnly}
                                 />
                             </td>

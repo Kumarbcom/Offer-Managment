@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
@@ -52,15 +53,15 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
     return (
         <tr className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-sm`}>
             <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/></td>
-            <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.id}</td>
-            <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{product.partNo}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-slate-600 max-w-xs truncate">{product.description}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.hsnCode}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{currentPrice ? currentPrice.lp.toFixed(2) : 'N/A'}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{currentPrice ? currentPrice.sp.toFixed(2) : 'N/A'}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.uom}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-slate-600">{product.plant}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-right">{product.weight}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black">{product.id}</td>
+            <td className="px-3 py-2 whitespace-nowrap font-medium text-black">{product.partNo}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black max-w-xs truncate">{product.description}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black">{product.hsnCode}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{currentPrice ? currentPrice.lp.toFixed(2) : 'N/A'}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{currentPrice ? currentPrice.sp.toFixed(2) : 'N/A'}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black">{product.uom}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black">{product.plant}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{product.weight}</td>
             <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
                 <button onClick={() => onEdit(product)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
                 <button onClick={() => onDelete(product.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
@@ -356,7 +357,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     <div className="space-y-6">
       <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
          <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800">Products</h2>
+            <h2 className="text-xl font-bold text-black">Products</h2>
             {/* Mobile-only Upload/Add buttons compact row */}
             {canManageProducts && (
             <div className="flex md:hidden gap-2">
@@ -389,26 +390,26 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
          {/* Mobile Search and Discount */}
          <div className="block md:hidden space-y-3 mb-4 border-b pb-4 border-slate-100">
              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Universal Search</label>
+                <label className="text-xs font-bold text-black uppercase">Universal Search</label>
                 <input 
                     type="text" 
                     value={searchTerm} 
                     onChange={e => setSearchTerm(e.target.value)} 
-                    className="w-full mt-1 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full mt-1 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
                     placeholder="Search Part No or Description..."
                 />
              </div>
              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Discount %</label>
+                <label className="text-xs font-bold text-black uppercase">Discount %</label>
                 <div className="relative">
                     <input 
                         type="number" 
                         value={discount} 
                         onChange={e => setDiscount(e.target.value)} 
-                        className="w-full mt-1 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="w-full mt-1 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
                         placeholder="0"
                     />
-                    <span className="absolute right-3 top-3 text-slate-400 text-sm">%</span>
+                    <span className="absolute right-3 top-3 text-black text-sm">%</span>
                 </div>
              </div>
          </div>
@@ -416,16 +417,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
          {/* Desktop Filters */}
          <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>
-                <label htmlFor="searchTerm" className="block text-xs font-medium text-slate-600">Search Part No (use * for OR)</label>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. OLFLEX*UNITRONIC" />
+                <label htmlFor="searchTerm" className="block text-xs font-medium text-black">Search Part No (use * for OR)</label>
+                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. OLFLEX*UNITRONIC" />
             </div>
              <div>
-                <label htmlFor="searchDescription" className="block text-xs font-medium text-slate-600">Search Description (use * for OR)</label>
-                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. CABLE*POWER" />
+                <label htmlFor="searchDescription" className="block text-xs font-medium text-black">Search Description (use * for OR)</label>
+                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. CABLE*POWER" />
             </div>
             <div>
-                <label htmlFor="sortBy" className="block text-xs font-medium text-slate-600">Sort By</label>
-                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
+                <label htmlFor="sortBy" className="block text-xs font-medium text-black">Sort By</label>
+                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black">
                     <option value="price">Price (LP)</option>
                     <option value="id">ID</option>
                     <option value="partNo">Part No</option>
@@ -434,8 +435,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 </select>
             </div>
             <div>
-                <label className="block text-xs font-medium text-slate-600">Order</label>
-                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
+                <label className="block text-xs font-medium text-black">Order</label>
+                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-black font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
                     {sortOrder === 'asc' ? 'Ascending ▲' : 'Descending ▼'}
                 </button>
             </div>
@@ -455,20 +456,20 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                     <div key={product.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
                         <div className="flex justify-between items-start">
                             <h3 className="text-sm font-bold text-indigo-700">{product.partNo}</h3>
-                            <div className="text-xs text-slate-400">#{product.id}</div>
+                            <div className="text-xs text-black">#{product.id}</div>
                         </div>
-                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">{product.description}</p>
+                        <p className="text-xs text-black mt-1 line-clamp-2">{product.description}</p>
                         
                         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2">
                             <div>
-                                <p className="text-[10px] text-slate-500 uppercase">Standard Price</p>
+                                <p className="text-[10px] text-black uppercase">Standard Price</p>
                                 <div className="flex gap-2 text-xs font-medium">
-                                    <span className={lp > 0 ? "text-slate-800" : "text-slate-400"}>LP: {lp > 0 ? lp.toFixed(2) : '-'}</span>
-                                    <span className={sp > 0 ? "text-slate-800" : "text-slate-400"}>SP: {sp > 0 ? sp.toFixed(2) : '-'}</span>
+                                    <span className={lp > 0 ? "text-black" : "text-slate-400"}>LP: {lp > 0 ? lp.toFixed(2) : '-'}</span>
+                                    <span className={sp > 0 ? "text-black" : "text-slate-400"}>SP: {sp > 0 ? sp.toFixed(2) : '-'}</span>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] text-slate-500 uppercase">Discounted Price</p>
+                                <p className="text-[10px] text-black uppercase">Discounted Price</p>
                                 <p className="text-sm font-bold text-green-600">
                                     {discountedPrice.toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}
                                 </p>
@@ -492,7 +493,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 <tr>
                     <th className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
                     {['ID', 'Part No', 'Description', 'HSN Code', 'Current LP', 'Current SP', 'UOM', 'Plant', 'Weight', 'Actions'].map(header => (
-                    <th key={header} scope="col" className={`px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider ${['Current LP', 'Current SP', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
+                    <th key={header} scope="col" className={`px-3 py-2 text-left text-xs font-semibold text-black uppercase tracking-wider ${['Current LP', 'Current SP', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
                     ))}
                 </tr>
             </thead>
@@ -510,9 +511,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             </tbody>
             </table>
         </div>
-        {isLoading && <p className="text-slate-500 text-center py-8">Loading products...</p>}
+        {isLoading && <p className="text-black text-center py-8">Loading products...</p>}
         {!isLoading && displayedProducts.length === 0 && (
-          <p className="text-slate-500 text-center py-8">
+          <p className="text-black text-center py-8">
             No products match your search criteria.
         </p>
         )}

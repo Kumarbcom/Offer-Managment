@@ -262,8 +262,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
   const SortableHeader: React.FC<{ title: string; sortKey: SortByType; className?: string }> = ({ title, sortKey, className = '' }) => (
-    <th className={`px-2 py-1 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 ${className}`} onClick={() => handleSort(sortKey)}>
-        <div className="flex items-center"><span>{title}</span>{sortBy === sortKey && <span className="ml-1 text-slate-800">{sortOrder === 'asc' ? '▲' : '▼'}</span>}</div>
+    <th className={`px-2 py-1 text-left text-xs font-semibold text-black uppercase tracking-wider cursor-pointer hover:bg-slate-100 ${className}`} onClick={() => handleSort(sortKey)}>
+        <div className="flex items-center"><span>{title}</span>{sortBy === sortKey && <span className="ml-1 text-black">{sortOrder === 'asc' ? '▲' : '▼'}</span>}</div>
     </th>
   );
   
@@ -279,12 +279,12 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     return desc + ".";
   }, [quotationFilter, customerMap]);
 
-  if (quotations === null || salesPersons === null || isLoadingCustomers) return <div className="bg-white p-6 rounded-lg shadow-md text-center">Loading...</div>;
+  if (quotations === null || salesPersons === null || isLoadingCustomers) return <div className="bg-white p-6 rounded-lg shadow-md text-center text-black">Loading...</div>;
 
   return (
     <div className="bg-white p-2 md:p-3 rounded-lg shadow-sm border border-slate-200">
        <div className="flex flex-wrap gap-2 justify-between items-center pb-2 border-b border-slate-200">
-        <h2 className="text-lg font-bold text-slate-800">Quotations</h2>
+        <h2 className="text-lg font-bold text-black">Quotations</h2>
         <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 sm:w-auto w-full text-xs">
             <div className="relative flex-grow">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-2">
@@ -295,7 +295,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 <input 
                     type="text" 
                     id="universalSearch" 
-                    className="block w-full pl-8 pr-2 py-1 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs" 
+                    className="block w-full pl-8 pr-2 py-1 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs text-black" 
                     placeholder="Search..." 
                     value={universalSearchTerm} 
                     onChange={(e) => setUniversalSearchTerm(e.target.value)}
@@ -316,7 +316,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       </div>
       
       {quotationFilter && (
-        <div className="text-xs text-slate-600 mt-2 flex items-center gap-2 bg-slate-50 p-1.5 rounded-md" role="alert">
+        <div className="text-xs text-black mt-2 flex items-center gap-2 bg-slate-50 p-1.5 rounded-md" role="alert">
             <span className="font-medium">Filter:</span>
             <span>{filterDescription}</span>
             {onBackToCustomers && <button onClick={onBackToCustomers} className="text-blue-600 hover:underline font-semibold ml-auto">Back</button>}
@@ -329,7 +329,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             {selectedQuotationIds.size} selected.
           </div>
           <div className="flex flex-wrap items-center gap-1">
-            <span className="font-medium text-slate-700">Set status:</span>
+            <span className="font-medium text-black">Set status:</span>
             {QUOTATION_STATUSES.map(status => (
               <button
                 key={status}
@@ -350,14 +350,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 <div className="flex justify-between items-start mb-2">
                     <div>
                          <div className="text-sm font-bold text-indigo-600 flex items-center gap-2" onClick={() => handleEdit(q.id)}>
-                            #{q.id} <span className="text-xs text-slate-400 font-normal">{new Date(q.quotationDate).toLocaleDateString()}</span>
+                            #{q.id} <span className="text-xs text-black font-normal">{new Date(q.quotationDate).toLocaleDateString()}</span>
                          </div>
-                         <div className="text-sm font-semibold text-slate-800">{getCustomerName(q.customerId)}</div>
-                         <div className="text-xs text-slate-500">{q.contactPerson}</div>
-                         <div className="text-xs text-slate-500">{q.contactNumber}</div>
+                         <div className="text-sm font-semibold text-black">{getCustomerName(q.customerId)}</div>
+                         <div className="text-xs text-black">{q.contactPerson}</div>
+                         <div className="text-xs text-black">{q.contactNumber}</div>
                     </div>
                     <div className="text-right">
-                         <div className="text-sm font-bold text-slate-800">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR', maximumFractionDigits: 0})}</div>
+                         <div className="text-sm font-bold text-black">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR', maximumFractionDigits: 0})}</div>
                          <div className="mt-1">
                             {canEdit ? (
                                 <select
@@ -391,7 +391,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                                 {q.comments ? 'Edit Comment' : 'Add Comment'}
                              </button>
                          ) : (
-                            q.comments && <span className="text-xs text-slate-500 italic flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>Comment</span>
+                            q.comments && <span className="text-xs text-black italic flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>Comment</span>
                          )}
                     </div>
                     
@@ -401,7 +401,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                             <textarea
                                 defaultValue={q.comments || ''}
                                 onBlur={(e) => handleCommentChange(q.id, e.target.value)}
-                                className="w-full p-2 text-xs border border-slate-300 rounded bg-slate-50 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                className="w-full p-2 text-xs border border-slate-300 rounded bg-slate-50 focus:ring-1 focus:ring-blue-500 focus:outline-none text-black"
                                 rows={3}
                                 placeholder="Enter quotation comments here..."
                                 autoFocus
@@ -409,7 +409,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         </div>
                     ) : (
                         q.comments && (
-                            <div className="mt-1 text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 italic">
+                            <div className="mt-1 text-xs text-black bg-slate-50 p-2 rounded border border-slate-100 italic">
                                 "{q.comments}"
                             </div>
                         )
@@ -450,8 +450,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                     <SortableHeader title="Sales Person" sortKey="salesPerson" />
                     <SortableHeader title="Amount" sortKey="totalAmount" className="text-right" />
                     <SortableHeader title="Status" sortKey="status" />
-                    <th className="px-2 py-1 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Comments</th>
-                    <th className="px-2 py-1 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-2 py-1 text-left text-xs font-semibold text-black uppercase tracking-wider">Comments</th>
+                    <th className="px-2 py-1 text-right text-xs font-semibold text-black uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
@@ -468,16 +468,16 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                             aria-label={`Select quotation ${q.id}`}
                           />
                         </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-slate-600">{q.id}</td>
-                        <td className="px-2 py-1 whitespace-nowrap text-slate-600">{new Date(q.quotationDate).toLocaleDateString()}</td>
-                        <td className="px-2 py-1 whitespace-nowrap font-medium text-slate-800 max-w-[150px] truncate" title={getCustomerName(q.customerId)}>{getCustomerName(q.customerId)}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-black">{q.id}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-black">{new Date(q.quotationDate).toLocaleDateString()}</td>
+                        <td className="px-2 py-1 whitespace-nowrap font-medium text-black max-w-[150px] truncate" title={getCustomerName(q.customerId)}>{getCustomerName(q.customerId)}</td>
                         <td className="px-2 py-1 whitespace-nowrap">
-                            <div className="font-medium text-slate-800 truncate max-w-[120px]" title={q.contactPerson}>{q.contactPerson}</div>
-                            <div className="text-[10px] text-slate-500">{q.contactNumber}</div>
+                            <div className="font-medium text-black truncate max-w-[120px]" title={q.contactPerson}>{q.contactPerson}</div>
+                            <div className="text-[10px] text-black">{q.contactNumber}</div>
                         </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-slate-600">{getSalesPersonName(q.salesPersonId)}</td>
-                        <td className="px-2 py-1 whitespace-nowrap text-slate-600 text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR', maximumFractionDigits: 0})}</td>
-                        <td className="px-2 py-1 whitespace-nowrap text-slate-600">
+                        <td className="px-2 py-1 whitespace-nowrap text-black">{getSalesPersonName(q.salesPersonId)}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-black text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', {style: 'currency', currency: 'INR', maximumFractionDigits: 0})}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-black">
                             {canEdit ? (
                             <select
                                 value={q.status}
@@ -496,14 +496,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                                 <div className={`text-[10px] px-2 py-0.5 rounded-full font-bold inline-block ${getStatusClass(q.status)}`}>{q.status}</div>
                             )}
                         </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-slate-600 max-w-[120px]">
+                        <td className="px-2 py-1 whitespace-nowrap text-black max-w-[120px]">
                             <input 
                                 type="text" 
                                 defaultValue={q.comments || ''}
                                 onBlur={(e) => handleCommentChange(q.id, e.target.value)}
                                 onChange={() => {}}
                                 onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                                className="w-full p-0.5 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-sm text-xs focus:outline-none disabled:bg-transparent disabled:border-transparent truncate" 
+                                className="w-full p-0.5 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-sm text-xs focus:outline-none disabled:bg-transparent disabled:border-transparent truncate text-black" 
                                 placeholder="..." 
                                 disabled={!isCommentEditable}
                                 title={q.comments || ''}
@@ -536,7 +536,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             </tbody>
             </table>
         ) : ( 
-            <p className="text-slate-500 text-center py-8 text-xs">{quotations.length > 0 ? 'No quotations match.' : 'No quotations found.'}</p> 
+            <p className="text-black text-center py-8 text-xs">{quotations.length > 0 ? 'No quotations match.' : 'No quotations found.'}</p> 
         )}
       </div>
     </div>

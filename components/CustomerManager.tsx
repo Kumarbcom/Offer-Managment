@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Customer, SalesPerson, Quotation, QuotationStatus } from '../types';
 import { CustomerAddModal } from './CustomerAddModal';
@@ -275,7 +276,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
   return (
     <div className="space-y-6">
       <div className="bg-slate-50 p-2 rounded-lg shadow-sm border border-slate-200">
-        <h3 className="text-base font-semibold text-slate-800 mb-1">
+        <h3 className="text-base font-semibold text-black mb-1">
             Overall Quotation Summary
         </h3>
         <div className="flex flex-wrap gap-2 items-center">
@@ -312,7 +313,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
 
       <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
          <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800">Customers ({totalCount})</h2>
+            <h2 className="text-xl font-bold text-black">Customers ({totalCount})</h2>
             <div className="flex flex-wrap gap-2 text-sm">
                 <button
                     onClick={handleExport}
@@ -349,20 +350,20 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
          
          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>
-                <label htmlFor="searchTerm" className="block text-xs font-medium text-slate-600">Search by Name</label>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. ABC Corp" />
+                <label htmlFor="searchTerm" className="block text-xs font-medium text-black">Search by Name</label>
+                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. ABC Corp" />
             </div>
             <div>
-                <label htmlFor="searchCity" className="block text-xs font-medium text-slate-600">Search by City</label>
-                <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. Bangalore" />
+                <label htmlFor="searchCity" className="block text-xs font-medium text-black">Search by City</label>
+                <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. Bangalore" />
             </div>
             <div>
-                <label htmlFor="salesPersonFilter" className="block text-xs font-medium text-slate-600">Filter by Sales Person</label>
+                <label htmlFor="salesPersonFilter" className="block text-xs font-medium text-black">Filter by Sales Person</label>
                 <select 
                     id="salesPersonFilter" 
                     value={selectedSalesPersonId} 
                     onChange={e => setSelectedSalesPersonId(e.target.value === 'all' ? 'all' : Number(e.target.value))} 
-                    className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+                    className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-black"
                 >
                     <option value="all">All Sales Persons</option>
                     {salesPersons?.map(sp => (
@@ -371,8 +372,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                 </select>
             </div>
             <div>
-                <label htmlFor="sortBy" className="block text-xs font-medium text-slate-600">Sort By</label>
-                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm bg-white">
+                <label htmlFor="sortBy" className="block text-xs font-medium text-black">Sort By</label>
+                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-black">
                     <option value="id">ID</option>
                     <option value="name">Customer Name</option>
                     <option value="city">City</option>
@@ -381,15 +382,15 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                 </select>
             </div>
             <div>
-                <label className="block text-xs font-medium text-slate-600">Order</label>
-                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
+                <label className="block text-xs font-medium text-black">Order</label>
+                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-black font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
                     {sortOrder === 'asc' ? 'Ascending ▲' : 'Descending ▼'}
                 </button>
             </div>
          </div>
 
         {isLoading ? (
-            <p className="text-slate-500 text-center py-8">Loading customers...</p>
+            <p className="text-black text-center py-8">Loading customers...</p>
         ) : displayedCustomers.length > 0 ? (
             <>
                 <div className="overflow-x-auto -mx-4">
@@ -397,7 +398,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <thead className="bg-slate-50">
                         <tr>
                           {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
-                            <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-black uppercase tracking-wider">
                               {header}
                             </th>
                           ))}
@@ -406,13 +407,13 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <tbody className="bg-white divide-y divide-slate-200">
                         {displayedCustomers.map(customer => (
                             <tr key={customer.id} className="hover:bg-slate-50/70">
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.id}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600 max-w-xs truncate">{customer.address}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.city}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{customer.pincode}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-600">
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.id}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-black">{customer.name}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black max-w-xs truncate">{customer.address}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.city}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.pincode}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{getSalesPersonName(customer.salesPersonId)}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">
                                     <div className="flex flex-col items-start gap-1">
                                         {QUOTATION_STATUSES.map(status => {
                                             const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
@@ -445,16 +446,16 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     </table>
                 </div>
                 <div className="flex justify-between items-center mt-4 text-sm">
-                    <p className="text-slate-600">Showing {displayedCustomers.length} of {totalCount} customers</p>
+                    <p className="text-black">Showing {displayedCustomers.length} of {totalCount} customers</p>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded-md disabled:opacity-50">Previous</button>
-                        <span>Page {currentPage} of {totalPages}</span>
-                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded-md disabled:opacity-50">Next</button>
+                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded-md disabled:opacity-50 text-black">Previous</button>
+                        <span className="text-black">Page {currentPage} of {totalPages}</span>
+                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded-md disabled:opacity-50 text-black">Next</button>
                     </div>
                 </div>
             </>
         ) : (
-          <p className="text-slate-500 text-center py-8">
+          <p className="text-black text-center py-8">
             {totalCount > 0 ? 'No customers match your search criteria.' : 'No customers found. Add one to get started.'}
         </p>
         )}
