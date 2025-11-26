@@ -151,8 +151,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // Refs for grid inputs
   const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   
-  // Ref to track the last edited ID to detect navigation vs background update
-  const prevEditingIdRef = useRef<number | null | undefined>(undefined);
+  // Ref to track the editing session. 
+  // This ensures that if we are drafting (editingQuotationId is null), we don't get reset by background updates.
+  // Session ID will equal editingQuotationId (which can be null).
+  const currentSessionIdRef = useRef<number | null | undefined>(undefined);
 
   const userRole = currentUser.role;
 
@@ -230,7 +232,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       comments: '',
       details: [createEmptyQuotationItem()],
     };
-  }, [userRole, salesPersons, currentUser]); // Removed 'quotations' dependency to prevent resets
+  }, [userRole, salesPersons, currentUser]); 
   
   const handleCustomerOpen = useCallback(() => {
     if (searchedCustomers.length === 0 && !isSearchingCustomers) {
@@ -259,21 +261,19 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [searchedProducts.length, isSearchingProducts]);
 
   useEffect(() => {
-    // Ensure we don't overwrite local changes when the background data refreshes (Multi-user fix)
-    // We only want to re-initialize if the User intentionally navigates to a different Quotation ID.
-    const isSameId = prevEditingIdRef.current === editingQuotationId;
-    const hasData = formData !== null;
-    
-    // If ID hasn't changed (user didn't navigate), and we already have data, 
-    // ignore background updates to 'quotations' list.
-    if (isSameId && hasData) {
+    // Session Lock Logic:
+    // If we are already editing a specific session (either a valid ID or NULL for new),
+    // and we already have local form data, we must IGNORE any props updates (like background syncs)
+    // to prevent wiping out the user's work.
+    const isSameSession = currentSessionIdRef.current === editingQuotationId;
+    const hasLocalData = formData !== null;
+
+    if (isSameSession && hasLocalData) {
         return;
     }
-    
-    // Update tracked ID
-    if (!isSameId) {
-        prevEditingIdRef.current = editingQuotationId;
-    }
+
+    // Start new session
+    currentSessionIdRef.current = editingQuotationId;
 
     const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
     
@@ -463,7 +463,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       const isNew = editingQuotationId === null || formData.id === 0;
       const safeQuotations = quotations || [];
       
-      // Calculate ID on save using the LATEST data to avoid collisions
+      // Calculate ID on save using the LATEST data from props to avoid collisions
       let idToSave = formData.id;
       if (isNew) {
           // Find max ID in current list and increment. If list empty, start at 1.
@@ -482,12 +482,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       });
 
       if(isNew) {
-          // IMPORTANT: Manually update local form state immediately after save to prevent race condition
-          // where the component might re-initialize with empty data while waiting for the ID prop update.
+          // CRITICAL: Manually update local state to match the newly assigned ID.
+          // Also update the session ref so the subsequent re-render (caused by parent state update)
+          // knows we are still in the same logical session and doesn't wipe the form.
           setFormData(quotationToSave);
-          prevEditingIdRef.current = quotationToSave.id;
+          currentSessionIdRef.current = quotationToSave.id; 
 
           setEditingQuotationId(quotationToSave.id);
+          
           const url = new URL(window.location.href);
           if (!url.protocol.startsWith('blob')) {
             url.searchParams.set('id', String(quotationToSave.id));
