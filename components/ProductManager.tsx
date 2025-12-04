@@ -1,11 +1,13 @@
 
 
 
+
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { ProductAddModal } from './ProductAddModal';
-import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct } from '../supabase';
+import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos } from '../supabase';
 
 declare var XLSX: any;
 
@@ -88,6 +90,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const priceUpdateInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
@@ -216,6 +219,134 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     XLSX.writeFile(wb, "Products_Export.xlsx");
   };
 
+  const handleExportPriceList = () => {
+      const dataToExport = displayedProducts.map(product => {
+          const currentPrice = getCurrentPrice(product);
+          const nextValidFrom = new Date();
+          return {
+              'Part No': product.partNo,
+              'Description': product.description,
+              'Current LP': currentPrice ? currentPrice.lp : 0,
+              'Current SP': currentPrice ? currentPrice.sp : 0,
+              'New LP': '',
+              'New SP': '',
+              'New Valid From': nextValidFrom.toISOString().split('T')[0],
+              'New Valid To': '9999-12-31'
+          };
+      });
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Price_Update_Template");
+      XLSX.writeFile(wb, "Price_Update_Template.xlsx");
+  };
+
+  const handlePriceUpdateUpload = (file: File) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+          const data = e.target?.result;
+          if (!data) return;
+          setIsUploading(true);
+          setUploadProgress('Analyzing price updates...');
+          
+          try {
+              const workbook = XLSX.read(data, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[sheetName];
+              const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+              
+              // Identify rows with price updates
+              const rowsWithUpdates = json.filter(row => {
+                  const newLP = parseFloat(row['New LP']);
+                  const newSP = parseFloat(row['New SP']);
+                  return (!isNaN(newLP) && newLP > 0) || (!isNaN(newSP) && newSP > 0);
+              });
+              
+              if (rowsWithUpdates.length === 0) {
+                  alert("No valid price updates found in the file. Please ensure 'New LP' or 'New SP' columns are filled.");
+                  setIsUploading(false);
+                  setUploadProgress('');
+                  return;
+              }
+
+              // Collect PartNos to fetch existing products
+              const partNos = rowsWithUpdates.map(row => String(row['Part No']).trim()).filter(Boolean);
+              
+              // Chunk requests to avoid query limits
+              const CHUNK_SIZE = 100;
+              let updatedCount = 0;
+              
+              for (let i = 0; i < partNos.length; i += CHUNK_SIZE) {
+                  const chunkPartNos = partNos.slice(i, i + CHUNK_SIZE);
+                  setUploadProgress(`Processing products ${i+1} to ${Math.min(i+CHUNK_SIZE, partNos.length)}...`);
+                  
+                  const products = await getProductsByPartNos(chunkPartNos);
+                  const productsToUpdate: Product[] = [];
+                  
+                  for (const product of products) {
+                      const row = rowsWithUpdates.find(r => String(r['Part No']).trim() === product.partNo);
+                      if (!row) continue;
+                      
+                      const newLP = parseFloat(row['New LP']) || 0;
+                      const newSP = parseFloat(row['New SP']) || 0;
+                      let validFrom = row['New Valid From'];
+                      let validTo = row['New Valid To'] || '9999-12-31';
+                      
+                      // Date parsing logic for Excel formats
+                      const parseExcelDate = (excelDate: any): string => {
+                        if (!excelDate) return '';
+                        if (typeof excelDate === 'number' && excelDate > 1) {
+                          const date = new Date(Date.UTC(1900, 0, excelDate - 1));
+                          return date.toISOString().split('T')[0];
+                        }
+                        if (typeof excelDate === 'string') {
+                          const parsedDate = new Date(excelDate);
+                          if (!isNaN(parsedDate.getTime())) return parsedDate.toISOString().split('T')[0];
+                          return excelDate;
+                        }
+                        return '';
+                      };
+                      
+                      validFrom = parseExcelDate(validFrom);
+                      validTo = parseExcelDate(validTo);
+                      
+                      if (!validFrom) validFrom = new Date().toISOString().split('T')[0];
+
+                      const newPriceEntry: PriceEntry = { lp: newLP, sp: newSP, validFrom, validTo };
+                      const newPrices = [...product.prices, newPriceEntry];
+                      
+                      // Sort and adjust dates
+                      newPrices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
+                      
+                      for (let j = 0; j < newPrices.length - 1; j++) {
+                          const nextDate = new Date(newPrices[j+1].validFrom);
+                          nextDate.setDate(nextDate.getDate() - 1);
+                          newPrices[j].validTo = nextDate.toISOString().split('T')[0];
+                      }
+                      newPrices[newPrices.length - 1].validTo = '9999-12-31';
+                      
+                      productsToUpdate.push({ ...product, prices: newPrices });
+                  }
+                  
+                  if (productsToUpdate.length > 0) {
+                      await addProductsBatch(productsToUpdate);
+                      updatedCount += productsToUpdate.length;
+                  }
+              }
+              
+              alert(`Successfully updated prices for ${updatedCount} products.`);
+              fetchProducts(false); // Refresh grid
+              
+          } catch(error) {
+              console.error("Price update error:", error);
+              alert(error instanceof Error ? error.message : "Failed to process price updates.");
+          } finally {
+              setIsUploading(false);
+              setUploadProgress('');
+          }
+      };
+      reader.readAsArrayBuffer(file);
+  }
+
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -325,6 +456,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
       event.target.value = '';
     }
   };
+  
+  const handlePriceUpdateUploadClick = () => { priceUpdateInputRef.current?.click(); };
+  const handlePriceUpdateFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          handlePriceUpdateUpload(file);
+          event.target.value = '';
+      }
+  }
 
   const handleSelectOne = useCallback((id: number) => {
     setSelectedProductIds(prev => {
@@ -357,7 +497,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     <div className="space-y-6">
       <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
          <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-black">Products</h2>
+            <h2 className="text-2xl font-bold text-black">Products</h2>
             {/* Mobile-only Upload/Add buttons compact row */}
             {canManageProducts && (
             <div className="flex md:hidden gap-2">
@@ -368,6 +508,18 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             
             {/* Desktop Buttons */}
             <div className="hidden md:flex flex-wrap gap-2 text-sm">
+                {canManageProducts && (
+                    <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
+                        <button onClick={handleExportPriceList} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">
+                            Update Prices (Excel)
+                        </button>
+                        <input type="file" ref={priceUpdateInputRef} onChange={handlePriceUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
+                        <button onClick={handlePriceUpdateUploadClick} disabled={isUploading} className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">
+                            Import New Prices
+                        </button>
+                    </div>
+                )}
+                
                 <button onClick={handleExport} disabled={isUploading} className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Export Visible</button>
                 <button onClick={handleDownloadTemplate} disabled={isUploading} className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Template</button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>

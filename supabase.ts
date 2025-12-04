@@ -319,3 +319,19 @@ export async function getProductsByIds(ids: number[]) {
     }
     return (data || []) as Product[];
 }
+
+export async function getProductsByPartNos(partNos: string[]) {
+    if (!partNos || partNos.length === 0) return [];
+    // Only query distinct part numbers to optimize
+    const distinctPartNos = [...new Set(partNos)];
+    
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .in('partNo', distinctPartNos);
+        
+    if (error) {
+        throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
+    }
+    return (data || []) as Product[];
+}
