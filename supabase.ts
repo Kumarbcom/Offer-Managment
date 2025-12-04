@@ -265,6 +265,38 @@ export async function getProductsPaginated(options: ProductQueryOptions) {
     return { products, lastVisibleDoc };
 }
 
+export async function fetchAllProductsForExport() {
+    let allProducts: Product[] = [];
+    let from = 0;
+    const limit = 1000;
+    
+    while (true) {
+        const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .order('partNo', { ascending: true })
+            .range(from, from + limit - 1);
+
+        if (error) {
+            throw new Error(parseSupabaseError(error, "Failed to fetch all products for export"));
+        }
+        
+        if (!data || data.length === 0) {
+            break;
+        }
+        
+        allProducts.push(...(data as Product[]));
+        
+        if (data.length < limit) {
+            break;
+        }
+        
+        from += limit;
+    }
+    
+    return allProducts;
+}
+
 
 export async function addProductsBatch(products: Product[]): Promise<void> {
     const { error } = await supabase.from('products').upsert(products, { onConflict: 'id' });

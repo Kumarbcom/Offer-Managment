@@ -3,11 +3,13 @@
 
 
 
+
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { ProductAddModal } from './ProductAddModal';
-import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos } from '../supabase';
+import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, fetchAllProductsForExport } from '../supabase';
 
 declare var XLSX: any;
 
@@ -219,25 +221,35 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     XLSX.writeFile(wb, "Products_Export.xlsx");
   };
 
-  const handleExportPriceList = () => {
-      const dataToExport = displayedProducts.map(product => {
-          const currentPrice = getCurrentPrice(product);
-          const nextValidFrom = new Date();
-          return {
-              'Part No': product.partNo,
-              'Description': product.description,
-              'Current LP': currentPrice ? currentPrice.lp : 0,
-              'Current SP': currentPrice ? currentPrice.sp : 0,
-              'New LP': '',
-              'New SP': '',
-              'New Valid From': nextValidFrom.toISOString().split('T')[0],
-              'New Valid To': '9999-12-31'
-          };
-      });
-      const ws = XLSX.utils.json_to_sheet(dataToExport);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Price_Update_Template");
-      XLSX.writeFile(wb, "Price_Update_Template.xlsx");
+  const handleExportPriceList = async () => {
+      setIsUploading(true);
+      setUploadProgress('Fetching all products for export...');
+      try {
+          const allProducts = await fetchAllProductsForExport();
+          const dataToExport = allProducts.map(product => {
+              const currentPrice = getCurrentPrice(product);
+              const nextValidFrom = new Date();
+              return {
+                  'Part No': product.partNo,
+                  'Description': product.description,
+                  'Current LP': currentPrice ? currentPrice.lp : 0,
+                  'Current SP': currentPrice ? currentPrice.sp : 0,
+                  'New LP': '',
+                  'New SP': '',
+                  'New Valid From': nextValidFrom.toISOString().split('T')[0],
+                  'New Valid To': '9999-12-31'
+              };
+          });
+          const ws = XLSX.utils.json_to_sheet(dataToExport);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Price_Update_Template");
+          XLSX.writeFile(wb, "Full_Price_List_Update.xlsx");
+      } catch (error) {
+          alert(error instanceof Error ? error.message : "Failed to export price list");
+      } finally {
+          setIsUploading(false);
+          setUploadProgress('');
+      }
   };
 
   const handlePriceUpdateUpload = (file: File) => {
@@ -511,11 +523,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 {canManageProducts && (
                     <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
                         <button onClick={handleExportPriceList} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">
-                            Update Prices (Excel)
+                            Export Full Price List
                         </button>
                         <input type="file" ref={priceUpdateInputRef} onChange={handlePriceUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
                         <button onClick={handlePriceUpdateUploadClick} disabled={isUploading} className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">
-                            Import New Prices
+                            Import Price Updates
                         </button>
                     </div>
                 )}
