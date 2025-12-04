@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
@@ -28,7 +29,17 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
     if (isOpen) {
       if (productToEdit) {
         // Sort prices on load to ensure they are in chronological order for editing
-        const sortedProduct = { ...productToEdit, prices: [...productToEdit.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime()) };
+        // Also round prices to 2 decimals to ensure clean display
+        const sortedProduct = { 
+            ...productToEdit, 
+            prices: [...productToEdit.prices]
+                .sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())
+                .map(p => ({
+                    ...p,
+                    lp: Math.round(p.lp * 100) / 100,
+                    sp: Math.round(p.sp * 100) / 100
+                }))
+        };
         setFormData(sortedProduct);
       } else {
         setFormData(emptyProductData);
@@ -65,6 +76,14 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
     
     newPrices[index] = priceEntry;
     setFormData(prev => ({ ...prev, prices: newPrices }));
+  };
+
+  const handlePriceBlur = (index: number, field: 'lp' | 'sp') => {
+      const newPrices = [...formData.prices];
+      const val = newPrices[index][field];
+      // Round to 2 decimals on blur to keep it clean
+      newPrices[index][field] = Math.round(val * 100) / 100;
+      setFormData(prev => ({ ...prev, prices: newPrices }));
   };
 
   const handleAddPriceRow = () => {
@@ -172,11 +191,26 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                             <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end p-2 border-b last:border-b-0">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">LP (List Price)</label>
-                                    <input type="number" step="0.01" value={price.lp} onChange={(e) => handlePriceChange(index, 'lp', e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={price.lp} 
+                                        onChange={(e) => handlePriceChange(index, 'lp', e.target.value)} 
+                                        onBlur={() => handlePriceBlur(index, 'lp')}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">SP (Special Price)</label>
-                                    <input type="number" step="0.01" value={price.sp} onChange={(e) => handlePriceChange(index, 'sp', e.target.value)} disabled={price.lp > 0} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"/>
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={price.sp} 
+                                        onChange={(e) => handlePriceChange(index, 'sp', e.target.value)} 
+                                        onBlur={() => handlePriceBlur(index, 'sp')}
+                                        disabled={price.lp > 0} 
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Valid From</label>
