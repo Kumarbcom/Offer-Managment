@@ -558,6 +558,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       const data = formData.details.map((item, index) => {
           const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
           const amount = unitPrice * (item.moq || 0);
+          
+          const weightPerMtr = item.airFreightDetails?.weightPerMtr || 0;
+          const airFreightPerUnit = item.airFreight ? (weightPerMtr / 1000 * 150) : 0;
+          const airFreightTotal = airFreightPerUnit * (item.moq || 0);
+
           return {
               'Sl No': index + 1,
               'Part No': item.partNo,
@@ -570,7 +575,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               'Net Unit Price': unitPrice,
               'Total Amount': amount,
               'Stock Status': item.stockStatus,
-              'Air Freight': item.airFreight ? 'Yes' : 'No'
+              'Air Freight': item.airFreight ? 'Yes' : 'No',
+              'Air Freight Weight (kg/m)': weightPerMtr,
+              'Air Freight Per Unit': airFreightPerUnit,
+              'Air Freight Amount': airFreightTotal
           };
       });
 
