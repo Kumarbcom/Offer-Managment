@@ -28,8 +28,19 @@ export async function get(tableName: TableName): Promise<any[]> {
     if (!supabase) throw new Error("Supabase client not initialized");
     
     const supabaseTableName = toSupabaseTableName(tableName);
-    // Sort by ID descending by default to show newest first for transactions
-    const { data, error } = await supabase.from(supabaseTableName).select('*').order('id', { ascending: false });
+    
+    let query = supabase.from(supabaseTableName).select('*');
+
+    // Conditional sorting: Users don't have an 'id' column in the types/schema, so sort by 'name'.
+    // Other tables generally have an 'id' and should be sorted by it (newest first).
+    if (tableName === 'users') {
+        query = query.order('name', { ascending: true });
+    } else {
+        query = query.order('id', { ascending: false });
+    }
+
+    const { data, error } = await query;
+    
     if (error) {
         throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName}`));
     }
@@ -94,19 +105,173 @@ export async function set<T extends { id?: number, name?: string }>(tableName: T
 
 // --- Specific Helper Functions ---
 
-export async function getCustomersPaginated(options: any) { /* implementation same as before */ return { customers: [], count: 0 }; }
-export async function searchCustomers(term: string) { return [] as Customer[]; }
-export async function getCustomersByIds(ids: number[]) { return [] as Customer[]; }
-export async function upsertCustomer(customer: any) {} 
-export async function deleteCustomer(id: number) {}
-export async function addCustomersBatch(customers: any[]) {}
+export async function getCustomersPaginated(options: any) { 
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
+    const offset = startAfterDoc || 0;
+
+    let query = supabase
+        .from('customers')
+        .select('*', { count: 'exact' })
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .range(offset, offset + pageLimit - 1);
+    
+    if (filters.name) query = query.ilike('name', `%${filters.name}%`);
+    if (filters.city) query = query.ilike('city', `%${filters.city}%`);
+    if (filters.salesPersonId) query = query.eq('salesPersonId', filters.salesPersonId);
+
+    const { data, error, count } = await query;
+    if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers"));
+    return { customers: (data || []) as Customer[], count: count || 0 };
+}
+
+export async function searchCustomers(term: string) { 
+    if (!supabase) throw new Error("Supabase client not initialized");
+    let query = supabase.from('customers').select('*').limit(50);
+    if (term) query = query.ilike('name', `%${term}%`);
+    else query = query.order('id', { ascending: false });
+    const { data, error } = await query;
+    if (error) throw new Error(parseSupabaseError(error, "Failed to search customers"));
+    return (data || []) as Customer[];
+}
+
+export async function getCustomersByIds(ids: number[]) { 
+    if (!supabase) return [];
+    if (!ids || ids.length === 0) return [];
+    const { data, error } = await supabase.from('customers').select('*').in('id', ids);
+    if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers by IDs"));
+    return (data || []) as Customer[];
+}
+
+export async function upsertCustomer(customer: any) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { error } = await supabase.from('customers').upsert(customer, { onConflict: 'id' });
+    if (error) throw new Error(parseSupabaseError(error, 'Failed to upsert customer'));
+}
+
+export async function deleteCustomer(id: number) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { error } = await supabase.from('customers').delete().eq('id', id);
+    if (error) throw new Error(parseSupabaseError(error, 'Failed to delete customer'));
+}
+
+export async function addCustomersBatch(customers: any[]) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { error } = await supabase.from('customers').upsert(customers, { onConflict: 'id' });
+    if (error) throw new Error(parseSupabaseError(error, "Failed to add customers batch"));
+}
 
 // Products
-export async function getProductsPaginated(options: any) { return { products: [], lastVisibleDoc: 0 }; }
-export async function fetchAllProductsForExport() { return []; }
-export async function addProductsBatch(products: any[]) {}
-export async function deleteProductsBatch(ids: number[]) {}
-export async function updateProduct(product: any) {}
-export async function searchProducts(term: string) { return [] as Product[]; }
-export async function getProductsByIds(ids: number[]) { return [] as Product[]; }
-export async function getProductsByPartNos(partNos: string[]) { return [] as Product[]; }
+export async function getProductsPaginated(options: any) { 
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
+    const offset = startAfterDoc || 0;
+
+    let query = supabase
+        .from('products')
+        .select('*')
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .range(offset, offset + pageLimit - 1);
+    
+    if (filters.universal) {
+        const cleanInput = filters.universal.replace(/[\s,.-]/g, '');
+        if (cleanInput.length > 0) {
+            const fuzzyTerm = cleanInput.split('').join('%');
+            const pattern = `%${fuzzyTerm}%`;
+            query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
+        } else {
+             const pattern = `%${filters.universal}%`;
+             query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
+        }
+    } else {
+        if (filters.partNo) {
+            const terms = filters.partNo.split('*').map((term: string) => term.trim()).filter(Boolean);
+            if (terms.length > 0) {
+                const orFilter = terms.map((term: string) => `partNo.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
+                query = query.or(orFilter);
+            }
+        }
+        if (filters.description) {
+            const terms = filters.description.split('*').map((term: string) => term.trim()).filter(Boolean);
+            if (terms.length > 0) {
+                const orFilter = terms.map((term: string) => `description.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
+                query = query.or(orFilter);
+            }
+        }
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products"));
+    const products = (data || []) as Product[];
+    return { products, lastVisibleDoc: offset + products.length };
+}
+
+export async function fetchAllProductsForExport() { 
+    if (!supabase) throw new Error("Supabase client not initialized");
+    let allProducts: Product[] = [];
+    let from = 0;
+    const limit = 1000;
+    while (true) {
+        const { data, error } = await supabase.from('products').select('*').order('partNo', { ascending: true }).range(from, from + limit - 1);
+        if (error) throw new Error(parseSupabaseError(error, "Failed to fetch all products"));
+        if (!data || data.length === 0) break;
+        allProducts.push(...(data as Product[]));
+        if (data.length < limit) break;
+        from += limit;
+    }
+    return allProducts;
+}
+
+export async function addProductsBatch(products: any[]) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { error } = await supabase.from('products').upsert(products, { onConflict: 'id' });
+    if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
+}
+
+export async function deleteProductsBatch(ids: number[]) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { error } = await supabase.from('products').delete().in('id', ids);
+    if (error) throw new Error(parseSupabaseError(error, "Failed to delete products batch"));
+}
+
+export async function updateProduct(product: any) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { id, ...productData } = product;
+    const { error } = await supabase.from('products').update(productData).eq('id', id);
+    if (error) throw new Error(parseSupabaseError(error, "Failed to update product"));
+}
+
+export async function searchProducts(term: string) { 
+    if (!supabase) throw new Error("Supabase client not initialized");
+    let query = supabase.from('products').select('*').limit(50);
+    if (term) {
+        const terms = term.split('*').map(t => t.trim().replace(/"/g, '""')).filter(Boolean);
+        if (terms.length > 0) {
+            const partNoFilters = terms.map(t => `partNo.ilike."*${t}*"`).join(',');
+            const descriptionFilters = terms.map(t => `description.ilike."*${t}*"`).join(',');
+            query = query.or(`${partNoFilters},${descriptionFilters}`);
+        }
+    } else {
+        query = query.order('id', { ascending: false });
+    }
+    const { data, error } = await query;
+    if (error) throw new Error(parseSupabaseError(error, "Failed to search products"));
+    return (data || []) as Product[];
+}
+
+export async function getProductsByIds(ids: number[]) { 
+    if (!supabase) return [];
+    if (!ids || ids.length === 0) return [];
+    const { data, error } = await supabase.from('products').select('*').in('id', ids);
+    if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by IDs"));
+    return (data || []) as Product[];
+}
+
+export async function getProductsByPartNos(partNos: string[]) { 
+    if (!supabase) return [];
+    if (!partNos || partNos.length === 0) return [];
+    const distinctPartNos = [...new Set(partNos)];
+    const { data, error } = await supabase.from('products').select('*').in('partNo', distinctPartNos);
+    if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
+    return (data || []) as Product[];
+}
