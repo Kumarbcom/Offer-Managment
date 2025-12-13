@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import type { PendingSO } from '../types';
+import { PendingSOModal } from './PendingSOModal';
 
 declare var XLSX: any;
 
@@ -13,11 +14,14 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<PendingSO | null>(null);
 
   const filteredSOs = (pendingSOs || []).filter(item => 
-    item.partyName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.orderNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.partNo.toLowerCase().includes(searchTerm.toLowerCase())
+    (item.partyName && item.partyName.toLowerCase().includes(searchTerm.toLowerCase())) || 
+    (item.orderNo && item.orderNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.partNo && item.partNo.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,7 +43,8 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
         // Map Excel headers to interface
         // Date, Order, Party's Name, Name of Item, Material Code, Part No, Ordered, Balance, Rate, Discount, Value, Due on
         
-        let currentId = (pendingSOs && pendingSOs.length > 0) ? Math.max(...pendingSOs.map(s => s.id)) : 0;
+        const existingIds = (pendingSOs || []).map(s => s.id);
+        let currentId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
 
         const parseDate = (val: any) => {
             if (!val) return new Date().toISOString().split('T')[0];
@@ -71,12 +76,11 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
                 discount: parseFloat(row['Discount'] || 0),
                 value: parseFloat(row['Value'] || 0),
                 dueOn: parseDate(row['Due on'] || row['Due Date']),
-                // overdue: false // Removed as it is derived and not part of PendingSO interface
             };
         }).filter((i): i is PendingSO => i !== null);
 
         if (newItems.length > 0) {
-            await setPendingSOs(newItems);
+            await setPendingSOs(prev => [...(prev || []), ...newItems]);
             alert(`Successfully loaded ${newItems.length} pending orders.`);
         } else {
             alert('No valid data found. Please check Excel headers.');
@@ -93,6 +97,12 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
     reader.readAsArrayBuffer(file);
   };
 
+  const handleClearAll = async () => {
+    if (window.confirm('Are you sure you want to delete ALL pending sales orders? This action cannot be undone.')) {
+        await setPendingSOs([]);
+    }
+  };
+
   const handleDownloadTemplate = () => {
       const headers = ['Date', 'Order', "Party's Name", 'Name of Item', 'Material Code', 'Part No', 'Ordered', 'Balance', 'Rate', 'Discount', 'Value', 'Due on'];
       const ws = XLSX.utils.aoa_to_sheet([headers]);
@@ -101,17 +111,60 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
       XLSX.writeFile(wb, "Pending_SO_Template.xlsx");
   }
 
+  const handleAddNew = () => {
+      setItemToEdit(null);
+      setIsModalOpen(true);
+  };
+
+  const handleEdit = (item: PendingSO) => {
+      setItemToEdit(item);
+      setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id: number) => {
+      if(window.confirm("Delete this pending order?")) {
+          await setPendingSOs(prev => (prev || []).filter(i => i.id !== id));
+      }
+  };
+
+  const handleSaveItem = async (item: PendingSO) => {
+      await setPendingSOs(prev => {
+          const currentList = prev || [];
+          if (itemToEdit) {
+              return currentList.map(i => i.id === item.id ? item : i);
+          } else {
+              const ids = currentList.map(i => i.id);
+              const newId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
+              return [...currentList, { ...item, id: newId }];
+          }
+      });
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Pending Sales Orders</h2>
-        <div className="flex gap-2">
-            <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold">Template</button>
+        <div className="flex flex-wrap gap-2 text-sm">
+            <button 
+                onClick={handleAddNew}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold"
+            >
+                Add Order
+            </button>
+            <div className="h-8 border-l border-gray-300 mx-1 hidden md:block"></div>
+            <button 
+                onClick={handleClearAll} 
+                disabled={!pendingSOs || pendingSOs.length === 0}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                Clear All
+            </button>
+            <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold">Template</button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />
             <button 
                 onClick={() => fileInputRef.current?.click()} 
                 disabled={isUploading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold disabled:opacity-50"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50"
             >
                 {isUploading ? 'Uploading...' : 'Upload Excel'}
             </button>
@@ -138,6 +191,7 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due On</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -153,16 +207,27 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
                             <td className={`px-4 py-3 text-sm font-semibold ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
                                 {new Date(item.dueOn).toLocaleDateString()}
                             </td>
+                            <td className="px-4 py-3 text-sm text-right space-x-2">
+                                <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 font-medium">Edit</button>
+                                <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900 font-medium">Delete</button>
+                            </td>
                         </tr>
                     );
                 }) : (
                     <tr>
-                        <td colSpan={6} className="px-6 py-10 text-center text-gray-500">No pending orders found. Upload data.</td>
+                        <td colSpan={7} className="px-6 py-10 text-center text-gray-500">No pending orders found. Add or upload data.</td>
                     </tr>
                 )}
             </tbody>
         </table>
       </div>
+      
+      <PendingSOModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSave={handleSaveItem} 
+        itemToEdit={itemToEdit} 
+      />
     </div>
   );
 };

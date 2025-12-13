@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import type { StockItem } from '../types';
+import { StockItemModal } from './StockItemModal';
 
 declare var XLSX: any;
 
@@ -13,9 +14,12 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
 
   const filteredStock = (stockStatements || []).filter(item => 
-    item.description.toLowerCase().includes(searchTerm.toLowerCase())
+    item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,11 +38,9 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-        // Expected Headers: Description, Quantity, Rate, Value
-        // Note: ID generation needs to be handled. We can rebuild the whole table or append.
-        // For simplicity in a statement upload, we usually replace or upsert. Here we'll generate new IDs.
-        
-        let currentId = (stockStatements && stockStatements.length > 0) ? Math.max(...stockStatements.map(s => s.id)) : 0;
+        // Calculate max ID safely
+        const existingIds = (stockStatements || []).map(s => s.id);
+        let currentId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
 
         const newItems: StockItem[] = json.map((row) => {
             const desc = row['Description'] || row['description'] || '';
@@ -54,14 +56,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
         }).filter((i): i is StockItem => i !== null);
 
         if (newItems.length > 0) {
-            // Replace strategy or Append? Usually stock statements are snapshots. Let's ask user or default to Replace for "Statement" nature.
-            // But `set` logic in `useOnlineStorage` handles diffing.
-            // Let's Append for now, but in reality, stock statements are often full replacements.
-            // Since we don't have a "Replace All" method exposed easily via the prop, we'll append new unique items or just set.
-            // To properly "Replace" via sync, we'd need to know IDs. 
-            // For now, let's assume this adds/updates.
-            
-            await setStockStatements(newItems); // This completely replaces the state in memory, then syncs.
+            await setStockStatements(prev => [...(prev || []), ...newItems]);
             alert(`Successfully loaded ${newItems.length} stock items.`);
         } else {
             alert('No valid stock data found. Check headers: Description, Quantity, Rate, Value');
@@ -78,6 +73,12 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
     reader.readAsArrayBuffer(file);
   };
 
+  const handleClearAll = async () => {
+    if (window.confirm('Are you sure you want to delete ALL stock data? This action cannot be undone.')) {
+        await setStockStatements([]);
+    }
+  };
+
   const handleDownloadTemplate = () => {
       const ws = XLSX.utils.aoa_to_sheet([['Description', 'Quantity', 'Rate', 'Value']]);
       const wb = XLSX.utils.book_new();
@@ -85,17 +86,60 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
       XLSX.writeFile(wb, "Stock_Statement_Template.xlsx");
   }
 
+  const handleAddNew = () => {
+      setItemToEdit(null);
+      setIsModalOpen(true);
+  };
+
+  const handleEdit = (item: StockItem) => {
+      setItemToEdit(item);
+      setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id: number) => {
+      if(window.confirm("Delete this stock item?")) {
+          await setStockStatements(prev => (prev || []).filter(i => i.id !== id));
+      }
+  };
+
+  const handleSaveItem = async (item: StockItem) => {
+      await setStockStatements(prev => {
+          const currentList = prev || [];
+          if (itemToEdit) {
+              return currentList.map(i => i.id === item.id ? item : i);
+          } else {
+              const ids = currentList.map(i => i.id);
+              const newId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
+              return [...currentList, { ...item, id: newId }];
+          }
+      });
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Stock Statement</h2>
-        <div className="flex gap-2">
-            <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold">Template</button>
+        <div className="flex flex-wrap gap-2 text-sm">
+            <button 
+                onClick={handleAddNew}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold"
+            >
+                Add Item
+            </button>
+            <div className="h-8 border-l border-gray-300 mx-1 hidden md:block"></div>
+            <button 
+                onClick={handleClearAll} 
+                disabled={!stockStatements || stockStatements.length === 0}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                Clear All
+            </button>
+            <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold">Template</button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />
             <button 
                 onClick={() => fileInputRef.current?.click()} 
                 disabled={isUploading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold disabled:opacity-50"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50"
             >
                 {isUploading ? 'Uploading...' : 'Upload Excel'}
             </button>
@@ -120,6 +164,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -129,15 +174,26 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
                         <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.quantity}</td>
                         <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 text-sm text-right space-x-2">
+                            <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 font-medium">Edit</button>
+                            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900 font-medium">Delete</button>
+                        </td>
                     </tr>
                 )) : (
                     <tr>
-                        <td colSpan={4} className="px-6 py-10 text-center text-gray-500">No stock items found. Upload a statement.</td>
+                        <td colSpan={5} className="px-6 py-10 text-center text-gray-500">No stock items found. Add or upload data.</td>
                     </tr>
                 )}
             </tbody>
         </table>
       </div>
+      
+      <StockItemModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSave={handleSaveItem} 
+        itemToEdit={itemToEdit} 
+      />
     </div>
   );
 };
