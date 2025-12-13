@@ -10,6 +10,16 @@ interface StockManagerProps {
   setStockStatements: (value: React.SetStateAction<StockItem[]>) => Promise<void>;
 }
 
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, setStockStatements }) => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,16 +48,11 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-        // Calculate max ID safely
-        const existingIds = (stockStatements || []).map(s => s.id);
-        let currentId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-
         const newItems: StockItem[] = json.map((row) => {
             const desc = row['Description'] || row['description'] || '';
             if (!desc) return null;
-            currentId++;
             return {
-                id: currentId,
+                id: generateUUID(),
                 description: String(desc),
                 quantity: parseFloat(row['Quantity'] || row['quantity'] || 0),
                 rate: parseFloat(row['Rate'] || row['rate'] || 0),
@@ -96,21 +101,22 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
       setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
       if(window.confirm("Delete this stock item?")) {
           await setStockStatements(prev => (prev || []).filter(i => i.id !== id));
       }
   };
 
-  const handleSaveItem = async (item: StockItem) => {
+  const handleSaveItem = async (item: StockItem | Omit<StockItem, 'id'>) => {
       await setStockStatements(prev => {
           const currentList = prev || [];
-          if (itemToEdit) {
-              return currentList.map(i => i.id === item.id ? item : i);
+          // If the item passed already has an ID, it's an update.
+          if ('id' in item && item.id) {
+              return currentList.map(i => i.id === item.id ? item as StockItem : i);
           } else {
-              const ids = currentList.map(i => i.id);
-              const newId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
-              return [...currentList, { ...item, id: newId }];
+              // Otherwise, generate a new UUID.
+              const newItem = { ...item, id: generateUUID() } as StockItem;
+              return [...currentList, newItem];
           }
       });
   };

@@ -5,7 +5,7 @@ import type { StockItem } from '../types';
 interface StockItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: StockItem) => Promise<void>;
+  onSave: (item: StockItem | Omit<StockItem, 'id'>) => Promise<void>;
   itemToEdit?: StockItem | null;
 }
 
@@ -48,7 +48,7 @@ export const StockItemModal: React.FC<StockItemModalProps> = ({ isOpen, onClose,
     e.preventDefault();
     setIsSaving(true);
     try {
-        await onSave(formData as StockItem);
+        await onSave(formData);
         onClose();
     } catch (error) {
         console.error(error);

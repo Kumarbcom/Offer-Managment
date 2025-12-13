@@ -6,28 +6,34 @@ type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'use
 
 const parseSupabaseError = (error: unknown, context?: string): string => {
   const prefix = context ? `${context}: ` : '';
-  if (typeof error === 'object' && error !== null) {
-    const supabaseError = error as any;
-    let errorMessage = supabaseError.message || JSON.stringify(error);
-    if (supabaseError.details) errorMessage += `\nDetails: ${supabaseError.details}`;
-    if (supabaseError.hint) errorMessage += `\nHint: ${supabaseError.hint}`;
-    return `${prefix}${errorMessage}`;
+  try {
+      if (typeof error === 'object' && error !== null) {
+        const err = error as any;
+        // Check for specific Supabase error properties
+        if (err.message) return `${prefix}${err.message}${err.details ? ' - ' + err.details : ''}${err.hint ? ' (' + err.hint + ')' : ''}`;
+        
+        // Fallback to JSON stringify for unknown objects to avoid [object Object]
+        return `${prefix}${JSON.stringify(err)}`;
+      }
+      return `${prefix}${String(error)}`;
+  } catch (e) {
+      return `${prefix}Unknown error (failed to parse original error)`;
   }
-  return `${prefix}${String(error)}`;
 };
 
 export const toSupabaseTableName = (name: TableName): string => {
-    // Maps internal collection names to the exact Case-Sensitive table names created by the SQL script.
+    // Maps internal collection names to the Supabase table names.
+    // PostgreSQL tables are usually snake_case.
     switch (name) {
-        case 'salesPersons': return 'SalesPersons';
-        case 'customers': return 'Customers';
-        case 'products': return 'Products';
-        case 'quotations': return 'Quotations';
-        case 'users': return 'Users';
-        case 'deliveryChallans': return 'DeliveryChallans';
-        case 'stockStatements': return 'Stock'; // Links 'Stock Statement' view to 'Stock' table
-        case 'pendingSOs': return 'PendingSO'; // Links 'Pending Sales Orders' view to 'PendingSO' table
-        default: return name;
+        case 'salesPersons': return 'sales_persons'; 
+        case 'customers': return 'customers';
+        case 'products': return 'products';
+        case 'quotations': return 'quotations';
+        case 'users': return 'users';
+        case 'deliveryChallans': return 'delivery_challans';
+        case 'stockStatements': return 'stock_statement'; 
+        case 'pendingSOs': return 'pending_sales_orders'; 
+        default: return (name as string).toLowerCase();
     }
 };
 
@@ -38,23 +44,28 @@ export async function get(tableName: TableName): Promise<any[]> {
     
     let query = supabase.from(supabaseTableName).select('*');
 
-    // Conditional sorting: Users don't have an 'id' column in the types/schema, so sort by 'name'.
-    // Other tables generally have an 'id' and should be sorted by it (newest first).
     if (tableName === 'users') {
         query = query.order('name', { ascending: true });
     } else {
-        query = query.order('id', { ascending: false });
+        // Most tables have an ID.
+        // For stock/pending, we try to order by ID if it exists, otherwise Supabase might return default order.
+        // We'll wrap this in a way that doesn't crash if 'id' column is missing, 
+        // though standard tables here should have it.
+        if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
+             query = query.order('id', { ascending: false });
+        }
     }
 
     const { data, error } = await query;
     
     if (error) {
+        console.error(`Error fetching ${tableName} (${supabaseTableName}):`, JSON.stringify(error, null, 2));
         throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName}`));
     }
     return data || [];
 }
 
-export async function set<T extends { id?: number, name?: string }>(tableName: TableName, previousData: T[] | null, newData: T[]): Promise<void> {
+export async function set<T extends { id?: number | string, name?: string }>(tableName: TableName, previousData: T[] | null, newData: T[]): Promise<void> {
     if (!supabase) throw new Error("Supabase client not initialized");
 
     const supabaseTableName = toSupabaseTableName(tableName);
@@ -103,7 +114,19 @@ export async function set<T extends { id?: number, name?: string }>(tableName: T
     if (toUpsert.length > 0) {
         const BATCH_SIZE = 1000;
         for (let i = 0; i < toUpsert.length; i += BATCH_SIZE) {
-            const batch = toUpsert.slice(i, i + BATCH_SIZE);
+            let batch = toUpsert.slice(i, i + BATCH_SIZE);
+
+            // FIX: If table is 'stockStatements', remove the 'value' property before upserting
+            // because it is a GENERATED ALWAYS column in the database (quantity * rate).
+            // Attempting to write to it causes an error.
+            if (tableName === 'stockStatements') {
+                batch = batch.map(item => {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { value, ...rest } = item as any;
+                    return rest as T;
+                });
+            }
+
             const { error } = await supabase.from(supabaseTableName).upsert(batch, { onConflict: primaryKey });
             if (error) throw new Error(parseSupabaseError(error, `Failed to upsert batch to ${supabaseTableName}`));
         }
@@ -111,7 +134,7 @@ export async function set<T extends { id?: number, name?: string }>(tableName: T
 }
 
 // --- Specific Helper Functions ---
-// All specific table references below are updated to PascalCase (e.g. 'Customers', 'Products')
+// NOTE: We must use the exact table names as recognized by Supabase (Postgres is usually lowercase).
 
 export async function getCustomersPaginated(options: any) { 
     if (!supabase) throw new Error("Supabase client not initialized");
@@ -119,7 +142,7 @@ export async function getCustomersPaginated(options: any) {
     const offset = startAfterDoc || 0;
 
     let query = supabase
-        .from('Customers')
+        .from('customers') // Fixed: Lowercase
         .select('*', { count: 'exact' })
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
@@ -135,7 +158,7 @@ export async function getCustomersPaginated(options: any) {
 
 export async function searchCustomers(term: string) { 
     if (!supabase) throw new Error("Supabase client not initialized");
-    let query = supabase.from('Customers').select('*').limit(50);
+    let query = supabase.from('customers').select('*').limit(50); // Fixed: Lowercase
     if (term) query = query.ilike('name', `%${term}%`);
     else query = query.order('id', { ascending: false });
     const { data, error } = await query;
@@ -146,26 +169,26 @@ export async function searchCustomers(term: string) {
 export async function getCustomersByIds(ids: number[]) { 
     if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
-    const { data, error } = await supabase.from('Customers').select('*').in('id', ids);
+    const { data, error } = await supabase.from('customers').select('*').in('id', ids); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers by IDs"));
     return (data || []) as Customer[];
 }
 
 export async function upsertCustomer(customer: any) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('Customers').upsert(customer, { onConflict: 'id' });
+    const { error } = await supabase.from('customers').upsert(customer, { onConflict: 'id' }); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, 'Failed to upsert customer'));
 }
 
 export async function deleteCustomer(id: number) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('Customers').delete().eq('id', id);
+    const { error } = await supabase.from('customers').delete().eq('id', id); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, 'Failed to delete customer'));
 }
 
 export async function addCustomersBatch(customers: any[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('Customers').upsert(customers, { onConflict: 'id' });
+    const { error } = await supabase.from('customers').upsert(customers, { onConflict: 'id' }); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, "Failed to add customers batch"));
 }
 
@@ -176,7 +199,7 @@ export async function getProductsPaginated(options: any) {
     const offset = startAfterDoc || 0;
 
     let query = supabase
-        .from('Products')
+        .from('products') // Fixed: Lowercase
         .select('*')
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
@@ -220,7 +243,7 @@ export async function fetchAllProductsForExport() {
     let from = 0;
     const limit = 1000;
     while (true) {
-        const { data, error } = await supabase.from('Products').select('*').order('partNo', { ascending: true }).range(from, from + limit - 1);
+        const { data, error } = await supabase.from('products').select('*').order('partNo', { ascending: true }).range(from, from + limit - 1); // Fixed: Lowercase
         if (error) throw new Error(parseSupabaseError(error, "Failed to fetch all products"));
         if (!data || data.length === 0) break;
         allProducts.push(...(data as Product[]));
@@ -232,26 +255,26 @@ export async function fetchAllProductsForExport() {
 
 export async function addProductsBatch(products: any[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('Products').upsert(products, { onConflict: 'id' });
+    const { error } = await supabase.from('products').upsert(products, { onConflict: 'id' }); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
 }
 
 export async function deleteProductsBatch(ids: number[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('Products').delete().in('id', ids);
+    const { error } = await supabase.from('products').delete().in('id', ids); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, "Failed to delete products batch"));
 }
 
 export async function updateProduct(product: any) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const { id, ...productData } = product;
-    const { error } = await supabase.from('Products').update(productData).eq('id', id);
+    const { error } = await supabase.from('products').update(productData).eq('id', id); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, "Failed to update product"));
 }
 
 export async function searchProducts(term: string) { 
     if (!supabase) throw new Error("Supabase client not initialized");
-    let query = supabase.from('Products').select('*').limit(50);
+    let query = supabase.from('products').select('*').limit(50); // Fixed: Lowercase
     if (term) {
         const terms = term.split('*').map(t => t.trim().replace(/"/g, '""')).filter(Boolean);
         if (terms.length > 0) {
@@ -270,7 +293,7 @@ export async function searchProducts(term: string) {
 export async function getProductsByIds(ids: number[]) { 
     if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
-    const { data, error } = await supabase.from('Products').select('*').in('id', ids);
+    const { data, error } = await supabase.from('products').select('*').in('id', ids); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by IDs"));
     return (data || []) as Product[];
 }
@@ -279,7 +302,7 @@ export async function getProductsByPartNos(partNos: string[]) {
     if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     const distinctPartNos = [...new Set(partNos)];
-    const { data, error } = await supabase.from('Products').select('*').in('partNo', distinctPartNos);
+    const { data, error } = await supabase.from('products').select('*').in('partNo', distinctPartNos); // Fixed: Lowercase
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
     return (data || []) as Product[];
 }

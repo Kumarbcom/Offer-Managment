@@ -25,10 +25,10 @@ interface ProcessedStockItem extends StockItem {
 
 export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClose, stockStatements, pendingSOs }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedRowIds, setExpandedRowIds] = useState<Set<number>>(new Set());
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
 
   // Helper to toggle row expansion
-  const toggleRow = (id: number) => {
+  const toggleRow = (id: string) => {
       setExpandedRowIds(prev => {
           const newSet = new Set(prev);
           if (newSet.has(id)) newSet.delete(id);

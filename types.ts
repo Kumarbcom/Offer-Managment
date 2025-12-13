@@ -118,7 +118,7 @@ export interface DeliveryChallan {
 }
 
 export interface StockItem {
-  id: number;
+  id: string; // UUID
   description: string;
   quantity: number;
   rate: number;
