@@ -43,7 +43,8 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
   const filteredSOs = (pendingSOs || []).filter(item => 
     (item.partyName && item.partyName.toLowerCase().includes(searchTerm.toLowerCase())) || 
     (item.orderNo && item.orderNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (item.partNo && item.partNo.toLowerCase().includes(searchTerm.toLowerCase()))
+    (item.partNo && item.partNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.itemName && item.itemName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,19 +76,19 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
         }
 
         const newItems: PendingSO[] = json.map((row) => {
-            const orderNo = row['Order'] || row['Order No'] || '';
+            const orderNo = row['Order'] || row['Order No'] || row['Order No.'] || '';
             if (!orderNo) return null;
             
             return {
                 id: generateUUID(),
                 date: parseDate(row['Date']),
                 orderNo: String(orderNo),
-                partyName: String(row["Party's Name"] || row['Party Name'] || ''),
-                itemName: String(row['Name of Item'] || row['Item Name'] || ''),
-                materialCode: String(row['Material Code'] || ''),
-                partNo: String(row['Part No'] || ''),
-                orderedQty: safeFloat(row['Ordered']),
-                balanceQty: safeFloat(row['Balance']),
+                partyName: String(row["Party's Name"] || row['Party Name'] || row['Customer Name'] || ''),
+                itemName: String(row['Name of Item'] || row['Item Name'] || row['Material Description'] || row['Description'] || ''),
+                materialCode: String(row['Material Code'] || row['Material'] || ''),
+                partNo: String(row['Part No'] || row['Part Number'] || ''),
+                orderedQty: safeFloat(row['Ordered'] || row['Ordered Qty']),
+                balanceQty: safeFloat(row['Balance'] || row['Balance Qty']),
                 rate: safeFloat(row['Rate']),
                 discount: safeFloat(row['Discount']),
                 value: safeFloat(row['Value']),
@@ -99,7 +100,7 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
             await setPendingSOs(prev => [...(prev || []), ...newItems]);
             alert(`Successfully loaded ${newItems.length} pending orders.`);
         } else {
-            alert('No valid data found. Please check Excel headers.');
+            alert('No valid data found. Please check Excel headers (e.g., Order, Party Name, Name of Item).');
         }
 
       } catch (error) {
@@ -230,7 +231,7 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
                             <td className="px-4 py-3 text-sm text-gray-900">{new Date(item.date).toLocaleDateString()}</td>
                             <td className="px-4 py-3 text-sm text-gray-900 font-medium">{item.orderNo}</td>
                             <td className="px-4 py-3 text-sm text-gray-900 truncate max-w-xs">{item.partyName}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 truncate max-w-xs">{item.partNo || item.itemName}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900 truncate max-w-xs">{item.itemName || item.partNo}</td>
                             <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.balanceQty}</td>
                             <td className={`px-4 py-3 text-sm font-semibold ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
                                 {new Date(item.dueOn).toLocaleDateString()}

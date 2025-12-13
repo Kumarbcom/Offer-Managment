@@ -38,6 +38,28 @@ const isUuid = (id: unknown): boolean => {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 };
 
+const mapToSupabase = (tableName: TableName, item: any) => {
+    if (tableName === 'pendingSOs') {
+        return {
+            id: item.id,
+            date: item.date,
+            order_no: item.orderNo,
+            party_name: item.partyName,
+            item_name: item.itemName,
+            material_code: item.materialCode,
+            part_no: item.partNo,
+            ordered_qty: item.orderedQty,
+            balance_qty: item.balanceQty,
+            rate: item.rate,
+            discount: item.discount,
+            value: item.value,
+            due_on: item.dueOn
+        };
+    }
+    // Default pass-through for other tables or if they already match
+    return item;
+};
+
 export async function get(tableName: TableName): Promise<any[]> {
     if (!supabase) throw new Error("Supabase client not initialized");
     
@@ -58,20 +80,62 @@ export async function get(tableName: TableName): Promise<any[]> {
         console.error(`Error fetching ${tableName} (${supabaseTableName}):`, JSON.stringify(error, null, 2));
         throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName}`));
     }
+
+    // Map back from Supabase snake_case to camelCase for specific tables if needed
+    if (tableName === 'pendingSOs' && data) {
+        return data.map((item: any) => ({
+            id: item.id,
+            date: item.date,
+            orderNo: item.order_no,
+            partyName: item.party_name,
+            itemName: item.item_name,
+            materialCode: item.material_code,
+            partNo: item.part_no,
+            orderedQty: item.ordered_qty,
+            balanceQty: item.balance_qty,
+            rate: item.rate,
+            discount: item.discount,
+            value: item.value,
+            dueOn: item.due_on
+        }));
+    }
+
     return data || [];
 }
 
 export async function clearTable(tableName: TableName): Promise<void> {
     if (!supabase) throw new Error("Supabase client not initialized");
     const supabaseTableName = toSupabaseTableName(tableName);
-    const column = tableName === 'users' ? 'name' : 'id';
+    const primaryKey = tableName === 'users' ? 'name' : 'id';
     
-    // Use .not(column, 'is', null) to safely delete all rows.
-    // This is the standard pattern for "delete all" when no specific condition is needed.
-    const { error } = await supabase.from(supabaseTableName).delete().not(column, 'is', null);
+    // Robust Strategy: Fetch all IDs first, then delete by ID.
+    // This avoids "Bad Request" errors from complex delete filters on mixed types.
     
-    if (error) {
-        throw new Error(parseSupabaseError(error, `Failed to clear table ${supabaseTableName}`));
+    // 1. Fetch IDs
+    const { data, error: fetchError } = await supabase
+        .from(supabaseTableName)
+        .select(primaryKey);
+
+    if (fetchError) {
+        throw new Error(parseSupabaseError(fetchError, `Failed to fetch IDs for clearing ${supabaseTableName}`));
+    }
+
+    if (!data || data.length === 0) return;
+
+    const ids = data.map((item: any) => item[primaryKey]);
+
+    // 2. Delete in Batches
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        const { error: deleteError } = await supabase
+            .from(supabaseTableName)
+            .delete()
+            .in(primaryKey, batch);
+        
+        if (deleteError) {
+            throw new Error(parseSupabaseError(deleteError, `Failed to clear batch from ${supabaseTableName}`));
+        }
     }
 }
 
@@ -114,7 +178,7 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
     }
 
     if (toDelete.length > 0) {
-        const BATCH_SIZE = 1000;
+        const BATCH_SIZE = 500; // Smaller batch for safety
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
             const batch = toDelete.slice(i, i + BATCH_SIZE);
             const { error } = await supabase.from(supabaseTableName).delete().in(primaryKey, batch);
@@ -132,26 +196,36 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
     }
 
     if (toUpsert.length > 0) {
-        const BATCH_SIZE = 1000;
+        const BATCH_SIZE = 500;
         for (let i = 0; i < toUpsert.length; i += BATCH_SIZE) {
             let batch = toUpsert.slice(i, i + BATCH_SIZE);
 
-            if (tableName === 'stockStatements' || tableName === 'pendingSOs') {
-                batch = batch.map(item => {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { value, ...rest } = item as any;
-                    
-                    // CRITICAL: Ensure ID is a valid UUID. If not (legacy data), remove ID so DB generates new one.
-                    if (rest.id && !isUuid(rest.id)) {
-                        console.warn(`Stripping invalid UUID '${rest.id}' from upsert for ${tableName}`);
-                        delete rest.id; 
-                    }
-                    
-                    return rest as T;
-                });
-            }
+            // Pre-processing and Mapping
+            const mappedBatch = batch.map(item => {
+                // Clone item
+                let payload = { ...item } as any;
 
-            const { error } = await supabase.from(supabaseTableName).upsert(batch, { onConflict: primaryKey });
+                // SPECIAL HANDLING: 'stockStatements' table has a generated 'value' column.
+                // We must NOT send it in the INSERT/UPDATE payload.
+                if (tableName === 'stockStatements') {
+                    delete payload.value;
+                }
+
+                // 1. Sanitize UUIDs
+                if (isUuidTable) {
+                    if (payload.id && !isUuid(payload.id)) {
+                        console.warn(`Stripping invalid UUID '${payload.id}' from upsert for ${tableName}`);
+                        delete payload.id; // Let DB generate ID if invalid
+                    }
+                }
+
+                // 2. Map Columns (CamelCase -> SnakeCase)
+                payload = mapToSupabase(tableName, payload);
+
+                return payload;
+            });
+
+            const { error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey });
             if (error) throw new Error(parseSupabaseError(error, `Failed to upsert batch to ${supabaseTableName}`));
         }
     }
