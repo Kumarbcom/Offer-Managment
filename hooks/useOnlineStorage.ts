@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
 import { get, set, toSupabaseTableName } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
@@ -49,14 +50,17 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
             try {
                 let data = await get(tableName);
                 if (data.length === 0 && !seededTables.has(tableName)) {
-                    console.log(`Supabase table '${tableName}' is empty. Seeding with initial data.`);
-                    await set(tableName, [], initialData);
-                    seededTables.add(tableName);
-                    data = await get(tableName);
+                    // Only seed if not one of the new empty tables, unless we want dummy data
+                    if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
+                        console.log(`Supabase table '${tableName}' is empty. Seeding with initial data.`);
+                        await set(tableName, [], initialData);
+                        seededTables.add(tableName);
+                        data = await get(tableName);
+                    }
                 }
                 setState(data as T[]);
             } catch (e) {
-                console.warn(`Supabase error on loading '${tableName}', falling back to local data. Error:`, e);
+                console.warn(`Supabase error on loading '${tableName}', falling back to local data.`, e);
                 // Do not set a fatal error. Let the app continue with fallback data.
                 if (useInMemoryFallback) {
                     setState(inMemoryData);
@@ -70,6 +74,11 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
         fetchData();
 
         // --- REAL-TIME SUBSCRIPTION LOGIC ---
+        // CRITICAL FIX: Check if supabase client exists before trying to subscribe
+        if (!supabase) {
+            return;
+        }
+
         const supabaseTableName = toSupabaseTableName(tableName);
         const channelName = `table-changes-${tableName}`;
         const primaryKey = tableName === 'users' ? 'name' : 'id';
@@ -110,7 +119,7 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
                 )
                 .subscribe((status: string, err?: Error) => {
                     if (status === 'SUBSCRIBED') {
-                        console.log(`Successfully subscribed to real-time updates for ${tableName}`);
+                        // console.log(`Successfully subscribed to real-time updates for ${tableName}`);
                     }
                     if (status === 'CHANNEL_ERROR' || err) {
                         const subError = new Error(`Subscription error on channel ${channelName}: Real-time updates for '${tableName}' might not be working. Ensure replication is enabled for the '${supabaseTableName}' table in your Supabase project settings.`);
@@ -154,9 +163,30 @@ export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableNa
             await set(tableName, previousState, newState);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
+            const lowerMsg = errorMessage.toLowerCase();
+            
+            // Handle missing table errors by falling back to local storage silently (or with a log)
+            // Broader check for various "table missing" error formats
+            if (
+                lowerMsg.includes("could not find the table") || 
+                lowerMsg.includes("relation") && lowerMsg.includes("does not exist") ||
+                lowerMsg.includes("42p01") || 
+                lowerMsg.includes("schema cache") ||
+                lowerMsg.includes("client not initialized")
+            ) {
+                console.warn(`Supabase issue for '${tableName}': ${errorMessage}. Falling back to local storage for this session.`);
+                if (!useInMemoryFallback) {
+                    await setLocalData(newState);
+                } else {
+                    setInMemoryData(newState);
+                }
+                // Do NOT revert the optimistic update; we successfully saved to local.
+                return;
+            }
+
             console.error(`Supabase error on saving '${tableName}':`, e);
             
-            // Revert optimistic update on failure.
+            // Revert optimistic update on failure for genuine errors (network, validation, etc)
             setState(previousState);
             
             // Notify user of the failure but do not crash the app.

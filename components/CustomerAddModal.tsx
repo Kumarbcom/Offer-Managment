@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import type { Customer, SalesPerson } from '../types';
+import type { Customer, SalesPerson, User } from '../types';
 import { getCustomersPaginated } from '../supabase';
 
 interface CustomerAddModalProps {
@@ -8,6 +9,7 @@ interface CustomerAddModalProps {
   onSave: (customer: Customer) => Promise<void>;
   salesPersons: SalesPerson[] | null;
   customerToEdit?: Customer | null;
+  currentUser?: User;
 }
 
 const emptyCustomer: Omit<Customer, 'id'> = {
@@ -19,7 +21,7 @@ const emptyCustomer: Omit<Customer, 'id'> = {
   discountStructure: { singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0 },
 };
 
-export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onClose, onSave, salesPersons, customerToEdit }) => {
+export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onClose, onSave, salesPersons, customerToEdit, currentUser }) => {
   const [formData, setFormData] = useState<Omit<Customer, 'id'> | Customer>(emptyCustomer);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -28,10 +30,18 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
       if (customerToEdit) {
         setFormData(customerToEdit);
       } else {
-        setFormData(emptyCustomer);
+        const initialData = { ...emptyCustomer };
+        // Auto-select sales person if the logged-in user is a sales person
+        if (currentUser?.role === 'Sales Person' && salesPersons) {
+            const me = salesPersons.find(sp => sp.name === currentUser.name);
+            if (me) {
+                initialData.salesPersonId = me.id;
+            }
+        }
+        setFormData(initialData);
       }
     }
-  }, [isOpen, customerToEdit]);
+  }, [isOpen, customerToEdit, currentUser, salesPersons]);
 
   if (!isOpen) return null;
 

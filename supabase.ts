@@ -2,7 +2,7 @@
 import { supabase } from './supabaseClient';
 import type { Customer, Product } from './types';
 
-type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'users';
+type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'users' | 'deliveryChallans' | 'stockStatements' | 'pendingSOs';
 
 const parseSupabaseError = (error: unknown, context?: string): string => {
   const prefix = context ? `${context}: ` : '';
@@ -19,6 +19,9 @@ const parseSupabaseError = (error: unknown, context?: string): string => {
 // This function maps the app's internal camelCase names to the snake_case convention used by Supabase tables.
 export const toSupabaseTableName = (name: TableName): string => {
     if (name === 'salesPersons') return 'sales_persons';
+    if (name === 'deliveryChallans') return 'delivery_challans';
+    if (name === 'stockStatements') return 'stock_statements';
+    if (name === 'pendingSOs') return 'pending_sos';
     return name;
 };
 
@@ -29,6 +32,8 @@ export const toSupabaseTableName = (name: TableName): string => {
  * @returns A promise that resolves to an array of documents.
  */
 export async function get(tableName: TableName): Promise<any[]> {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    
     const supabaseTableName = toSupabaseTableName(tableName);
     const { data, error } = await supabase.from(supabaseTableName).select('*');
     if (error) {
@@ -45,14 +50,14 @@ export async function get(tableName: TableName): Promise<any[]> {
  * @param newData The new array of data that represents the desired state of the collection.
  */
 export async function set<T extends { id?: number, name?: string }>(tableName: TableName, previousData: T[] | null, newData: T[]): Promise<void> {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     const supabaseTableName = toSupabaseTableName(tableName);
     const primaryKey = tableName === 'users' ? 'name' : 'id';
 
     const previousDataMap = new Map<string | number, T>();
     if (previousData) {
         previousData.forEach(item => {
-            // FIX: Explicitly access `item.name` or `item.id` to help TypeScript infer the correct type.
-            // The original `item[primaryKey as keyof T]` was too generic for the compiler to narrow down.
             const key = primaryKey === 'name' ? item.name : item.id;
             if (key !== undefined) {
                 previousDataMap.set(key, item);
@@ -62,8 +67,6 @@ export async function set<T extends { id?: number, name?: string }>(tableName: T
 
     const newDataMap = new Map<string | number, T>();
     newData.forEach(item => {
-        // FIX: Explicitly access `item.name` or `item.id` to help TypeScript infer the correct type.
-        // The original `item[primaryKey as keyof T]` was too generic for the compiler to narrow down.
         const key = primaryKey === 'name' ? item.name : item.id;
         if (key !== undefined) {
             newDataMap.set(key, item);
@@ -93,9 +96,14 @@ export async function set<T extends { id?: number, name?: string }>(tableName: T
     }
 
     if (toUpsert.length > 0) {
-        const { error } = await supabase.from(supabaseTableName).upsert(toUpsert, { onConflict: primaryKey });
-        if (error) {
-            throw new Error(parseSupabaseError(error, `Failed to upsert data to ${supabaseTableName}`));
+        // Supabase upsert has a limit on payload size. For bulk uploads, we should batch.
+        const BATCH_SIZE = 1000;
+        for (let i = 0; i < toUpsert.length; i += BATCH_SIZE) {
+            const batch = toUpsert.slice(i, i + BATCH_SIZE);
+            const { error } = await supabase.from(supabaseTableName).upsert(batch, { onConflict: primaryKey });
+            if (error) {
+                throw new Error(parseSupabaseError(error, `Failed to upsert data to ${supabaseTableName} (Batch ${i/BATCH_SIZE + 1})`));
+            }
         }
     }
 }
@@ -115,6 +123,8 @@ interface CustomerQueryOptions {
 }
 
 export async function getCustomersPaginated(options: CustomerQueryOptions) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
     
     const offset = startAfterDoc || 0;
@@ -144,6 +154,8 @@ export async function getCustomersPaginated(options: CustomerQueryOptions) {
 }
 
 export async function searchCustomers(term: string): Promise<Customer[]> {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     let query = supabase.from('customers').select('*').limit(50);
     if (term) {
         query = query.ilike('name', `%${term}%`);
@@ -159,7 +171,9 @@ export async function searchCustomers(term: string): Promise<Customer[]> {
 }
 
 export async function getCustomersByIds(ids: number[]): Promise<Customer[]> {
+    if (!supabase) return []; // Fail silently or return empty
     if (!ids || ids.length === 0) return [];
+    
     const { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -172,6 +186,8 @@ export async function getCustomersByIds(ids: number[]): Promise<Customer[]> {
 }
 
 export async function getCustomerStats() {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     const { count, error } = await supabase
       .from('customers')
       .select('*', { count: 'exact', head: true });
@@ -183,16 +199,19 @@ export async function getCustomerStats() {
 }
 
 export async function upsertCustomer(customer: Omit<Customer, 'id'> | Customer) {
+    if (!supabase) throw new Error("Supabase client not initialized");
     const { error } = await supabase.from('customers').upsert(customer, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, 'Failed to upsert customer'));
 }
 
 export async function deleteCustomer(id: number) {
+    if (!supabase) throw new Error("Supabase client not initialized");
     const { error } = await supabase.from('customers').delete().eq('id', id);
     if (error) throw new Error(parseSupabaseError(error, 'Failed to delete customer'));
 }
 
 export async function addCustomersBatch(customers: Customer[]): Promise<void> {
+    if (!supabase) throw new Error("Supabase client not initialized");
     const { error } = await supabase.from('customers').upsert(customers, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, "Failed to add or update customers batch"));
 }
@@ -213,6 +232,8 @@ interface ProductQueryOptions {
 }
 
 export async function getProductsPaginated(options: ProductQueryOptions) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
     
     const offset = startAfterDoc || 0;
@@ -266,6 +287,8 @@ export async function getProductsPaginated(options: ProductQueryOptions) {
 }
 
 export async function fetchAllProductsForExport() {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     let allProducts: Product[] = [];
     let from = 0;
     const limit = 1000;
@@ -299,22 +322,27 @@ export async function fetchAllProductsForExport() {
 
 
 export async function addProductsBatch(products: Product[]): Promise<void> {
+    if (!supabase) throw new Error("Supabase client not initialized");
     const { error } = await supabase.from('products').upsert(products, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
 }
 
 export async function deleteProductsBatch(productIds: number[]): Promise<void> {
+    if (!supabase) throw new Error("Supabase client not initialized");
     const { error } = await supabase.from('products').delete().in('id', productIds);
     if (error) throw new Error(parseSupabaseError(error, "Failed to delete products batch"));
 }
 
 export async function updateProduct(product: Product): Promise<void> {
+    if (!supabase) throw new Error("Supabase client not initialized");
     const { id, ...productData } = product;
     const { error } = await supabase.from('products').update(productData).eq('id', id);
     if (error) throw new Error(parseSupabaseError(error, "Failed to update product"));
 }
 
 export async function searchProducts(term: string) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+
     let query = supabase
         .from('products')
         .select('*')
@@ -340,6 +368,7 @@ export async function searchProducts(term: string) {
 }
 
 export async function getProductsByIds(ids: number[]) {
+    if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
     const { data, error } = await supabase
         .from('products')
@@ -353,6 +382,7 @@ export async function getProductsByIds(ids: number[]) {
 }
 
 export async function getProductsByPartNos(partNos: string[]) {
+    if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     // Only query distinct part numbers to optimize
     const distinctPartNos = [...new Set(partNos)];

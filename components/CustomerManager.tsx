@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { Customer, SalesPerson, Quotation, QuotationStatus } from '../types';
+import type { Customer, SalesPerson, Quotation, QuotationStatus, User } from '../types';
 import { CustomerAddModal } from './CustomerAddModal';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersPaginated, upsertCustomer, deleteCustomer, addCustomersBatch } from '../supabase';
@@ -12,6 +12,7 @@ interface CustomerManagerProps {
   salesPersons: SalesPerson[] | null;
   quotations: Quotation[] | null;
   onFilterQuotations: (filter: { customerIds?: number[], status?: QuotationStatus }) => void;
+  currentUser: User;
 }
 
 type SortByType = 'id' | 'name' | 'city' | 'pincode' | 'salesPerson';
@@ -36,7 +37,7 @@ const statusColors: Record<QuotationStatus, { bg: string, text: string }> = {
 };
 
 
-export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, quotations, onFilterQuotations }) => {
+export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, quotations, onFilterQuotations, currentUser }) => {
   const [displayedCustomers, setDisplayedCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -467,6 +468,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
         onSave={handleSaveCustomer}
         salesPersons={salesPersons}
         customerToEdit={customerToEdit}
+        currentUser={currentUser}
       />
     </div>
   );

@@ -1,0 +1,143 @@
+
+import React, { useState, useRef } from 'react';
+import type { StockItem } from '../types';
+
+declare var XLSX: any;
+
+interface StockManagerProps {
+  stockStatements: StockItem[] | null;
+  setStockStatements: (value: React.SetStateAction<StockItem[]>) => Promise<void>;
+}
+
+export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, setStockStatements }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredStock = (stockStatements || []).filter(item => 
+    item.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const data = evt.target?.result;
+      if (!data) return;
+
+      setIsUploading(true);
+      try {
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        // Expected Headers: Description, Quantity, Rate, Value
+        // Note: ID generation needs to be handled. We can rebuild the whole table or append.
+        // For simplicity in a statement upload, we usually replace or upsert. Here we'll generate new IDs.
+        
+        let currentId = (stockStatements && stockStatements.length > 0) ? Math.max(...stockStatements.map(s => s.id)) : 0;
+
+        const newItems: StockItem[] = json.map((row) => {
+            const desc = row['Description'] || row['description'] || '';
+            if (!desc) return null;
+            currentId++;
+            return {
+                id: currentId,
+                description: String(desc),
+                quantity: parseFloat(row['Quantity'] || row['quantity'] || 0),
+                rate: parseFloat(row['Rate'] || row['rate'] || 0),
+                value: parseFloat(row['Value'] || row['value'] || 0)
+            };
+        }).filter((i): i is StockItem => i !== null);
+
+        if (newItems.length > 0) {
+            // Replace strategy or Append? Usually stock statements are snapshots. Let's ask user or default to Replace for "Statement" nature.
+            // But `set` logic in `useOnlineStorage` handles diffing.
+            // Let's Append for now, but in reality, stock statements are often full replacements.
+            // Since we don't have a "Replace All" method exposed easily via the prop, we'll append new unique items or just set.
+            // To properly "Replace" via sync, we'd need to know IDs. 
+            // For now, let's assume this adds/updates.
+            
+            await setStockStatements(newItems); // This completely replaces the state in memory, then syncs.
+            alert(`Successfully loaded ${newItems.length} stock items.`);
+        } else {
+            alert('No valid stock data found. Check headers: Description, Quantity, Rate, Value');
+        }
+
+      } catch (error) {
+        console.error("Stock upload error:", error);
+        alert("Failed to parse Excel file.");
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleDownloadTemplate = () => {
+      const ws = XLSX.utils.aoa_to_sheet([['Description', 'Quantity', 'Rate', 'Value']]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Stock");
+      XLSX.writeFile(wb, "Stock_Statement_Template.xlsx");
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-gray-800">Stock Statement</h2>
+        <div className="flex gap-2">
+            <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold">Template</button>
+            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />
+            <button 
+                onClick={() => fileInputRef.current?.click()} 
+                disabled={isUploading}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold disabled:opacity-50"
+            >
+                {isUploading ? 'Uploading...' : 'Upload Excel'}
+            </button>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <input 
+            type="text" 
+            placeholder="Search Description..." 
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full md:w-1/3 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+      </div>
+
+      <div className="overflow-x-auto border rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+                <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+                {filteredStock.length > 0 ? filteredStock.map((item, idx) => (
+                    <tr key={item.id || idx} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900">{item.description}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.quantity}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                )) : (
+                    <tr>
+                        <td colSpan={4} className="px-6 py-10 text-center text-gray-500">No stock items found. Upload a statement.</td>
+                    </tr>
+                )}
+            </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};

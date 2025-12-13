@@ -9,7 +9,7 @@ export interface User {
   role: UserRole;
 }
 
-export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form';
+export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form' | 'stock' | 'pending-so';
 
 export interface SalesPerson {
   id: number;
@@ -115,4 +115,29 @@ export interface DeliveryChallan {
   poNo: string;
   poDate: string; // YYYY-MM-DD
   items: DeliveryChallanItem[];
+}
+
+export interface StockItem {
+  id: number;
+  description: string;
+  quantity: number;
+  rate: number;
+  value: number;
+}
+
+export interface PendingSO {
+  id: number;
+  date: string;
+  orderNo: string;
+  partyName: string;
+  itemName: string;
+  materialCode: string;
+  partNo: string;
+  orderedQty: number;
+  balanceQty: number;
+  rate: number;
+  discount: number;
+  value: number;
+  dueOn: string;
+  // Overdue is derived: today > dueOn
 }

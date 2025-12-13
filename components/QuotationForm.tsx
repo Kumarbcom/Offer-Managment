@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy, User } from '../types';
+import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy, User, StockItem, PendingSO } from '../types';
 import { PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES } from '../constants';
 import { CustomerAddModal } from './CustomerAddModal';
 import { ProductAddModal } from './ProductAddModal';
@@ -12,6 +12,8 @@ import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { useDebounce } from '../hooks/useDebounce';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds } from '../supabase';
+import { StockCheckModal } from './StockCheckModal';
+import { useOnlineStorage } from '../hooks/useOnlineStorage';
 
 declare var XLSX: any;
 
@@ -113,6 +115,12 @@ const Icons = {
             <path d="M11.5 9.5a.5.5 0 01.5.5v4a.5.5 0 01-.5.5H9.5a.5.5 0 01-.5-.5v-4a.5.5 0 01.5-.5h2z" />
         </svg>
     ),
+    Stock: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-orange-600">
+            <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" />
+            <path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.163 3.75A.75.75 0 0 1 10 12h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+        </svg>
+    )
 };
 
 const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
@@ -131,9 +139,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
+  const [isStockCheckModalOpen, setIsStockCheckModalOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
   const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
   
+  // Stock Data Hooks (Read only here)
+  const [stockStatements] = useOnlineStorage<StockItem>('stockStatements');
+  const [pendingSOs] = useOnlineStorage<PendingSO>('pendingSOs');
+
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
@@ -697,6 +710,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span>Customer</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span>Product</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
+                <div className="h-6 border-l border-slate-300 mx-1"></div>
+                <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span>Check Stock</span></ActionButton>
             </div>
             
             {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
@@ -913,6 +928,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
       <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} />
       <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
+      <StockCheckModal isOpen={isStockCheckModalOpen} onClose={() => setIsStockCheckModalOpen(false)} stockStatements={stockStatements} pendingSOs={pendingSOs} />
       <QuotationSuccessModal 
          isOpen={!!successModalData} 
          onClose={() => setSuccessModalData(null)} 

@@ -8,4 +8,7 @@ export const INITIAL_DATA = {
     products: MOCK_PRODUCTS,
     quotations: MOCK_QUOTATIONS,
     users: USERS,
+    deliveryChallans: [],
+    stockStatements: [],
+    pendingSOs: [],
 };
