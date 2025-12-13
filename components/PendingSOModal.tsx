@@ -25,6 +25,7 @@ const emptyItem: Omit<PendingSO, 'id'> = {
 };
 
 export const PendingSOModal: React.FC<PendingSOModalProps> = ({ isOpen, onClose, onSave, itemToEdit }) => {
+  // Using partial type to handle "new" items which don't have an ID yet in the form state
   const [formData, setFormData] = useState<Omit<PendingSO, 'id'> | PendingSO>(emptyItem);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -48,6 +49,7 @@ export const PendingSOModal: React.FC<PendingSOModalProps> = ({ isOpen, onClose,
     e.preventDefault();
     setIsSaving(true);
     try {
+        // Cast to PendingSO here; the manager will ensure ID is generated if missing
         await onSave(formData as PendingSO);
         onClose();
     } catch (error) {

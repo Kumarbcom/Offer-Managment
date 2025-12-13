@@ -126,7 +126,7 @@ export interface StockItem {
 }
 
 export interface PendingSO {
-  id: number;
+  id: string; // UUID
   date: string;
   orderNo: string;
   partyName: string;

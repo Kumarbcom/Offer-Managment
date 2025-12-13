@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import type { StockItem } from '../types';
 import { StockItemModal } from './StockItemModal';
+import { clearTable } from '../supabase';
 
 declare var XLSX: any;
 
@@ -20,8 +21,20 @@ const generateUUID = () => {
   });
 };
 
+// Check if ID is a valid UUID
+const isUuid = (id: string | number): boolean => {
+    if (typeof id !== 'string') return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
+
+const safeFloat = (val: any) => {
+    const parsed = parseFloat(val);
+    return isNaN(parsed) ? 0 : parsed;
+};
+
 export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, setStockStatements }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -54,9 +67,9 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
             return {
                 id: generateUUID(),
                 description: String(desc),
-                quantity: parseFloat(row['Quantity'] || row['quantity'] || 0),
-                rate: parseFloat(row['Rate'] || row['rate'] || 0),
-                value: parseFloat(row['Value'] || row['value'] || 0)
+                quantity: safeFloat(row['Quantity'] || row['quantity']),
+                rate: safeFloat(row['Rate'] || row['rate']),
+                value: safeFloat(row['Value'] || row['value'])
             };
         }).filter((i): i is StockItem => i !== null);
 
@@ -80,7 +93,17 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
 
   const handleClearAll = async () => {
     if (window.confirm('Are you sure you want to delete ALL stock data? This action cannot be undone.')) {
-        await setStockStatements([]);
+        setIsClearing(true);
+        try {
+            await clearTable('stockStatements');
+            await setStockStatements([]);
+            alert("Stock statements cleared successfully.");
+        } catch (e) {
+            console.error(e);
+            alert(`Failed to clear stock statements: ${e instanceof Error ? e.message : String(e)}`);
+        } finally {
+            setIsClearing(false);
+        }
     }
   };
 
@@ -110,11 +133,13 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
   const handleSaveItem = async (item: StockItem | Omit<StockItem, 'id'>) => {
       await setStockStatements(prev => {
           const currentList = prev || [];
-          // If the item passed already has an ID, it's an update.
+          
           if ('id' in item && item.id) {
-              return currentList.map(i => i.id === item.id ? item as StockItem : i);
+              const isLegacy = !isUuid(item.id);
+              const idToUse = isLegacy ? generateUUID() : item.id;
+              const updatedItem = { ...item, id: idToUse } as StockItem;
+              return currentList.map(i => i.id === item.id ? updatedItem : i);
           } else {
-              // Otherwise, generate a new UUID.
               const newItem = { ...item, id: generateUUID() } as StockItem;
               return [...currentList, newItem];
           }
@@ -135,10 +160,10 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
             <div className="h-8 border-l border-gray-300 mx-1 hidden md:block"></div>
             <button 
                 onClick={handleClearAll} 
-                disabled={!stockStatements || stockStatements.length === 0}
+                disabled={!stockStatements || stockStatements.length === 0 || isClearing}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Clear All
+                {isClearing ? 'Clearing...' : 'Clear All'}
             </button>
             <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold">Template</button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />

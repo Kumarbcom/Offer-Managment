@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import type { PendingSO } from '../types';
 import { PendingSOModal } from './PendingSOModal';
+import { clearTable } from '../supabase';
 
 declare var XLSX: any;
 
@@ -10,8 +11,29 @@ interface PendingSOManagerProps {
   setPendingSOs: (value: React.SetStateAction<PendingSO[]>) => Promise<void>;
 }
 
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+const isUuid = (id: string | number): boolean => {
+    if (typeof id !== 'string') return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
+
+const safeFloat = (val: any) => {
+    const parsed = parseFloat(val);
+    return isNaN(parsed) ? 0 : parsed;
+};
+
 export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, setPendingSOs }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -40,12 +62,6 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map Excel headers to interface
-        // Date, Order, Party's Name, Name of Item, Material Code, Part No, Ordered, Balance, Rate, Discount, Value, Due on
-        
-        const existingIds = (pendingSOs || []).map(s => s.id);
-        let currentId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-
         const parseDate = (val: any) => {
             if (!val) return new Date().toISOString().split('T')[0];
             if (typeof val === 'number') {
@@ -61,20 +77,20 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
         const newItems: PendingSO[] = json.map((row) => {
             const orderNo = row['Order'] || row['Order No'] || '';
             if (!orderNo) return null;
-            currentId++;
+            
             return {
-                id: currentId,
+                id: generateUUID(),
                 date: parseDate(row['Date']),
                 orderNo: String(orderNo),
                 partyName: String(row["Party's Name"] || row['Party Name'] || ''),
                 itemName: String(row['Name of Item'] || row['Item Name'] || ''),
                 materialCode: String(row['Material Code'] || ''),
                 partNo: String(row['Part No'] || ''),
-                orderedQty: parseFloat(row['Ordered'] || 0),
-                balanceQty: parseFloat(row['Balance'] || 0),
-                rate: parseFloat(row['Rate'] || 0),
-                discount: parseFloat(row['Discount'] || 0),
-                value: parseFloat(row['Value'] || 0),
+                orderedQty: safeFloat(row['Ordered']),
+                balanceQty: safeFloat(row['Balance']),
+                rate: safeFloat(row['Rate']),
+                discount: safeFloat(row['Discount']),
+                value: safeFloat(row['Value']),
                 dueOn: parseDate(row['Due on'] || row['Due Date']),
             };
         }).filter((i): i is PendingSO => i !== null);
@@ -99,7 +115,17 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
 
   const handleClearAll = async () => {
     if (window.confirm('Are you sure you want to delete ALL pending sales orders? This action cannot be undone.')) {
-        await setPendingSOs([]);
+        setIsClearing(true);
+        try {
+            await clearTable('pendingSOs');
+            await setPendingSOs([]);
+            alert("Pending orders cleared successfully.");
+        } catch (e) {
+            console.error(e);
+            alert(`Failed to clear pending orders: ${e instanceof Error ? e.message : String(e)}`);
+        } finally {
+            setIsClearing(false);
+        }
     }
   };
 
@@ -121,7 +147,7 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
       setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
       if(window.confirm("Delete this pending order?")) {
           await setPendingSOs(prev => (prev || []).filter(i => i.id !== id));
       }
@@ -131,11 +157,13 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
       await setPendingSOs(prev => {
           const currentList = prev || [];
           if (itemToEdit) {
-              return currentList.map(i => i.id === item.id ? item : i);
+              const isLegacy = !isUuid(item.id);
+              const idToUse = isLegacy ? generateUUID() : item.id;
+              const updatedItem = { ...item, id: idToUse };
+              return currentList.map(i => i.id === item.id ? updatedItem : i);
           } else {
-              const ids = currentList.map(i => i.id);
-              const newId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
-              return [...currentList, { ...item, id: newId }];
+              const newItem = { ...item, id: generateUUID() };
+              return [...currentList, newItem];
           }
       });
   };
@@ -154,10 +182,10 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
             <div className="h-8 border-l border-gray-300 mx-1 hidden md:block"></div>
             <button 
                 onClick={handleClearAll} 
-                disabled={!pendingSOs || pendingSOs.length === 0}
+                disabled={!pendingSOs || pendingSOs.length === 0 || isClearing}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Clear All
+                {isClearing ? 'Clearing...' : 'Clear All'}
             </button>
             <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold">Template</button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />
