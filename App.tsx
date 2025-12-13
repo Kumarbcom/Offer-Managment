@@ -127,14 +127,16 @@ function App() {
     }
   }
 
-  // 1. Priority: Check Login Status FIRST. 
-  // We pass loading state to Login, but we do NOT block rendering of the Login component itself.
-  if (!currentUser) {
-    return <Login onLogin={handleLogin} users={users} isLoading={usersLoading} />;
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="p-8 bg-white rounded-lg shadow-md">
+          <p className="text-lg text-gray-700 font-semibold">Loading Application Data...</p>
+        </div>
+      </div>
+    );
   }
 
-  // 2. Priority: Check Critical Errors
-  // If we are logged in but data failed to load dramatically, show error.
   if (dataError) {
     return (
        <div className="min-h-screen flex items-center justify-center bg-red-50">
@@ -147,10 +149,9 @@ function App() {
     );
   }
 
-  // 3. Render App Shell
-  // We removed the blocking `if (isLoadingData)` check here.
-  // The individual views (Dashboard, Managers) handle their own "Loading..." states gracefully.
-  // This ensures the App Shell (Nav bars) appears immediately, making the app feel faster.
+  if (!currentUser) {
+    return <Login onLogin={handleLogin} users={users} isLoading={usersLoading} />;
+  }
 
   const BottomNavItem = ({ active, label, icon, onClick }: { active: boolean, label: string, icon: React.ReactNode, onClick: () => void }) => (
     <button 

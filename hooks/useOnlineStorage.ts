@@ -16,7 +16,7 @@ const seededTables = new Set<CollectionName>();
  * It uses Supabase for data storage and real-time updates.
  * If Supabase is not configured or fails, it falls back to Local Storage (or in-memory for products).
  */
-export const useOnlineStorage = <T extends {id?: number | string, name?: string}>(tableName: CollectionName): [T[] | null, (value: SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
+export const useOnlineStorage = <T extends {id?: number, name?: string}>(tableName: CollectionName): [T[] | null, (value: SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
     
     const initialData = INITIAL_DATA[tableName] as unknown as T[];
     const useInMemoryFallback = tableName === 'products' && !isSupabaseConfigured;
