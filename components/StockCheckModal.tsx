@@ -9,8 +9,16 @@ interface StockCheckModalProps {
   pendingSOs: PendingSO[] | null;
 }
 
-// Safety check: if str is undefined/null, return empty string to prevent crash
-const normalize = (str: string | undefined | null) => {
+// Tokenize and normalize string for better matching
+const tokenize = (str: string | undefined | null): string[] => {
+    if (!str) return [];
+    return str.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ') // Replace special chars with space to separate words
+        .split(/\s+/) // Split by whitespace
+        .filter(t => t.length > 1); // Ignore single chars
+};
+
+const normalize = (str: string | undefined | null): string => {
     if (!str) return '';
     return str.toLowerCase().replace(/[^a-z0-9]/g, '');
 };
@@ -25,10 +33,11 @@ interface ProcessedStockItem extends StockItem {
 
 export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClose, stockStatements, pendingSOs }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedRowIds, setExpandedRowIds] = useState<Set<number>>(new Set());
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string | number>>(new Set());
+  const [showAllStock, setShowAllStock] = useState(false);
 
   // Helper to toggle row expansion
-  const toggleRow = (id: number) => {
+  const toggleRow = (id: string | number) => {
       setExpandedRowIds(prev => {
           const newSet = new Set(prev);
           if (newSet.has(id)) newSet.delete(id);
@@ -38,33 +47,49 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
   };
 
   const processedData = useMemo(() => {
-      if (!stockStatements || !pendingSOs) return [];
-
+      if (!stockStatements) return [];
+      
       const lowerTerm = searchTerm.toLowerCase();
-      // Filter first for performance
-      const filteredStock = searchTerm 
-        ? stockStatements.filter(s => s.description && s.description.toLowerCase().includes(lowerTerm))
-        : stockStatements;
+      // 1. Filter Stock first
+      let filteredStock = stockStatements;
+      
+      if (searchTerm) {
+          filteredStock = filteredStock.filter(s => s.description && s.description.toLowerCase().includes(lowerTerm));
+      }
 
       const today = new Date();
       const dueLimit = new Date(today);
       dueLimit.setDate(today.getDate() + 30); // Today + 30 Days
 
-      return filteredStock.map(stock => {
-          const normDesc = normalize(stock.description);
+      const result = filteredStock.map(stock => {
+          const stockTokens = tokenize(stock.description);
+          const stockDescNorm = normalize(stock.description);
           
           // Find matching orders
-          const relevantOrders = pendingSOs.filter(so => {
-              const normPart = normalize(so.partNo);
-              const normItem = normalize(so.itemName);
+          const relevantOrders = (pendingSOs || []).filter(so => {
+              const partTokens = tokenize(so.partNo);
+              const itemTokens = tokenize(so.itemName);
+              const partNorm = normalize(so.partNo);
+              const itemNorm = normalize(so.itemName);
               
-              if (!normDesc) return false;
+              if (!stock.description) return false;
               
-              // Basic matching heuristics
-              const matchPart = normPart && normPart.length > 2 && normDesc.includes(normPart);
-              const matchItem = normItem && normItem.length > 2 && normDesc.includes(normItem);
+              // 1. Direct Containment (Normalized)
+              if (partNorm && (stockDescNorm.includes(partNorm) || partNorm.includes(stockDescNorm))) return true;
+              if (itemNorm && (stockDescNorm.includes(itemNorm) || itemNorm.includes(stockDescNorm))) return true;
+
+              // 2. Token Overlap (Fuzzy)
+              // Check if significant tokens from pending item are present in stock
+              const checkTokens = (tokens: string[]) => {
+                  if (tokens.length === 0) return false;
+                  const matchCount = tokens.filter(t => stockTokens.includes(t)).length;
+                  return (matchCount / tokens.length) >= 0.66; // at least 66% of words match
+              };
+
+              if (checkTokens(partTokens)) return true;
+              if (checkTokens(itemTokens)) return true;
               
-              return matchPart || matchItem;
+              return false;
           }).map(so => {
               let dueDate = new Date();
               if (so.dueOn) {
@@ -96,7 +121,15 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
               orders: relevantOrders
           } as ProcessedStockItem;
       });
-  }, [stockStatements, pendingSOs, searchTerm]);
+      
+      // If we are not showing all, only show items with Shortage OR Demand
+      if (!showAllStock && !searchTerm) {
+          return result.filter(item => item.immediateDemand > 0 || item.scheduledDemand > 0 || item.shortage > 0);
+      }
+      
+      return result;
+
+  }, [stockStatements, pendingSOs, searchTerm, showAllStock]);
 
   // Calculate total shortage across filtered items
   const totalShortage = useMemo(() => {
@@ -122,6 +155,16 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
                     onChange={e => setSearchTerm(e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
+            </div>
+            <div className="flex items-center gap-2">
+                <input 
+                    type="checkbox" 
+                    id="showAll" 
+                    checked={showAllStock} 
+                    onChange={e => setShowAllStock(e.target.checked)}
+                    className="h-4 w-4"
+                />
+                <label htmlFor="showAll" className="text-sm font-medium text-gray-700 whitespace-nowrap">Show All Items</label>
             </div>
             <div className="bg-red-50 border border-red-200 px-4 py-2 rounded-md flex items-center gap-2 whitespace-nowrap">
                 <span className="text-xs font-bold text-red-600 uppercase">Total Shortage:</span>
@@ -172,6 +215,7 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
                                                 <tr>
                                                     <th className="p-2 text-left">Order No</th>
                                                     <th className="p-2 text-left">Customer</th>
+                                                    <th className="p-2 text-left">Item Name / Part</th>
                                                     <th className="p-2 text-right">Balance Qty</th>
                                                     <th className="p-2 text-center">Due Date</th>
                                                     <th className="p-2 text-center">Status</th>
@@ -182,6 +226,7 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
                                                     <tr key={`${item.id}-${order.id}`} className="border-b last:border-0 border-indigo-50">
                                                         <td className="p-2 font-medium">{order.orderNo}</td>
                                                         <td className="p-2">{order.partyName}</td>
+                                                        <td className="p-2 truncate max-w-xs">{order.itemName || order.partNo}</td>
                                                         <td className="p-2 text-right">{order.balanceQty}</td>
                                                         <td className="p-2 text-center">{new Date(order.dueOn).toLocaleDateString()}</td>
                                                         <td className="p-2 text-center">
@@ -200,7 +245,9 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
                     )) : (
                         <tr>
                             <td colSpan={7} className="text-center p-8 text-gray-500">
-                                {stockStatements && stockStatements.length > 0 ? "No matching stock items found." : "No stock data available. Please upload a stock statement in Dashboard."}
+                                {stockStatements && stockStatements.length > 0 
+                                    ? (showAllStock ? "No items match your search." : "No items with shortage or demand found. Check 'Show All Items' to see everything.")
+                                    : "No stock data available. Please upload a stock statement in Dashboard."}
                             </td>
                         </tr>
                     )}

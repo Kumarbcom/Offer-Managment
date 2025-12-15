@@ -118,7 +118,7 @@ export interface DeliveryChallan {
 }
 
 export interface StockItem {
-  id: number;
+  id: number | string;
   description: string;
   quantity: number;
   rate: number;
@@ -126,7 +126,7 @@ export interface StockItem {
 }
 
 export interface PendingSO {
-  id: number;
+  id: number | string;
   date: string;
   orderNo: string;
   partyName: string;
