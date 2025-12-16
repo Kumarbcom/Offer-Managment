@@ -49,8 +49,7 @@ export const PendingSOModal: React.FC<PendingSOModalProps> = ({ isOpen, onClose,
       const discount = formData.discount || 0;
       const calculatedValue = balance * rate * (1 - discount / 100);
       
-      // Only update if the calculated value is significantly different to avoid loops/overwriting user manual input too aggressively
-      // Here we just set it.
+      // Only update if the calculated value is significantly different
       setFormData(prev => ({ ...prev, value: parseFloat(calculatedValue.toFixed(2)) }));
   }, [formData.balanceQty, formData.rate, formData.discount]);
 
@@ -58,7 +57,7 @@ export const PendingSOModal: React.FC<PendingSOModalProps> = ({ isOpen, onClose,
     e.preventDefault();
     setIsSaving(true);
     try {
-      await onSave(formData as PendingSO); // ID is handled by parent if missing
+      await onSave(formData as PendingSO);
       onClose();
     } catch (error) {
       console.error(error);

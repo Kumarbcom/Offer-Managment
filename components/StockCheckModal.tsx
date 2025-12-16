@@ -9,18 +9,34 @@ interface StockCheckModalProps {
   pendingSOs: PendingSO[] | null;
 }
 
-// Tokenize and normalize string for better matching
+// Advanced Tokenizer for Technical Specifications
 const tokenize = (str: string | undefined | null): string[] => {
     if (!str) return [];
-    return str.toLowerCase()
-        .replace(/[^a-z0-9\s]/g, ' ') // Replace special chars with space to separate words
-        .split(/\s+/) // Split by whitespace
-        .filter(t => t.length > 1); // Ignore single chars
-};
+    let s = str.toLowerCase();
+    
+    // 1. Normalize separators
+    s = s.replace(/[-_/,|]/g, ' '); 
 
-const normalize = (str: string | undefined | null): string => {
-    if (!str) return '';
-    return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+    // 2. Normalize decimal commas (2,5 -> 2.5)
+    s = s.replace(/(\d),(\d)/g, '$1.$2');
+
+    // 3. Normalize dimensions: Handle "x", "g", "*" between numbers (3x2.5 -> 3 2.5)
+    // This is critical for matching "3G2.5" with "3x2.5"
+    s = s.replace(/(\d)\s*[xXgG*]\s*(\d)/g, '$1 $2');
+    
+    // 4. Separate numbers from letters (100m -> 100 m, 3C -> 3 c)
+    s = s.replace(/(\d)([a-z])/g, '$1 $2');
+    s = s.replace(/([a-z])(\d)/g, '$1 $2');
+
+    // 5. Clean up multiple spaces
+    s = s.replace(/\s+/g, ' ').trim();
+
+    // 6. Split by space
+    const tokens = s.split(' ');
+
+    // 7. Filter out generic stop words that might confuse matching (optional, but safer to keep most)
+    // We keep numbers and technical terms.
+    return tokens.filter(t => t.length > 0 && t !== '.');
 };
 
 interface ProcessedStockItem extends StockItem {
@@ -36,7 +52,6 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
   const [expandedRowIds, setExpandedRowIds] = useState<Set<string | number>>(new Set());
   const [showAllStock, setShowAllStock] = useState(false);
 
-  // Helper to toggle row expansion
   const toggleRow = (id: string | number) => {
       setExpandedRowIds(prev => {
           const newSet = new Set(prev);
@@ -50,64 +65,94 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
       if (!stockStatements) return [];
       
       const lowerTerm = searchTerm.toLowerCase();
-      // 1. Filter Stock first
-      let filteredStock = stockStatements;
       
+      // 1. Filter Stock first based on search
+      let filteredStock = stockStatements;
       if (searchTerm) {
           filteredStock = filteredStock.filter(s => s.description && s.description.toLowerCase().includes(lowerTerm));
       }
 
       const today = new Date();
       const dueLimit = new Date(today);
-      dueLimit.setDate(today.getDate() + 30); // Today + 30 Days
+      dueLimit.setDate(today.getDate() + 30); // Immediate Demand = Due within 30 Days
+
+      // 2. Pre-process Pending SOs for performance
+      const preparedOrders = (pendingSOs || []).map(so => {
+          // Priority: Part No > Item Name
+          const mainText = so.partNo || so.itemName || '';
+          const tokens = tokenize(mainText);
+          
+          // Extract purely numeric tokens for strict dimension matching
+          const numericTokens = new Set(tokens.filter(t => /^[\d.]+$/.test(t)));
+
+          return {
+            ...so,
+            tokens,
+            numericTokens,
+            mainTextLower: mainText.toLowerCase().replace(/[^a-z0-9.]/g, ''), // Normalized for substring check
+            isDueImmediate: so.dueOn ? new Date(so.dueOn) <= dueLimit : true,
+            status: (so.dueOn && new Date(so.dueOn) <= dueLimit) ? 'Immediate' : 'Scheduled'
+          };
+      });
 
       const result = filteredStock.map(stock => {
-          const stockTokens = tokenize(stock.description);
-          const stockDescNorm = normalize(stock.description);
+          const stockTokensArr = tokenize(stock.description);
+          const stockTokens = new Set(stockTokensArr);
+          const stockNumericTokens = new Set(stockTokensArr.filter(t => /^[\d.]+$/.test(t)));
+          const stockDescNormalized = (stock.description || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
           
           // Find matching orders
-          const relevantOrders = (pendingSOs || []).filter(so => {
-              const partTokens = tokenize(so.partNo);
-              const itemTokens = tokenize(so.itemName);
-              const partNorm = normalize(so.partNo);
-              const itemNorm = normalize(so.itemName);
-              
+          const relevantOrders = preparedOrders.filter(so => {
               if (!stock.description) return false;
-              
-              // 1. Direct Containment (Normalized)
-              if (partNorm && (stockDescNorm.includes(partNorm) || partNorm.includes(stockDescNorm))) return true;
-              if (itemNorm && (stockDescNorm.includes(itemNorm) || itemNorm.includes(stockDescNorm))) return true;
 
-              // 2. Token Overlap (Fuzzy)
-              // Check if significant tokens from pending item are present in stock
-              const checkTokens = (tokens: string[]) => {
-                  if (tokens.length === 0) return false;
-                  const matchCount = tokens.filter(t => stockTokens.includes(t)).length;
-                  return (matchCount / tokens.length) >= 0.66; // at least 66% of words match
-              };
+              // --- STRATEGY 1: Exact Substring Match ---
+              // If cleaned SO string is inside cleaned Stock string
+              if (so.mainTextLower.length > 4 && stockDescNormalized.includes(so.mainTextLower)) {
+                  return true;
+              }
 
-              if (checkTokens(partTokens)) return true;
-              if (checkTokens(itemTokens)) return true;
-              
-              return false;
-          }).map(so => {
-              let dueDate = new Date();
-              if (so.dueOn) {
-                  dueDate = new Date(so.dueOn);
+              // --- STRATEGY 2: Smart Token Matching ---
+              if (so.tokens.length === 0) return false;
+
+              // A. Numeric Constraint:
+              // For a match, ALL numbers in the SO Item (e.g. 3, 2.5) must basically exist in Stock.
+              // We allow ONE missing number if it's large (likely length like 100m), but dimensions must match.
+              let missingNumbers = 0;
+              for (const num of so.numericTokens) {
+                  if (!stockNumericTokens.has(num)) {
+                      missingNumbers++;
+                  }
+              }
+              // If dimensions mismatch significantly, reject.
+              // Heuristic: If > 1 number is missing, or if strict 100% fail on small items.
+              if (so.numericTokens.size > 0) {
+                  if (so.numericTokens.size <= 2 && missingNumbers > 0) return false; // Strict for small specs like "3x2.5"
+                  if (missingNumbers > 1) return false; // Too many mismatches
+              }
+
+              // B. Text Token Overlap
+              // How many of SO's words are in Stock?
+              let matches = 0;
+              for (const token of so.tokens) {
+                  if (stockTokens.has(token)) matches++;
               }
               
-              const isDueImmediate = dueDate <= dueLimit;
-              const status = isDueImmediate ? 'Immediate' : 'Scheduled';
-              return { ...so, status, isDueImmediate };
+              const matchRatio = matches / so.tokens.length;
+
+              // If it's a short description (e.g. "Cable 2.5"), we need high match.
+              // If it's long ("Lapp Olflex Classic 110..."), we accept lower ratio (ignoring "Classic", "110", etc if missing)
+              if (so.tokens.length <= 3) return matchRatio >= 0.9; // Almost exact
+              if (so.tokens.length <= 6) return matchRatio >= 0.6; // Moderate
+              return matchRatio >= 0.5; // Loose for long descriptions
           });
 
           const immediateDemand = relevantOrders
               .filter(o => o.isDueImmediate)
-              .reduce((sum, o) => sum + o.balanceQty, 0);
+              .reduce((sum, o) => sum + (o.balanceQty || 0), 0);
           
           const scheduledDemand = relevantOrders
               .filter(o => !o.isDueImmediate)
-              .reduce((sum, o) => sum + o.balanceQty, 0);
+              .reduce((sum, o) => sum + (o.balanceQty || 0), 0);
 
           const freeStock = stock.quantity - immediateDemand;
           const shortage = freeStock < 0 ? Math.abs(freeStock) : 0;
@@ -122,7 +167,7 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
           } as ProcessedStockItem;
       });
       
-      // If we are not showing all, only show items with Shortage OR Demand
+      // If NOT showing all, filter to show only items with ACTION needed (Shortage) or Activity (Demand)
       if (!showAllStock && !searchTerm) {
           return result.filter(item => item.immediateDemand > 0 || item.scheduledDemand > 0 || item.shortage > 0);
       }
@@ -131,7 +176,6 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
 
   }, [stockStatements, pendingSOs, searchTerm, showAllStock]);
 
-  // Calculate total shortage across filtered items
   const totalShortage = useMemo(() => {
       return processedData.reduce((acc, item) => acc + item.shortage, 0);
   }, [processedData]);
@@ -140,9 +184,12 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Stock Availability Check</h2>
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center mb-4 border-b pb-2">
+            <div>
+                <h2 className="text-2xl font-bold text-gray-800">Stock Availability Check</h2>
+                <p className="text-xs text-gray-500">Matches Stock Description with Pending Order Item/Part No.</p>
+            </div>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
         </div>
 
@@ -162,91 +209,109 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
                     id="showAll" 
                     checked={showAllStock} 
                     onChange={e => setShowAllStock(e.target.checked)}
-                    className="h-4 w-4"
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
-                <label htmlFor="showAll" className="text-sm font-medium text-gray-700 whitespace-nowrap">Show All Items</label>
+                <label htmlFor="showAll" className="text-sm font-medium text-gray-700 whitespace-nowrap select-none cursor-pointer">Show All Items</label>
             </div>
-            <div className="bg-red-50 border border-red-200 px-4 py-2 rounded-md flex items-center gap-2 whitespace-nowrap">
+            <div className="bg-red-50 border border-red-200 px-4 py-2 rounded-md flex items-center gap-2 whitespace-nowrap min-w-[200px] justify-center">
                 <span className="text-xs font-bold text-red-600 uppercase">Total Shortage:</span>
                 <span className="text-lg font-bold text-red-800">{totalShortage.toLocaleString()}</span>
             </div>
         </div>
 
-        <div className="overflow-auto flex-grow">
+        <div className="overflow-auto flex-grow border rounded-lg">
             <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10">
+                <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                     <tr>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Description</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">Physical Stock</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase text-orange-600">Immediate Demand</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase text-blue-600">Scheduled Demand</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase text-green-600">Free Stock</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase text-red-600">Shortage</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">Details</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase w-1/3">Description</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase">Physical Stock</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-orange-600 uppercase bg-orange-50">Immediate Demand</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-blue-600 uppercase bg-blue-50">Scheduled Demand</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-green-600 uppercase bg-green-50">Free Stock</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-red-600 uppercase bg-red-50">Shortage</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase">Details</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {processedData.length > 0 ? processedData.map(item => (
                         <React.Fragment key={item.id}>
-                            <tr className="hover:bg-gray-50">
+                            <tr className="hover:bg-gray-50 transition-colors">
                                 <td className="px-4 py-3 text-sm text-gray-900 font-medium">{item.description}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.quantity}</td>
-                                <td className="px-4 py-3 text-sm text-orange-600 font-bold text-right">{item.immediateDemand}</td>
-                                <td className="px-4 py-3 text-sm text-blue-600 font-bold text-right">{item.scheduledDemand}</td>
-                                <td className="px-4 py-3 text-sm text-green-600 font-bold text-right">{item.freeStock}</td>
-                                <td className="px-4 py-3 text-sm text-red-600 font-bold text-right">{item.shortage > 0 ? item.shortage : '-'}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900 text-right font-semibold">{item.quantity.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-sm text-orange-700 font-bold text-right bg-orange-50/50">{item.immediateDemand > 0 ? item.immediateDemand.toLocaleString() : '-'}</td>
+                                <td className="px-4 py-3 text-sm text-blue-700 font-bold text-right bg-blue-50/50">{item.scheduledDemand > 0 ? item.scheduledDemand.toLocaleString() : '-'}</td>
+                                <td className="px-4 py-3 text-sm text-green-700 font-bold text-right bg-green-50/50">{item.freeStock.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-sm text-red-700 font-bold text-right bg-red-50/50">{item.shortage > 0 ? item.shortage.toLocaleString() : '-'}</td>
                                 <td className="px-4 py-3 text-center">
-                                    {item.orders.length > 0 && (
+                                    {item.orders.length > 0 ? (
                                         <button 
                                             onClick={() => toggleRow(item.id)}
-                                            className="text-indigo-600 hover:text-indigo-800 text-xs font-bold underline"
+                                            className="text-indigo-600 hover:text-indigo-900 text-xs font-bold underline focus:outline-none"
                                         >
-                                            {expandedRowIds.has(item.id) ? 'Hide' : 'Show Orders'}
+                                            {expandedRowIds.has(item.id) ? 'Hide Orders' : `Show ${item.orders.length} Order(s)`}
                                         </button>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs">-</span>
                                     )}
                                 </td>
                             </tr>
                             {expandedRowIds.has(item.id) && item.orders.length > 0 && (
                                 <tr>
-                                    <td colSpan={7} className="bg-indigo-50 p-4 shadow-inner">
-                                        <div className="text-xs font-bold text-indigo-800 mb-2 uppercase">Allocated Orders</div>
-                                        <table className="w-full text-xs bg-white rounded border border-indigo-100">
-                                            <thead className="bg-indigo-100">
-                                                <tr>
-                                                    <th className="p-2 text-left">Order No</th>
-                                                    <th className="p-2 text-left">Customer</th>
-                                                    <th className="p-2 text-left">Item Name / Part</th>
-                                                    <th className="p-2 text-right">Balance Qty</th>
-                                                    <th className="p-2 text-center">Due Date</th>
-                                                    <th className="p-2 text-center">Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {item.orders.map(order => (
-                                                    <tr key={`${item.id}-${order.id}`} className="border-b last:border-0 border-indigo-50">
-                                                        <td className="p-2 font-medium">{order.orderNo}</td>
-                                                        <td className="p-2">{order.partyName}</td>
-                                                        <td className="p-2 truncate max-w-xs">{order.itemName || order.partNo}</td>
-                                                        <td className="p-2 text-right">{order.balanceQty}</td>
-                                                        <td className="p-2 text-center">{new Date(order.dueOn).toLocaleDateString()}</td>
-                                                        <td className="p-2 text-center">
-                                                            <span className={`px-2 py-0.5 rounded-full text-[10px] text-white ${order.isDueImmediate ? 'bg-orange-500' : 'bg-blue-500'}`}>
-                                                                {order.status}
-                                                            </span>
-                                                        </td>
+                                    <td colSpan={7} className="bg-indigo-50/50 p-4 shadow-inner">
+                                        <div className="text-xs font-bold text-indigo-800 mb-2 uppercase flex items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                            Allocated Orders
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs bg-white rounded border border-indigo-100">
+                                                <thead className="bg-indigo-100 text-indigo-900">
+                                                    <tr>
+                                                        <th className="p-2 text-left">Order No</th>
+                                                        <th className="p-2 text-left">Customer / Party</th>
+                                                        <th className="p-2 text-left">Item / Part No</th>
+                                                        <th className="p-2 text-right">Balance Qty</th>
+                                                        <th className="p-2 text-right">Value (₹)</th>
+                                                        <th className="p-2 text-center">Due Date</th>
+                                                        <th className="p-2 text-center">Status</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody className="divide-y divide-indigo-50">
+                                                    {item.orders.map((order, idx) => (
+                                                        <tr key={`${item.id}-${order.id || idx}`} className="hover:bg-indigo-50/30">
+                                                            <td className="p-2 font-medium text-gray-800">{order.orderNo}</td>
+                                                            <td className="p-2 text-gray-700">{order.partyName}</td>
+                                                            <td className="p-2 text-gray-600 max-w-xs truncate" title={order.itemName || order.partNo}>{order.itemName || order.partNo}</td>
+                                                            <td className="p-2 text-right font-bold text-gray-800">{order.balanceQty}</td>
+                                                            <td className="p-2 text-right text-gray-600">{(order.value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                                                            <td className="p-2 text-center text-gray-600">{new Date(order.dueOn).toLocaleDateString()}</td>
+                                                            <td className="p-2 text-center">
+                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${order.isDueImmediate ? 'bg-orange-500' : 'bg-blue-500'}`}>
+                                                                    {order.status}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </td>
                                 </tr>
                             )}
                         </React.Fragment>
                     )) : (
                         <tr>
-                            <td colSpan={7} className="text-center p-8 text-gray-500">
+                            <td colSpan={7} className="text-center p-12 text-gray-500">
                                 {stockStatements && stockStatements.length > 0 
-                                    ? (showAllStock ? "No items match your search." : "No items with shortage or demand found. Check 'Show All Items' to see everything.")
+                                    ? (showAllStock ? 
+                                        <div className="flex flex-col items-center">
+                                            <p className="text-lg font-semibold">No items match your search.</p>
+                                            <p className="text-sm">Try a different keyword.</p>
+                                        </div> : 
+                                        <div className="flex flex-col items-center">
+                                            <p className="text-lg font-semibold text-green-600">All Clear!</p>
+                                            <p className="text-sm">No items found with shortage or pending demand.</p>
+                                            <button onClick={() => setShowAllStock(true)} className="mt-4 text-indigo-600 hover:underline">Show All Stock Items</button>
+                                        </div>)
                                     : "No stock data available. Please upload a stock statement in Dashboard."}
                             </td>
                         </tr>
