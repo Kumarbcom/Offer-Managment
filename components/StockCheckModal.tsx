@@ -9,34 +9,48 @@ interface StockCheckModalProps {
   pendingSOs: PendingSO[] | null;
 }
 
-// Advanced Tokenizer for Technical Specifications
+// Helper to remove "Quantity/Length" strings like "100m", "500mtr", "10pc" from description to avoid mismatch
+const stripQuantities = (str: string): string => {
+    return str.replace(/\b\d+\s*(m|mtr|meter|meters|pc|pcs|no|nos)\b/gi, ' ');
+};
+
+// Advanced Tokenizer
 const tokenize = (str: string | undefined | null): string[] => {
     if (!str) return [];
     let s = str.toLowerCase();
     
-    // 1. Normalize separators
-    s = s.replace(/[-_/,|]/g, ' '); 
+    // 1. Remove lengths/quantities that might confuse matching (e.g. "100m")
+    s = stripQuantities(s);
 
     // 2. Normalize decimal commas (2,5 -> 2.5)
     s = s.replace(/(\d),(\d)/g, '$1.$2');
 
     // 3. Normalize dimensions: Handle "x", "g", "*" between numbers (3x2.5 -> 3 2.5)
-    // This is critical for matching "3G2.5" with "3x2.5"
+    // This allows "3G2.5" to match "3x2.5" by treating them as distinct tokens "3" and "2.5"
     s = s.replace(/(\d)\s*[xXgG*]\s*(\d)/g, '$1 $2');
     
-    // 4. Separate numbers from letters (100m -> 100 m, 3C -> 3 c)
+    // 4. Separate numbers from letters (3C -> 3 c)
     s = s.replace(/(\d)([a-z])/g, '$1 $2');
     s = s.replace(/([a-z])(\d)/g, '$1 $2');
 
-    // 5. Clean up multiple spaces
-    s = s.replace(/\s+/g, ' ').trim();
+    // 5. Replace non-alphanumeric chars with space (except dots in numbers)
+    s = s.replace(/[^a-z0-9\.]/g, ' ');
 
-    // 6. Split by space
-    const tokens = s.split(' ');
+    // 6. Split and clean
+    return s.split(/\s+/)
+        .map(t => t.replace(/^\.+|\.+$/g, '')) // Remove leading/trailing dots
+        .filter(t => t.length > 0 && t !== '.');
+};
 
-    // 7. Filter out generic stop words that might confuse matching (optional, but safer to keep most)
-    // We keep numbers and technical terms.
-    return tokens.filter(t => t.length > 0 && t !== '.');
+// Extract "Critical Dimensions" (e.g., matching "3" and "1.5" from "3x1.5")
+const getDimensions = (str: string): string[] => {
+    const matches = str.match(/\b(\d+(?:\.\d+)?)\s*[xXgG*]\s*(\d+(?:\.\d+)?)\b/g);
+    if (!matches) return [];
+    // Normalize "3x1.5" -> "3-1.5" for comparison
+    return matches.map(m => {
+        const parts = m.toLowerCase().split(/[xXgG*]/);
+        return parts.map(p => parseFloat(p)).sort().join('-');
+    });
 };
 
 interface ProcessedStockItem extends StockItem {
@@ -66,7 +80,7 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
       
       const lowerTerm = searchTerm.toLowerCase();
       
-      // 1. Filter Stock first based on search
+      // 1. Filter Stock first based on search input
       let filteredStock = stockStatements;
       if (searchTerm) {
           filteredStock = filteredStock.filter(s => s.description && s.description.toLowerCase().includes(lowerTerm));
@@ -78,81 +92,81 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
 
       // 2. Pre-process Pending SOs for performance
       const preparedOrders = (pendingSOs || []).map(so => {
-          // Priority: Part No > Item Name
-          const mainText = so.partNo || so.itemName || '';
-          const tokens = tokenize(mainText);
+          // Check both Item Name and Part No
+          const itemText = so.itemName || '';
+          const partText = so.partNo || '';
           
-          // Extract purely numeric tokens for strict dimension matching
-          const numericTokens = new Set(tokens.filter(t => /^[\d.]+$/.test(t)));
+          const combinedText = `${itemText} ${partText}`;
+          const tokens = tokenize(combinedText);
+          
+          // Get normalized string for substring check (remove spaces/special chars)
+          const normItem = stripQuantities(itemText).toLowerCase().replace(/[^a-z0-9]/g, '');
+          const normPart = partText.toLowerCase().replace(/[^a-z0-9]/g, '');
 
           return {
             ...so,
             tokens,
-            numericTokens,
-            mainTextLower: mainText.toLowerCase().replace(/[^a-z0-9.]/g, ''), // Normalized for substring check
+            normItem,
+            normPart,
+            // Extract dimensions from raw strings before normalization destroys separators
+            dimensions: [...getDimensions(itemText), ...getDimensions(partText)],
             isDueImmediate: so.dueOn ? new Date(so.dueOn) <= dueLimit : true,
-            status: (so.dueOn && new Date(so.dueOn) <= dueLimit) ? 'Immediate' : 'Scheduled'
+            status: (so.dueOn && new Date(so.dueOn) <= dueLimit) ? 'Immediate' : 'Scheduled',
+            // Ensure numeric balance
+            balanceQty: typeof so.balanceQty === 'number' ? so.balanceQty : parseFloat(String(so.balanceQty)) || 0
           };
       });
 
       const result = filteredStock.map(stock => {
-          const stockTokensArr = tokenize(stock.description);
-          const stockTokens = new Set(stockTokensArr);
-          const stockNumericTokens = new Set(stockTokensArr.filter(t => /^[\d.]+$/.test(t)));
-          const stockDescNormalized = (stock.description || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
+          const stockDesc = stock.description || '';
+          const stockTokens = new Set(tokenize(stockDesc));
+          const stockNorm = stockDesc.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const stockDimensions = new Set(getDimensions(stockDesc));
           
           // Find matching orders
           const relevantOrders = preparedOrders.filter(so => {
-              if (!stock.description) return false;
+              // Strategy A: Exact Substring Match (High Confidence)
+              // If Stock Description contains SO Part No (e.g. Stock: "Cable 12345", SO Part: "12345")
+              if (so.normPart.length > 4 && stockNorm.includes(so.normPart)) return true;
+              
+              // Strategy B: Overlap Substring Match
+              // If Stock contains SO Item Name (minus spaces/chars) or vice-versa
+              // E.g. Stock: "OlflexClassic110" contains SO: "Classic110"
+              if (so.normItem.length > 5 && stockNorm.includes(so.normItem)) return true;
+              if (stockNorm.length > 5 && so.normItem.includes(stockNorm)) return true;
 
-              // --- STRATEGY 1: Exact Substring Match ---
-              // If cleaned SO string is inside cleaned Stock string
-              if (so.mainTextLower.length > 4 && stockDescNormalized.includes(so.mainTextLower)) {
-                  return true;
-              }
-
-              // --- STRATEGY 2: Smart Token Matching ---
+              // Strategy C: Token Scoring
               if (so.tokens.length === 0) return false;
 
-              // A. Numeric Constraint:
-              // For a match, ALL numbers in the SO Item (e.g. 3, 2.5) must basically exist in Stock.
-              // We allow ONE missing number if it's large (likely length like 100m), but dimensions must match.
-              let missingNumbers = 0;
-              for (const num of so.numericTokens) {
-                  if (!stockNumericTokens.has(num)) {
-                      missingNumbers++;
-                  }
-              }
-              // If dimensions mismatch significantly, reject.
-              // Heuristic: If > 1 number is missing, or if strict 100% fail on small items.
-              if (so.numericTokens.size > 0) {
-                  if (so.numericTokens.size <= 2 && missingNumbers > 0) return false; // Strict for small specs like "3x2.5"
-                  if (missingNumbers > 1) return false; // Too many mismatches
+              // 1. Check Dimensions (Critical)
+              // If SO has "3x2.5", Stock MUST have it.
+              if (so.dimensions.length > 0) {
+                  const hasMatchingDimension = so.dimensions.some(d => stockDimensions.has(d));
+                  if (!hasMatchingDimension) return false; // Dimension mismatch (e.g. 3x1.5 vs 3x2.5)
+                  // If dimension matches, we are 90% sure. Just check 1 other word.
+                  return true; 
               }
 
-              // B. Text Token Overlap
-              // How many of SO's words are in Stock?
+              // 2. Token Overlap Score
               let matches = 0;
               for (const token of so.tokens) {
                   if (stockTokens.has(token)) matches++;
               }
               
               const matchRatio = matches / so.tokens.length;
-
-              // If it's a short description (e.g. "Cable 2.5"), we need high match.
-              // If it's long ("Lapp Olflex Classic 110..."), we accept lower ratio (ignoring "Classic", "110", etc if missing)
-              if (so.tokens.length <= 3) return matchRatio >= 0.9; // Almost exact
-              if (so.tokens.length <= 6) return matchRatio >= 0.6; // Moderate
-              return matchRatio >= 0.5; // Loose for long descriptions
+              
+              // Loose matching: If > 40% of words in SO match Stock, assume it's the item.
+              // (40% handles cases where SO has "Cable 100m Red" and Stock is "Cable")
+              return matchRatio >= 0.4;
           });
 
           const immediateDemand = relevantOrders
               .filter(o => o.isDueImmediate)
-              .reduce((sum, o) => sum + (o.balanceQty || 0), 0);
+              .reduce((sum, o) => sum + o.balanceQty, 0);
           
           const scheduledDemand = relevantOrders
               .filter(o => !o.isDueImmediate)
-              .reduce((sum, o) => sum + (o.balanceQty || 0), 0);
+              .reduce((sum, o) => sum + o.balanceQty, 0);
 
           const freeStock = stock.quantity - immediateDemand;
           const shortage = freeStock < 0 ? Math.abs(freeStock) : 0;
@@ -167,7 +181,7 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
           } as ProcessedStockItem;
       });
       
-      // If NOT showing all, filter to show only items with ACTION needed (Shortage) or Activity (Demand)
+      // If NOT showing all, filter to show only items with Shortage or Demand
       if (!showAllStock && !searchTerm) {
           return result.filter(item => item.immediateDemand > 0 || item.scheduledDemand > 0 || item.shortage > 0);
       }
@@ -188,7 +202,7 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
         <div className="flex justify-between items-center mb-4 border-b pb-2">
             <div>
                 <h2 className="text-2xl font-bold text-gray-800">Stock Availability Check</h2>
-                <p className="text-xs text-gray-500">Matches Stock Description with Pending Order Item/Part No.</p>
+                <p className="text-xs text-gray-500">Auto-matches Stock Description with Pending Order Item/Part No.</p>
             </div>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
         </div>
