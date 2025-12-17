@@ -288,7 +288,7 @@ function App() {
         {view === 'user-manual' && <UserManual />}
         {view === 'delivery-challans' && <DeliveryChallanManager deliveryChallans={deliveryChallans} setDeliveryChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
         {view === 'delivery-challan-form' && <DeliveryChallanForm challans={deliveryChallans} setChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} editingChallanId={editingChallanId} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
-        {view === 'stock' && <StockManager stockStatements={stockStatements} setStockStatements={setStockStatements} />}
+        {view === 'stock' && <StockManager stockStatements={stockStatements} setStockStatements={setStockStatements} pendingSOs={pendingSOs} />}
         {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
       </main>
 

@@ -1,12 +1,13 @@
 
-import React, { useState, useRef } from 'react';
-import type { StockItem } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import type { StockItem, PendingSO } from '../types';
 
 declare var XLSX: any;
 
 interface StockManagerProps {
   stockStatements: StockItem[] | null;
   setStockStatements: (value: React.SetStateAction<StockItem[]>) => Promise<void>;
+  pendingSOs?: PendingSO[] | null;
 }
 
 const generateUUID = () => {
@@ -19,12 +20,80 @@ const generateUUID = () => {
   });
 };
 
-export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, setStockStatements }) => {
+const normalizeString = (str: string | null | undefined) => {
+    if (!str) return '';
+    return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+};
+
+export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, setStockStatements, pendingSOs }) => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedRowId, setExpandedRowId] = useState<string | number | null>(null);
 
-  const filteredStock = (stockStatements || []).filter(item => 
+  const processedData = useMemo(() => {
+      const currentStock = stockStatements || [];
+      const orders = pendingSOs || [];
+      const today = new Date();
+      const dueLimit = new Date(today);
+      dueLimit.setDate(today.getDate() + 30); // Immediate Demand = Due within 30 Days
+
+      // Pre-process Pending SOs for efficient matching
+      const preparedOrders = orders.map(so => {
+          const normItemName = normalizeString(so.itemName);
+          const normPartNo = normalizeString(so.partNo);
+          const normMaterialCode = normalizeString(so.materialCode);
+          
+          const dueDateObj = so.dueOn ? new Date(so.dueOn) : new Date('9999-12-31');
+          const isDueImmediate = dueDateObj <= dueLimit;
+
+          return {
+            ...so,
+            normItemName,
+            normPartNo,
+            normMaterialCode,
+            isDueImmediate,
+            balanceQty: typeof so.balanceQty === 'number' ? so.balanceQty : parseFloat(String(so.balanceQty)) || 0
+          };
+      });
+
+      return currentStock.map(item => {
+          const normDesc = normalizeString(item.description);
+          
+          const relevantOrders = preparedOrders.filter(so => {
+              // 1. Match by Item Name (Mutual inclusion)
+              if (so.normItemName && (normDesc.includes(so.normItemName) || so.normItemName.includes(normDesc))) return true;
+              
+              // 2. Match by Part Number
+              if (so.normPartNo && so.normPartNo.length > 2 && normDesc.includes(so.normPartNo)) return true;
+              
+              // 3. Match by Material Code
+              if (so.normMaterialCode && so.normMaterialCode.length > 2 && normDesc.includes(so.normMaterialCode)) return true;
+              
+              return false;
+          });
+
+          const dueOrders = relevantOrders
+              .filter(o => o.isDueImmediate)
+              .reduce((sum, o) => sum + o.balanceQty, 0);
+          
+          const scheduledOrders = relevantOrders
+              .filter(o => !o.isDueImmediate)
+              .reduce((sum, o) => sum + o.balanceQty, 0);
+
+          const freeStock = item.quantity - dueOrders;
+
+          return {
+              ...item,
+              dueOrders,
+              scheduledOrders,
+              freeStock,
+              orders: relevantOrders
+          };
+      });
+  }, [stockStatements, pendingSOs]);
+
+  const filteredStock = processedData.filter(item => 
     item.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -57,7 +126,6 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
         }).filter((i): i is StockItem => i !== null);
 
         if (newItems.length > 0) {
-            // Append new items to existing stock. To clear previous stock, user should use "Clear All" first.
             await setStockStatements(prev => [...(prev || []), ...newItems]);
             alert(`Successfully loaded ${newItems.length} stock items.`);
         } else {
@@ -76,7 +144,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to delete ALL stock data? This action cannot be undone and will remove all current stock records from the database.')) {
+    if (window.confirm('Are you sure you want to delete ALL stock data? This action cannot be undone.')) {
         await setStockStatements([]);
     }
   };
@@ -87,6 +155,10 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
       XLSX.utils.book_append_sheet(wb, ws, "Stock");
       XLSX.writeFile(wb, "Stock_Statement_Template.xlsx");
   }
+
+  const toggleRow = (id: string | number) => {
+      setExpandedRowId(prev => prev === id ? null : id);
+  };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -106,49 +178,4 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
             <button 
                 onClick={() => fileInputRef.current?.click()} 
                 disabled={isUploading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold disabled:opacity-50"
-            >
-                {isUploading ? 'Uploading...' : 'Upload Excel'}
-            </button>
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <input 
-            type="text" 
-            placeholder="Search Description..." 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full md:w-1/3 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
-        />
-      </div>
-
-      <div className="overflow-x-auto border rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-                <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-                {filteredStock.length > 0 ? filteredStock.map((item, idx) => (
-                    <tr key={item.id || idx} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900">{item.description}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.quantity}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                )) : (
-                    <tr>
-                        <td colSpan={4} className="px-6 py-10 text-center text-gray-500">No stock items found. Upload a statement.</td>
-                    </tr>
-                )}
-            </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
+                className="bg-indigo-600 hover:bg-indigo-7
