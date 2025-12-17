@@ -18,7 +18,6 @@ interface ProcessedStockItem extends StockItem {
 }
 
 // Strict normalization: removes special chars, spaces, and converts to lowercase
-// e.g. "ÖLFLEX® 100 4G1.5" -> "olflex1004g15"
 const normalizeString = (str: string | null | undefined) => {
     if (!str) return '';
     return str.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -26,7 +25,6 @@ const normalizeString = (str: string | null | undefined) => {
 
 export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClose, stockStatements, pendingSOs }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAllStock, setShowAllStock] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState<string | number | null>(null);
 
   const processedData = useMemo(() => {
@@ -49,9 +47,11 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
       const preparedOrders = (pendingSOs || []).map(so => {
           const itemName = so.itemName || '';
           const partNo = so.partNo || '';
+          const materialCode = so.materialCode || '';
           
           const normItemName = normalizeString(itemName);
           const normPartNo = normalizeString(partNo);
+          const normMaterialCode = normalizeString(materialCode);
 
           const dueDateObj = so.dueOn ? new Date(so.dueOn) : new Date('9999-12-31');
           const isDueImmediate = dueDateObj <= dueLimit;
@@ -60,27 +60,28 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
             ...so,
             normItemName,
             normPartNo,
+            normMaterialCode,
             isDueImmediate,
             status: isDueImmediate ? 'Due Order' : 'Scheduled',
             balanceQty: typeof so.balanceQty === 'number' ? so.balanceQty : parseFloat(String(so.balanceQty)) || 0
           };
       });
 
-      const result = filteredStock.map(stock => {
+      return filteredStock.map(stock => {
           const stockDesc = stock.description || '';
           const normStockDesc = normalizeString(stockDesc);
           
           // 4. Matching Logic: Lookup Stock Description in Pending Orders
           const relevantOrders = preparedOrders.filter(so => {
-              // Match by Item Name (Mutual inclusion)
-              // If Stock Desc contains Item Name OR Item Name contains Stock Desc
-              if (so.normItemName && (normStockDesc.includes(so.normItemName) || so.normItemName.includes(normStockDesc))) {
-                  return true;
-              }
-              // Match by Part Number (only if PartNo is present and length > 3 to avoid noise)
-              if (so.normPartNo && so.normPartNo.length > 3 && normStockDesc.includes(so.normPartNo)) {
-                  return true;
-              }
+              // 1. Match by Item Name (Mutual inclusion)
+              if (so.normItemName && (normStockDesc.includes(so.normItemName) || so.normItemName.includes(normStockDesc))) return true;
+              
+              // 2. Match by Part Number
+              if (so.normPartNo && so.normPartNo.length > 2 && normStockDesc.includes(so.normPartNo)) return true;
+              
+              // 3. Match by Material Code
+              if (so.normMaterialCode && so.normMaterialCode.length > 2 && normStockDesc.includes(so.normMaterialCode)) return true;
+              
               return false;
           });
 
@@ -108,15 +109,8 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
               orders: relevantOrders
           } as ProcessedStockItem;
       });
-      
-      // Default view: Hide items that have no issues and no orders
-      if (!showAllStock && !searchTerm) {
-          return result.filter(item => item.dueOrdersQty > 0 || item.scheduledOrdersQty > 0 || item.shortage > 0);
-      }
-      
-      return result;
 
-  }, [stockStatements, pendingSOs, searchTerm, showAllStock]);
+  }, [stockStatements, pendingSOs, searchTerm]);
 
   const totalShortage = useMemo(() => {
       return processedData.reduce((acc, item) => acc + item.shortage, 0);
@@ -143,21 +137,11 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
             <div className="flex-grow">
                 <input 
                     type="text" 
-                    placeholder="Search Stock Description..." 
+                    placeholder="Search Part No / Description..." 
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
-            </div>
-            <div className="flex items-center gap-2">
-                <input 
-                    type="checkbox" 
-                    id="showAll" 
-                    checked={showAllStock} 
-                    onChange={e => setShowAllStock(e.target.checked)}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="showAll" className="text-sm font-medium text-gray-700 whitespace-nowrap select-none cursor-pointer">Show All Items</label>
             </div>
             <div className="bg-red-50 border border-red-200 px-4 py-2 rounded-md flex items-center gap-2 whitespace-nowrap min-w-[200px] justify-center">
                 <span className="text-xs font-bold text-red-600 uppercase">Total Shortage:</span>
@@ -204,24 +188,24 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
                             {expandedRowId === item.id && item.orders.length > 0 && (
                                 <tr>
                                     <td colSpan={7} className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                                        <div className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide ml-8">Matched Pending Orders:</div>
+                                        <div className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide ml-8">Order Details:</div>
                                         <table className="w-full text-xs text-left ml-8 mb-2 border border-gray-200 bg-white rounded-md overflow-hidden">
                                             <thead className="bg-gray-100">
                                                 <tr>
-                                                    <th className="p-2 border-r">Order No</th>
-                                                    <th className="p-2 border-r">Party Name</th>
-                                                    <th className="p-2 border-r">Item Name / Part No</th>
+                                                    <th className="p-2 border-r">Date</th>
+                                                    <th className="p-2 border-r">Customer (Party Name)</th>
+                                                    <th className="p-2 border-r">PO No</th>
                                                     <th className="p-2 border-r text-right">Balance Qty</th>
-                                                    <th className="p-2 text-center">Due On</th>
+                                                    <th className="p-2 text-center">Due Date</th>
                                                     <th className="p-2 text-center">Type</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {item.orders.map((order, oIdx) => (
                                                     <tr key={oIdx} className="border-b last:border-0">
-                                                        <td className="p-2 border-r">{order.orderNo}</td>
+                                                        <td className="p-2 border-r">{new Date(order.date).toLocaleDateString()}</td>
                                                         <td className="p-2 border-r">{order.partyName}</td>
-                                                        <td className="p-2 border-r">{order.itemName || order.partNo}</td>
+                                                        <td className="p-2 border-r">{order.orderNo}</td>
                                                         <td className="p-2 border-r text-right font-mono font-bold">{order.balanceQty}</td>
                                                         <td className={`p-2 text-center font-bold ${order.isDueImmediate ? 'text-orange-600' : 'text-blue-600'}`}>
                                                             {new Date(order.dueOn).toLocaleDateString()}
@@ -243,16 +227,7 @@ export const StockCheckModal: React.FC<StockCheckModalProps> = ({ isOpen, onClos
                         <tr>
                             <td colSpan={7} className="text-center p-12 text-gray-500">
                                 {stockStatements && stockStatements.length > 0 
-                                    ? (showAllStock ? 
-                                        <div className="flex flex-col items-center">
-                                            <p className="text-lg font-semibold">No items match your search.</p>
-                                            <p className="text-sm">Try a different keyword.</p>
-                                        </div> : 
-                                        <div className="flex flex-col items-center">
-                                            <p className="text-lg font-semibold text-green-600">All Clear!</p>
-                                            <p className="text-sm">No items found with shortage or due orders.</p>
-                                            <button onClick={() => setShowAllStock(true)} className="mt-4 text-indigo-600 hover:underline">Show All Stock Items</button>
-                                        </div>)
+                                    ? <p>No items match your search.</p>
                                     : "No stock data available. Please upload a stock statement in Dashboard."}
                             </td>
                         </tr>

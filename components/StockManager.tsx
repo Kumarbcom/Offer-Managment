@@ -29,7 +29,6 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedRowId, setExpandedRowId] = useState<string | number | null>(null);
 
   const processedData = useMemo(() => {
       const currentStock = stockStatements || [];
@@ -42,8 +41,6 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
       const preparedOrders = orders.map(so => {
           const normItemName = normalizeString(so.itemName);
           const normPartNo = normalizeString(so.partNo);
-          const normMaterialCode = normalizeString(so.materialCode);
-          
           const dueDateObj = so.dueOn ? new Date(so.dueOn) : new Date('9999-12-31');
           const isDueImmediate = dueDateObj <= dueLimit;
 
@@ -51,7 +48,6 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
             ...so,
             normItemName,
             normPartNo,
-            normMaterialCode,
             isDueImmediate,
             balanceQty: typeof so.balanceQty === 'number' ? so.balanceQty : parseFloat(String(so.balanceQty)) || 0
           };
@@ -61,15 +57,8 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
           const normDesc = normalizeString(item.description);
           
           const relevantOrders = preparedOrders.filter(so => {
-              // 1. Match by Item Name (Mutual inclusion)
               if (so.normItemName && (normDesc.includes(so.normItemName) || so.normItemName.includes(normDesc))) return true;
-              
-              // 2. Match by Part Number
-              if (so.normPartNo && so.normPartNo.length > 2 && normDesc.includes(so.normPartNo)) return true;
-              
-              // 3. Match by Material Code
-              if (so.normMaterialCode && so.normMaterialCode.length > 2 && normDesc.includes(so.normMaterialCode)) return true;
-              
+              if (so.normPartNo && so.normPartNo.length > 3 && normDesc.includes(so.normPartNo)) return true;
               return false;
           });
 
@@ -81,14 +70,17 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
               .filter(o => !o.isDueImmediate)
               .reduce((sum, o) => sum + o.balanceQty, 0);
 
+          // Free Stock = Physical Stock - Due Orders (Immediate)
+          // Scheduled orders are future liabilities, not immediate deductions from free stock typically,
+          // but if user wants strictly "Available to Sell", often it's (Stock - All Orders). 
+          // Based on user prompt: "Free Stock Qty - Due order"
           const freeStock = item.quantity - dueOrders;
 
           return {
               ...item,
               dueOrders,
               scheduledOrders,
-              freeStock,
-              orders: relevantOrders
+              freeStock
           };
       });
   }, [stockStatements, pendingSOs]);
@@ -126,6 +118,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
         }).filter((i): i is StockItem => i !== null);
 
         if (newItems.length > 0) {
+            // Append new items to existing stock. To clear previous stock, user should use "Clear All" first.
             await setStockStatements(prev => [...(prev || []), ...newItems]);
             alert(`Successfully loaded ${newItems.length} stock items.`);
         } else {
@@ -144,7 +137,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to delete ALL stock data? This action cannot be undone.')) {
+    if (window.confirm('Are you sure you want to delete ALL stock data? This action cannot be undone and will remove all current stock records from the database.')) {
         await setStockStatements([]);
     }
   };
@@ -155,10 +148,6 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
       XLSX.utils.book_append_sheet(wb, ws, "Stock");
       XLSX.writeFile(wb, "Stock_Statement_Template.xlsx");
   }
-
-  const toggleRow = (id: string | number) => {
-      setExpandedRowId(prev => prev === id ? null : id);
-  };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -178,4 +167,61 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
             <button 
                 onClick={() => fileInputRef.current?.click()} 
                 disabled={isUploading}
-                className="bg-indigo-600 hover:bg-indigo-7
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold disabled:opacity-50"
+            >
+                {isUploading ? 'Uploading...' : 'Upload Excel'}
+            </button>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <input 
+            type="text" 
+            placeholder="Search Description..." 
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full md:w-1/3 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+      </div>
+
+      <div className="overflow-x-auto border rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+                <tr>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-orange-600 uppercase tracking-wider">Due Orders<br/><span className="text-[9px] font-normal text-gray-400">(&le;30 Days)</span></th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">Scheduled<br/><span className="text-[9px] font-normal text-gray-400">(&gt;30 Days)</span></th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-green-600 uppercase tracking-wider">Free Stock</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+                {filteredStock.length > 0 ? filteredStock.map((item, idx) => (
+                    <tr key={item.id || idx} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">{item.description}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right font-semibold">{item.quantity.toLocaleString()}</td>
+                        <td className={`px-6 py-4 text-sm text-right font-bold ${item.dueOrders > 0 ? 'text-orange-600' : 'text-gray-300'}`}>
+                            {item.dueOrders > 0 ? item.dueOrders.toLocaleString() : '-'}
+                        </td>
+                        <td className={`px-6 py-4 text-sm text-right font-bold ${item.scheduledOrders > 0 ? 'text-blue-600' : 'text-gray-300'}`}>
+                            {item.scheduledOrders > 0 ? item.scheduledOrders.toLocaleString() : '-'}
+                        </td>
+                        <td className={`px-6 py-4 text-sm text-right font-bold ${item.freeStock < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {item.freeStock.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                )) : (
+                    <tr>
+                        <td colSpan={7} className="px-6 py-10 text-center text-gray-500">No stock items found. Upload a statement.</td>
+                    </tr>
+                )}
+            </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
