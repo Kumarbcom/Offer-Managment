@@ -20,11 +20,8 @@ interface DashboardProps {
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatCurrencyCompact = (value: number | null | undefined) => {
     const val = Number(value);
-    if (isNaN(val) || val === 0) return '0'; // Return simple 0 for cleaner look in table when 0
-    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
-    if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
-    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k`;
-    return `₹${Math.round(val)}`;
+    if (isNaN(val) || val === 0) return '0';
+    return `₹${val.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 }
 
 // Enhanced Icon Helper Component
@@ -120,28 +117,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         if (startDate) {
             startDate.setHours(0, 0, 0, 0); // Start of the day
         }
-        
+
         // Determine if current user is restricted
         let currentSalesPersonId: number | undefined;
         if (currentUser.role === 'Sales Person') {
-             currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
+            currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
         }
 
         return quotations.filter(q => {
             let salesPersonMatch = true;
-            
+
             if (currentUser.role === 'Sales Person') {
                 if (currentSalesPersonId !== undefined) {
-                     salesPersonMatch = q.salesPersonId === currentSalesPersonId;
+                    salesPersonMatch = q.salesPersonId === currentSalesPersonId;
                 } else {
                     // Should not happen if data is correct, but fail safe
                     salesPersonMatch = false;
                 }
             } else {
-                 // Admin / Manager logic
-                 salesPersonMatch = selectedSalesPersonId === 'all' || q.salesPersonId === selectedSalesPersonId;
+                // Admin / Manager logic
+                salesPersonMatch = selectedSalesPersonId === 'all' || q.salesPersonId === selectedSalesPersonId;
             }
-            
+
             if (!salesPersonMatch) return false;
 
             if (selectedDateRange === 'all' || !startDate) {
@@ -227,7 +224,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         salesPersonStats.forEach(stat => {
             totals.total.count += stat.total.count;
             totals.total.value += stat.total.value;
-            
+
             totals['Open'].count += stat['Open'].count;
             totals['Open'].value += stat['Open'].value;
 
@@ -600,7 +597,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         </div>
                     </div>
                     {/* Logo Upload for Admin - Moved for visibility */}
-                     {currentUser.role === 'Admin' && (
+                    {currentUser.role === 'Admin' && (
                         <div className="relative inline-flex items-center md:hidden">
                             <input type="file" id="logo-upload-mobile" accept="image/*" className="hidden" onChange={handleLogoChange} />
                             <label htmlFor="logo-upload-mobile" className="p-2 bg-slate-50 rounded-full text-indigo-600 border border-slate-200">
@@ -650,7 +647,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         ))}
                     </div>
 
-                     {currentUser.role === 'Admin' && (
+                    {currentUser.role === 'Admin' && (
                         <div className="relative hidden md:inline-flex items-center">
                             <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={handleLogoChange} />
                             <label htmlFor="logo-upload" className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-md text-black hover:bg-slate-50 cursor-pointer transition-colors shadow-sm h-full" title="Upload Company Logo">
@@ -660,8 +657,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                 <span>{logoUrl ? 'Change Logo' : 'Upload Logo'}</span>
                             </label>
                             {logoUrl && (
-                                <button 
-                                    onClick={() => { if(window.confirm('Are you sure you want to remove the logo?')) onLogoUpload(null); }}
+                                <button
+                                    onClick={() => { if (window.confirm('Are you sure you want to remove the logo?')) onLogoUpload(null); }}
                                     className="ml-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
                                     title="Remove Logo"
                                 >
@@ -677,7 +674,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
             {/* Overall Statistics Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-                 <motion.div
+                <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
@@ -686,7 +683,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-indigo-600 mb-1">
                         <path d="M4.5 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM14.25 8.625a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM1.5 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM17.25 19.128l-.001.144a2.25 2.25 0 0 1-.233.96 10.088 10.088 0 0 0 5.06-1.01.75.75 0 0 0 .42-.643 4.875 4.875 0 0 0-6.957-4.611 8.586 8.586 0 0 1 1.71 5.157v.003Z" />
                     </svg>
-                    <div className="text-2xl font-bold text-black mb-0.5">{uniqueCustomerCount}</div>
+                    <div className="text-2xl font-bold text-black mb-0.5">{uniqueCustomerCount.toLocaleString('en-IN')}</div>
                     <div className="text-[9px] font-bold text-black uppercase tracking-wider text-center">Active Customers</div>
                 </motion.div>
                 <motion.div
@@ -699,7 +696,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         <path fillRule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875ZM12.75 12a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V18a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V12Z" clipRule="evenodd" />
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
-                    <div className="text-xl md:text-2xl font-bold">{overallStats.total.count}</div>
+                    <div className="text-xl md:text-2xl font-bold">{overallStats.total.count.toLocaleString('en-IN')}</div>
                     <div className="text-[10px] font-medium opacity-100">{formatCurrencyCompact(overallStats.total.value)}</div>
                     <div className="text-[9px] font-bold uppercase tracking-wider mt-1 text-center">Total Enquiries</div>
                 </motion.div>
@@ -721,7 +718,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colors[status].split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]`}
                         >
                             <StatusIcon status={status} className={`w-7 h-7 mb-1 ${iconColor}`} />
-                            <div className="text-lg md:text-xl font-bold text-black">{overallStats[status].count}</div>
+                            <div className="text-lg md:text-xl font-bold text-black">{overallStats[status].count.toLocaleString('en-IN')}</div>
                             <div className={`text-[10px] font-semibold text-black mt-0.5`}>{formatCurrencyCompact(overallStats[status].value)}</div>
                             <div className="text-[9px] font-bold text-black uppercase tracking-wider mt-1 text-center truncate w-full">{status}</div>
                         </motion.div>
@@ -749,7 +746,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     <h3 className="text-xs font-bold text-black mb-4 uppercase tracking-wide">Value Trend</h3>
                     <div className="h-40 md:h-48"><canvas ref={lineChartRef}></canvas></div>
                 </motion.div>
-                 <motion.div
+                <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 }}
@@ -786,7 +783,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     transition={{ delay: 0.6 }}
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
-                     <div className="flex justify-between items-center mb-2">
+                    <div className="flex justify-between items-center mb-2">
                         <h3 className="text-xs font-bold text-black uppercase tracking-wide">Order Status</h3>
                         <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
                             <button type="button" onClick={() => setOrderStatusMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>No</button>
@@ -851,7 +848,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
                                 <tr>
                                     <td className="px-2 py-1 text-[10px] text-black">TOTAL</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals.total)}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-black">{(typeof getCellValue(performanceTotals.total) === 'number' ? performanceTotals.total.count.toLocaleString('en-IN') : getCellValue(performanceTotals.total))}</td>
                                     <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Open'])}</td>
                                     <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['PO received'])}</td>
                                     <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Partial PO Received'])}</td>
