@@ -5,29 +5,29 @@ import type { Customer, Product } from './types';
 type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'users' | 'deliveryChallans' | 'stockStatements' | 'pendingSOs';
 
 const parseSupabaseError = (error: unknown, context?: string): string => {
-  const prefix = context ? `${context}: ` : '';
-  try {
-      if (typeof error === 'object' && error !== null) {
-        const err = error as any;
-        if (err.message) return `${prefix}${err.message}${err.details ? ' - ' + err.details : ''}${err.hint ? ' (' + err.hint + ')' : ''}`;
-        return `${prefix}${JSON.stringify(err)}`;
-      }
-      return `${prefix}${String(error)}`;
-  } catch (e) {
-      return `${prefix}Unknown error (failed to parse original error)`;
-  }
+    const prefix = context ? `${context}: ` : '';
+    try {
+        if (typeof error === 'object' && error !== null) {
+            const err = error as any;
+            if (err.message) return `${prefix}${err.message}${err.details ? ' - ' + err.details : ''}${err.hint ? ' (' + err.hint + ')' : ''}`;
+            return `${prefix}${JSON.stringify(err)}`;
+        }
+        return `${prefix}${String(error)}`;
+    } catch (e) {
+        return `${prefix}Unknown error (failed to parse original error)`;
+    }
 };
 
 export const toSupabaseTableName = (name: TableName): string => {
     switch (name) {
-        case 'salesPersons': return 'sales_persons'; 
+        case 'salesPersons': return 'sales_persons';
         case 'customers': return 'customers';
         case 'products': return 'products';
         case 'quotations': return 'quotations';
         case 'users': return 'users';
         case 'deliveryChallans': return 'delivery_challans';
-        case 'stockStatements': return 'stock_statement'; 
-        case 'pendingSOs': return 'pending_sales_orders'; 
+        case 'stockStatements': return 'stock_statement';
+        case 'pendingSOs': return 'pending_sales_orders';
         default: return (name as string).toLowerCase();
     }
 };
@@ -62,28 +62,47 @@ const mapToSupabase = (tableName: TableName, item: any) => {
 
 export async function get(tableName: TableName): Promise<any[]> {
     if (!supabase) throw new Error("Supabase client not initialized");
-    
-    const supabaseTableName = toSupabaseTableName(tableName);
-    let query = supabase.from(supabaseTableName).select('*');
 
-    if (tableName === 'users') {
-        query = query.order('name', { ascending: true });
-    } else {
-        if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
-             query = query.order('id', { ascending: false });
+    const supabaseTableName = toSupabaseTableName(tableName);
+    let allData: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+        const to = from + pageSize - 1;
+        let query = supabase.from(supabaseTableName).select('*').range(from, to);
+
+        if (tableName === 'users') {
+            query = query.order('name', { ascending: true });
+        } else {
+            if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
+                query = query.order('id', { ascending: false });
+            }
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error(`Error fetching range ${from}-${to} for ${tableName}:`, JSON.stringify(error, null, 2));
+            throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName}`));
+        }
+
+        if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            if (data.length < pageSize) {
+                hasMore = false;
+            } else {
+                from += pageSize;
+            }
+        } else {
+            hasMore = false;
         }
     }
 
-    const { data, error } = await query;
-    
-    if (error) {
-        console.error(`Error fetching ${tableName} (${supabaseTableName}):`, JSON.stringify(error, null, 2));
-        throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName}`));
-    }
-
     // Map back from Supabase snake_case to camelCase for specific tables if needed
-    if (tableName === 'pendingSOs' && data) {
-        return data.map((item: any) => ({
+    if (tableName === 'pendingSOs' && allData.length > 0) {
+        return allData.map((item: any) => ({
             id: item.id,
             date: item.date,
             orderNo: item.order_no,
@@ -100,17 +119,17 @@ export async function get(tableName: TableName): Promise<any[]> {
         }));
     }
 
-    return data || [];
+    return allData;
 }
 
 export async function clearTable(tableName: TableName): Promise<void> {
     if (!supabase) throw new Error("Supabase client not initialized");
     const supabaseTableName = toSupabaseTableName(tableName);
     const primaryKey = tableName === 'users' ? 'name' : 'id';
-    
+
     // Robust Strategy: Fetch all IDs first, then delete by ID.
     // This avoids "Bad Request" errors from complex delete filters on mixed types.
-    
+
     // 1. Fetch IDs
     const { data, error: fetchError } = await supabase
         .from(supabaseTableName)
@@ -126,14 +145,14 @@ export async function clearTable(tableName: TableName): Promise<void> {
 
     // 2. Delete in Batches
     // CRITICAL FIX: Reduced batch size to 20 to prevent URL Too Long (414/400) errors with UUIDs
-    const BATCH_SIZE = 20; 
+    const BATCH_SIZE = 20;
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
         const batch = ids.slice(i, i + BATCH_SIZE);
         const { error: deleteError } = await supabase
             .from(supabaseTableName)
             .delete()
             .in(primaryKey, batch);
-        
+
         if (deleteError) {
             throw new Error(parseSupabaseError(deleteError, `Failed to clear batch from ${supabaseTableName}`));
         }
@@ -180,7 +199,7 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
 
     if (toDelete.length > 0) {
         // CRITICAL FIX: Reduced batch size to 20 for deletions
-        const BATCH_SIZE = 20; 
+        const BATCH_SIZE = 20;
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
             const batch = toDelete.slice(i, i + BATCH_SIZE);
             const { error } = await supabase.from(supabaseTableName).delete().in(primaryKey, batch);
@@ -236,7 +255,7 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
 
 // --- Specific Helper Functions ---
 
-export async function getCustomersPaginated(options: any) { 
+export async function getCustomersPaginated(options: any) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
     const offset = startAfterDoc || 0;
@@ -246,7 +265,7 @@ export async function getCustomersPaginated(options: any) {
         .select('*', { count: 'exact' })
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
-    
+
     if (filters.name) query = query.ilike('name', `%${filters.name}%`);
     if (filters.city) query = query.ilike('city', `%${filters.city}%`);
     if (filters.salesPersonId) query = query.eq('salesPersonId', filters.salesPersonId);
@@ -256,7 +275,7 @@ export async function getCustomersPaginated(options: any) {
     return { customers: (data || []) as Customer[], count: count || 0 };
 }
 
-export async function searchCustomers(term: string) { 
+export async function searchCustomers(term: string) {
     if (!supabase) throw new Error("Supabase client not initialized");
     let query = supabase.from('customers').select('*').limit(50);
     if (term) query = query.ilike('name', `%${term}%`);
@@ -266,7 +285,7 @@ export async function searchCustomers(term: string) {
     return (data || []) as Customer[];
 }
 
-export async function getCustomersByIds(ids: number[]) { 
+export async function getCustomersByIds(ids: number[]) {
     if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
     const { data, error } = await supabase.from('customers').select('*').in('id', ids);
@@ -293,7 +312,7 @@ export async function addCustomersBatch(customers: any[]) {
 }
 
 // Products
-export async function getProductsPaginated(options: any) { 
+export async function getProductsPaginated(options: any) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
     const offset = startAfterDoc || 0;
@@ -303,7 +322,7 @@ export async function getProductsPaginated(options: any) {
         .select('*')
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
-    
+
     if (filters.universal) {
         const cleanInput = filters.universal.replace(/[\s,.-]/g, '');
         if (cleanInput.length > 0) {
@@ -311,8 +330,8 @@ export async function getProductsPaginated(options: any) {
             const pattern = `%${fuzzyTerm}%`;
             query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
         } else {
-             const pattern = `%${filters.universal}%`;
-             query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
+            const pattern = `%${filters.universal}%`;
+            query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
         }
     } else {
         if (filters.partNo) {
@@ -337,7 +356,7 @@ export async function getProductsPaginated(options: any) {
     return { products, lastVisibleDoc: offset + products.length };
 }
 
-export async function fetchAllProductsForExport() { 
+export async function fetchAllProductsForExport() {
     if (!supabase) throw new Error("Supabase client not initialized");
     let allProducts: Product[] = [];
     let from = 0;
@@ -372,7 +391,7 @@ export async function updateProduct(product: any) {
     if (error) throw new Error(parseSupabaseError(error, "Failed to update product"));
 }
 
-export async function searchProducts(term: string) { 
+export async function searchProducts(term: string) {
     if (!supabase) throw new Error("Supabase client not initialized");
     let query = supabase.from('products').select('*').limit(50);
     if (term) {
@@ -390,7 +409,7 @@ export async function searchProducts(term: string) {
     return (data || []) as Product[];
 }
 
-export async function getProductsByIds(ids: number[]) { 
+export async function getProductsByIds(ids: number[]) {
     if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
     const { data, error } = await supabase.from('products').select('*').in('id', ids);
@@ -398,7 +417,7 @@ export async function getProductsByIds(ids: number[]) {
     return (data || []) as Product[];
 }
 
-export async function getProductsByPartNos(partNos: string[]) { 
+export async function getProductsByPartNos(partNos: string[]) {
     if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     const distinctPartNos = [...new Set(partNos)];
