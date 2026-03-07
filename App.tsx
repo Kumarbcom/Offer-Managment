@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, DeliveryChallan, StockItem, PendingSO } from './types';
+import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem, PendingSO } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { SalesPersonManager } from './components/SalesPersonManager';
 import { CustomerManager } from './components/CustomerManager';
@@ -14,8 +14,6 @@ import { UserManager } from './components/UserManager';
 import { Reports } from './components/Reports';
 import { CalendarView } from './components/CalendarView';
 import { UserManual } from './components/UserManual';
-import { DeliveryChallanManager } from './components/DeliveryChallanManager';
-import { DeliveryChallanForm } from './components/DeliveryChallanForm';
 import { StockManager } from './components/StockManager';
 import { PendingSOManager } from './components/PendingSOManager';
 import { CustomerResponsePage } from './components/CustomerResponsePage';
@@ -25,13 +23,11 @@ function App() {
   const [users, setUsers, usersLoading, usersError] = useOnlineStorage<User>('users');
   const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
   const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
-  const [deliveryChallans, setDeliveryChallans, deliveryChallansLoading, deliveryChallansError] = useOnlineStorage<DeliveryChallan>('deliveryChallans');
   const [stockStatements, setStockStatements, stockStatementsLoading, stockStatementsError] = useOnlineStorage<StockItem>('stockStatements');
   const [pendingSOs, setPendingSOs, pendingSOsLoading, pendingSOsError] = useOnlineStorage<PendingSO>('pendingSOs');
 
   const [view, setView] = useState<View | 'calendar'>('dashboard');
   const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null);
-  const [editingChallanId, setEditingChallanId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
@@ -44,8 +40,8 @@ function App() {
     }
   });
 
-  const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
-  const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
+  const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading;
+  const dataError = usersError || salesPersonsError || quotationsError;
 
   // Handle Deep Linking for Quotations
   useEffect(() => {
@@ -77,7 +73,6 @@ function App() {
     setCurrentUser(null);
     setView('dashboard');
     setEditingQuotationId(null);
-    setEditingChallanId(null);
     setQuotationFilter(null);
     // Clean up URL on logout
     const url = new URL(window.location.href);
@@ -234,10 +229,6 @@ function App() {
               )}
               {(currentUser.role === 'Admin' || currentUser.role === 'SCM') && (
                 <>
-                  <button onClick={() => handleSetView('delivery-challans')} className={headerBtnClass(view === 'delivery-challans' || view === 'delivery-challan-form')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /><path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" /></svg>
-                    Challans
-                  </button>
                   <button onClick={() => handleSetView('stock')} className={headerBtnClass(view === 'stock')}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" /><path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
                     Stock
@@ -309,8 +300,6 @@ function App() {
         {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
         {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
         {view === 'user-manual' && <UserManual />}
-        {view === 'delivery-challans' && <DeliveryChallanManager deliveryChallans={deliveryChallans} setDeliveryChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
-        {view === 'delivery-challan-form' && <DeliveryChallanForm challans={deliveryChallans} setChallans={setDeliveryChallans} quotations={quotations} setView={handleSetView} editingChallanId={editingChallanId} setEditingChallanId={setEditingChallanId} userRole={currentUser.role} />}
         {view === 'stock' && <StockManager stockStatements={stockStatements} setStockStatements={setStockStatements} pendingSOs={pendingSOs} />}
         {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
       </main>
