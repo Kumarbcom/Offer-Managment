@@ -128,6 +128,29 @@ function App() {
     }
   }
 
+  // --- Customer Response URL handler (public, no login required) ---
+  // MUST be checked BEFORE loading/auth guards so customers can use it without an account
+  const customerResponseParams = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const qr = params.get('qr');
+    const action = params.get('action');
+    if (qr && action) {
+      const id = parseInt(qr, 10);
+      if (!isNaN(id)) return { quotationId: id, action, reason: params.get('reason') || undefined };
+    }
+    return null;
+  })();
+
+  if (customerResponseParams) {
+    return (
+      <CustomerResponsePage
+        quotationId={customerResponseParams.quotationId}
+        action={customerResponseParams.action}
+        reason={customerResponseParams.reason}
+      />
+    );
+  }
+
   if (isLoadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -147,28 +170,6 @@ function App() {
           <button onClick={() => window.location.reload()} className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Retry</button>
         </div>
       </div>
-    );
-  }
-
-  // --- Customer Response URL handler (public, no login required) ---
-  const customerResponseParams = (() => {
-    const params = new URLSearchParams(window.location.search);
-    const qr = params.get('qr');
-    const action = params.get('action');
-    if (qr && action) {
-      const id = parseInt(qr, 10);
-      if (!isNaN(id)) return { quotationId: id, action, reason: params.get('reason') || undefined };
-    }
-    return null;
-  })();
-
-  if (customerResponseParams) {
-    return (
-      <CustomerResponsePage
-        quotationId={customerResponseParams.quotationId}
-        action={customerResponseParams.action}
-        reason={customerResponseParams.reason}
-      />
     );
   }
 
