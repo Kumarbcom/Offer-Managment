@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem, PendingSO } from './types';
+import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { SalesPersonManager } from './components/SalesPersonManager';
 import { CustomerManager } from './components/CustomerManager';
@@ -15,7 +15,6 @@ import { Reports } from './components/Reports';
 import { CalendarView } from './components/CalendarView';
 import { UserManual } from './components/UserManual';
 import { StockManager } from './components/StockManager';
-import { PendingSOManager } from './components/PendingSOManager';
 import { CustomerResponsePage } from './components/CustomerResponsePage';
 
 
@@ -24,7 +23,6 @@ function App() {
   const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
   const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
   const [stockStatements, setStockStatements, stockStatementsLoading, stockStatementsError] = useOnlineStorage<StockItem>('stockStatements');
-  const [pendingSOs, setPendingSOs, pendingSOsLoading, pendingSOsError] = useOnlineStorage<PendingSO>('pendingSOs');
 
   const [view, setView] = useState<View | 'calendar'>('dashboard');
   const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null);
@@ -233,10 +231,6 @@ function App() {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" /><path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
                     Stock
                   </button>
-                  <button onClick={() => handleSetView('pending-so')} className={headerBtnClass(view === 'pending-so')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" /></svg>
-                    Pending SO
-                  </button>
                 </>
               )}
               {currentUser.role === 'Admin' && (
@@ -295,13 +289,12 @@ function App() {
         {view === 'products' && <ProductManager currentUser={currentUser} />}
         {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
         {view === 'quotations' && <QuotationManager quotations={quotations} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
-        {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} stockStatements={stockStatements} pendingSOs={pendingSOs} />}
+        {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} stockStatements={stockStatements} pendingSOs={[]} />}
         {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
         {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
         {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
         {view === 'user-manual' && <UserManual />}
-        {view === 'stock' && <StockManager stockStatements={stockStatements} setStockStatements={setStockStatements} pendingSOs={pendingSOs} />}
-        {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
+        {view === 'stock' && <StockManager stockStatements={stockStatements} setStockStatements={setStockStatements} pendingSOs={[]} />}
       </main>
 
       {/* Mobile Bottom Navigation */}
