@@ -428,11 +428,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         const spacerData = funnelData.map(value => (maxDataValue - value) / 2);
 
         const colorMap: Record<QuotationStatus, string> = {
-            'Open': '#3b82f6', // Blue 500
-            'PO received': '#22c55e', // Green 500
+            'Open': '#3b82f6',           // Blue 500
+            'PO received': '#22c55e',    // Green 500
             'Partial PO Received': '#14b8a6', // Teal 500
-            'Expired': '#f59e0b', // Amber 500
-            'Lost': '#ef4444', // Red 500
+            'Under Review': '#f59e0b',   // Amber 500
+            'Need Amendment': '#8b5cf6', // Violet 500
+            'Expired': '#fb923c',        // Orange 400
+            'Lost': '#ef4444',           // Red 500
         };
         const funnelColors = funnelCounts.map(item => colorMap[item.status]);
 

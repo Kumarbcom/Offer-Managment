@@ -18,4 +18,4 @@ export const PAYMENT_TERMS = [
 export const PREPARED_BY_LIST = ['Kumar', 'Vandita', 'Ranjan'] as const;
 export const PRODUCTS_BRANDS = ['Lapp', 'Eaton', 'Polycab', 'Mennakes', 'Luker', 'Hager', 'Others'] as const;
 export const MODES_OF_ENQUIRY = ['Customer Email', 'Customer What’s app', 'Sales Person Email', 'Sales Person What’s app', 'Verbal', 'Walk-in'] as const;
-export const QUOTATION_STATUSES = ['Open', 'PO received', 'Partial PO Received', 'Expired', 'Lost'] as const;
+export const QUOTATION_STATUSES = ['Open', 'PO received', 'Partial PO Received', 'Under Review', 'Need Amendment', 'Expired', 'Lost'] as const;

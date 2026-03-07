@@ -19,7 +19,7 @@ const ACTION_CONFIG: Record<string, {
     bgColor: string;
     borderColor: string;
     description: string;
-    newStatus?: string;
+    newStatus: string;
 }> = {
     accepted: {
         label: 'Offer Accepted',
@@ -37,6 +37,7 @@ const ACTION_CONFIG: Record<string, {
         bgColor: '#fffbeb',
         borderColor: '#f59e0b',
         description: 'You are indicating that the quotation is currently under internal review. Our team will follow up with you.',
+        newStatus: 'Under Review',
     },
     amendment: {
         label: 'Need Amendment',
@@ -45,6 +46,7 @@ const ACTION_CONFIG: Record<string, {
         bgColor: '#eef2ff',
         borderColor: '#6366f1',
         description: 'You are requesting an amendment to the quotation. Our team will contact you to discuss the changes.',
+        newStatus: 'Need Amendment',
     },
     rejected: {
         label: 'Offer Rejected',
