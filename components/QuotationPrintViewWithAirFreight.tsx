@@ -17,7 +17,7 @@ const numberToWords = (num: number): string => {
     const number = parseFloat(num.toFixed(2));
     const integerPart = Math.floor(number);
     if (integerPart > 999999999) return "Number too large";
-    
+
     const toWords = (n: number): string => {
         let str = '';
         if (n >= 10000000) { str += toWords(Math.floor(n / 10000000)) + ' Crore '; n %= 10000000; }
@@ -48,7 +48,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
         const amount = unitPrice * item.moq;
         // Safety Check: Ensure airFreightDetails exists before accessing
         const freightAmount = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * 150) * item.moq : 0;
-        
+
         acc.totalAmount += amount;
         acc.totalFreight += freightAmount;
         return acc;
@@ -69,7 +69,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
             <div className="print-main-content">
                 <header className="flex items-center justify-between pb-2 border-b-2 border-slate-800 relative">
                     <div className="w-20 h-12 flex items-center justify-center shrink-0">
-                         {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[10px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo (Upload in Dashboard)</div>}
+                        {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[10px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo (Upload in Dashboard)</div>}
                     </div>
                     <div className="flex-1 text-center px-2">
                         <h1 className="text-xl font-bold text-slate-900 uppercase leading-tight whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</h1>
@@ -98,7 +98,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         <p><span className="font-semibold">Enquiry Date:</span> {new Date(quotation.enquiryDate).toLocaleDateString('en-GB')}</p>
                     </div>
                 </section>
-                
+
                 <div className="my-2 text-sm">
                     <p className="font-semibold mb-1">Dear Sir / Madam,</p>
                     <p>Please find below our favourable offer for your requirement for {quotation.productsBrand} Products.</p>
@@ -139,7 +139,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                                 <tr key={index}>
                                     <td className="p-1 border text-center">{index + 1}</td>
                                     <td className="p-1 border font-medium">
-                                         {partNoUrl ? (
+                                        {partNoUrl ? (
                                             <a href={partNoUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
                                                 {item.partNo}
                                             </a>
@@ -170,7 +170,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                             <span className="font-semibold">Subtotal</span>
                             <span>₹{totals.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                         <div className="flex justify-between p-1">
+                        <div className="flex justify-between p-1">
                             <span className="font-semibold">Total Air Freight</span>
                             <span>₹{totals.totalFreight.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
@@ -185,7 +185,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
 
                 <section className="border border-slate-200 p-2 rounded-md mt-2 print-no-break">
                     <h3 className="font-bold text-slate-800 mb-1 text-sm">Terms & Conditions:</h3>
-                     <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
+                    <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
                         <li><span className="font-semibold">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
                         <li><span className="font-semibold">Goods Service Tax:</span> GST 18% Or As Applicable at the Time of Delivery.</li>
                         <li><span className="font-semibold">Delivery:</span> As Mentioned Above, Subject to Prior Sales.</li>
@@ -193,6 +193,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         <li><span className="font-semibold">Payment terms:</span> {quotation.paymentTerms}</li>
                         <li><span className="font-semibold">Validity:</span> This Offer is Valid for One Week From the Date of Offer.</li>
                         <li><span className="font-semibold">Other terms:</span> {quotation.otherTerms}</li>
+                        <li><strong>Please mention the Quotation Number and If material required in Air please mention the freight separate in the PO for faster action.</strong></li>
                     </ol>
                 </section>
 

@@ -17,7 +17,7 @@ const numberToWords = (num: number): string => {
     const number = parseFloat(num.toFixed(2));
     const integerPart = Math.floor(number);
     if (integerPart > 999999999) return "Number too large";
-    
+
     const toWords = (n: number): string => {
         let str = '';
         if (n >= 10000000) { str += toWords(Math.floor(n / 10000000)) + ' Crore '; n %= 10000000; }
@@ -62,7 +62,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
             <div className="print-main-content">
                 <header className="flex items-center justify-between pb-2 border-b-2 border-slate-800 relative">
                     <div className="w-20 h-12 flex items-center justify-center shrink-0">
-                         {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[10px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo (Upload in Dashboard)</div>}
+                        {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[10px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo (Upload in Dashboard)</div>}
                     </div>
                     <div className="flex-1 text-center px-2">
                         <h1 className="text-xl font-bold text-slate-900 uppercase leading-tight whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</h1>
@@ -91,7 +91,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                         <p><span className="font-semibold">Enquiry Date:</span> {new Date(quotation.enquiryDate).toLocaleDateString('en-GB')}</p>
                     </div>
                 </section>
-                
+
                 <div className="my-2 text-sm">
                     <p className="font-semibold mb-1">Dear Sir / Madam,</p>
                     <p>Please find below our favourable offer for your requirement for {quotation.productsBrand} Products.</p>
@@ -140,7 +140,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                         })}
                     </tbody>
                 </table>
-                
+
                 <section className="flex justify-end mt-2">
                     <div className="w-1/3">
                         <div className="flex justify-between p-2 bg-slate-100 rounded-md">
@@ -162,9 +162,10 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                         <li><span className="font-semibold">Payment terms:</span> {quotation.paymentTerms}</li>
                         <li><span className="font-semibold">Validity:</span> This Offer is Valid for One Week From the Date of Offer.</li>
                         <li><span className="font-semibold">Other terms:</span> {quotation.otherTerms}</li>
+                        <li><strong>Please mention the Quotation Number and If material required in Air please mention the freight separate in the PO for faster action.</strong></li>
                     </ol>
                 </section>
-                
+
                 <div className="mt-2 text-sm">
                     <p>Hope the above mentioned details are in line with your requirement, for any further clarification please feel free and contact us.</p>
                     <p className="mt-1">Thanking you,</p>
