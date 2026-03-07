@@ -715,21 +715,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     </div>
                 </div>
 
-                {/* Customer Response Panel – hidden when printing */}
-                {formData.id > 0 && (
-                    <div className="no-print max-w-2xl mx-auto px-4 mb-2">
-                        <CustomerResponsePanel
-                            quotation={formData}
-                            customerName={selectedCustomerObj.name}
-                            onStatusUpdate={handleCustomerResponseStatusUpdate}
-                        />
-                    </div>
-                )}
-
                 <div id="print-area">
-                    {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} />}
-                    {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} />}
-                    {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} />}
+                    {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} />}
+                    {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} />}
+                    {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} />}
                 </div>
             </div>
         );

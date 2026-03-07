@@ -1,13 +1,15 @@
 
 import React from 'react';
-import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
+import type { Quotation, Customer, SalesPerson, PreparedBy, QuotationStatus } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
+import { CustomerResponsePanel } from './CustomerResponsePanel';
 
 interface QuotationPrintViewProps {
     quotation: Quotation;
     customer: Customer;
     salesPerson?: SalesPerson;
     logoUrl: string | null;
+    onStatusUpdate?: (newStatus: QuotationStatus) => Promise<void>;
 }
 
 const numberToWords = (num: number): string => {
@@ -43,7 +45,7 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
 };
 
 
-export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson, logoUrl }) => {
+export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson, logoUrl, onStatusUpdate }) => {
     const totalAmount = (quotation.details || []).reduce((sum, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         return sum + (unitPrice * item.moq);
@@ -175,6 +177,15 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                     <p>Hope the above mentioned details are in line with your requirement, for any further clarification please feel free and contact us.</p>
                     <p className="mt-1">Thanking you,</p>
                 </div>
+
+                {/* Customer Response Panel - visible in PDF */}
+                {onStatusUpdate && quotation.id > 0 && (
+                    <CustomerResponsePanel
+                        quotation={quotation}
+                        customerName={customer.name}
+                        onStatusUpdate={onStatusUpdate}
+                    />
+                )}
             </div>
 
             <footer className="mt-2 pt-2 flex justify-between items-end border-t print-footer">
