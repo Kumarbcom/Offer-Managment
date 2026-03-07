@@ -707,17 +707,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         'Open': 'border-blue-500 text-blue-600',
                         'PO received': 'border-green-500 text-green-600',
                         'Partial PO Received': 'border-teal-500 text-teal-600',
+                        'Under Review': 'border-amber-500 text-amber-600',
+                        'Need Amendment': 'border-violet-500 text-violet-600',
                         'Lost': 'border-rose-500 text-rose-600',
-                        'Expired': 'border-amber-500 text-amber-600'
+                        'Expired': 'border-orange-500 text-orange-600'
                     };
-                    const iconColor = colors[status].split(' ')[1];
+                    const colorEntry = colors[status] || 'border-slate-400 text-slate-600';
+                    const iconColor = colorEntry.split(' ')[1];
                     return (
                         <motion.div
                             key={status}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 + (i * 0.05) }}
-                            className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colors[status].split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]`}
+                            className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colorEntry.split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]`}
                         >
                             <StatusIcon status={status} className={`w-7 h-7 mb-1 ${iconColor}`} />
                             <div className="text-lg md:text-xl font-bold text-black">{overallStats[status].count.toLocaleString('en-IN')}</div>
