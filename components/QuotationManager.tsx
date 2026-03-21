@@ -269,7 +269,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
   const getInitials = (name: string) => name.charAt(0).toUpperCase() || '?';
   const getAvatarColor = (name: string) => {
-    const colors = ['bg-amber-100 text-amber-700 border-amber-200', 'bg-blue-100 text-blue-700 border-blue-200', 'bg-emerald-100 text-emerald-700 border-emerald-200', 'bg-indigo-100 text-indigo-700 border-indigo-200', 'bg-rose-100 text-rose-700 border-rose-200', 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200', 'bg-teal-100 text-teal-700 border-teal-200'];
+    const colors = [
+      'bg-gradient-to-br from-amber-400 to-orange-500 text-white border-white shadow-md',
+      'bg-gradient-to-br from-blue-400 to-indigo-600 text-white border-white shadow-md',
+      'bg-gradient-to-br from-emerald-400 to-teal-600 text-white border-white shadow-md',
+      'bg-gradient-to-br from-indigo-400 to-purple-600 text-white border-white shadow-md',
+      'bg-gradient-to-br from-rose-400 to-pink-600 text-white border-white shadow-md',
+      'bg-gradient-to-br from-fuchsia-400 to-purple-600 text-white border-white shadow-md',
+      'bg-gradient-to-br from-cyan-400 to-blue-600 text-white border-white shadow-md'
+    ];
     const sum = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[sum % colors.length];
   };
@@ -289,10 +297,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   if (quotations === null || salesPersons === null || isLoadingCustomers) return <div className="bg-white p-6 rounded-lg shadow-md text-center text-black">Loading...</div>;
 
   return (
-    <div className="bg-white p-2 md:p-3 rounded-lg shadow-sm border border-slate-200">
-      <div className="flex flex-wrap gap-2 justify-between items-center pb-2 border-b border-slate-200">
-        <h2 className="text-lg font-bold text-black">Quotations</h2>
-        <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 sm:w-auto w-full text-xs">
+    <div className="bg-white/90 backdrop-blur-xl p-4 md:p-6 rounded-2xl shadow-xl border border-white relative overflow-hidden ring-1 ring-slate-900/5">
+      {/* Decorative gradient blobs */}
+      <div className="absolute top-0 right-0 w-[40rem] h-[40rem] -mr-40 -mt-40 bg-gradient-to-br from-indigo-400/20 to-fuchsia-400/20 blur-3xl rounded-full pointer-events-none z-0"></div>
+      <div className="absolute bottom-0 left-0 w-[40rem] h-[40rem] -ml-40 -mb-40 bg-gradient-to-tr from-emerald-400/20 to-cyan-400/20 blur-3xl rounded-full pointer-events-none z-0"></div>
+      
+      <div className="relative z-10">
+        <div className="flex flex-wrap gap-4 justify-between items-center pb-4 border-b border-slate-200/60 mb-2">
+          <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 tracking-tight">Quotations</h2>
+          <div className="flex items-center gap-3 flex-grow sm:flex-grow-0 sm:w-auto w-full text-xs">
           <div className="relative flex-grow">
             <span className="absolute inset-y-0 left-0 flex items-center pl-2">
               <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none">
@@ -463,11 +476,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-4">
+      <div className="hidden md:block bg-white/60 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden mt-6">
         <div className="overflow-x-auto">
           {filteredAndSortedQuotations.length > 0 ? (
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50 border-b border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200/60">
+              <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/40 border-b-2 border-slate-200/60">
                 <tr>
                   <th className="px-4 py-3 w-10 text-center">
                     <input
@@ -489,12 +502,12 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                   <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-100">
+              <tbody className="bg-white/40 divide-y divide-slate-100/60">
                 {filteredAndSortedQuotations.map(q => {
                   const isSelected = selectedQuotationIds.has(q.id);
                   const customerName = getCustomerName(q.customerId);
                   return (
-                    <tr key={q.id} className={`${isSelected ? 'bg-indigo-50/50' : 'hover:bg-slate-50'} transition-colors duration-150`}>
+                    <tr key={q.id} className={`${isSelected ? 'bg-indigo-50/80 shadow-inner' : 'hover:bg-white/80 hover:shadow-sm'} transition-all duration-300 group`}>
                       <td className="px-4 py-3 text-center align-middle">
                         <input
                           type="checkbox"
@@ -601,9 +614,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
               </tbody>
             </table>
           ) : (
-            <p className="text-slate-500 font-medium text-center py-8 text-xs">{quotations.length > 0 ? 'No quotations match.' : 'No quotations found.'}</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="bg-slate-100 text-slate-400 p-4 rounded-full mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <p className="text-slate-500 font-bold text-sm tracking-wide">{quotations.length > 0 ? 'No quotations match your filters.' : 'No quotations found.'}</p>
+            </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
