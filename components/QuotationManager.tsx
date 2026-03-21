@@ -259,10 +259,20 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
   const SortableHeader: React.FC<{ title: string; sortKey: SortByType; className?: string }> = ({ title, sortKey, className = '' }) => (
-    <th className={`px-2 py-1 text-left text-xs font-semibold text-black uppercase tracking-wider cursor-pointer hover:bg-slate-100 ${className}`} onClick={() => handleSort(sortKey)}>
-      <div className="flex items-center"><span>{title}</span>{sortBy === sortKey && <span className="ml-1 text-black">{sortOrder === 'asc' ? '▲' : '▼'}</span>}</div>
+    <th className={`px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors ${className}`} onClick={() => handleSort(sortKey)}>
+      <div className="flex items-center gap-1">
+        <span>{title}</span>
+        {sortBy === sortKey && <span className="text-indigo-600 text-[10px]">{sortOrder === 'asc' ? '▲' : '▼'}</span>}
+      </div>
     </th>
   );
+
+  const getInitials = (name: string) => name.charAt(0).toUpperCase() || '?';
+  const getAvatarColor = (name: string) => {
+    const colors = ['bg-amber-100 text-amber-700 border-amber-200', 'bg-blue-100 text-blue-700 border-blue-200', 'bg-emerald-100 text-emerald-700 border-emerald-200', 'bg-indigo-100 text-indigo-700 border-indigo-200', 'bg-rose-100 text-rose-700 border-rose-200', 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200', 'bg-teal-100 text-teal-700 border-teal-200'];
+    const sum = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[sum % colors.length];
+  };
 
   const filterDescription = useMemo(() => {
     if (!quotationFilter) return '';
@@ -427,116 +437,147 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       </div>
 
       {/* Desktop Table View */}
-      <div className="overflow-x-auto mt-2 -mx-2 hidden md:block">
-        {filteredAndSortedQuotations.length > 0 ? (
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-2 py-1 w-8">
-                  <input
-                    type="checkbox"
-                    className="h-3 w-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    checked={isAllSelected}
-                    onChange={handleSelectAll}
-                    aria-label="Select all"
-                  />
-                </th>
-                <SortableHeader title="ID" sortKey="id" className="w-12" />
-                <SortableHeader title="Date" sortKey="quotationDate" />
-                <SortableHeader title="Customer" sortKey="customer" />
-                <SortableHeader title="Contact" sortKey="contactPerson" />
-                <SortableHeader title="Sales Person" sortKey="salesPerson" />
-                <SortableHeader title="Amount" sortKey="totalAmount" className="text-right" />
-                <SortableHeader title="Status" sortKey="status" />
-                <th className="px-2 py-1 text-left text-xs font-semibold text-black uppercase tracking-wider">Comments</th>
-                <th className="px-2 py-1 text-right text-xs font-semibold text-black uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
-              {filteredAndSortedQuotations.map(q => {
-                const isSelected = selectedQuotationIds.has(q.id);
-                return (
-                  <tr key={q.id} className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-xs`}>
-                    <td className="px-2 py-1">
-                      <input
-                        type="checkbox"
-                        className="h-3 w-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        checked={isSelected}
-                        onChange={() => handleSelectOne(q.id)}
-                        aria-label={`Select quotation ${q.id}`}
-                      />
-                    </td>
-                    <td className="px-2 py-1 whitespace-nowrap text-black">{q.id}</td>
-                    <td className="px-2 py-1 whitespace-nowrap text-black">{new Date(q.quotationDate).toLocaleDateString()}</td>
-                    <td className="px-2 py-1 whitespace-nowrap font-medium text-black max-w-[150px] truncate" title={getCustomerName(q.customerId)}>{getCustomerName(q.customerId)}</td>
-                    <td className="px-2 py-1 whitespace-nowrap">
-                      <div className="font-medium text-black truncate max-w-[120px]" title={q.contactPerson}>{q.contactPerson}</div>
-                      <div className="text-[10px] text-black">{q.contactNumber}</div>
-                    </td>
-                    <td className="px-2 py-1 whitespace-nowrap text-black">{getSalesPersonName(q.salesPersonId)}</td>
-                    <td className="px-2 py-1 whitespace-nowrap text-black text-right">{calculateTotalAmount(q.details).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}</td>
-                    <td className="px-2 py-1 whitespace-nowrap text-black">
-                      {canEdit ? (
-                        <select
-                          value={q.status}
-                          onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
-                          onClick={(e) => e.stopPropagation()}
-                          className={`px-1.5 py-0.5 text-[10px] leading-4 font-bold rounded-full border-0 cursor-pointer focus:ring-1 focus:ring-blue-500 focus:outline-none ${getStatusClass(q.status)}`}
-                          aria-label={`Change status`}
-                        >
-                          {QUOTATION_STATUSES.map(status => (
-                            <option key={status} value={status} className="bg-white text-black font-semibold">
-                              {status}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <div className={`text-[10px] px-2 py-0.5 rounded-full font-bold inline-block ${getStatusClass(q.status)}`}>{q.status}</div>
-                      )}
-                    </td>
-                    <td className="px-2 py-1 whitespace-nowrap text-black max-w-[120px]">
-                      <input
-                        type="text"
-                        defaultValue={q.comments || ''}
-                        onBlur={(e) => handleCommentChange(q.id, e.target.value)}
-                        onChange={() => { }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                        className="w-full p-0.5 border border-transparent hover:border-slate-300 focus:border-slate-300 rounded-sm text-xs focus:outline-none disabled:bg-transparent disabled:border-transparent truncate text-black"
-                        placeholder="..."
-                        disabled={!isCommentEditable}
-                        title={q.comments || ''}
-                      />
-                    </td>
-                    <td className="px-2 py-1 whitespace-nowrap text-right text-xs font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button onClick={() => handleWhatsAppShare(q)} className="text-green-600 hover:text-green-800 transition-colors" title="Share via WhatsApp">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z" />
-                          </svg>
-                        </button>
-                        <button onClick={() => handleEdit(q.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title={canEdit ? 'Edit' : 'View'}>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        {userRole === 'Admin' && (
-                          <button onClick={() => handleDelete(q.id)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-4">
+        <div className="overflow-x-auto">
+          {filteredAndSortedQuotations.length > 0 ? (
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      checked={isAllSelected}
+                      onChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </th>
+                  <SortableHeader title="ID" sortKey="id" className="w-16" />
+                  <SortableHeader title="Date" sortKey="quotationDate" />
+                  <SortableHeader title="Customer" sortKey="customer" />
+                  <SortableHeader title="Contact" sortKey="contactPerson" />
+                  <SortableHeader title="Sales Person" sortKey="salesPerson" />
+                  <SortableHeader title="Amount" sortKey="totalAmount" className="text-right" />
+                  <SortableHeader title="Status" sortKey="status" />
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Comments</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-100">
+                {filteredAndSortedQuotations.map(q => {
+                  const isSelected = selectedQuotationIds.has(q.id);
+                  const customerName = getCustomerName(q.customerId);
+                  return (
+                    <tr key={q.id} className={`${isSelected ? 'bg-indigo-50/50' : 'hover:bg-slate-50'} transition-colors duration-150`}>
+                      <td className="px-4 py-3 text-center align-middle">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          checked={isSelected}
+                          onChange={() => handleSelectOne(q.id)}
+                          aria-label={`Select quotation ${q.id}`}
+                        />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-bold text-indigo-600 text-xs">#{q.id}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-500 text-[11px] font-medium">
+                        {new Date(q.quotationDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm ${getAvatarColor(customerName)}`}>
+                            {getInitials(customerName)}
+                          </div>
+                          <div className="font-bold text-slate-800 text-xs truncate max-w-[200px]" title={customerName}>
+                            {customerName}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-semibold text-slate-700 text-xs truncate max-w-[140px]" title={q.contactPerson}>{q.contactPerson}</div>
+                        <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                          {q.contactNumber}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-600 text-xs font-medium">
+                        {getSalesPersonName(q.salesPersonId)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <div className="font-bold text-slate-800 text-xs bg-slate-100 inline-block px-2 py-1 rounded-lg">
+                          {calculateTotalAmount(q.details).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {canEdit ? (
+                          <div className="relative inline-block w-full max-w-[110px]">
+                            <select
+                              value={q.status}
+                              onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`w-full appearance-none pl-3 pr-6 py-1 text-[10px] leading-4 font-bold rounded-md border shadow-sm cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors ${getStatusClass(q.status)}`}
+                              style={{ borderWidth: '1px' }}
+                              aria-label={`Change status`}
+                            >
+                              {QUOTATION_STATUSES.map(status => (
+                                <option key={status} value={status} className="bg-white text-slate-800 font-semibold py-1">
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 opacity-60">
+                              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className={`text-[10px] px-2.5 py-1 rounded-md border font-bold inline-block shadow-sm ${getStatusClass(q.status)}`}>{q.status}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-800 max-w-[140px]">
+                        <input
+                          type="text"
+                          defaultValue={q.comments || ''}
+                          onBlur={(e) => handleCommentChange(q.id, e.target.value)}
+                          onChange={() => { }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                          className="w-full px-2 py-1 border border-transparent hover:border-slate-200 focus:border-indigo-300 focus:ring-1 focus:ring-indigo-300 rounded-md text-[11px] bg-transparent hover:bg-slate-50 focus:bg-white transition-all outline-none truncate placeholder-slate-300"
+                          placeholder="Add comment..."
+                          disabled={!isCommentEditable}
+                          title={q.comments || ''}
+                        />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end space-x-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleWhatsAppShare(q)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Share via WhatsApp">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                              <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z" />
                             </svg>
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-black text-center py-8 text-xs">{quotations.length > 0 ? 'No quotations match.' : 'No quotations found.'}</p>
-        )}
+                          <button onClick={() => handleEdit(q.id)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title={canEdit ? 'Edit' : 'View'}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                              <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          {userRole === 'Admin' && (
+                            <button onClick={() => handleDelete(q.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="Delete">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-slate-500 font-medium text-center py-8 text-xs">{quotations.length > 0 ? 'No quotations match.' : 'No quotations found.'}</p>
+          )}
+        </div>
       </div>
     </div>
   );
