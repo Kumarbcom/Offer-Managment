@@ -716,9 +716,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 </div>
 
                 <div id="print-area">
-                    {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} />}
-                    {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} />}
-                    {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} />}
+                    {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} allQuotations={quotations} />}
+                    {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} allQuotations={quotations} />}
+                    {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} allQuotations={quotations} />}
                 </div>
             </div>
         );

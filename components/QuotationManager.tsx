@@ -99,8 +99,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
     // 1. Identify Current Sales Person ID if applicable
     let currentSalesPersonId: number | undefined;
+    let currentUserHasSalesPersonRecord = false;
     if (userRole === 'Sales Person') {
-      currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
+      const matchedSP = salesPersons?.find(sp => sp.name === currentUser.name);
+      if (matchedSP) {
+        currentSalesPersonId = matchedSP.id;
+        currentUserHasSalesPersonRecord = true;
+      }
     }
 
     const preFilteredQuotations = quotationFilter
@@ -114,8 +119,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     return preFilteredQuotations
       .filter(q => {
         // 2. Role-Based Restriction
-        if (userRole === 'Sales Person' && currentSalesPersonId !== undefined) {
-          if (q.salesPersonId !== currentSalesPersonId) return false;
+        if (userRole === 'Sales Person') {
+          if (currentUserHasSalesPersonRecord) {
+            // User has a salesPerson record — filter by salesPersonId only
+            if (q.salesPersonId !== currentSalesPersonId) return false;
+          }
+          // else: Sales Person user with no salesPerson record (e.g., Vandita)
+          // — show ALL quotations, no filtering applied
         }
 
         // 3. Search Logic

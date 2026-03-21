@@ -124,20 +124,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
         // Determine if current user is restricted
         let currentSalesPersonId: number | undefined;
+        let currentUserHasSalesPersonRecord = false;
         if (currentUser.role === 'Sales Person') {
-            currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
+            const matchedSP = salesPersons?.find(sp => sp.name === currentUser.name);
+            if (matchedSP) {
+                currentSalesPersonId = matchedSP.id;
+                currentUserHasSalesPersonRecord = true;
+            }
         }
 
         return quotations.filter(q => {
             let salesPersonMatch = true;
 
             if (currentUser.role === 'Sales Person') {
-                if (currentSalesPersonId !== undefined) {
+                if (currentUserHasSalesPersonRecord) {
+                    // User has a salesPerson record — filter by salesPersonId only
                     salesPersonMatch = q.salesPersonId === currentSalesPersonId;
-                } else {
-                    // Should not happen if data is correct, but fail safe
-                    salesPersonMatch = false;
                 }
+                // else: Sales Person user with no salesPerson record (e.g., Vandita)
+                // — show ALL quotations, salesPersonMatch stays true
             } else {
                 // Admin / Manager logic
                 salesPersonMatch = selectedSalesPersonId === 'all' || q.salesPersonId === selectedSalesPersonId;

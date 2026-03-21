@@ -1,0 +1,7 @@
+Fix Vandita quotations, new FY numbering, install react types
+
+- Vandita (Sales Person with no salesPersons record) now sees all quotations
+- New quotation number format from 01-Apr-2026: SKC/QTN/0001-2026-27
+- Added utils/quotationNumber.ts with fiscal year logic
+- Updated all 3 print views to use new numbering
+- Added @types/react and @types/react-dom to fix TS errors
