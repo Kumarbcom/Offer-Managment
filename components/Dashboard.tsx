@@ -615,11 +615,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             >
                 <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
                     <div className="flex items-center gap-3">
-                        <div className="bg-indigo-600 p-1.5 rounded-lg shadow-sm">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg ring-2 ring-indigo-500/30 ring-offset-2 ring-offset-white">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-black tracking-tight">Dashboard</h2>
+                            <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-fuchsia-600 tracking-tight">Siddhi Kable Corporation Pvt Ltd</h2>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">Performance Dashboard</p>
                         </div>
                     </div>
                     {/* Logo Upload for Admin - Moved for visibility */}
@@ -711,52 +712,57 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     </svg>
                     <div className="text-2xl font-bold text-black mb-0.5">{uniqueCustomerCount.toLocaleString('en-IN')}</div>
                     <div className="text-[9px] font-bold text-black uppercase tracking-wider text-center">Active Customers</div>
+                    <div className="text-3xl md:text-4xl font-black drop-shadow-md">{uniqueCustomerCount.toLocaleString('en-IN')}</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest mt-2 text-center text-purple-200">Active Customers</div>
                 </motion.div>
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-2 rounded-xl shadow-sm text-white flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]"
+                    className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-4 rounded-2xl shadow-xl flex flex-col justify-center items-center text-white transform hover:scale-105 transition-all duration-300 ring-4 ring-indigo-500/20"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white mb-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-indigo-200 mb-2 drop-shadow-md">
                         <path fillRule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875ZM12.75 12a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V18a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V12Z" clipRule="evenodd" />
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
-                    <div className="text-xl md:text-2xl font-bold">{overallStats.total.count.toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] font-medium opacity-100">{formatCurrencyCompact(overallStats.total.value)}</div>
-                    <div className="text-[9px] font-bold uppercase tracking-wider mt-1 text-center">Total Enquiries</div>
+                    <div className="text-3xl md:text-4xl font-black drop-shadow-md">{overallStats.total.count.toLocaleString('en-IN')}</div>
+                    <div className="text-[12px] font-bold text-indigo-100 bg-black/20 px-3 py-1 rounded-full mt-2 backdrop-blur-sm">{formatCurrencyCompact(overallStats.total.value)}</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest mt-2 text-center text-indigo-200">Total Enquiries</div>
                 </motion.div>
                 {QUOTATION_STATUSES.map((status, i) => {
                     const colors: Record<string, string> = {
-                        'Open': 'border-blue-500 text-blue-600',
-                        'PO received': 'border-green-500 text-green-600',
-                        'Partial PO Received': 'border-teal-500 text-teal-600',
-                        'Under Review': 'border-amber-500 text-amber-600',
-                        'Need Amendment': 'border-violet-500 text-violet-600',
-                        'Lost': 'border-rose-500 text-rose-600',
-                        'Expired': 'border-orange-500 text-orange-600'
+                        'Open': 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/30',
+                        'PO received': 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-emerald-500/30',
+                        'Partial PO Received': 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-teal-500/30',
+                        'Under Review': 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-amber-500/30',
+                        'Need Amendment': 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/30',
+                        'Lost': 'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-rose-500/30',
+                        'Expired': 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-orange-500/30'
                     };
-                    const colorEntry = colors[status] || 'border-slate-400 text-slate-600';
-                    const iconColor = colorEntry.split(' ')[1];
+                    const colorEntry = colors[status] || 'bg-slate-500 text-white';
                     return (
                         <motion.div
                             key={status}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 + (i * 0.05) }}
-                            className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colorEntry.split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]`}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ delay: 0.2 + (i * 0.05), duration: 0.2 }}
+                            className={`${colorEntry} p-3 rounded-2xl shadow-lg flex flex-col justify-center items-center min-h-[110px] relative overflow-hidden`}
                         >
-                            <StatusIcon status={status} className={`w-7 h-7 mb-1 ${iconColor}`} />
-                            <div className="text-lg md:text-xl font-bold text-black">{overallStats[status].count.toLocaleString('en-IN')}</div>
-                            <div className={`text-[10px] font-semibold text-black mt-0.5`}>{formatCurrencyCompact(overallStats[status].value)}</div>
-                            <div className="text-[9px] font-bold text-black uppercase tracking-wider mt-1 text-center truncate w-full">{status}</div>
+                            <div className="absolute -right-4 -top-4 opacity-20 transform rotate-12">
+                                <StatusIcon status={status} className="w-16 h-16" />
+                            </div>
+                            <StatusIcon status={status} className="w-6 h-6 mb-2 drop-shadow-md z-10" />
+                            <div className="text-2xl md:text-3xl font-black drop-shadow-md z-10">{overallStats[status].count.toLocaleString('en-IN')}</div>
+                            <div className="text-[11px] font-bold bg-black/20 px-2.5 py-0.5 rounded-full mt-1.5 backdrop-blur-sm z-10">{formatCurrencyCompact(overallStats[status].value)}</div>
+                            <div className="text-[9px] font-black uppercase tracking-widest mt-2 text-center truncate w-full opacity-90 z-10">{status}</div>
                         </motion.div>
                     )
                 })}
             </div>
 
             {/* Charts Row 1: Funnel, Value Trend, Top 5 Customers */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mt-6">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}

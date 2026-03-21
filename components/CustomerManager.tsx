@@ -278,20 +278,23 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
 
     return (
         <div className="space-y-6">
-            <div className="bg-slate-50 p-2 rounded-lg shadow-sm border border-slate-200">
-                <h3 className="text-base font-semibold text-black mb-1">
+            <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl shadow-lg border border-slate-100 relative overflow-hidden ring-1 ring-slate-900/5">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-emerald-400/10 blur-3xl rounded-full pointer-events-none"></div>
+                
+                <h3 className="text-lg font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 mb-3 tracking-tight flex items-center gap-2">
+                    <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                     Overall Quotation Summary
                 </h3>
-                <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex flex-wrap gap-3 items-center relative z-10">
                     <div
                         onClick={() => onFilterQuotations({})}
-                        className="cursor-pointer text-blue-700 hover:text-blue-900 transition-colors text-sm font-semibold p-1 rounded-md hover:bg-blue-100/50"
+                        className="cursor-pointer bg-slate-100 hover:bg-white text-indigo-700 hover:text-indigo-800 transition-all text-sm shadow-sm hover:shadow-md p-2 rounded-xl flex items-center border border-slate-200/60"
                         title={`View all ${allQuotationStats.total.count} quotations`}
                     >
-                        <span>Total Enquiries: </span>
-                        <span className="font-bold">{allQuotationStats.total.count}</span>
-                        <span className="text-slate-400 mx-1">|</span>
-                        <span className="font-bold">{formatCurrency(allQuotationStats.total.value)}</span>
+                        <span className="opacity-80">Total Enquiries: </span>
+                        <span className="font-black ml-1 text-lg">{allQuotationStats.total.count}</span>
+                        <span className="text-slate-300 mx-2">|</span>
+                        <span className="font-black bg-indigo-100 px-2 py-0.5 rounded text-indigo-800">{formatCurrency(allQuotationStats.total.value)}</span>
                     </div>
                     {QUOTATION_STATUSES.map(status => {
                         const stats = allQuotationStats.byStatus[status];
@@ -301,12 +304,12 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                             <div
                                 key={status}
                                 onClick={() => onFilterQuotations({ status: status })}
-                                className={`cursor-pointer ${colors.text} hover:bg-opacity-80 transition-opacity text-sm font-semibold p-1 rounded-md hover:bg-current/10`}
+                                className={`cursor-pointer ${colors.bg} ${colors.text} hover:opacity-90 transition-all text-sm shadow-sm hover:shadow-md hover:-translate-y-0.5 p-2 rounded-xl flex items-center border border-white/40 ring-1 ring-black/5`}
                                 title={`View ${stats.count} '${status}' quotations`}
                             >
-                                <span>{status}: </span>
-                                <span className="font-bold">{stats.count}</span>
-                                <span className="text-slate-400 mx-1">|</span>
+                                <span className="opacity-90 font-semibold">{status}: </span>
+                                <span className="font-black ml-1 text-lg">{stats.count}</span>
+                                <span className="opacity-30 mx-2">|</span>
                                 <span className="font-bold">{formatCurrency(stats.value)}</span>
                             </div>
                         )
@@ -314,44 +317,50 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                 </div>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-black">Customers ({totalCount})</h2>
-                    <div className="flex flex-wrap gap-2 text-sm">
+            <div className="bg-white/90 backdrop-blur-xl p-4 md:p-6 rounded-2xl shadow-lg border border-slate-100 relative overflow-hidden">
+                <div className="flex flex-wrap gap-4 justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                    <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-500 tracking-tight">
+                        Customers <span className="text-lg bg-slate-100 text-slate-600 px-3 py-1 rounded-full ml-1 align-middle">{totalCount}</span>
+                    </h2>
+                    <div className="flex flex-wrap gap-2 text-sm justify-end">
                         <button
                             onClick={handleExport}
                             disabled={isUploading}
-                            className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                            className="bg-white border-2 border-slate-200 hover:border-teal-500 hover:text-teal-600 hover:bg-teal-50 text-slate-700 font-bold py-1.5 px-4 rounded-xl transition duration-300 disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                         >
-                            Export Visible
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Export
                         </button>
                         <button
                             onClick={handleDownloadTemplate}
                             disabled={isUploading}
-                            className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                            className="bg-white border-2 border-slate-200 hover:border-sky-500 hover:text-sky-600 hover:bg-sky-50 text-slate-700 font-bold py-1.5 px-4 rounded-xl transition duration-300 disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                         >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             Template
                         </button>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls" />
                         <button
                             onClick={handleUploadClick}
                             disabled={isUploading}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                            className="bg-white border-2 border-slate-200 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 text-slate-700 font-bold py-1.5 px-4 rounded-xl transition duration-300 disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                         >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                             {isUploading ? 'Uploading...' : 'Upload'}
                         </button>
                         <button
                             onClick={handleAddNew}
                             disabled={isUploading}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                            className="bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-1.5 px-5 rounded-xl shadow-lg ring-2 ring-blue-500/30 transition duration-300 disabled:opacity-50 flex items-center gap-1.5"
                         >
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"></path></svg>
                             Add New
                         </button>
                     </div>
                 </div>
-                {isUploading && (<div className="my-2 p-2 text-center text-sm font-semibold text-indigo-700 bg-indigo-100 rounded-md" role="status">{uploadProgress}</div>)}
+                {isUploading && (<div className="my-4 p-3 text-center text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl" role="status">{uploadProgress}</div>)}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2 mb-4 pb-3 border-b border-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-6 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
                     <div>
                         <label htmlFor="searchTerm" className="block text-xs font-medium text-black">Search by Name</label>
                         <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. ABC Corp" />
@@ -409,14 +418,21 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                 </thead>
                                 <tbody className="bg-white divide-y divide-slate-200">
                                     {displayedCustomers.map(customer => (
-                                        <tr key={customer.id} className="hover:bg-slate-50/70">
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.id}</td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-black">{customer.name}</td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-black max-w-xs truncate">{customer.address}</td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.city}</td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.pincode}</td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{getSalesPersonName(customer.salesPersonId)}</td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-black">
+                                        <tr key={customer.id} className="hover:bg-indigo-50/40 transition-colors duration-200 group">
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500 font-medium">#{customer.id}</td>
+                                            <td className="px-4 py-3 text-sm font-bold text-slate-800">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm border border-indigo-200/50">
+                                                        {customer.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span className="truncate max-w-[200px]" title={customer.name}>{customer.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-500 max-w-[200px] truncate" title={customer.address}>{customer.address}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 font-medium">{customer.city}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">{customer.pincode}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700 font-semibold">{getSalesPersonName(customer.salesPersonId)}</td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm">
                                                 <div className="flex flex-col items-start gap-1">
                                                     {QUOTATION_STATUSES.map(status => {
                                                         const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
@@ -427,21 +443,27 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                                             <div
                                                                 key={status}
                                                                 onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
-                                                                className={`cursor-pointer hover:underline ${colors.text} text-xs font-semibold`}
+                                                                className={`cursor-pointer group/stat hover:scale-105 transition-transform ${colors.bg} ${colors.text} text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded flex items-center shadow-sm w-max`}
                                                                 title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
                                                             >
                                                                 <span>{status}: </span>
-                                                                <span className="font-bold">{relevantQuotes.length}</span>
-                                                                <span className="text-slate-400 mx-1">|</span>
-                                                                <span className="font-bold">{formatCurrency(totalValue)}</span>
+                                                                <span className="font-black ml-1">{relevantQuotes.length}</span>
+                                                                <span className="opacity-40 mx-1.5">|</span>
+                                                                <span className="font-bold border-l border-current/20 pl-1.5">{formatCurrency(totalValue)}</span>
                                                             </div>
                                                         )
                                                     })}
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                                <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
-                                                <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+                                            <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                                <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => handleEdit(customer)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-colors" title="Edit Customer">
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                    </button>
+                                                    <button onClick={() => handleDelete(customer.id)} className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-lg transition-colors" title="Delete Customer">
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
