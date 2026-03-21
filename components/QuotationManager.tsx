@@ -352,88 +352,114 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       )}
 
       {/* Mobile Card View */}
-      <div className="block md:hidden mt-2 space-y-2">
-        {filteredAndSortedQuotations.map(q => (
-          <div key={q.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <div className="text-sm font-bold text-indigo-600 flex items-center gap-2" onClick={() => handleEdit(q.id)}>
-                  #{q.id} <span className="text-xs text-black font-normal">{new Date(q.quotationDate).toLocaleDateString()}</span>
+      <div className="block md:hidden mt-2 space-y-3 pb-8">
+        {filteredAndSortedQuotations.map(q => {
+          const customerName = getCustomerName(q.customerId);
+          return (
+            <div key={q.id} className="bg-white border border-slate-200 hover:border-indigo-300 rounded-xl p-4 shadow-sm transition-all">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1 pr-2">
+                  <div className="flex items-center gap-2 mb-1.5 align-middle">
+                    <div className="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md cursor-pointer hover:bg-indigo-100 transition-colors" onClick={() => handleEdit(q.id)}>
+                      #{q.id}
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">{new Date(q.quotationDate).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-1 pl-0.5">
+                    <div className={`h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm ${getAvatarColor(customerName)}`}>
+                      {getInitials(customerName)}
+                    </div>
+                    <div className="text-sm font-bold text-slate-800 leading-tight">{customerName}</div>
+                  </div>
+                  <div className="text-xs text-slate-600 font-medium pl-[34px]">{q.contactPerson}</div>
+                  <div className="text-[10.px] text-slate-400 font-medium pl-[34px]">{q.contactNumber}</div>
                 </div>
-                <div className="text-sm font-semibold text-black">{getCustomerName(q.customerId)}</div>
-                <div className="text-xs text-black">{q.contactPerson}</div>
-                <div className="text-xs text-black">{q.contactNumber}</div>
+                <div className="text-right shrink-0 flex flex-col items-end gap-2">
+                  <div className="text-sm font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">
+                    {calculateTotalAmount(q.details).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
+                  </div>
+                  <div className="relative inline-block w-full max-w-[120px]">
+                    {canEdit ? (
+                      <>
+                        <select
+                          value={q.status}
+                          onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`w-full appearance-none pl-3 pr-6 py-1 text-[10px] uppercase tracking-wide font-black rounded-md border shadow-sm cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors ${getStatusClass(q.status)}`}
+                          style={{ borderWidth: '1px' }}
+                        >
+                          {QUOTATION_STATUSES.map(status => (
+                            <option key={status} value={status} className="bg-white text-slate-800 font-semibold py-1">
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 opacity-60">
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </div>
+                      </>
+                    ) : (
+                      <div className={`text-[10px] text-center px-2.5 py-1 uppercase tracking-wide rounded-md border shadow-sm font-black w-full ${getStatusClass(q.status)}`}>{q.status}</div>
+                    )}
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md mt-1 border border-slate-100 uppercase tracking-widest">{getSalesPersonName(q.salesPersonId)}</div>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm font-bold text-black">{calculateTotalAmount(q.details).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}</div>
-                <div className="mt-1">
-                  {canEdit ? (
-                    <select
-                      value={q.status}
-                      onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
-                      onClick={(e) => e.stopPropagation()}
-                      className={`px-2 py-0.5 text-[10px] font-bold rounded-full border-0 cursor-pointer focus:ring-1 focus:ring-blue-500 focus:outline-none ${getStatusClass(q.status)} max-w-[100px]`}
+
+              {/* Comment Section for Mobile */}
+              <div className="border-t border-slate-100 pt-3 mt-1">
+                <div className="flex justify-between items-center mb-1">
+                  {isCommentEditable ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleCommentSection(q.id); }}
+                      className="text-[11px] text-indigo-600 font-bold flex items-center gap-1 hover:text-indigo-800 transition-colors uppercase tracking-wider"
                     >
-                      {QUOTATION_STATUSES.map(status => (
-                        <option key={status} value={status} className="bg-white text-black font-semibold">
-                          {status}
-                        </option>
-                      ))}
-                    </select>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                      {q.comments ? 'Edit Comment' : 'Add Comment'}
+                    </button>
                   ) : (
-                    <div className={`text-[10px] px-2 py-0.5 rounded-full font-bold inline-block ${getStatusClass(q.status)}`}>{q.status}</div>
+                    q.comments && <span className="text-[11px] text-slate-500 font-bold flex items-center gap-1 uppercase tracking-wider"><svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>Comment</span>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* Comment Section for Mobile */}
-            <div className="border-t border-slate-100 pt-2 mt-2">
-              <div className="flex justify-between items-center">
-                {isCommentEditable ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleCommentSection(q.id); }}
-                    className="text-xs text-blue-600 font-medium flex items-center gap-1 hover:underline"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-                    {q.comments ? 'Edit Comment' : 'Add Comment'}
-                  </button>
+                {/* Comment Input / Display */}
+                {(openCommentIds.has(q.id) && isCommentEditable) ? (
+                  <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                    <textarea
+                      defaultValue={q.comments || ''}
+                      onBlur={(e) => handleCommentChange(q.id, e.target.value)}
+                      className="w-full p-2.5 text-xs font-medium border border-indigo-200 rounded-lg bg-indigo-50/30 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 placeholder-slate-400"
+                      rows={2}
+                      placeholder="Type your comment..."
+                      autoFocus
+                    />
+                  </div>
                 ) : (
-                  q.comments && <span className="text-xs text-black italic flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>Comment</span>
+                  q.comments && (
+                    <div className="mt-1.5 text-xs text-slate-700 font-medium bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                      {q.comments}
+                    </div>
+                  )
                 )}
               </div>
 
-              {/* Comment Input / Display */}
-              {(openCommentIds.has(q.id) && isCommentEditable) ? (
-                <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                  <textarea
-                    defaultValue={q.comments || ''}
-                    onBlur={(e) => handleCommentChange(q.id, e.target.value)}
-                    className="w-full p-2 text-xs border border-slate-300 rounded bg-slate-50 focus:ring-1 focus:ring-blue-500 focus:outline-none text-black"
-                    rows={3}
-                    placeholder="Enter quotation comments here..."
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                q.comments && (
-                  <div className="mt-1 text-xs text-black bg-slate-50 p-2 rounded border border-slate-100 italic">
-                    "{q.comments}"
-                  </div>
-                )
-              )}
-            </div>
-
-            <div className="flex justify-end items-center pt-2 border-t border-slate-100 mt-2">
-              <div className="flex gap-3">
-                <button onClick={() => handleEdit(q.id)} className="text-indigo-600 font-semibold text-xs">
-                  {userRole === 'Admin' ? 'Edit' : 'View Details'}
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100 mt-3">
+                <button onClick={() => handleWhatsAppShare(q)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z" />
+                  </svg>
+                  Share
                 </button>
-                {userRole === 'Admin' && <button onClick={() => handleDelete(q.id)} className="text-rose-600 font-semibold text-xs">Delete</button>}
+                <div className="flex gap-2">
+                  <button onClick={() => handleEdit(q.id)} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider">
+                    {canEdit ? 'Edit' : 'View'}
+                  </button>
+                  {userRole === 'Admin' && <button onClick={() => handleDelete(q.id)} className="px-3 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider">Delete</button>}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Desktop Table View */}
