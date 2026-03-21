@@ -55,7 +55,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const topCustomersChartRef = useRef<HTMLCanvasElement>(null);
 
     const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<number | 'all'>('all');
-    const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
+    const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('month');
     const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
     const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
     const [orderStatusMode, setOrderStatusMode] = useState<'count' | 'value'>('value');
@@ -698,7 +698,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             </motion.div>
 
             {/* Overall Statistics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-9 gap-2">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
