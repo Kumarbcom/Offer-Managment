@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomersByIds } from '../supabase';
+import { get } from '../supabase';
 
 declare var XLSX: any;
 
@@ -39,47 +39,31 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set());
+  const [isCustomersLoaded, setIsCustomersLoaded] = useState(false);
 
   const userRole = currentUser.role;
 
   useEffect(() => {
-    if (quotations) {
-      const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
-        .filter((id): id is number => id !== null && !customerMap.has(id));
-
-      if (quotationFilter?.customerIds) {
-        quotationFilter.customerIds.forEach(id => {
-          if (!customerMap.has(id) && !customerIdsToFetch.includes(id)) {
-            customerIdsToFetch.push(id);
-          }
+    if (!isCustomersLoaded) {
+      setIsLoadingCustomers(true);
+      get('customers').then(customers => {
+        setCustomerMap(prevMap => {
+          const newMap = new Map(prevMap);
+          customers.forEach((c: any) => newMap.set(c.id, c.name));
+          return newMap;
         });
-      }
-
-      if (customerIdsToFetch.length > 0) {
-        setIsLoadingCustomers(true);
-        getCustomersByIds(customerIdsToFetch).then(customers => {
-          setCustomerMap(prevMap => {
-            const newMap = new Map(prevMap);
-            customers.forEach(c => newMap.set(c.id, c.name));
-            customerIdsToFetch.forEach(id => {
-              if (!newMap.has(id)) newMap.set(id, 'Unknown');
-            });
-            return newMap;
-          });
-          setIsLoadingCustomers(false);
-        }).catch(error => {
-          console.error("QuotationManager: Failed to fetch customer names:", error);
-          setIsLoadingCustomers(false);
-        });
-      } else {
         setIsLoadingCustomers(false);
-      }
+        setIsCustomersLoaded(true);
+      }).catch(err => {
+        console.error("QuotationManager full customer load error:", err);
+        setIsLoadingCustomers(false);
+      });
     }
-  }, [quotations, customerMap, quotationFilter]);
+  }, [isCustomersLoaded]);
 
   const getCustomerName = (id: number | null): string => {
     if (id === null) return 'N/A';
-    return customerMap.get(id) || 'Loading...';
+    return customerMap.get(Number(id)) || 'Loading...';
   };
 
   const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';

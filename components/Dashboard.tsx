@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomersByIds, countRecords } from '../supabase';
+import { get, countRecords } from '../supabase';
 
 // Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
@@ -62,6 +62,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count');
     const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
     const [dbQuotationCount, setDbQuotationCount] = useState<number | null>(null);
+    const [isCustomersLoaded, setIsCustomersLoaded] = useState(false);
 
     // Fetch exact DB count to compare with loaded count
     useEffect(() => {
@@ -76,30 +77,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         }).catch(err => console.error('[Dashboard] Failed to get DB count:', err));
     }, [quotations?.length]);
 
+    // Fetch all customers securely and comprehensively to guarantee display names for statistics
     useEffect(() => {
-        if (quotations) {
-            const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
-                .filter((id): id is number => id !== null && !customerMap.has(id));
-
-            if (customerIdsToFetch.length > 0) {
-                getCustomersByIds(customerIdsToFetch).then(customers => {
-                    setCustomerMap(prevMap => {
-                        const newMap = new Map(prevMap);
-                        customers.forEach(c => newMap.set(c.id, c.name));
-                        // Prevent infinite loop by caching missing IDs as "Unknown"
-                        customerIdsToFetch.forEach(id => {
-                            if (!newMap.has(id)) {
-                                newMap.set(id, 'Unknown');
-                            }
-                        });
-                        return newMap;
-                    });
-                }).catch(err => {
-                    console.error("Dashboard customer load error:", err);
+        if (!isCustomersLoaded) {
+            get('customers').then(customers => {
+                setCustomerMap(prevMap => {
+                    const newMap = new Map(prevMap);
+                    customers.forEach((c: any) => newMap.set(c.id, c.name));
+                    return newMap;
                 });
-            }
+                setIsCustomersLoaded(true);
+            }).catch(err => {
+                console.error("Dashboard full customer load error:", err);
+            });
         }
-    }, [quotations, customerMap]);
+    }, [isCustomersLoaded]);
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -555,7 +547,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
         const customerValues = new Map<string, number>();
         filteredQuotations.forEach(q => {
-            const customerName = q.customerId ? customerMap.get(q.customerId) || 'Unknown' : 'Unknown';
+            const safeId = Number(q.customerId);
+            const customerName = (safeId && !isNaN(safeId)) ? customerMap.get(safeId) || 'Unknown' : 'Unknown';
             customerValues.set(customerName, (customerValues.get(customerName) || 0) + calculateTotalAmount(q.details));
         });
 
@@ -926,7 +919,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                             <div className="text-[10px] font-bold text-indigo-600">#{q.id}</div>
                                         </td>
                                         <td className="px-2 py-1">
-                                            <div className="text-[10px] font-semibold text-black truncate max-w-[80px]" title={q.customerId ? customerMap.get(q.customerId) : ''}>{q.customerId ? customerMap.get(q.customerId) || '...' : 'N/A'}</div>
+                                            {(() => {
+                                                const safeId = Number(q.customerId);
+                                                const hasId = safeId && !isNaN(safeId);
+                                                const dispName = hasId ? customerMap.get(safeId) || '...' : 'N/A';
+                                                return <div className="text-[10px] font-semibold text-black truncate max-w-[80px]" title={hasId ? customerMap.get(safeId) : ''}>{dispName}</div>;
+                                            })()}
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-right">
                                             <div className="text-[10px] font-bold text-black">{formatCurrencyCompact(calculateTotalAmount(q.details))}</div>
