@@ -38,6 +38,20 @@ const statusColors: Record<QuotationStatus, { bg: string, text: string }> = {
     'Lost': { bg: 'bg-rose-100', text: 'text-rose-700' },
 };
 
+const getInitials = (name: string) => name.charAt(0).toUpperCase() || '?';
+const getAvatarColor = (name: string) => {
+    const colors = [
+        'bg-gradient-to-br from-amber-400 to-orange-500 text-white border-white shadow-md',
+        'bg-gradient-to-br from-blue-400 to-indigo-600 text-white border-white shadow-md',
+        'bg-gradient-to-br from-emerald-400 to-teal-600 text-white border-white shadow-md',
+        'bg-gradient-to-br from-indigo-400 to-purple-600 text-white border-white shadow-md',
+        'bg-gradient-to-br from-rose-400 to-pink-600 text-white border-white shadow-md',
+        'bg-gradient-to-br from-fuchsia-400 to-purple-600 text-white border-white shadow-md',
+        'bg-gradient-to-br from-cyan-400 to-blue-600 text-white border-white shadow-md'
+    ];
+    const sum = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[sum % colors.length];
+};
 
 export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, quotations, onFilterQuotations, currentUser }) => {
     const [displayedCustomers, setDisplayedCustomers] = useState<Customer[]>([]);
@@ -285,16 +299,16 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                     Overall Quotation Summary
                 </h3>
-                <div className="flex flex-wrap gap-3 items-center relative z-10">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 relative z-10 w-full">
                     <div
                         onClick={() => onFilterQuotations({})}
-                        className="cursor-pointer bg-slate-100 hover:bg-white text-indigo-700 hover:text-indigo-800 transition-all text-sm shadow-sm hover:shadow-md p-2 rounded-xl flex items-center border border-slate-200/60"
+                        className="cursor-pointer bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 p-3 rounded-2xl flex flex-col items-start border border-indigo-400 group relative overflow-hidden"
                         title={`View all ${allQuotationStats.total.count} quotations`}
                     >
-                        <span className="opacity-80">Total Enquiries: </span>
-                        <span className="font-black ml-1 text-lg">{allQuotationStats.total.count}</span>
-                        <span className="text-slate-300 mx-2">|</span>
-                        <span className="font-black bg-indigo-100 px-2 py-0.5 rounded text-indigo-800">{formatCurrency(allQuotationStats.total.value)}</span>
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1">Total Enquiries</span>
+                        <span className="font-extrabold text-2xl leading-none mb-1">{allQuotationStats.total.count}</span>
+                        <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded backdrop-blur-sm self-start mt-auto">{formatCurrency(allQuotationStats.total.value)}</span>
                     </div>
                     {QUOTATION_STATUSES.map(status => {
                         const stats = allQuotationStats.byStatus[status];
@@ -304,13 +318,13 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                             <div
                                 key={status}
                                 onClick={() => onFilterQuotations({ status: status })}
-                                className={`cursor-pointer ${colors.bg} ${colors.text} hover:opacity-90 transition-all text-sm shadow-sm hover:shadow-md hover:-translate-y-0.5 p-2 rounded-xl flex items-center border border-white/40 ring-1 ring-black/5`}
+                                className={`cursor-pointer ${colors.bg} ${colors.text} hover:scale-[1.03] transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 p-3 rounded-2xl flex flex-col items-start border border-white/50 ring-1 ring-black/5 group relative overflow-hidden`}
                                 title={`View ${stats.count} '${status}' quotations`}
                             >
-                                <span className="opacity-90 font-semibold">{status}: </span>
-                                <span className="font-black ml-1 text-lg">{stats.count}</span>
-                                <span className="opacity-30 mx-2">|</span>
-                                <span className="font-bold">{formatCurrency(stats.value)}</span>
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-white/30 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110"></div>
+                                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1 truncate w-full">{status}</span>
+                                <span className="font-extrabold text-2xl leading-none mb-1">{stats.count}</span>
+                                <span className="text-[11px] font-bold bg-white/50 px-2 py-0.5 rounded backdrop-blur-sm shadow-sm border border-white/20 self-start mt-auto">{formatCurrency(stats.value)}</span>
                             </div>
                         )
                     })}
@@ -407,32 +421,32 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <>
                         <div className="overflow-x-auto -mx-4">
                             <table className="min-w-full divide-y divide-slate-200">
-                                <thead className="bg-slate-50">
+                                <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/40 border-b-2 border-slate-200/60">
                                     <tr>
                                         {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
-                                            <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-black uppercase tracking-wider">
+                                            <th key={header} scope="col" className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                                 {header}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-slate-200">
+                                <tbody className="bg-white/40 divide-y divide-slate-100/60">
                                     {displayedCustomers.map(customer => (
-                                        <tr key={customer.id} className="hover:bg-indigo-50/40 transition-colors duration-200 group">
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500 font-medium">#{customer.id}</td>
-                                            <td className="px-4 py-3 text-sm font-bold text-slate-800">
+                                        <tr key={customer.id} className="hover:bg-white/80 hover:shadow-sm transition-all duration-300 group">
+                                            <td className="px-4 py-3 whitespace-nowrap text-[11px] text-slate-500 font-medium">#{customer.id}</td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-slate-800">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm border border-indigo-200/50">
-                                                        {customer.name.charAt(0).toUpperCase()}
+                                                    <div className={`h-6 w-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${getAvatarColor(customer.name)}`}>
+                                                        {getInitials(customer.name)}
                                                     </div>
                                                     <span className="truncate max-w-[200px]" title={customer.name}>{customer.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-slate-500 max-w-[200px] truncate" title={customer.address}>{customer.address}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 font-medium">{customer.city}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">{customer.pincode}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700 font-semibold">{getSalesPersonName(customer.salesPersonId)}</td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                            <td className="px-4 py-3 text-[11px] text-slate-500 min-w-[150px] whitespace-normal break-words leading-relaxed" title={customer.address}>{customer.address}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-[11px] text-slate-600 font-medium">{customer.city}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-[11px] text-slate-500">{customer.pincode}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-[11px] text-slate-700 font-semibold">{getSalesPersonName(customer.salesPersonId)}</td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-[11px]">
                                                 <div className="flex flex-col items-start gap-1">
                                                     {QUOTATION_STATUSES.map(status => {
                                                         const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
@@ -455,7 +469,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                                     })}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                            <td className="px-4 py-3 whitespace-nowrap text-right text-[11px] font-medium">
                                                 <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
                                                     <button onClick={() => handleEdit(customer)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-colors" title="Edit Customer">
                                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
