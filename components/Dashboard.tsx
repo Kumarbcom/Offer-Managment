@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomersByIds } from '../supabase';
+import { getCustomersByIds, countRecords } from '../supabase';
 
 // Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
@@ -59,8 +59,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
     const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
     const [orderStatusMode, setOrderStatusMode] = useState<'count' | 'value'>('value');
-    const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count'); // New state for Performance Table
+    const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count');
     const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
+    const [dbQuotationCount, setDbQuotationCount] = useState<number | null>(null);
+
+    // Fetch exact DB count to compare with loaded count
+    useEffect(() => {
+        countRecords('quotations').then(count => {
+            setDbQuotationCount(count);
+            const loadedCount = quotations?.length ?? 0;
+            if (count !== loadedCount) {
+                console.warn(`[Dashboard] DB has ${count} quotations but only ${loadedCount} loaded. Missing: ${count - loadedCount}`);
+            } else {
+                console.log(`[Dashboard] All ${count} quotations loaded correctly.`);
+            }
+        }).catch(err => console.error('[Dashboard] Failed to get DB count:', err));
+    }, [quotations?.length]);
 
     useEffect(() => {
         if (quotations) {

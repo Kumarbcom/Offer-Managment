@@ -1,7 +1,6 @@
-Fix Vandita quotations, new FY numbering, install react types
+Performance and UI flow improvements
 
-- Vandita (Sales Person with no salesPersons record) now sees all quotations
-- New quotation number format from 01-Apr-2026: SKC/QTN/0001-2026-27
-- Added utils/quotationNumber.ts with fiscal year logic
-- Updated all 3 print views to use new numbering
-- Added @types/react and @types/react-dom to fix TS errors
+- Sped up Part No selection by optimizing debounce (150ms) and adding instant local filtering to SearchableSelect while async DB fetch completes
+- Enabled ArrowDown / ArrowUp keyboard navigation and Enter-to-next for Air Lead Time field
+- PDF Print: Changed the default "Save as PDF" filename to automatically include the Customer's name and Quotation number
+- Dashboard: Added console diagnostics to compare DB true count vs actual loaded count to explain missing sequence IDs

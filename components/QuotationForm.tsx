@@ -15,6 +15,7 @@ import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upse
 import { StockCheckModal } from './StockCheckModal';
 import { CustomerResponsePanel } from './CustomerResponsePanel';
 import type { QuotationStatus } from '../types';
+import { getQuotationDisplayNumber } from '../utils/quotationNumber';
 
 declare var XLSX: any;
 
@@ -155,14 +156,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     const [productSearchTerm, setProductSearchTerm] = useState('');
     const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
     const [isSearchingProducts, setIsSearchingProducts] = useState(false);
-    const debouncedProductSearchTerm = useDebounce(productSearchTerm, 300);
+    const debouncedProductSearchTerm = useDebounce(productSearchTerm, 150);
     const [fetchedProducts, setFetchedProducts] = useState<Map<number, Product>>(new Map());
 
     // State for async customer search
     const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
     const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
     const [customerSearchTerm, setCustomerSearchTerm] = useState('');
-    const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
+    const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 150);
     const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -705,12 +706,25 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             await setQuotations(prev => (prev || []).map(q => q.id === formData.id ? { ...q, status: newStatus } : q));
         };
 
+        const handlePrint = () => {
+            const originalTitle = document.title;
+            // Clean filename to remove invalid characters
+            const customerNameSafe = selectedCustomerObj.name.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim();
+            const qtnNoSafe = getQuotationDisplayNumber(formData, quotations).replace(/\//g, '-');
+            document.title = `${customerNameSafe}_${qtnNoSafe}`;
+            
+            setTimeout(() => {
+                window.print();
+                document.title = originalTitle;
+            }, 50);
+        };
+
         return (
             <div className="bg-slate-100 min-h-screen">
                 <div className="bg-white shadow-md p-2 mb-4 flex justify-between items-center no-print sticky top-0 z-30">
                     <h2 className="text-lg font-bold text-black">Preview</h2>
                     <div className="flex items-center space-x-2">
-                        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Print</button>
+                        <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Print</button>
                         <button onClick={() => setPreviewMode('none')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Close</button>
                     </div>
                 </div>
@@ -964,8 +978,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         <td className="border-t border-slate-300 align-top">
                                             <input
                                                 type="text"
+                                                ref={(el) => { inputRefs.current[`${index}-airFreightLeadTime`] = el; }}
                                                 value={item.airFreightDetails?.airFreightLeadTime || ''}
                                                 onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)}
+                                                onKeyDown={(e) => handleGridKeyDown(e, index, 'airFreightLeadTime')}
+                                                onFocus={(e) => e.target.select()}
                                                 className="w-20 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black"
                                                 disabled={!item.airFreight || isReadOnly}
                                             />

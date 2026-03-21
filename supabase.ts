@@ -77,7 +77,7 @@ export async function get(tableName: TableName): Promise<any[]> {
             query = query.order('name', { ascending: true });
         } else {
             if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
-                query = query.order('id', { ascending: false });
+                query = query.order('id', { ascending: true });
             }
         }
 
@@ -100,6 +100,8 @@ export async function get(tableName: TableName): Promise<any[]> {
         }
     }
 
+    console.log(`[get] Loaded ${allData.length} records from '${tableName}'`);
+
     // Map back from Supabase snake_case to camelCase for specific tables if needed
     if (tableName === 'pendingSOs' && allData.length > 0) {
         return allData.map((item: any) => ({
@@ -120,6 +122,17 @@ export async function get(tableName: TableName): Promise<any[]> {
     }
 
     return allData;
+}
+
+/** Returns the exact row count from Supabase for a given table (ignores RLS row limits). */
+export async function countRecords(tableName: TableName): Promise<number> {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const supabaseTableName = toSupabaseTableName(tableName);
+    const { count, error } = await supabase
+        .from(supabaseTableName)
+        .select('*', { count: 'exact', head: true });
+    if (error) throw new Error(parseSupabaseError(error, `Failed to count ${tableName}`));
+    return count ?? 0;
 }
 
 export async function clearTable(tableName: TableName): Promise<void> {

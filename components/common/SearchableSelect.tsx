@@ -105,7 +105,10 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     setIsOpen(true);
   }
 
-  const optionsToDisplay = isAsync ? options : options.filter(option =>
+  // CRITICAL FIX FOR SPEED: Even for async searches (server-side), apply local filtering 
+  // on the currently available options. This makes the UI feel completely instant while 
+  // waiting for the server to reply with potentially more results.
+  const optionsToDisplay = options.filter(option =>
     String(option[displayKey]).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
