@@ -61,6 +61,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
           setCustomerMap(prevMap => {
             const newMap = new Map(prevMap);
             customers.forEach(c => newMap.set(c.id, c.name));
+            customerIdsToFetch.forEach(id => {
+              if (!newMap.has(id)) newMap.set(id, 'Unknown');
+            });
             return newMap;
           });
           setIsLoadingCustomers(false);

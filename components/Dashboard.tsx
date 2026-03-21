@@ -86,8 +86,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     setCustomerMap(prevMap => {
                         const newMap = new Map(prevMap);
                         customers.forEach(c => newMap.set(c.id, c.name));
+                        // Prevent infinite loop by caching missing IDs as "Unknown"
+                        customerIdsToFetch.forEach(id => {
+                            if (!newMap.has(id)) {
+                                newMap.set(id, 'Unknown');
+                            }
+                        });
                         return newMap;
                     });
+                }).catch(err => {
+                    console.error("Dashboard customer load error:", err);
                 });
             }
         }

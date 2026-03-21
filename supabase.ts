@@ -301,9 +301,20 @@ export async function searchCustomers(term: string) {
 export async function getCustomersByIds(ids: number[]) {
     if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
-    const { data, error } = await supabase.from('customers').select('*').in('id', ids);
-    if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers by IDs"));
-    return (data || []) as Customer[];
+    
+    const BATCH_SIZE = 100;
+    const allCustomers: Customer[] = [];
+    
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        const { data, error } = await supabase.from('customers').select('*').in('id', batch);
+        if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers by IDs"));
+        if (data) {
+            allCustomers.push(...(data as Customer[]));
+        }
+    }
+    
+    return allCustomers;
 }
 
 export async function upsertCustomer(customer: any) {
