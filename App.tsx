@@ -196,7 +196,7 @@ function App() {
             <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-1">
               <div className="flex items-center gap-2 mr-4 shrink-0 border-r border-slate-700 pr-4">
                 {logoUrl && <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain bg-white rounded p-0.5" />}
-                <span className="font-bold text-base tracking-wide whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300">Siddhi Kabel Corp.</span>
+                <span className="font-bold text-sm tracking-wide whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-200">Siddhi Kable Corporation Pvt Ltd</span>
               </div>
               <button onClick={() => handleSetView('dashboard')} className={headerBtnClass(view === 'dashboard')}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
