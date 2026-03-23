@@ -430,8 +430,33 @@ export async function searchProducts(term: string) {
     }
     const { data, error } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to search products"));
-    return (data || []) as Product[];
+
+    const products = (data || []) as Product[];
+
+    // Sort by effective current price ascending (LP preferred, fallback SP).
+    // Products with no price are pushed to the end.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const getEffectivePrice = (product: Product): number => {
+        if (!product.prices || product.prices.length === 0) return Infinity;
+        const active = product.prices.find(p => {
+            const from = new Date(p.validFrom); from.setHours(0,0,0,0);
+            const to   = new Date(p.validTo);   to.setHours(23,59,59,999);
+            return today >= from && today <= to;
+        });
+        const entry = active
+            ?? [...product.prices].filter(p => new Date(p.validFrom) <= today)
+                                  .sort((a,b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime())[0]
+            ?? [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0];
+        if (!entry) return Infinity;
+        const price = entry.lp > 0 ? entry.lp : entry.sp;
+        return price > 0 ? price : Infinity;
+    };
+
+    return products.sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b));
 }
+
 
 export async function getProductsByIds(ids: number[]) {
     if (!supabase) return [];
