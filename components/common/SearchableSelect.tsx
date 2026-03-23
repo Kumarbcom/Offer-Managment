@@ -108,9 +108,17 @@ export const SearchableSelect = <T extends Record<string, any>,>(
   // CRITICAL FIX FOR SPEED: Even for async searches (server-side), apply local filtering 
   // on the currently available options. This makes the UI feel completely instant while 
   // waiting for the server to reply with potentially more results.
-  const optionsToDisplay = options.filter(option =>
-    String(option[displayKey]).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // We match against both the displayKey (Part No) AND description so typing a description
+  // word doesn't hide results that matched via the server's description search.
+  const optionsToDisplay = options.filter(option => {
+    const lc = searchTerm.toLowerCase();
+    const matchesDisplay = String(option[displayKey]).toLowerCase().includes(lc);
+    const matchesDescription = option.description
+      ? String(option.description).toLowerCase().includes(lc)
+      : false;
+    return matchesDisplay || matchesDescription;
+  });
+
 
   return (
     <div className="relative w-full h-full" ref={wrapperRef}>
