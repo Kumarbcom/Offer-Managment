@@ -16,6 +16,7 @@ import { StockCheckModal } from './StockCheckModal';
 import { CustomerResponsePanel } from './CustomerResponsePanel';
 import type { QuotationStatus } from '../types';
 import { getQuotationDisplayNumber } from '../utils/quotationNumber';
+import { DropdownInput } from './common/DropdownInput';
 
 declare var XLSX: any;
 
@@ -800,16 +801,22 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         <div className="space-y-1">
                             <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
                             <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
-                            <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
+                            <FormField label="Other Terms">
+                                <DropdownInput
+                                    value={formData.otherTerms}
+                                    options={['± 5% Length Variation', '± 10% Length Variation', 'Standard Terms Apply']}
+                                    onChange={val => { if (!isReadOnly) setFormData(prev => prev ? { ...prev, otherTerms: val } : null); }}
+                                    placeholder="Type other terms..."
+                                    disabled={isReadOnly}
+                                />
+                            </FormField>
                             <FormField label="Payment">
-                                <SearchableSelect
-                                    options={PAYMENT_TERMS.map(t => ({ id: t, term: t }))}
+                                <DropdownInput
                                     value={formData.paymentTerms}
-                                    onChange={val => { if (!isReadOnly) setFormData(prev => prev ? { ...prev, paymentTerms: val as string } : null); }}
-                                    idKey="id"
-                                    displayKey="term"
-                                    placeholder="Select or type terms..."
-                                    creatable={true}
+                                    options={[...PAYMENT_TERMS]}
+                                    onChange={val => { if (!isReadOnly) setFormData(prev => prev ? { ...prev, paymentTerms: val } : null); }}
+                                    placeholder="Type or select payment terms..."
+                                    disabled={isReadOnly}
                                 />
                             </FormField>
                             <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
