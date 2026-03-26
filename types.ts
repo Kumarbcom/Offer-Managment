@@ -72,7 +72,7 @@ export interface QuotationItem {
   };
 }
 
-export type PaymentTerm = typeof PAYMENT_TERMS[number];
+export type PaymentTerm = typeof PAYMENT_TERMS[number] | (string & {});
 export type PreparedBy = typeof PREPARED_BY_LIST[number];
 export type ProductBrand = typeof PRODUCTS_BRANDS[number];
 export type ModeOfEnquiry = typeof MODES_OF_ENQUIRY[number];

@@ -801,7 +801,21 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
                             <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
                             <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
-                            <FormField label="Payment"><select name="paymentTerms" value={formData.paymentTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PAYMENT_TERMS.map(t => <option key={t} value={t}>{t}</option>)}</select></FormField>
+                            <FormField label="Payment">
+                                <input
+                                    type="text"
+                                    name="paymentTerms"
+                                    list="payment-terms-datalist"
+                                    value={formData.paymentTerms}
+                                    onChange={handleChange}
+                                    className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black"
+                                    disabled={isReadOnly}
+                                    placeholder="Select or type terms..."
+                                />
+                                <datalist id="payment-terms-datalist">
+                                    {PAYMENT_TERMS.map(t => <option key={t} value={t} />)}
+                                </datalist>
+                            </FormField>
                             <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
                         </div>
                         <div className="space-y-1">

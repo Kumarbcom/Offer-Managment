@@ -10,6 +10,7 @@ export const PLANTS = ['MFGN', 'TRDN'] as const;
 export const PAYMENT_TERMS = [
   '100% Against Proforma Invoice',
   '50% Advance balance against Proforma Invoice',
+  '25% Advance and balance before despatch',
   '100% Payment with in 30 Days',
   '100% Payment with in 45 Days',
   '100% Payment with 60 days',
