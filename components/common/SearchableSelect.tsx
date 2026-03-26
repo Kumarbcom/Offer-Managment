@@ -10,10 +10,11 @@ interface SearchableSelectProps<T> {
   onSearch?: (term: string) => void;
   isLoading?: boolean;
   onOpen?: () => void;
+  creatable?: boolean;
 }
 
 export const SearchableSelect = <T extends Record<string, any>,>(
-  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', onSearch, isLoading, onOpen }: SearchableSelectProps<T>
+  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', onSearch, isLoading, onOpen, creatable }: SearchableSelectProps<T>
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +30,8 @@ export const SearchableSelect = <T extends Record<string, any>,>(
         const selectedOption = options.find(option => option[idKey] === value);
         if (selectedOption) {
             setSearchTerm(String(selectedOption[displayKey]));
+        } else if (creatable && value) {
+            setSearchTerm(String(value));
         } else {
             setSearchTerm('');
         }
@@ -39,10 +42,12 @@ export const SearchableSelect = <T extends Record<string, any>,>(
             const selectedOption = options.find(option => option[idKey] === value);
             if (selectedOption) {
                 setSearchTerm(String(selectedOption[displayKey]));
+            } else if (creatable && value) {
+                setSearchTerm(String(value));
             }
         }
     }
-  }, [value, options, idKey, displayKey, isOpen]);
+  }, [value, options, idKey, displayKey, isOpen, creatable]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -50,12 +55,18 @@ export const SearchableSelect = <T extends Record<string, any>,>(
         setIsOpen(false);
         // Reset search term to selected value if dropdown is closed without selection
         const selectedOption = options.find(option => option[idKey] === value);
-        setSearchTerm(selectedOption ? String(selectedOption[displayKey]) : '');
+        if (selectedOption) {
+            setSearchTerm(String(selectedOption[displayKey]));
+        } else if (creatable && value) {
+            setSearchTerm(String(value));
+        } else {
+            setSearchTerm('');
+        }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [wrapperRef, options, value, idKey, displayKey]);
+  }, [wrapperRef, options, value, idKey, displayKey, creatable]);
 
   // Calculate position for Fixed dropdown
   useEffect(() => {
@@ -92,6 +103,11 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     setSearchTerm(String(option[displayKey]));
     setIsOpen(false);
   };
+
+  const handleCreate = () => {
+    onChange(searchTerm);
+    setIsOpen(false);
+  }
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
@@ -119,6 +135,7 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     return matchesDisplay || matchesDescription;
   });
 
+  const exactMatch = optionsToDisplay.some(option => String(option[displayKey]).toLowerCase() === searchTerm.toLowerCase());
 
   return (
     <div className="relative w-full h-full" ref={wrapperRef}>
@@ -141,19 +158,33 @@ export const SearchableSelect = <T extends Record<string, any>,>(
         >
           {isLoading ? (
             <li className="p-2 text-gray-500">Loading...</li>
-          ) : optionsToDisplay.length > 0 ? (
-            optionsToDisplay.map(option => (
-              <li
-                key={option[idKey]}
-                className={`p-2 cursor-pointer hover:bg-indigo-100 border-b border-gray-100 last:border-0 ${option[idKey] === value ? 'bg-indigo-200' : ''}`}
-                onClick={() => handleSelect(option)}
-              >
-                <div className="font-medium">{String(option[displayKey])}</div>
-                {option.description && <div className="text-[10px] text-gray-500 truncate">{option.description}</div>}
-              </li>
-            ))
           ) : (
-            <li className="p-2 text-gray-500">{searchTerm ? 'No results found' : isAsync ? 'Type to search' : 'No options'}</li>
+            <>
+              {optionsToDisplay.map(option => (
+                <li
+                  key={option[idKey]}
+                  className={`p-2 cursor-pointer hover:bg-indigo-100 border-b border-gray-100 last:border-0 ${option[idKey] === value ? 'bg-indigo-200' : ''}`}
+                  onClick={() => handleSelect(option)}
+                >
+                  <div className="font-medium">{String(option[displayKey])}</div>
+                  {option.description && <div className="text-[10px] text-gray-500 truncate">{option.description}</div>}
+                </li>
+              ))}
+              {creatable && searchTerm && !exactMatch && (
+                <li
+                  className="p-2 cursor-pointer hover:bg-green-50 text-green-700 font-semibold border-t border-slate-200 bg-slate-50 sticky bottom-0"
+                  onClick={handleCreate}
+                >
+                  + Use "{searchTerm}"
+                </li>
+              )}
+              {optionsToDisplay.length === 0 && !creatable && (
+                <li className="p-2 text-gray-500">{searchTerm ? 'No results found' : isAsync ? 'Type to search' : 'No options'}</li>
+              )}
+              {optionsToDisplay.length === 0 && creatable && !searchTerm && (
+                <li className="p-2 text-gray-500">Type to create...</li>
+              )}
+            </>
           )}
         </ul>
       )}

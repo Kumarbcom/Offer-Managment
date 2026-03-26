@@ -802,19 +802,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
                             <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
                             <FormField label="Payment">
-                                <input
-                                    type="text"
-                                    name="paymentTerms"
-                                    list="payment-terms-datalist"
+                                <SearchableSelect
+                                    options={PAYMENT_TERMS.map(t => ({ id: t, term: t }))}
                                     value={formData.paymentTerms}
-                                    onChange={handleChange}
-                                    className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black"
-                                    disabled={isReadOnly}
+                                    onChange={val => { if (!isReadOnly) setFormData(prev => prev ? { ...prev, paymentTerms: val as string } : null); }}
+                                    idKey="id"
+                                    displayKey="term"
                                     placeholder="Select or type terms..."
+                                    creatable={true}
                                 />
-                                <datalist id="payment-terms-datalist">
-                                    {PAYMENT_TERMS.map(t => <option key={t} value={t} />)}
-                                </datalist>
                             </FormField>
                             <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
                         </div>
