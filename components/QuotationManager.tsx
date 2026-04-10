@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { get } from '../supabase';
+import { getQuotationDisplayNumber } from '../utils/quotationNumber';
 
 declare var XLSX: any;
 
@@ -184,7 +185,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       return (q.details || []).map(item => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         return {
-          'Quotation ID': q.id, 'Date': new Date(q.quotationDate).toLocaleDateString(), 'Customer': getCustomerName(q.customerId), 'Contact Person': q.contactPerson, 'Contact No': q.contactNumber, 'Sales Person': getSalesPersonName(q.salesPersonId), 'Status': q.status, 'Total Amount': quotationTotal,
+          'Quotation ID': getQuotationDisplayNumber(q, quotations), 'Date': new Date(q.quotationDate).toLocaleDateString(), 'Customer': getCustomerName(q.customerId), 'Contact Person': q.contactPerson, 'Contact No': q.contactNumber, 'Sales Person': getSalesPersonName(q.salesPersonId), 'Status': q.status, 'Total Amount': quotationTotal,
           'Part No': item.partNo, 'Description': item.description, 'MOQ': item.moq, 'REQ': item.req, 'Price Source': item.priceSource, 'Base Price': item.price, 'Discount %': item.discount, 'Unit Price': unitPrice, 'Item Amount': unitPrice * item.moq, 'Stock Status': item.stockStatus,
         };
       });
@@ -201,7 +202,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
     const message =
       `*Quotation Details*\n` +
-      `QTN No: ${q.id}\n` +
+      `QTN No: ${getQuotationDisplayNumber(q, quotations)}\n` +
       `Date: ${q.quotationDate}\n` +
       `Customer: ${getCustomerName(q.customerId)}\n` +
       `Contact: ${q.contactPerson} (${q.contactNumber})\n` +
@@ -374,7 +375,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 <div className="flex-1 pr-2">
                   <div className="flex items-center gap-2 mb-1.5 align-middle">
                     <div className="text-sm font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md cursor-pointer hover:bg-indigo-100 transition-colors" onClick={() => handleEdit(q.id)}>
-                      #{q.id}
+                      {getQuotationDisplayNumber(q, quotations)}
                     </div>
                     <span className="text-[11px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">{new Date(q.quotationDate).toLocaleDateString()}</span>
                   </div>
@@ -518,7 +519,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="font-bold text-indigo-600 text-xs">#{q.id}</div>
+                        <div className="font-bold text-indigo-600 text-xs">{getQuotationDisplayNumber(q, quotations)}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-slate-500 text-[11px] font-medium">
                         {new Date(q.quotationDate).toLocaleDateString()}
