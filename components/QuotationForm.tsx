@@ -197,7 +197,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             const currentSalesPersonId = salesPersons.find(sp => sp.name === currentUser.name)?.id;
             // If formData is not loaded yet, default to readonly until we check ownership
             if (!formData) return true;
-            return formData.salesPersonId !== currentSalesPersonId;
+            // Allow edit if they are the assigned sales person OR if they prepared the quotation
+            return formData.salesPersonId !== currentSalesPersonId && formData.preparedBy !== currentUser.name;
         }
         return true; // Other roles are read-only
     }, [userRole, editingQuotationId, formData, salesPersons, currentUser, isMobile]);
@@ -244,7 +245,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             contactNumber: '',
             otherTerms: '± 5% Length Variation',
             paymentTerms: '100% Against Proforma Invoice',
-            preparedBy: 'Kumar' as PreparedBy,
+            preparedBy: (PREPARED_BY_LIST.includes(currentUser.name as any) ? currentUser.name : 'Kumar') as PreparedBy,
             productsBrand: 'Lapp',
             salesPersonId: defaultSalesPersonId,
             modeOfEnquiry: 'Customer Email',
@@ -788,7 +789,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-2 gap-y-1 text-xs">
                         <div className="space-y-1">
-                            <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId ?? (formData.id > 0 ? formData.id : "New")}</div></FormField>
+                            <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId === null && formData.id <= 0 ? "New" : getQuotationDisplayNumber(formData, formData.id > 0 ? quotations : null)}</div></FormField>
                             <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
                             <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
                             <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if (!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if (customer) setSelectedCustomerObj(customer); } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen} /></div></FormField>

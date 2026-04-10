@@ -109,8 +109,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         // 2. Role-Based Restriction
         if (userRole === 'Sales Person') {
           if (currentUserHasSalesPersonRecord) {
-            // User has a salesPerson record — filter by salesPersonId only
-            if (q.salesPersonId !== currentSalesPersonId) return false;
+            // User has a salesPerson record — filter by salesPersonId only,
+            // EXCEPT if they prepared it themselves (fix for disappearing quotations).
+            if (q.salesPersonId !== currentSalesPersonId && q.preparedBy !== currentUser.name) return false;
           }
           // else: Sales Person user with no salesPerson record (e.g., Vandita)
           // — show ALL quotations, no filtering applied
