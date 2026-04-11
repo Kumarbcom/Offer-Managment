@@ -552,25 +552,19 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap w-40">
                         {canEdit ? (
-                          <div className="flex flex-col gap-1">
-                            <span className={`text-[10px] px-2 py-1 rounded-md border font-bold inline-block shadow-sm ${getStatusClass(q.status)}`}>
-                              {q.status}
-                            </span>
-                            <select
-                              value={q.status}
-                              onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-[9px] px-2 py-0.5 rounded-md border border-slate-300 shadow-sm cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white"
-                              style={{ borderWidth: '1px' }}
-                              aria-label={`Change status`}
-                            >
-                              {QUOTATION_STATUSES.map(status => (
-                                <option key={status} value={status}>
-                                  {status}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <select
+                            value={q.status}
+                            onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full px-2 py-1 text-[10px] font-bold rounded border border-slate-300 shadow-sm cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white text-slate-800"
+                            aria-label={`Change status`}
+                          >
+                            {QUOTATION_STATUSES.map(status => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
                         ) : (
                           <span className={`text-[10px] px-2.5 py-1 rounded-md border font-bold inline-block shadow-sm ${getStatusClass(q.status)}`}>{q.status}</span>
                         )}
