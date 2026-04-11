@@ -499,7 +499,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                   <SortableHeader title="Contact" sortKey="contactPerson" />
                   <SortableHeader title="Sales Person" sortKey="salesPerson" />
                   <SortableHeader title="Amount" sortKey="totalAmount" className="text-right" />
-                  <SortableHeader title="Status" sortKey="status" />
+                  <SortableHeader title="Status" sortKey="status" className="w-40" />
                   <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Comments</th>
                   <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -550,9 +550,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                           {calculateTotalAmount(q.details).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap w-40">
                         {canEdit ? (
-                          <div className="relative inline-block w-full max-w-[130px]">
+                          <div className="relative inline-block w-full">
                             <select
                               value={q.status}
                               onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
