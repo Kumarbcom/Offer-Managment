@@ -552,19 +552,24 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap w-40">
                         {canEdit ? (
-                          <select
-                            value={q.status}
-                            onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full px-2 py-1 text-[10px] font-bold rounded border border-slate-300 shadow-sm cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white text-slate-800"
-                            aria-label={`Change status`}
-                          >
-                            {QUOTATION_STATUSES.map(status => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
+                          <div className={`relative inline-block w-full px-2 py-1 rounded-md border font-bold shadow-sm text-[10px] ${getStatusClass(q.status)}`}>
+                            <select
+                              value={q.status}
+                              onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="relative w-full bg-transparent text-[10px] font-bold cursor-pointer focus:outline-none appearance-none pr-4"
+                              aria-label={`Change status`}
+                            >
+                              {QUOTATION_STATUSES.map(status => (
+                                <option key={status} value={status} className="bg-white text-slate-800">
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1">
+                              <svg className="h-3 w-3 opacity-70" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                            </div>
+                          </div>
                         ) : (
                           <span className={`text-[10px] px-2.5 py-1 rounded-md border font-bold inline-block shadow-sm ${getStatusClass(q.status)}`}>{q.status}</span>
                         )}
