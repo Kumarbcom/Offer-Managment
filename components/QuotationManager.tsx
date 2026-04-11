@@ -553,14 +553,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       <td className="px-4 py-3 whitespace-nowrap">
                         {canEdit ? (
                           <div className="relative inline-block w-full max-w-[130px]">
-                            <div className={`absolute inset-0 pointer-events-none flex items-center px-3 py-1 rounded-md border text-[10px] font-bold ${getStatusClass(q.status)}`}>
-                              {q.status}
-                            </div>
                             <select
                               value={q.status}
                               onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
                               onClick={(e) => e.stopPropagation()}
-                              className="relative w-full appearance-none pl-3 pr-6 py-1 text-[10px] leading-4 font-bold rounded-md border shadow-sm cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors bg-transparent text-transparent"
+                              className={`w-full appearance-none pl-3 pr-6 py-1 text-[10px] leading-4 font-bold rounded-md border shadow-sm cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors ${getStatusClass(q.status)}`}
                               style={{ borderWidth: '1px' }}
                               aria-label={`Change status`}
                             >
