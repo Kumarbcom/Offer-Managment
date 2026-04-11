@@ -550,15 +550,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                           {calculateTotalAmount(q.details).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
                         </div>
                       </td>
-                      <td className="px-4 py-3" style={{ minWidth: '280px' }}>
+                      <td className="px-4 py-3 w-40">
                         {canEdit ? (
-                          <div className={`relative block px-2 py-1 rounded-md border font-bold shadow-sm text-[10px] ${getStatusClass(q.status)}`} style={{ minWidth: '260px' }}>
+                          <div className={`relative block px-2 py-1 rounded-md border font-bold shadow-sm text-[10px] ${getStatusClass(q.status)}`}>
                             <select
                               value={q.status}
                               onChange={(e) => handleStatusChange(q.id, e.target.value as QuotationStatus)}
                               onClick={(e) => e.stopPropagation()}
-                              className="block bg-transparent text-[10px] font-bold cursor-pointer focus:outline-none appearance-none pr-6"
-                              style={{ width: '100%', minWidth: '250px' }}
+                              className="block w-full bg-transparent text-[10px] font-bold cursor-pointer focus:outline-none appearance-none pr-4"
                               aria-label={`Change status`}
                             >
                               {QUOTATION_STATUSES.map(status => (
