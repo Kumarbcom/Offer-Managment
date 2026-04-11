@@ -484,7 +484,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             <table className="min-w-full divide-y divide-slate-200/60">
               <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/40 border-b-2 border-slate-200/60">
                 <tr>
-                  <th className="px-4 py-3 w-10 text-center">
+                  <th className="px-2 py-2 w-10 text-center">
                     <input
                       type="checkbox"
                       className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
@@ -500,8 +500,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                   <SortableHeader title="Sales Person" sortKey="salesPerson" />
                   <SortableHeader title="Amount" sortKey="totalAmount" className="text-right" />
                   <SortableHeader title="Status" sortKey="status" className="w-40" />
-                  <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Comments</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-2 py-2 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Comments</th>
+                  <th className="px-2 py-2 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white/40 divide-y divide-slate-100/60">
@@ -510,7 +510,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                   const customerName = getCustomerName(q.customerId);
                   return (
                     <tr key={q.id} className={`${isSelected ? 'bg-indigo-50/80 shadow-inner' : 'hover:bg-white/80 hover:shadow-sm'} transition-all duration-300 group`}>
-                      <td className="px-4 py-3 text-center align-middle">
+                      <td className="px-2 py-2 text-center align-middle">
                         <input
                           type="checkbox"
                           className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
@@ -519,13 +519,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                           aria-label={`Select quotation ${q.id}`}
                         />
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 py-2 whitespace-nowrap">
                         <div className="font-bold text-indigo-600 text-xs">{getQuotationDisplayNumber(q, quotations)}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-500 text-[11px] font-medium">
+                      <td className="px-2 py-2 whitespace-nowrap text-slate-500 text-[11px] font-medium">
                         {new Date(q.quotationDate).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 py-2 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <div className={`h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm ${getAvatarColor(customerName)}`}>
                             {getInitials(customerName)}
@@ -542,15 +542,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                           {q.contactNumber}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-600 text-xs font-medium">
+                      <td className="px-2 py-2 whitespace-nowrap text-slate-600 text-xs font-medium">
                         {getSalesPersonName(q.salesPersonId)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-2 py-2 whitespace-nowrap text-right">
                         <div className="font-bold text-slate-800 text-xs bg-slate-100 inline-block px-2 py-1 rounded-lg">
                           {calculateTotalAmount(q.details).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
                         </div>
                       </td>
-                      <td className="px-4 py-3" style={{ minWidth: '160px', maxWidth: '200px' }}>
+                      <td className="px-2 py-2" style={{ minWidth: '160px', maxWidth: '200px' }}>
                         {canEdit ? (
                           <div className={`relative block px-2 py-1 rounded-md border font-bold shadow-sm text-[10px] ${getStatusClass(q.status)}`}>
                             <select
@@ -574,7 +574,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                           <span className={`text-[10px] px-2.5 py-1 rounded-md border font-bold inline-block shadow-sm ${getStatusClass(q.status)}`}>{q.status}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-800 max-w-[140px]">
+                      <td className="px-2 py-2 whitespace-nowrap text-slate-800 max-w-[140px]">
                         <input
                           type="text"
                           defaultValue={q.comments || ''}
@@ -587,7 +587,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                           title={q.comments || ''}
                         />
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-2 py-2 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end space-x-1.5 opacity-60 hover:opacity-100 transition-opacity">
                           <button onClick={() => handleWhatsAppShare(q)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Share via WhatsApp">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
