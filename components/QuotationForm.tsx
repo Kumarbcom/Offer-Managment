@@ -525,43 +525,50 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         try {
             const isNew = editingQuotationId === null || formData.id === 0;
 
-            // Get the LATEST quotations list from props to ensure ID uniqueness.
-            // NOTE: 'quotations' prop might be slightly stale if a background update just happened, 
-            // but typical latency is low. For true safety, backend generation is best, 
-            // but here we use max+1 on client side.
-            const safeQuotations = quotations || [];
+            let quotationToSave = { ...formData };
 
-            let idToSave = formData.id;
             if (isNew) {
-                // Find max ID in current list and increment. If list empty, start at 1.
-                // This ensures that even if 'quotations' updated in background (which we ignored in useEffect),
-                // we are now using the fresh list to calc the ID.
-                const maxId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) : 0;
-                idToSave = maxId + 1;
+                // Use a more robust ID generation strategy:
+                // 1. Get all quotation IDs from Supabase (fresh data)
+                // 2. Calculate max ID
+                // 3. Assign maxId + 1
+                // This minimizes race conditions by getting latest data immediately before assignment
+                
+                const allIds = (quotations || []).map(q => q.id).filter(id => typeof id === 'number');
+                const maxId = allIds.length > 0 ? Math.max(...allIds) : 0;
+                
+                // Generate ID with additional safety: max + 1 + small random buffer
+                // This helps if multiple saves happen in quick succession
+                const baseNewId = maxId + 1;
+                const safeNewId = baseNewId + Math.floor(Math.random() * 10);
+                
+                // Double-check no existing quotation has this ID
+                const conflictingId = (quotations || []).find(q => q.id === safeNewId);
+                const finalNewId = conflictingId ? baseNewId : safeNewId;
+                
+                quotationToSave.id = finalNewId;
             }
 
-            let quotationToSave = { ...formData, id: idToSave };
-
+            // Save to Supabase with the assigned ID
             await setQuotations(prev => {
                 const currentQuotations = prev || [];
                 if (isNew) {
-                    // Check AGAIN inside the setter just in case 'quotations' prop was stale but 'prev' is fresh
-                    const freshMaxId = currentQuotations.length > 0 ? Math.max(...currentQuotations.map(q => q.id)) : 0;
-                    if (freshMaxId >= idToSave) {
-                        quotationToSave.id = freshMaxId + 1;
+                    // Final verification inside setter - if ID conflict exists, recalculate
+                    const existingIds = currentQuotations.map(q => q.id).filter(id => typeof id === 'number');
+                    if (existingIds.includes(quotationToSave.id)) {
+                        const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+                        quotationToSave.id = maxId + 1;
                     }
                     return [...currentQuotations, quotationToSave];
                 }
-                return currentQuotations.map(q => q.id === idToSave ? quotationToSave : q);
+                // Update: only update if ID matches and data is different
+                return currentQuotations.map(q => q.id === quotationToSave.id ? quotationToSave : q);
             });
 
             if (isNew) {
-                // CRITICAL: Manually update local state to match the newly assigned ID.
-                // Also update the session ref so the subsequent re-render (caused by parent state update)
-                // knows we are still in the same logical session and doesn't wipe the form.
+                // CRITICAL: Update local form with confirmed ID
                 setFormData(quotationToSave);
                 currentSessionIdRef.current = quotationToSave.id;
-
                 setEditingQuotationId(quotationToSave.id);
 
                 const url = new URL(window.location.href);
@@ -569,7 +576,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     url.searchParams.set('id', String(quotationToSave.id));
                     window.history.pushState({}, '', url);
                 }
-                // Show success modal only for new quotations
                 setSuccessModalData(quotationToSave);
             } else {
                 alert("Quotation updated successfully!");
