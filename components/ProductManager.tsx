@@ -581,7 +581,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             <div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white p-3 rounded-2xl flex flex-col shadow-md border border-amber-300 relative overflow-hidden group cursor-default">
                 <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
                 <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1">Avg List Price</span>
-                <span className="font-extrabold text-xl leading-none">â‚¹{summaryStats.avgLP.toFixed(0)}</span>
+                <span className="font-extrabold text-xl leading-none">₹{summaryStats.avgLP.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
                 <span className="text-[10px] mt-auto pt-1 opacity-70">Average LP</span>
             </div>
             <div className="bg-gradient-to-br from-cyan-400 to-blue-600 text-white p-3 rounded-2xl flex flex-col shadow-md border border-cyan-300 relative overflow-hidden group cursor-default">
