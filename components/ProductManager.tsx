@@ -78,13 +78,13 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
             <td className="px-3 py-2 whitespace-nowrap text-[11px] text-slate-500">{product.hsnCode}</td>
             <td className="px-3 py-2 whitespace-nowrap text-[11px] text-right font-semibold">
                 {hasPrice && currentPrice!.lp > 0
-                    ? <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold">â‚¹{currentPrice!.lp.toFixed(2)}</span>
-                    : <span className="text-slate-300">â€”</span>}
+                    ? <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold">₹{currentPrice!.lp.toFixed(2)}</span>
+                    : <span className="text-slate-300">—</span>}
             </td>
             <td className="px-3 py-2 whitespace-nowrap text-[11px] text-right font-semibold">
                 {hasPrice && currentPrice!.sp > 0
-                    ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold">â‚¹{currentPrice!.sp.toFixed(2)}</span>
-                    : <span className="text-slate-300">â€”</span>}
+                    ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold">₹{currentPrice!.sp.toFixed(2)}</span>
+                    : <span className="text-slate-300">—</span>}
             </td>
             <td className="px-3 py-2 whitespace-nowrap text-[11px] text-slate-500">{product.uom}</td>
             <td className="px-3 py-2 whitespace-nowrap text-[11px] text-slate-500">{product.plant}</td>
@@ -702,7 +702,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Order</label>
                 <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="w-full bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold py-1.5 px-4 border border-slate-200 rounded-xl shadow-sm flex items-center justify-center text-[11px] transition-colors">
-                    {sortOrder === 'asc' ? 'â–² Ascending' : 'â–¼ Descending'}
+                    {sortOrder === 'asc' ? '▲ Ascending' : '▼ Descending'}
                 </button>
             </div>
          </div>
@@ -739,8 +739,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                             <div>
                                 <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mb-1">Standard Price</p>
                                 <div className="flex gap-2 text-xs font-bold">
-                                    <span className={lp > 0 ? "text-emerald-600" : "text-slate-300"}>LP: {lp > 0 ? `â‚¹${lp.toFixed(2)}` : 'â€”'}</span>
-                                    <span className={sp > 0 ? "text-blue-600" : "text-slate-300"}>SP: {sp > 0 ? `â‚¹${sp.toFixed(2)}` : 'â€”'}</span>
+                                    <span className={lp > 0 ? "text-emerald-600" : "text-slate-300"}>LP: {lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</span>
+                                    <span className={sp > 0 ? "text-blue-600" : "text-slate-300"}>SP: {sp > 0 ? `₹${sp.toFixed(2)}` : '—'}</span>
                                 </div>
                             </div>
                             <div className="text-right">
