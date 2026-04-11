@@ -550,7 +550,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                           {calculateTotalAmount(q.details).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}
                         </div>
                       </td>
-                      <td className="px-4 py-3 w-40">
+                      <td className="px-4 py-3" style={{ minWidth: '160px', maxWidth: '200px' }}>
                         {canEdit ? (
                           <div className={`relative block px-2 py-1 rounded-md border font-bold shadow-sm text-[10px] ${getStatusClass(q.status)}`}>
                             <select
