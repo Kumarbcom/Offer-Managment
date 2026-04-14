@@ -94,6 +94,7 @@ export interface Quotation {
   status: QuotationStatus;
   comments: string;
   details: QuotationItem[];
+  gstAdded: boolean;
 }
 
 export interface DeliveryChallanItem {

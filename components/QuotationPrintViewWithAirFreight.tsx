@@ -58,7 +58,8 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
         return acc;
     }, { totalAmount: 0, totalFreight: 0 });
 
-    const grandTotal = totals.totalAmount + totals.totalFreight;
+    const gstAmount = quotation.gstAdded ? (totals.totalAmount + totals.totalFreight) * 0.18 : 0;
+    const grandTotal = totals.totalAmount + totals.totalFreight + gstAmount;
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
     const getPartNoLink = (partNo: string) => {
@@ -171,15 +172,21 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                 <section className="flex justify-end mt-2">
                     <div className="w-1/2 space-y-1 text-sm">
                         <div className="flex justify-between p-1">
-                            <span className="font-semibold">Subtotal</span>
+                            <span className="font-semibold">{quotation.gstAdded ? 'Sub total' : 'Subtotal'}</span>
                             <span>₹{totals.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between p-1">
                             <span className="font-semibold">Total Air Freight</span>
                             <span>₹{totals.totalFreight.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
+                        {quotation.gstAdded && (
+                            <div className="flex justify-between p-1">
+                                <span className="font-semibold">GST 18%</span>
+                                <span>₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between p-2 bg-slate-100 rounded-md">
-                            <span className="font-bold">Grand Total</span>
+                            <span className="font-bold">{quotation.gstAdded ? 'Grand Total' : 'Grand Total'}</span>
                             <span className="font-bold text-base">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
@@ -191,7 +198,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                     <h3 className="font-bold text-slate-800 mb-1 text-sm">Terms & Conditions:</h3>
                     <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
                         <li><span className="font-semibold">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
-                        <li><span className="font-semibold">Goods Service Tax:</span> GST 18% Or As Applicable at the Time of Delivery.</li>
+                        <li><span className="font-semibold">Goods Service Tax:</span> {quotation.gstAdded ? 'GST 18% or As applicable at the time of Delivery' : 'GST Extra 18% or As GST % applicable at the time of Delivery.'}</li>
                         <li><span className="font-semibold">Delivery:</span> As Mentioned Above, Subject to Prior Sales.</li>
                         <li><span className="font-semibold">Freight:</span> Freight Extra Applicable.</li>
                         <li><span className="font-semibold">Payment terms:</span> {quotation.paymentTerms}</li>

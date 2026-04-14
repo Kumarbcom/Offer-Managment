@@ -47,10 +47,13 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
 };
 
 export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson, logoUrl, onStatusUpdate, allQuotations }) => {
-    const totalAmount = (quotation.details || []).reduce((sum, item) => {
+    const subTotal = (quotation.details || []).reduce((sum, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         return sum + (unitPrice * item.moq);
     }, 0);
+
+    const gstAmount = quotation.gstAdded ? subTotal * 0.18 : 0;
+    const grandTotal = subTotal + gstAmount;
 
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
@@ -146,21 +149,39 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                 </table>
 
                 <section className="flex justify-end mt-2">
-                    <div className="w-1/3">
-                        <div className="flex justify-between p-2 bg-slate-100 rounded-md">
-                            <span className="font-bold text-sm">Total Amount</span>
-                            <span className="font-bold text-sm">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="w-1/3 space-y-1">
+                        <div className="flex justify-between p-1 bg-slate-50 text-xs">
+                            <span className="font-semibold">{quotation.gstAdded ? 'Sub total' : 'Total Amount'}</span>
+                            <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
+                        {quotation.gstAdded && (
+                            <>
+                                <div className="flex justify-between p-1 text-xs">
+                                    <span className="font-semibold">GST 18%</span>
+                                    <span>₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between p-2 bg-slate-100 rounded-md">
+                                    <span className="font-bold text-sm">Grand Total</span>
+                                    <span className="font-bold text-sm">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            </>
+                        )}
+                        {!quotation.gstAdded && (
+                            <div className="flex justify-between p-2 bg-slate-100 rounded-md">
+                                <span className="font-bold text-sm">Total Amount</span>
+                                <span className="font-bold text-sm">₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
                     </div>
                 </section>
 
-                <p className="font-semibold my-2 text-sm">Amount in Words: {numberToWords(totalAmount)}</p>
+                <p className="font-semibold my-2 text-sm">Amount in Words: {numberToWords(grandTotal)}</p>
 
                 <section className="border border-slate-200 p-2 rounded-md mt-2 print-no-break">
                     <h3 className="font-bold text-slate-800 mb-1 text-sm">Terms & Conditions:</h3>
                     <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
                         <li><span className="font-semibold">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
-                        <li><span className="font-semibold">Goods Service Tax:</span> GST 18% Or As Applicable at the Time of Delivery.</li>
+                        <li><span className="font-semibold">Goods Service Tax:</span> {quotation.gstAdded ? 'GST 18% or As applicable at the time of Delivery' : 'GST Extra 18% or As GST % applicable at the time of Delivery.'}</li>
                         <li><span className="font-semibold">Delivery:</span> As Mentioned Above, Subject to Prior Sales.</li>
                         <li><span className="font-semibold">Freight:</span> Freight Extra Applicable.</li>
                         <li><span className="font-semibold">Payment terms:</span> {quotation.paymentTerms}</li>

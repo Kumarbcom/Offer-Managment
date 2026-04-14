@@ -252,6 +252,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             status: 'Open',
             comments: '',
             details: [createEmptyQuotationItem()],
+            gstAdded: false,
         };
     }, [userRole, salesPersons, currentUser]);
 
@@ -784,6 +785,24 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
                         <div className="h-6 border-l border-slate-300 mx-1"></div>
                         <ActionButton onClick={() => setIsStockModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span>Stock Check</span></ActionButton>
+                        <button
+                            type="button"
+                            onClick={() => setFormData(prev => prev ? { ...prev, gstAdded: !prev.gstAdded } : null)}
+                            className={`flex items-center gap-1.5 border border-slate-200 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold transition-all transform active:scale-95 ${formData.gstAdded ? 'bg-green-600 text-white border-green-700' : 'bg-white text-black hover:bg-slate-50'}`}
+                            title="Toggle GST Added Option"
+                        >
+                            {formData.gstAdded ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                                </svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-600">
+                                    <path d="M12 7.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
+                                    <path fillRule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v14.25c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 19.125V4.875zM11.25 15a3 3 0 116 0 3 3 0 01-6 0zM3.75 15a3 3 0 116 0 3 3 0 01-6 0z" clipRule="evenodd" />
+                                </svg>
+                            )}
+                            <span>GST Added</span>
+                        </button>
                     </div>
 
                     {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
