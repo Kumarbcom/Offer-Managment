@@ -28,86 +28,34 @@ export function toSupabaseTableName(tableName: TableName): string {
 }
 
 /**
- * Maps application camelCase objects to Supabase snake_case columns.
+ * Automagically maps camelCase to snake_case for Supabase
  */
 function mapToSupabase(tableName: TableName, item: any): any {
-    const mapped: any = { ...item };
+    const mapped: any = {};
     
-    // Always remove 'id' from numeric primary key tables if we want Postgres to handle it (not applicable here as we use custom numeric IDs)
-    // However, for 'users' table, 'name' is the primary key.
-    
-    // Manual mapping for quotations
-    if (tableName === 'quotations') {
-        if ('quotationDate' in item) mapped.quotation_date = item.quotationDate;
-        if ('enquiryDate' in item) mapped.enquiry_date = item.enquiryDate;
-        if ('salesPersonId' in item) mapped.sales_person_id = item.salesPersonId;
-        if ('contactPerson' in item) mapped.contact_person = item.contactPerson;
-        if ('contactNumber' in item) mapped.contact_number = item.contactNumber;
-        if ('productsBrand' in item) mapped.products_brand = item.productsBrand;
-        if ('modeOfEnquiry' in item) mapped.mode_of_enquiry = item.modeOfEnquiry;
-        if ('otherTerms' in item) mapped.other_terms = item.otherTerms;
-        if ('paymentTerms' in item) mapped.payment_terms = item.paymentTerms;
-        if ('preparedBy' in item) mapped.prepared_by = item.preparedBy;
-        if ('gstAdded' in item) mapped.gst_added = item.gstAdded;
-        if ('hsnCode' in item) mapped.hsn_code = item.hsnCode;
-        if ('customerId' in item) mapped.customer_id = item.customerId;
-    }
+    Object.keys(item).forEach(key => {
+        // Convert camelCase to snake_case
+        const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+        mapped[snakeKey] = item[key];
+    });
 
-    // Manual mapping for products
-    if (tableName === 'products') {
-        if ('partNo' in item) mapped.part_no = item.partNo;
-        if ('hsnCode' in item) mapped.hsn_code = item.hsnCode;
-    }
-
-    // Manual mapping for customers
-    if (tableName === 'customers') {
-        if ('salesPersonId' in item) mapped.sales_person_id = item.salesPersonId;
-        if ('discountStructure' in item) mapped.discount_structure = item.discountStructure;
-    }
-
-    // Remove camelCase versions after mapping to snake_case
-    const keysToRemove = [
-        'quotationDate', 'enquiryDate', 'salesPersonId', 'contactPerson', 
-        'contactNumber', 'productsBrand', 'modeOfEnquiry', 'otherTerms', 
-        'paymentTerms', 'preparedBy', 'gstAdded', 'partNo', 'hsnCode', 
-        'discountStructure', 'customerId'
-    ];
-    keysToRemove.forEach(k => delete mapped[k]);
+    // Special table name mappings if any (e.g. stock_statement vs stockStatements)
+    // But mostly the column names follow the pattern.
 
     return mapped;
 }
 
 /**
- * Maps Supabase snake_case columns back to application camelCase objects.
+ * Automagically maps snake_case back to camelCase for the App
  */
 function mapFromSupabase(tableName: TableName, item: any): any {
-    const mapped: any = { ...item };
+    const mapped: any = {};
     
-    // Common fields
-    if ('created_at' in item) mapped.createdAt = item.created_at;
-
-    // Quotation fields
-    if ('quotation_date' in item) mapped.quotationDate = item.quotation_date;
-    if ('enquiry_date' in item) mapped.enquiryDate = item.enquiry_date;
-    if ('sales_person_id' in item) mapped.salesPersonId = item.sales_person_id;
-    if ('customer_id' in item) mapped.customerId = item.customer_id;
-    if ('contact_person' in item) mapped.contactPerson = item.contact_person;
-    if ('contact_number' in item) mapped.contactNumber = item.contact_number;
-    if ('products_brand' in item) mapped.productsBrand = item.products_brand;
-    if ('mode_of_enquiry' in item) mapped.modeOfEnquiry = item.mode_of_enquiry;
-    if ('other_terms' in item) mapped.otherTerms = item.other_terms;
-    if ('payment_terms' in item) mapped.paymentTerms = item.payment_terms;
-    if ('prepared_by' in item) mapped.preparedBy = item.prepared_by;
-    if ('gst_added' in item) mapped.gstAdded = item.gst_added;
-    if ('hsn_code' in item) mapped.hsnCode = item.hsn_code;
-
-    // Product fields
-    if ('part_no' in item) mapped.partNo = item.part_no;
-    if ('hsn_code' in item && tableName === 'products') mapped.hsnCode = item.hsn_code;
-
-    // Customer fields
-    if ('sales_person_id' in item && tableName === 'customers') mapped.salesPersonId = item.sales_person_id;
-    if ('discount_structure' in item) mapped.discountStructure = item.discount_structure;
+    Object.keys(item).forEach(key => {
+        // Convert snake_case to camelCase
+        const camelKey = key.replace(/(_[a-z])/g, group => group.toUpperCase().replace('_', ''));
+        mapped[camelKey] = item[key];
+    });
 
     return mapped;
 }
@@ -124,22 +72,22 @@ export async function set(tableName: TableName, previousState: any[] | null, new
     if (!supabase) throw new Error("Supabase client not initialized");
     const supabaseTableName = toSupabaseTableName(tableName);
 
-    // Identify changes
-    const previousMap = new Map((previousState || []).map(item => [tableName === 'users' ? item.name : item.id, item]));
-    const currentKeys = new Set(newState.map(item => tableName === 'users' ? item.name : item.id));
+    // Identify primary key
+    const pk = (tableName === 'users') ? 'name' : 'id';
 
-    // Deletions
-    const toDelete = (previousState || []).filter(item => !currentKeys.has(tableName === 'users' ? item.name : item.id));
-    for (const item of toDelete) {
-        const id = tableName === 'users' ? item.name : item.id;
-        const key = tableName === 'users' ? 'name' : 'id';
-        await supabase.from(supabaseTableName).delete().eq(key, id);
+    // 1. Identify Deletions
+    if (previousState) {
+        const currentKeys = new Set(newState.map(item => item[pk]));
+        const toDelete = previousState.filter(item => !currentKeys.has(item[pk]));
+        for (const item of toDelete) {
+            await supabase.from(supabaseTableName).delete().eq(pk, item[pk]);
+        }
     }
 
-    // Upserts (Insert or Update)
+    // 2. Upserts
     const toUpsert = newState.map(item => mapToSupabase(tableName, item));
     if (toUpsert.length > 0) {
-        const { data, error } = await supabase.from(supabaseTableName).upsert(toUpsert, { onConflict: tableName === 'users' ? 'name' : 'id' }).select();
+        const { data, error } = await supabase.from(supabaseTableName).upsert(toUpsert, { onConflict: pk }).select();
         if (error) throw new Error(error.message);
         return (data || []).map(item => mapFromSupabase(tableName, item));
     }
@@ -147,148 +95,65 @@ export async function set(tableName: TableName, previousState: any[] | null, new
     return [];
 }
 
-export async function searchProducts(term: string) {
-    if (!supabase) return [];
-    let query = supabase.from('products').select('*').limit(50);
-    if (term) {
-        const terms = term.split('*').map(t => t.trim()).filter(Boolean);
-        if (terms.length > 0) {
-            const partNoFilters = terms.map(t => `part_no.ilike.*${t}*`).join(',');
-            const descriptionFilters = terms.map(t => `description.ilike.*${t}*`).join(',');
-            query = query.or(`${partNoFilters},${descriptionFilters}`);
-        }
-    }
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return (data || []).map(item => mapFromSupabase('products', item));
-}
-
-// Helper for CustomerAddModal
-export async function getCustomersPaginated(page: number, pageSize: number) {
-    if (!supabase) return { data: [], count: 0 };
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    const { data, error, count } = await supabase
-        .from('customers')
-        .select('*', { count: 'exact' })
-        .order('name')
-        .range(from, to);
-    
-    if (error) throw new Error(error.message);
-    return {
-        data: (data || []).map(item => mapFromSupabase('customers', item)),
-        count: count || 0
-    };
-}
-
-export async function getSalesPersons() {
-    return get('salesPersons');
-}
-
-export async function upsertCustomer(customer: any) {
-    const toUpsert = mapToSupabase('customers', customer);
-    const { data, error } = await supabase!.from('customers').upsert(toUpsert).select();
-    if (error) throw new Error(error.message);
-    return (data || []).map(item => mapFromSupabase('customers', item))[0];
-}
-
-export async function deleteCustomer(id: number) {
-    const { error } = await supabase!.from('customers').delete().eq('id', id);
-    if (error) throw new Error(error.message);
-}
-
-export async function addCustomersBatch(customers: any[]) {
-    const toUpsert = customers.map(c => mapToSupabase('customers', c));
-    const { error } = await supabase!.from('customers').upsert(toUpsert);
-    if (error) throw new Error(error.message);
-}
-
-export async function deleteProductsBatch(ids: number[]) {
-    const { error } = await supabase!.from('products').delete().in('id', ids);
-    if (error) throw new Error(error.message);
-}
-
-export async function updateProduct(product: any) {
-    const toUpsert = mapToSupabase('products', product);
-    const { error } = await supabase!.from('products').update(toUpsert).eq('id', product.id);
-    if (error) throw new Error(error.message);
-}
-
-export async function addProductsBatch(products: any[]) {
-    const toUpsert = products.map(p => mapToSupabase('products', p));
-    const { error } = await supabase!.from('products').upsert(toUpsert);
-    if (error) throw new Error(error.message);
-}
-
-export async function getProductsPaginated(page: number, pageSize: number) {
-    if (!supabase) return { data: [], count: 0 };
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    const { data, error, count } = await supabase
-        .from('products')
-        .select('*', { count: 'exact' })
-        .order('id')
-        .range(from, to);
-    
-    if (error) throw new Error(error.message);
-    return {
-        data: (data || []).map(item => mapFromSupabase('products', item)),
-        count: count || 0
-    };
-}
-
-export async function getProductsByIds(ids: number[]) {
-    if (!supabase || !ids.length) return [];
-    const { data, error } = await supabase.from('products').select('*').in('id', ids);
-    if (error) throw new Error(error.message);
-    return (data || []).map(item => mapFromSupabase('products', item));
-}
-
-export async function getProductsByPartNos(partNos: string[]) {
-    if (!supabase || !partNos.length) return [];
-    const { data, error } = await supabase.from('products').select('*').in('part_no', partNos);
-    if (error) throw new Error(error.message);
-    return (data || []).map(item => mapFromSupabase('products', item));
-}
-
-export async function fetchAllProductsForExport() {
-    return get('products');
-}
-
-export async function searchCustomers(term: string) {
-    if (!supabase) return [];
-    let query = supabase.from('customers').select('*').limit(50);
-    if (term) {
-        query = query.ilike('name', `%${term}%`);
-    }
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return (data || []).map(item => mapFromSupabase('customers', item));
-}
-
-export async function getCustomersByIds(ids: number[]) {
-    if (!supabase || !ids.length) return [];
-    const { data, error } = await supabase.from('customers').select('*').in('id', ids);
-    if (error) throw new Error(error.message);
-    return (data || []).map(item => mapFromSupabase('customers', item));
-}
-
 export async function countRecords(tableName: TableName): Promise<number> {
     if (!supabase) return 0;
-    const { count, error } = await supabase
-        .from(toSupabaseTableName(tableName))
-        .select('*', { count: 'exact', head: true });
-    
+    const { count, error } = await supabase.from(toSupabaseTableName(tableName)).select('*', { count: 'exact', head: true });
     if (error) throw new Error(error.message);
     return count || 0;
 }
 
 export async function clearTable(tableName: TableName): Promise<void> {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase
-        .from(toSupabaseTableName(tableName))
-        .delete()
-        .neq('id', -999); // Deletes all rows where ID is not -999 (standard way to clear table without TRUNCATE permissions)
-    
+    const pk = (tableName === 'users') ? 'name' : 'id';
+    const { error } = await supabase.from(toSupabaseTableName(tableName)).delete().not(pk, 'is', null);
     if (error) throw new Error(error.message);
 }
+
+// RESTORED HELPERS
+export async function searchProducts(term: string) {
+    if (!supabase) return [];
+    let query = supabase.from('products').select('*');
+    if (term) {
+        query = query.or(`part_no.ilike.*${term}*,description.ilike.*${term}*`);
+    }
+    const { data, error } = await query.limit(50);
+    if (error) throw new Error(error.message);
+    return (data || []).map(item => mapFromSupabase('products', item));
+}
+
+export async function getCustomersPaginated(page: number, pageSize: number) {
+    if (!supabase) return { data: [], count: 0 };
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await supabase.from('customers').select('*', { count: 'exact' }).order('name').range(from, to);
+    if (error) throw new Error(error.message);
+    return { data: (data || []).map(item => mapFromSupabase('customers', item)), count: count || 0 };
+}
+
+export async function getProductsPaginated(page: number, pageSize: number) {
+    if (!supabase) return { data: [], count: 0 };
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await supabase.from('products').select('*', { count: 'exact' }).order('id').range(from, to);
+    if (error) throw new Error(error.message);
+    return { data: (data || []).map(item => mapFromSupabase('products', item)), count: count || 0 };
+}
+
+export async function searchCustomers(term: string) {
+    if (!supabase) return [];
+    const { data, error } = await supabase.from('customers').select('*').ilike('name', `%${term}%`).limit(50);
+    if (error) throw new Error(error.message);
+    return (data || []).map(item => mapFromSupabase('customers', item));
+}
+
+export async function getSalesPersons() { return get('salesPersons'); }
+export async function upsertCustomer(c: any) { const res = await set('customers', null, [c]); return res[0]; }
+export async function deleteCustomer(id: number) { await supabase!.from('customers').delete().eq('id', id); }
+export async function addCustomersBatch(c: any[]) { await set('customers', null, c); }
+export async function deleteProductsBatch(ids: any[]) { await supabase!.from('products').delete().in('id', ids); }
+export async function updateProduct(p: any) { await set('products', null, [p]); }
+export async function addProductsBatch(p: any[]) { await set('products', null, p); }
+export async function getProductsByIds(ids: any[]) { const { data } = await supabase!.from('products').select('*').in('id', ids); return (data || []).map(i => mapFromSupabase('products', i)); }
+export async function getCustomersByIds(ids: any[]) { const { data } = await supabase!.from('customers').select('*').in('id', ids); return (data || []).map(i => mapFromSupabase('customers', i)); }
+export async function getProductsByPartNos(p: any[]) { const { data } = await supabase!.from('products').select('*').in('part_no', p); return (data || []).map(i => mapFromSupabase('products', i)); }
+export async function fetchAllProductsForExport() { return get('products'); }
