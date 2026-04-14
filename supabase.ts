@@ -27,57 +27,78 @@ export function toSupabaseTableName(tableName: TableName): string {
     }
 }
 
-/**
- * Maps camelCase to snake_case for Supabase
- */
 function mapToSupabase(tableName: TableName, item: any): any {
     const mapped: any = {};
     Object.keys(item).forEach(key => {
-        // Handle explicit exceptions if needed
         const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
         mapped[snakeKey] = item[key];
     });
     return mapped;
 }
 
-/**
- * Maps snake_case back to camelCase for the App
- */
 function mapFromSupabase(tableName: TableName, item: any): any {
     const mapped: any = {};
-    Object.keys(item).forEach(key => {
-        // Robust snake_case to camelCase conversion
-        const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-        mapped[camelKey] = item[key];
+    
+    // 1. Lowercase all keys from Supabase to normalize
+    const raw: any = {};
+    Object.keys(item).forEach(k => raw[k.toLowerCase()] = item[k]);
+
+    // 2. Map all known fields with extreme flexibility
+    const mapping: Record<string, string[]> = {
+        id: ['id'],
+        quotationDate: ['quotation_date', 'quotationdate', 'date', 'created_at'],
+        enquiryDate: ['enquiry_date', 'enquirydate'],
+        customerId: ['customer_id', 'customerid', 'customer'],
+        contactPerson: ['contact_person', 'contactperson', 'contact'],
+        contactNumber: ['contact_number', 'contactnumber', 'phone', 'mobile'],
+        salesPersonId: ['sales_person_id', 'salespersonid', 'sales_person'],
+        status: ['status'],
+        comments: ['comments'],
+        details: ['details'],
+        productsBrand: ['products_brand', 'brand'],
+        modeOfEnquiry: ['mode_of_enquiry', 'mode'],
+        otherTerms: ['other_terms'],
+        paymentTerms: ['payment_terms'],
+        preparedBy: ['prepared_by'],
+        gstAdded: ['gst_added'],
+        hsnCode: ['hsn_code', 'hsn'],
+        partNo: ['part_no', 'partnumber'],
+        description: ['description'],
+        prices: ['prices'],
+        uom: ['uom'],
+        plant: ['plant']
+    };
+
+    Object.keys(mapping).forEach(target => {
+        const sources = mapping[target];
+        for (const src of sources) {
+            if (raw[src] !== undefined && raw[src] !== null) {
+                mapped[target] = raw[src];
+                break;
+            }
+        }
     });
 
-    // SAFETY CHECK: If specific critical fields are missing, try to find them by common aliases
-    if (!mapped.quotationDate && item.quotation_date) mapped.quotationDate = item.quotation_date;
-    if (!mapped.contactPerson && item.contact_person) mapped.contactPerson = item.contact_person;
-    if (!mapped.salesPersonId && item.sales_person_id) mapped.salesPersonId = item.sales_person_id;
-    if (!mapped.customerId && item.customer_id) mapped.customerId = item.customer_id;
-    if (!mapped.contactNumber && item.contact_number) mapped.contactNumber = item.contact_number;
+    // 3. Fallback for any other fields (standard snake to camel)
+    Object.keys(item).forEach(key => {
+        const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+        if (mapped[camelKey] === undefined) {
+            mapped[camelKey] = item[key];
+        }
+    });
 
     return mapped;
 }
 
 export async function get(tableName: TableName): Promise<any[]> {
     if (!supabase) return [];
-    const supabaseTableName = toSupabaseTableName(tableName);
-    const { data, error } = await supabase.from(supabaseTableName).select('*');
+    const { data, error } = await supabase.from(toSupabaseTableName(tableName)).select('*');
     if (error) throw new Error(error.message);
     
-    const results = (data || []).map(item => mapFromSupabase(tableName, item));
+    // Filter out completely empty rows (trash data)
+    const validData = (data || []).filter(item => Object.keys(item).length > 2);
     
-    // Debug Logging (Only for developer)
-    if (tableName === 'quotations' && results.length > 0) {
-        console.log("Supabase Fetch Debug (Quotation 0):", { 
-            raw: data![0], 
-            mapped: results[0] 
-        });
-    }
-    
-    return results;
+    return validData.map(item => mapFromSupabase(tableName, item));
 }
 
 export async function set(tableName: TableName, previousState: any[] | null, newState: any[]): Promise<any[]> {
@@ -85,7 +106,6 @@ export async function set(tableName: TableName, previousState: any[] | null, new
     const supabaseTableName = toSupabaseTableName(tableName);
     const pk = (tableName === 'users') ? 'name' : 'id';
 
-    // Identify Deletions
     if (previousState) {
         const currentKeys = new Set(newState.map(item => item[pk]));
         const toDelete = previousState.filter(item => !currentKeys.has(item[pk]));
@@ -94,7 +114,6 @@ export async function set(tableName: TableName, previousState: any[] | null, new
         }
     }
 
-    // Upserts
     const toUpsert = newState.map(item => mapToSupabase(tableName, item));
     if (toUpsert.length > 0) {
         const { data, error } = await supabase.from(supabaseTableName).upsert(toUpsert, { onConflict: pk }).select();
@@ -129,8 +148,7 @@ export async function searchProducts(term: string) {
 export async function getCustomersPaginated(page: number, pageSize: number) {
     if (!supabase) return { data: [], count: 0 };
     const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    const { data, error, count } = await supabase.from('customers').select('*', { count: 'exact' }).order('name').range(from, to);
+    const { data, error, count } = await supabase.from('customers').select('*', { count: 'exact' }).order('name').range(from, from + pageSize - 1);
     if (error) throw new Error(error.message);
     return { data: (data || []).map(item => mapFromSupabase('customers', item)), count: count || 0 };
 }
@@ -138,8 +156,7 @@ export async function getCustomersPaginated(page: number, pageSize: number) {
 export async function getProductsPaginated(page: number, pageSize: number) {
     if (!supabase) return { data: [], count: 0 };
     const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    const { data, error, count } = await supabase.from('products').select('*', { count: 'exact' }).order('id').range(from, to);
+    const { data, error, count } = await supabase.from('products').select('*', { count: 'exact' }).order('id').range(from, from + pageSize - 1);
     if (error) throw new Error(error.message);
     return { data: (data || []).map(item => mapFromSupabase('products', item)), count: count || 0 };
 }
