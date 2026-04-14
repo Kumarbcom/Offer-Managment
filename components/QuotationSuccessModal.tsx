@@ -1,6 +1,7 @@
 
 import React from 'react';
 import type { Quotation, Customer, SalesPerson } from '../types';
+import { getQuotationDisplayNumber } from '../utils/quotationNumber';
 
 interface QuotationSuccessModalProps {
   isOpen: boolean;
@@ -30,14 +31,15 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
   };
 
   const totalValue = calculateTotal(quotation.details);
+  const displayNumber = getQuotationDisplayNumber(quotation);
 
   const handleWhatsAppShare = () => {
     if (!salesPerson || !salesPerson.mobile) return;
     
     const appUrl = `${window.location.origin}${window.location.pathname}?id=${quotation.id}`;
     const message = `*New Quotation Generated*\n` +
-                    `QTN No: ${quotation.id}\n` +
-                    `Date: ${quotation.quotationDate}\n` +
+                    `QTN No: ${displayNumber}\n` +
+                    `Date: ${new Date(quotation.quotationDate).toLocaleDateString()}\n` +
                     `Customer: ${customer?.name || 'N/A'}\n` +
                     `Contact: ${quotation.contactPerson} (${quotation.contactNumber})\n` +
                     `Value: ₹${totalValue.toLocaleString('en-IN', {maximumFractionDigits: 0})}\n` +
@@ -67,7 +69,7 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-500 text-xs uppercase">Quotation No</p>
-              <p className="font-bold text-gray-800">#{quotation.id}</p>
+              <p className="font-bold text-gray-800">{displayNumber}</p>
             </div>
             <div className="text-right">
               <p className="text-gray-500 text-xs uppercase">Date</p>
