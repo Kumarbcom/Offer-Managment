@@ -2,14 +2,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { Product, Customer, SalesPerson, User, Quotation } from './types';
 
+const SUPABASE_URL = 'https://hrvjlqqldbgzlvqavwwl.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhydmpscXFsZGJnemx2cWF2d3dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzNDU1OTksImV4cCI6MjA3ODkyMTU5OX0.qW6P4aQbVjhKEZLzyoIYnPcxn-ZALfdq_JJi-_Fb2PA';
+
 export const supabaseConfig = {
-    url: import.meta.env.VITE_SUPABASE_URL || '',
-    key: import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+    url: SUPABASE_URL,
+    key: SUPABASE_KEY
 };
 
-export const supabase = (supabaseConfig.url && supabaseConfig.key) 
-    ? createClient(supabaseConfig.url, supabaseConfig.key)
-    : null;
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 type TableName = 'products' | 'customers' | 'salesPersons' | 'users' | 'quotations' | 'stockStatements' | 'pendingSOs';
 
