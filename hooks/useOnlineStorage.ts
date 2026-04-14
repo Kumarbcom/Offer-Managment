@@ -11,10 +11,46 @@ const isSupabaseConfigured = supabaseConfig.url && !supabaseConfig.url.includes(
 
 const seededTables = new Set<CollectionName>();
 
+// --- Pending Sync Queue helpers ---
+// When a Supabase write fails, items are stored here and retried on next load.
+
+const getPendingSyncKey = (tableName: CollectionName) => `pending_sync_${tableName}`;
+
+function readPendingSync<T>(tableName: CollectionName): T[] {
+    try {
+        const raw = localStorage.getItem(getPendingSyncKey(tableName));
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+function writePendingSync<T>(tableName: CollectionName, items: T[]) {
+    try {
+        if (items.length === 0) {
+            localStorage.removeItem(getPendingSyncKey(tableName));
+        } else {
+            localStorage.setItem(getPendingSyncKey(tableName), JSON.stringify(items));
+        }
+    } catch (e) {
+        console.warn(`Failed to write pending sync for ${tableName}:`, e);
+    }
+}
+
+function addToPendingSync<T extends { id?: number | string; name?: string }>(
+    tableName: CollectionName,
+    newItems: T[]
+) {
+    const primaryKey = tableName === 'users' ? 'name' : 'id';
+    const existing = readPendingSync<T>(tableName);
+    const existingKeys = new Set(existing.map((i: any) => i[primaryKey]));
+    const toAdd = newItems.filter((i: any) => i[primaryKey] && !existingKeys.has(i[primaryKey]));
+    writePendingSync(tableName, [...existing, ...toAdd]);
+}
+
 /**
  * A hook to manage data persistence with real-time synchronization.
  * It uses Supabase for data storage and real-time updates.
  * If Supabase is not configured or fails, it falls back to Local Storage (or in-memory for products).
+ * Failed Supabase writes are stored in a pending-sync queue and retried automatically on next load.
  */
 export const useOnlineStorage = <T extends {id?: number | string, name?: string}>(tableName: CollectionName): [T[] | null, (value: SetStateAction<T[]>) => Promise<void>, boolean, Error | null] => {
     
@@ -58,6 +94,40 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                         data = await get(tableName);
                     }
                 }
+
+                // --- PENDING SYNC: Retry any failed writes from previous sessions ---
+                const primaryKey = tableName === 'users' ? 'name' : 'id';
+                const pendingItems = readPendingSync<T>(tableName);
+
+                if (pendingItems.length > 0) {
+                    console.log(`[PENDING-SYNC] Found ${pendingItems.length} unsynced item(s) for '${tableName}'. Retrying push to Supabase...`);
+                    
+                    // Find truly pending items (not already in Supabase)
+                    const supabaseKeys = new Set(data.map((item: any) => item[primaryKey]));
+                    const stillPending = pendingItems.filter((item: any) => 
+                        item[primaryKey] && !supabaseKeys.has(item[primaryKey])
+                    );
+
+                    if (stillPending.length > 0) {
+                        try {
+                            await set(tableName, [], stillPending);
+                            console.log(`[PENDING-SYNC] ✅ Successfully synced ${stillPending.length} item(s) for '${tableName}' to Supabase.`);
+                            writePendingSync(tableName, []); // Clear queue on success
+                            // Re-fetch to get server-assigned data
+                            data = await get(tableName);
+                        } catch (syncError) {
+                            console.warn(`[PENDING-SYNC] ⚠️ Failed to sync pending items for '${tableName}'. Will retry next session.`, syncError);
+                            // Keep them in state so user can see them, even if Supabase still rejects
+                            const existingKeys = new Set(data.map((item: any) => item[primaryKey]));
+                            const localOnlyItems = stillPending.filter((item: any) => !existingKeys.has(item[primaryKey]));
+                            data = [...data, ...localOnlyItems];
+                        }
+                    } else {
+                        // All pending items already exist in Supabase — clear queue
+                        writePendingSync(tableName, []);
+                    }
+                }
+
                 setState(data as T[]);
             } catch (e) {
                 console.warn(`Supabase error on loading '${tableName}', falling back to local data.`, e);
@@ -118,13 +188,9 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                     }
                 )
                 .subscribe((status: string, err?: Error) => {
-                    if (status === 'SUBSCRIBED') {
-                        // console.log(`Successfully subscribed to real-time updates for ${tableName}`);
-                    }
                     if (status === 'CHANNEL_ERROR' || err) {
                         const subError = new Error(`Subscription error on channel ${channelName}: Real-time updates for '${tableName}' might not be working. Ensure replication is enabled for the '${supabaseTableName}' table in your Supabase project settings.`);
                         console.warn(subError, err);
-                        // Do not set a fatal error for subscription issues.
                     }
                 });
         } catch(subError) {
@@ -166,25 +232,26 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             console.log(`[DEBUG-STORAGE] Calling Supabase.set() for '${tableName}'`);
             const savedData = await set(tableName, previousState, newState);
             
-            // 2. IMPORTANT: If Supabase returned data (e.g. with new IDs), 
-            // merge it back into our state so the UI has the correct IDs.
+            // If Supabase returned data (e.g. with new IDs), merge it back into state.
             if (savedData && Array.isArray(savedData) && savedData.length > 0) {
                 setState(current => {
                     const currentMap = new Map((current || []).map(item => [item.id, item]));
                     savedData.forEach(item => {
-                        // If we have a matching item by some means (e.g. name or temporary matches), 
-                        // or just add it. For simple upsert, we just merge.
                         currentMap.set(item.id, item);
                     });
                     return Array.from(currentMap.values());
                 });
+                // Supabase succeeded — clear any pending items that match
+                const primaryKey = tableName === 'users' ? 'name' : 'id';
+                const savedKeys = new Set(savedData.map((i: any) => i[primaryKey]));
+                const remaining = readPendingSync<T>(tableName).filter((i: any) => !savedKeys.has(i[primaryKey]));
+                writePendingSync(tableName, remaining);
             }
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
             const lowerMsg = errorMessage.toLowerCase();
             
-            // Handle missing table errors by falling back to local storage silently (or with a log)
-            // Broader check for various "table missing" error formats
+            // Handle missing table errors by falling back to local storage silently
             if (
                 lowerMsg.includes("could not find the table") || 
                 lowerMsg.includes("relation") && lowerMsg.includes("does not exist") ||
@@ -198,23 +265,36 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                 } else {
                     setInMemoryData(newState);
                 }
-                // Do NOT revert the optimistic update; we successfully saved to local.
                 return;
             }
 
             console.error(`Supabase error on saving '${tableName}':`, e);
 
-            // CRITICAL FIX: Save to local storage as fallback so data is NOT lost.
-            // Do NOT revert the optimistic update — the user's data is preserved locally.
-            console.warn(`Supabase save failed for '${tableName}'. Saving to local storage as fallback.`);
+            // PENDING SYNC: Queue the NEW items (diff vs previousState) so they retry on next load
+            const primaryKey = tableName === 'users' ? 'name' : 'id';
+            const prevKeys = new Set((previousState || []).map((i: any) => i[primaryKey]));
+            const newItems = newState.filter((i: any) => i[primaryKey] && !prevKeys.has(i[primaryKey]));
+            const changedItems = newState.filter((i: any) => {
+                if (!i[primaryKey] || !prevKeys.has(i[primaryKey])) return false;
+                const prev = (previousState || []).find((p: any) => p[primaryKey] === i[primaryKey]);
+                return JSON.stringify(prev) !== JSON.stringify(i);
+            });
+            const itemsToQueue = [...newItems, ...changedItems];
+            
+            if (itemsToQueue.length > 0) {
+                addToPendingSync(tableName, itemsToQueue);
+                console.warn(`[PENDING-SYNC] Queued ${itemsToQueue.length} item(s) for '${tableName}' to retry on next load.`);
+            }
+
+            // Also save full state to local storage as immediate fallback
             if (!useInMemoryFallback) {
                 await setLocalData(newState);
             } else {
                 setInMemoryData(newState);
             }
 
-            // Alert user about the cloud sync failure but their data is safe
-            alert(`⚠️ Cloud Sync Warning (${tableName}): ${errorMessage}\n\nYour data has been saved locally as a backup. It will sync to the cloud when connectivity is restored.`);
+            // Inform user — data is safe, will auto-retry
+            alert(`⚠️ Cloud Sync Failed (${tableName})\n\n${errorMessage}\n\nYour data is saved locally and will automatically sync to the cloud on next load.\n\nIf this repeats, go to Storage → check the Supabase status, or contact admin to check RLS policies.`);
         }
     }, [tableName, isSupabaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
     
