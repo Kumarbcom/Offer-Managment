@@ -529,10 +529,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             let quotationToSave = { ...formData };
 
             if (isNew) {
-                // Generate a unique ID using timestamp and random number
-                const timestamp = Date.now();
-                const random = Math.floor(Math.random() * 1000);
-                quotationToSave.id = timestamp + random;
+                // Generate a unique 32-bit integer ID
+                // Formula: (seconds since 2024) * 10 + small random
+                // This ensures it fits in a standard 'int4' column (max 2.1B)
+                const epoch = 1704067200; // Jan 1 2024
+                const secondsSinceEpoch = Math.floor(Date.now() / 1000) - epoch;
+                const random = Math.floor(Math.random() * 10);
+                const safeId = (secondsSinceEpoch * 10) + random;
+                
+                quotationToSave.id = safeId;
             }
 
             // Save to Supabase
