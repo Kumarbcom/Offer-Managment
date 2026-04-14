@@ -63,6 +63,22 @@ export const StorageManager: React.FC = () => {
         }
     }
 
+    const optimizeStorage = () => {
+        if (window.confirm("This will clear local backups of quotations and other data. If you have a stable internet connection, this data is already safe in the cloud. Proceed to free up space?")) {
+            const keysToKeep = ['company_logo', 'sb-token', 'supabase.auth.token'];
+            let clearedCount = 0;
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && !keysToKeep.some(k => key.includes(k))) {
+                    localStorage.removeItem(key);
+                    clearedCount++;
+                }
+            }
+            alert(`Cleared ${clearedCount} local data items. Your settings and logo were kept.`);
+            checkUsage();
+        }
+    };
+
     const formatSize = (bytes: number) => {
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
@@ -74,14 +90,27 @@ export const StorageManager: React.FC = () => {
 
     return (
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-800">Local Browser Storage</h3>
-                <button 
-                    onClick={clearAll}
-                    className="text-xs bg-red-50 text-red-600 px-3 py-1 rounded-lg border border-red-100 hover:bg-red-100 font-bold"
-                >
-                    Clear All
-                </button>
+            <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800">Local Browser Storage</h3>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={optimizeStorage}
+                            className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg border border-indigo-100 hover:bg-indigo-100 font-bold"
+                        >
+                            Optimize
+                        </button>
+                        <button 
+                            onClick={clearAll}
+                            className="text-xs bg-red-50 text-red-600 px-3 py-1 rounded-lg border border-red-100 hover:bg-red-100 font-bold"
+                        >
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                    "Optimize" clears local backups while keeping your logo and login. "Clear All" resets everything.
+                </p>
             </div>
 
             <div className="space-y-1">
