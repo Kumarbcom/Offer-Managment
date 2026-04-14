@@ -1,10 +1,10 @@
 
-import { createClient } from '@supabase/supabase-client';
+import { createClient } from '@supabase/supabase-js';
 import { Product, Customer, SalesPerson, User, Quotation } from './types';
 
 export const supabaseConfig = {
-    url: import.meta.env.VITE_SUPABASE_URL || '',
-    key: import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+    url: (import.meta as any).env.VITE_SUPABASE_URL || '',
+    key: (import.meta as any).env.VITE_SUPABASE_ANON_KEY || ''
 };
 
 export const supabase = (supabaseConfig.url && supabaseConfig.key) 
