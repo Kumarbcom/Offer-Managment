@@ -160,7 +160,21 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         }
 
         try {
-            await set(tableName, previousState, newState);
+            const savedData = await set(tableName, previousState, newState);
+            
+            // 2. IMPORTANT: If Supabase returned data (e.g. with new IDs), 
+            // merge it back into our state so the UI has the correct IDs.
+            if (savedData && Array.isArray(savedData) && savedData.length > 0) {
+                setState(current => {
+                    const currentMap = new Map((current || []).map(item => [item.id, item]));
+                    savedData.forEach(item => {
+                        // If we have a matching item by some means (e.g. name or temporary matches), 
+                        // or just add it. For simple upsert, we just merge.
+                        currentMap.set(item.id, item);
+                    });
+                    return Array.from(currentMap.values());
+                });
+            }
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
             const lowerMsg = errorMessage.toLowerCase();

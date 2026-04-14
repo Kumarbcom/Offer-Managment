@@ -172,7 +172,7 @@ export async function clearTable(tableName: TableName): Promise<void> {
     }
 }
 
-export async function set<T extends { id?: number | string, name?: string }>(tableName: TableName, previousData: T[] | null, newData: T[]): Promise<void> {
+export async function set<T extends { id?: number | string, name?: string }>(tableName: TableName, previousData: T[] | null, newData: T[]): Promise<T[] | null> {
     if (!supabase) throw new Error("Supabase client not initialized");
 
     const supabaseTableName = toSupabaseTableName(tableName);
@@ -257,10 +257,12 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
                 return payload;
             });
 
-            const { error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey });
+            const { data, error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey }).select();
             if (error) throw new Error(parseSupabaseError(error, `Failed to upsert batch to ${supabaseTableName}`));
+            return data as T[];
         }
     }
+    return null;
 }
 
 // --- Specific Helper Functions ---

@@ -62,7 +62,12 @@ export const getQuotationDisplayNumber = (
             const d = new Date(q.quotationDate);
             return d >= NEW_NUMBERING_START && d >= fyStart && d <= fyEnd;
         })
-        .sort((a, b) => a.id - b.id);
+        .sort((a, b) => {
+            const dateA = new Date(a.quotationDate).getTime();
+            const dateB = new Date(b.quotationDate).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return a.id - b.id;
+        });
 
     const rank = fyQuotations.findIndex(q => q.id === quotation.id) + 1;
     if (rank === 0) {
