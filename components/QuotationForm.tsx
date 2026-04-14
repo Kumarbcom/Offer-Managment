@@ -529,23 +529,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             let quotationToSave = { ...formData };
 
             if (isNew) {
-                // Use a more robust ID generation strategy:
-                // 1. Get all quotation IDs from Supabase (fresh data)
-                // 2. Calculate max ID
-                // 3. Assign maxId + 1
-                // This minimizes race conditions by getting latest data immediately before assignment
-                
-            if (isNew) {
-                // Better ID generation: 
-                // We use a timestamp + random to ensure global uniqueness across users
-                // but keep it as a number for rank calculation.
-                // Rank calculation in quotationNumber.ts handles large numeric IDs fine.
+                // Generate a unique ID using timestamp and random number
                 const timestamp = Date.now();
                 const random = Math.floor(Math.random() * 1000);
-                // ID format: 1713... (timestamp)
-                const uniqueId = timestamp + random;
-                
-                quotationToSave.id = uniqueId;
+                quotationToSave.id = timestamp + random;
             }
 
             // Save to Supabase
