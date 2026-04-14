@@ -158,6 +158,23 @@ export const StorageManager: React.FC = () => {
                         >
                             Reset All
                         </button>
+                        <button 
+                            onClick={async () => {
+                                const tables = ['quotations', 'customers', 'products', 'salesPersons'] as const;
+                                console.log("--- CLOUD DATA INSPECTOR ---");
+                                for (const t of tables) {
+                                  try {
+                                    const { data } = await supabase!.from(toSupabaseTableName(t)).select('*').limit(1);
+                                    console.log(`Table: ${t}`, data?.[0] || "No data");
+                                  } catch(e) { console.error(`Failed to inspect ${t}`, e); }
+                                }
+                                alert("🔍 Cloud data structure logged to browser console (F12).");
+                            }}
+                            className="text-xs bg-slate-50 text-slate-700 px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 font-bold"
+                            title="Log raw cloud data to console for debugging"
+                        >
+                            Inspect Cloud
+                        </button>
                     </div>
                 </div>
                 <p className="text-[10px] text-slate-500 leading-tight">
