@@ -50,7 +50,7 @@ const mapToSupabase = (tableName: TableName, item: any) => {
             material_code: item.materialCode,
             part_no: item.partNo,
             ordered_qty: item.orderedQty,
-            balanceQty: item.balanceQty,
+            balance_qty: item.balanceQty,
             rate: item.rate,
             discount: item.discount,
             value: item.value,
@@ -59,8 +59,11 @@ const mapToSupabase = (tableName: TableName, item: any) => {
     }
 
     // 2. Generic snake_case mapping for all tables to prevent RLS/Column mismatch issues
-    // This allows the app (camelCase) to talk to common Supabase (snake_case) formats.
-    const mapped = { ...item };
+    // CRITICAL: We ONLY send snake_case fields to Supabase. Sending both camelCase and snake_case causes validation errors.
+    const mapped: any = {};
+    
+    // Always include ID
+    if ('id' in item) mapped.id = item.id;
     
     // Convert common Quotation / Product / Customer fields if they exist
     if ('customerId' in item) mapped.customer_id = item.customerId;
@@ -78,9 +81,26 @@ const mapToSupabase = (tableName: TableName, item: any) => {
     if ('hsnCode' in item) mapped.hsn_code = item.hsnCode;
     
     // Map remaining quotation fields that Supabase expects
+    // IMPORTANT: Details is a JSON array - Supabase stores it as JSON automatically
     if ('details' in item) mapped.details = item.details;
     if ('comments' in item) mapped.comments = item.comments;
     if ('status' in item) mapped.status = item.status;
+    
+    // For Product fields
+    if ('partNo' in item) mapped.part_no = item.partNo;
+    if ('description' in item) mapped.description = item.description;
+    if ('hsnCode' in item && tableName !== 'quotations') mapped.hsn_code = item.hsnCode;
+    if ('prices' in item) mapped.prices = item.prices;
+    if ('uom' in item) mapped.uom = item.uom;
+    if ('plant' in item) mapped.plant = item.plant;
+    if ('weight' in item) mapped.weight = item.weight;
+    
+    // For Customer fields
+    if ('name' in item && tableName === 'customers') mapped.name = item.name;
+    if ('address' in item) mapped.address = item.address;
+    if ('city' in item) mapped.city = item.city;
+    if ('pincode' in item) mapped.pincode = item.pincode;
+    if ('discountStructure' in item) mapped.discount_structure = item.discountStructure;
 
     return mapped;
 };
@@ -143,6 +163,27 @@ export async function get(tableName: TableName): Promise<any[]> {
             discount: item.discount,
             value: item.value,
             dueOn: item.due_on
+        }));
+    }
+
+    if (tableName === 'quotations' && allData.length > 0) {
+        return allData.map((item: any) => ({
+            id: item.id,
+            quotationDate: item.quotation_date,
+            enquiryDate: item.enquiry_date,
+            customerId: item.customer_id,
+            contactPerson: item.contact_person,
+            contactNumber: item.contact_number,
+            otherTerms: item.other_terms,
+            paymentTerms: item.payment_terms,
+            preparedBy: item.prepared_by,
+            productsBrand: item.products_brand,
+            salesPersonId: item.sales_person_id,
+            modeOfEnquiry: item.mode_of_enquiry,
+            status: item.status,
+            comments: item.comments,
+            details: item.details,
+            gstAdded: item.gst_added
         }));
     }
 
