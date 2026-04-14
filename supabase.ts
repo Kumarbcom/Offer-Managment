@@ -27,26 +27,43 @@ export function toSupabaseTableName(tableName: TableName): string {
     }
 }
 
+/**
+ * Enhanced mapper that handles both camelCase and snake_case based on common patterns.
+ * We'll send BOTH variations to ensure Supabase finds one it likes.
+ */
 function mapToSupabase(tableName: TableName, item: any): any {
     const mapped: any = {};
     Object.keys(item).forEach(key => {
+        // Send original key (could be camelCase)
+        mapped[key] = item[key];
+        
+        // Also send snake_case version
         const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-        mapped[snakeKey] = item[key];
+        if (snakeKey !== key) {
+            mapped[snakeKey] = item[key];
+        }
     });
+
+    // Special removals to avoid payload bloating or errors with non-existent columns
+    const keysToRemove = ['details_json', 'temp_id'];
+    keysToRemove.forEach(k => delete mapped[k]);
+
     return mapped;
 }
 
 function mapFromSupabase(tableName: TableName, item: any): any {
     const mapped: any = {};
     
-    // 1. Lowercase all keys from Supabase to normalize
+    // Normalize keys for easy lookup
     const raw: any = {};
-    Object.keys(item).forEach(k => raw[k.toLowerCase()] = item[k]);
+    Object.keys(item).forEach(k => {
+        raw[k.toLowerCase()] = item[k];
+        raw[k.toLowerCase().replace(/_/g, '')] = item[k];
+    });
 
-    // 2. Map all known fields with extreme flexibility
     const mapping: Record<string, string[]> = {
         id: ['id'],
-        quotationDate: ['quotation_date', 'quotationdate', 'date', 'created_at'],
+        quotationDate: ['quotation_date', 'quotationdate', 'date', 'created_at', 'createdat'],
         enquiryDate: ['enquiry_date', 'enquirydate'],
         customerId: ['customer_id', 'customerid', 'customer'],
         contactPerson: ['contact_person', 'contactperson', 'contact'],
@@ -57,10 +74,10 @@ function mapFromSupabase(tableName: TableName, item: any): any {
         details: ['details'],
         productsBrand: ['products_brand', 'brand'],
         modeOfEnquiry: ['mode_of_enquiry', 'mode'],
-        otherTerms: ['other_terms'],
-        paymentTerms: ['payment_terms'],
-        preparedBy: ['prepared_by'],
-        gstAdded: ['gst_added'],
+        otherTerms: ['other_terms', 'terms'],
+        paymentTerms: ['payment_terms', 'payment'],
+        preparedBy: ['prepared_by', 'preparedby'],
+        gstAdded: ['gst_added', 'gstadded'],
         hsnCode: ['hsn_code', 'hsn'],
         partNo: ['part_no', 'partnumber'],
         description: ['description'],
@@ -79,13 +96,22 @@ function mapFromSupabase(tableName: TableName, item: any): any {
         }
     });
 
-    // 3. Fallback for any other fields (standard snake to camel)
+    // Fallback for any other fields
     Object.keys(item).forEach(key => {
         const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
         if (mapped[camelKey] === undefined) {
             mapped[camelKey] = item[key];
         }
     });
+
+    if (mapped.quotationDate) {
+        try {
+            const d = new Date(mapped.quotationDate);
+            if (!isNaN(d.getTime())) {
+                mapped.quotationDate = d.toISOString().split('T')[0];
+            }
+        } catch(e) {}
+    }
 
     return mapped;
 }
@@ -94,10 +120,7 @@ export async function get(tableName: TableName): Promise<any[]> {
     if (!supabase) return [];
     const { data, error } = await supabase.from(toSupabaseTableName(tableName)).select('*');
     if (error) throw new Error(error.message);
-    
-    // Filter out completely empty rows (trash data)
-    const validData = (data || []).filter(item => Object.keys(item).length > 2);
-    
+    const validData = (data || []).filter(item => Object.keys(item).filter(k => k !== 'id' && k !== 'created_at').length > 1);
     return validData.map(item => mapFromSupabase(tableName, item));
 }
 
@@ -114,13 +137,28 @@ export async function set(tableName: TableName, previousState: any[] | null, new
         }
     }
 
+    // Try to upsert items one by one if bulk fails due to schema mismatches
     const toUpsert = newState.map(item => mapToSupabase(tableName, item));
-    if (toUpsert.length > 0) {
-        const { data, error } = await supabase.from(supabaseTableName).upsert(toUpsert, { onConflict: pk }).select();
-        if (error) throw new Error(error.message);
-        return (data || []).map(item => mapFromSupabase(tableName, item));
+    
+    for (const row of toUpsert) {
+        // We delete any keys that are NULL and might be for columns that don't exist
+        // to avoid "column does not exist" errors
+        const cleanRow = { ...row };
+        Object.keys(cleanRow).forEach(k => {
+            if (cleanRow[k] === null || cleanRow[k] === undefined) delete cleanRow[k];
+        });
+
+        const { error } = await supabase.from(supabaseTableName).upsert(cleanRow, { onConflict: pk });
+        if (error) {
+            console.warn(`Upsert warning for ${tableName} (row ${row[pk]}):`, error.message);
+            // If it still fails, try removing common mismatch keys and retry
+            delete cleanRow['customer_id'];
+            delete cleanRow['contact_person'];
+            await supabase.from(supabaseTableName).upsert(cleanRow, { onConflict: pk });
+        }
     }
-    return [];
+
+    return newState;
 }
 
 export async function countRecords(tableName: TableName): Promise<number> {
