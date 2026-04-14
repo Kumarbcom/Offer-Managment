@@ -101,6 +101,11 @@ const mapToSupabase = (tableName: TableName, item: any) => {
     if ('city' in item) mapped.city = item.city;
     if ('pincode' in item) mapped.pincode = item.pincode;
     if ('discountStructure' in item) mapped.discount_structure = item.discountStructure;
+    
+    // For SalesPerson fields
+    if ('name' in item && tableName === 'salesPersons') mapped.name = item.name;
+    if ('email' in item && tableName === 'salesPersons') mapped.email = item.email;
+    if ('mobile' in item && tableName === 'salesPersons') mapped.mobile = item.mobile;
 
     return mapped;
 };
@@ -184,6 +189,40 @@ export async function get(tableName: TableName): Promise<any[]> {
             comments: item.comments,
             details: item.details,
             gstAdded: item.gst_added
+        }));
+    }
+
+    if (tableName === 'customers' && allData.length > 0) {
+        return allData.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            address: item.address,
+            city: item.city,
+            pincode: item.pincode,
+            salesPersonId: item.sales_person_id,
+            discountStructure: item.discount_structure
+        }));
+    }
+
+    if (tableName === 'products' && allData.length > 0) {
+        return allData.map((item: any) => ({
+            id: item.id,
+            partNo: item.part_no,
+            description: item.description,
+            hsnCode: item.hsn_code,
+            prices: item.prices,
+            uom: item.uom,
+            plant: item.plant,
+            weight: item.weight
+        }));
+    }
+
+    if (tableName === 'salesPersons' && allData.length > 0) {
+        return allData.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            email: item.email,
+            mobile: item.mobile
         }));
     }
 
