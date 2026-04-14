@@ -186,11 +186,12 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
 
             console.error(`Supabase error on saving '${tableName}':`, e);
             
-            // Revert optimistic update on failure for genuine errors (network, validation, etc)
-            setState(previousState);
+            // OPTIMIZATION: Do NOT revert the local UI state. 
+            // This prevents "flickering" or data loss for the user during temporary network issues.
+            // The local state persists, and the user can try saving again or rely on the next auto-sync.
+            // setState(previousState); // Removed revert
             
-            // Notify user of the failure but do not crash the app.
-            alert(`Failed to save changes for ${tableName}. Your changes have been reverted. Please check your connection and try again.\n\nError: ${errorMessage}`);
+            // Optional: You could show a subtle 'Sync Failed' toast here instead of a blocking alert.
         }
     }, [tableName, isSupabaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
     
