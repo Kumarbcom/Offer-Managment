@@ -76,6 +76,11 @@ const mapToSupabase = (tableName: TableName, item: any) => {
     if ('preparedBy' in item) mapped.prepared_by = item.preparedBy;
     if ('gstAdded' in item) mapped.gst_added = item.gstAdded;
     if ('hsnCode' in item) mapped.hsn_code = item.hsnCode;
+    
+    // Map remaining quotation fields that Supabase expects
+    if ('details' in item) mapped.details = item.details;
+    if ('comments' in item) mapped.comments = item.comments;
+    if ('status' in item) mapped.status = item.status;
 
     return mapped;
 };
@@ -249,6 +254,8 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
     if (toUpsert.length > 0) {
         // Upserts use POST body, so larger batch size is safe
         const BATCH_SIZE = 200;
+        let allUpsertedData: T[] = [];
+        
         for (let i = 0; i < toUpsert.length; i += BATCH_SIZE) {
             let batch = toUpsert.slice(i, i + BATCH_SIZE);
 
@@ -286,12 +293,15 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
 
             // CRITICAL CHECK: In some Supabase RLS configurations, upsert returns success but 0 rows if unauthorized.
             if (!data || data.length === 0) {
-                 console.warn(`Supabase warning [${supabaseTableName}]: Save reported success but 0 records were updated. This is likely an RLS (Permission) issue.`);
-                 // We don't throw yet, but this is a major hint.
+                 const failureMsg = `Supabase error [${supabaseTableName}]: Upsert succeeded but returned 0 records. This is likely an RLS (Row-Level Security) permission issue. Please check your Supabase table permissions.`;
+                 console.error(failureMsg);
+                 throw new Error(failureMsg);
             }
 
-            return data as T[];
+            allUpsertedData = [...allUpsertedData, ...data];
         }
+        
+        return allUpsertedData as T[];
     }
     return null;
 }
