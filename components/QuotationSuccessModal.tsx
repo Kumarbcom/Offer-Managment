@@ -31,7 +31,7 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
   };
 
   const totalValue = calculateTotal(quotation.details);
-  const displayNumber = getQuotationDisplayNumber(quotation);
+  const displayNumber = getQuotationDisplayNumber(quotation, null);
 
   const handleWhatsAppShare = () => {
     if (!salesPerson || !salesPerson.mobile) return;

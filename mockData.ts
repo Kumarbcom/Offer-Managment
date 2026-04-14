@@ -85,6 +85,7 @@ export const MOCK_QUOTATIONS: Quotation[] = [
     modeOfEnquiry: 'Customer Email',
     status: 'Open',
     comments: 'Awaiting customer feedback.',
+    gstAdded: false,
     details: [
       {
         productId: 1,
@@ -131,6 +132,7 @@ export const MOCK_QUOTATIONS: Quotation[] = [
     modeOfEnquiry: 'Sales Person What’s app',
     status: 'PO received',
     comments: 'PO No. PO-12345 received.',
+    gstAdded: false,
     details: [
       {
         productId: 2,
