@@ -92,7 +92,7 @@ export const PendingSOModal: React.FC<PendingSOModalProps> = ({ isOpen, onClose,
               <input type="text" name="partyName" value={formData.partyName} onChange={handleChange} className="w-full p-2 border rounded" required />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-gray-700">Item Name / Description</label>
+              <label className="block text-xs font-bold text-gray-700">Description</label>
               <input type="text" name="itemName" value={formData.itemName} onChange={handleChange} className="w-full p-2 border rounded" required />
             </div>
             <div>

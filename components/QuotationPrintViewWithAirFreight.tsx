@@ -1,17 +1,13 @@
 
 import React from 'react';
-import type { Quotation, Customer, SalesPerson, PreparedBy, QuotationStatus } from '../types';
+import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
-import { CustomerResponsePanel } from './CustomerResponsePanel';
-import { getQuotationDisplayNumber } from '../utils/quotationNumber';
 
 interface QuotationPrintViewProps {
     quotation: Quotation;
     customer: Customer;
     salesPerson?: SalesPerson;
     logoUrl: string | null;
-    onStatusUpdate?: (newStatus: QuotationStatus) => Promise<void>;
-    allQuotations?: Quotation[] | null;
 }
 
 const numberToWords = (num: number): string => {
@@ -21,7 +17,7 @@ const numberToWords = (num: number): string => {
     const number = parseFloat(num.toFixed(2));
     const integerPart = Math.floor(number);
     if (integerPart > 999999999) return "Number too large";
-
+    
     const toWords = (n: number): string => {
         let str = '';
         if (n >= 10000000) { str += toWords(Math.floor(n / 10000000)) + ' Crore '; n %= 10000000; }
@@ -46,20 +42,19 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
     'Ranjan': 'Sales Coordinator',
 };
 
-export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson, logoUrl, onStatusUpdate, allQuotations }) => {
+export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson, logoUrl }) => {
     const totals = (quotation.details || []).reduce((acc, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         const amount = unitPrice * item.moq;
         // Safety Check: Ensure airFreightDetails exists before accessing
         const freightAmount = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * 150) * item.moq : 0;
-
+        
         acc.totalAmount += amount;
         acc.totalFreight += freightAmount;
         return acc;
     }, { totalAmount: 0, totalFreight: 0 });
 
-    const gstAmount = quotation.gstAdded ? (totals.totalAmount + totals.totalFreight) * 0.18 : 0;
-    const grandTotal = totals.totalAmount + totals.totalFreight + gstAmount;
+    const grandTotal = totals.totalAmount + totals.totalFreight;
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
     const getPartNoLink = (partNo: string) => {
@@ -74,7 +69,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
             <div className="print-main-content">
                 <header className="flex items-center justify-between pb-2 border-b-2 border-slate-800 relative">
                     <div className="w-20 h-12 flex items-center justify-center shrink-0">
-                        {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[10px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo (Upload in Dashboard)</div>}
+                         {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[10px] text-slate-300 border border-dashed border-slate-200 p-1 text-center rounded">Logo (Upload in Dashboard)</div>}
                     </div>
                     <div className="flex-1 text-center px-2">
                         <h1 className="text-xl font-bold text-slate-900 uppercase leading-tight whitespace-nowrap">Siddhi Kabel Corporation Pvt Ltd</h1>
@@ -98,12 +93,12 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         <p><span className="font-semibold">Attn:</span> {quotation.contactPerson} ({quotation.contactNumber})</p>
                     </div>
                     <div className="text-right space-y-0.5 border p-2 rounded-md">
-                        <p><span className="font-semibold">Quotation No:</span> {getQuotationDisplayNumber(quotation, allQuotations ?? null)}</p>
+                        <p><span className="font-semibold">Quotation No:</span> {quotation.id > 0 ? `SKC/QTN/${quotation.id}` : 'DRAFT'}</p>
                         <p><span className="font-semibold">Date:</span> {new Date(quotation.quotationDate).toLocaleDateString('en-GB')}</p>
                         <p><span className="font-semibold">Enquiry Date:</span> {new Date(quotation.enquiryDate).toLocaleDateString('en-GB')}</p>
                     </div>
                 </section>
-
+                
                 <div className="my-2 text-sm">
                     <p className="font-semibold mb-1">Dear Sir / Madam,</p>
                     <p>Please find below our favourable offer for your requirement for {quotation.productsBrand} Products.</p>
@@ -144,7 +139,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                                 <tr key={index}>
                                     <td className="p-1 border text-center">{index + 1}</td>
                                     <td className="p-1 border font-medium">
-                                        {partNoUrl ? (
+                                         {partNoUrl ? (
                                             <a href={partNoUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
                                                 {item.partNo}
                                             </a>
@@ -172,21 +167,15 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                 <section className="flex justify-end mt-2">
                     <div className="w-1/2 space-y-1 text-sm">
                         <div className="flex justify-between p-1">
-                            <span className="font-semibold">{quotation.gstAdded ? 'Sub total' : 'Subtotal'}</span>
+                            <span className="font-semibold">Subtotal</span>
                             <span>₹{totals.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between p-1">
+                         <div className="flex justify-between p-1">
                             <span className="font-semibold">Total Air Freight</span>
                             <span>₹{totals.totalFreight.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                        {quotation.gstAdded && (
-                            <div className="flex justify-between p-1">
-                                <span className="font-semibold">GST 18%</span>
-                                <span>₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                        )}
                         <div className="flex justify-between p-2 bg-slate-100 rounded-md">
-                            <span className="font-bold">{quotation.gstAdded ? 'Grand Total' : 'Grand Total'}</span>
+                            <span className="font-bold">Grand Total</span>
                             <span className="font-bold text-base">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
@@ -196,15 +185,14 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
 
                 <section className="border border-slate-200 p-2 rounded-md mt-2 print-no-break">
                     <h3 className="font-bold text-slate-800 mb-1 text-sm">Terms & Conditions:</h3>
-                    <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
+                     <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
                         <li><span className="font-semibold">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
-                        <li><span className="font-semibold">Goods Service Tax:</span> {quotation.gstAdded ? 'GST 18% or As applicable at the time of Delivery' : 'GST Extra 18% or As GST % applicable at the time of Delivery.'}</li>
+                        <li><span className="font-semibold">Goods Service Tax:</span> GST 18% Or As Applicable at the Time of Delivery.</li>
                         <li><span className="font-semibold">Delivery:</span> As Mentioned Above, Subject to Prior Sales.</li>
                         <li><span className="font-semibold">Freight:</span> Freight Extra Applicable.</li>
                         <li><span className="font-semibold">Payment terms:</span> {quotation.paymentTerms}</li>
                         <li><span className="font-semibold">Validity:</span> This Offer is Valid for One Week From the Date of Offer.</li>
                         <li><span className="font-semibold">Other terms:</span> {quotation.otherTerms}</li>
-                        <li><strong>Please mention the Quotation Number and If material required in Air please mention the freight separate in the PO for faster action.</strong></li>
                     </ol>
                 </section>
 
@@ -212,15 +200,6 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                     <p>Hope the above mentioned details are in line with your requirement, for any further clarification please feel free and contact us.</p>
                     <p className="mt-1">Thanking you,</p>
                 </div>
-
-                {/* Customer Response Panel - visible in PDF */}
-                {onStatusUpdate && quotation.id > 0 && (
-                    <CustomerResponsePanel
-                        quotation={quotation}
-                        customerName={customer.name}
-                        onStatusUpdate={onStatusUpdate}
-                    />
-                )}
             </div>
 
             <footer className="mt-2 pt-2 flex justify-between items-end border-t print-footer">

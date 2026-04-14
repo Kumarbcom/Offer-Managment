@@ -6,46 +6,41 @@ import { CustomerAddModal } from './CustomerAddModal';
 import { ProductAddModal } from './ProductAddModal';
 import { ProductSearchModal } from './ProductSearchModal';
 import { QuotationSuccessModal } from './QuotationSuccessModal';
+import { StockCheckModal } from './StockCheckModal';
 import { SearchableSelect } from './common/SearchableSelect';
 import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { useDebounce } from '../hooks/useDebounce';
+import { useOnlineStorage } from '../hooks/useOnlineStorage';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds } from '../supabase';
-import { StockCheckModal } from './StockCheckModal';
-import { CustomerResponsePanel } from './CustomerResponsePanel';
-import type { QuotationStatus } from '../types';
-import { getQuotationDisplayNumber } from '../utils/quotationNumber';
-import { DropdownInput } from './common/DropdownInput';
 
 declare var XLSX: any;
 
 interface QuotationFormProps {
-    salesPersons: SalesPerson[];
-    quotations: Quotation[];
-    setQuotations: (value: React.SetStateAction<Quotation[]>) => Promise<void>;
-    setView: (view: View) => void;
-    editingQuotationId: number | null;
-    setEditingQuotationId: (id: number | null) => void;
-    currentUser: User;
-    logoUrl?: string | null;
-    stockStatements?: StockItem[] | null;
-    pendingSOs?: PendingSO[] | null;
+  salesPersons: SalesPerson[];
+  quotations: Quotation[];
+  setQuotations: (value: React.SetStateAction<Quotation[]>) => Promise<void>;
+  setView: (view: View) => void;
+  editingQuotationId: number | null;
+  setEditingQuotationId: (id: number | null) => void;
+  currentUser: User;
+  logoUrl?: string | null;
 }
 
 const createEmptyQuotationItem = (): QuotationItem => ({
-    productId: 0,
-    partNo: '',
-    description: '',
-    moq: 1,
-    req: 1,
-    price: 0,
-    priceSource: 'LP',
-    discount: 0,
-    stockStatus: 'Ex-Stock',
-    uom: '',
-    airFreight: false,
-    airFreightDetails: { weightPerMtr: 0, airFreightLeadTime: '' },
+  productId: 0,
+  partNo: '',
+  description: '',
+  moq: 1,
+  req: 1,
+  price: 0,
+  priceSource: 'LP',
+  discount: 0,
+  stockStatus: 'Ex-Stock',
+  uom: '',
+  airFreight: false,
+  airFreightDetails: { weightPerMtr: 0, airFreightLeadTime: '' },
 });
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
@@ -79,7 +74,7 @@ const Icons = {
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-600">
             <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
             <path d="M3.75 12h16.5a.75.75 0 010 1.5H3.75a.75.75 0 010-1.5z" className="hidden" />
-            <path d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-9a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0112 9V5.25a1.5 1.5 0 00-1.5-1.5h-3z" />
+            <path d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-9a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0112 9V5.25a1.5 1.5 0 00-1.5-1.5h-3z" /> 
         </svg>
     ),
     PrintStandard: () => (
@@ -113,17 +108,16 @@ const Icons = {
             <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.125 4.5a4.125 4.125 0 102.338 7.524l2.007 2.006a.75.75 0 101.06-1.06l-2.006-2.007a4.125 4.125 0 00-3.399-6.463z" clipRule="evenodd" />
         </svg>
     ),
+    Stock: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-violet-600">
+            <path fillRule="evenodd" d="M2.25 6a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V6Zm3.9 7.5a.75.75 0 0 0 .6.3h6.75a.75.75 0 0 0 .6-.3l2.25-3a.75.75 0 0 0 0-.9l-2.25-3a.75.75 0 0 0-.6-.3H6.75a.75.75 0 0 0-.6.3L3.9 9.6a.75.75 0 0 0 0 .9l2.25 3Z" clipRule="evenodd" />
+        </svg>
+    ),
     Trash: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>,
     Excel: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-green-600">
             <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM9.763 9.51a2.25 2.25 0 013.828-1.351.75.75 0 011.06-1.06 3.75 3.75 0 00-6.38 2.252c-.033.307-.052.618-.057.933l-.024 1.399c-.003.158-.003.316.002.473l.024 1.4c.005.315.024.626.057.933a3.75 3.75 0 006.38 2.252.75.75 0 00-1.06-1.06 2.25 2.25 0 01-3.828-1.351l-.025-1.402a9.55 9.55 0 01-.001-.472l.025-1.402z" clipRule="evenodd" /> {/* Stylized generic sheet */}
             <path d="M11.5 9.5a.5.5 0 01.5.5v4a.5.5 0 01-.5.5H9.5a.5.5 0 01-.5-.5v-4a.5.5 0 01.5-.5h2z" />
-        </svg>
-    ),
-    Stock: () => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-orange-600">
-            <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" />
-            <path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.133 2.845a.75.75 0 0 1 1.06 0l1.72 1.72 1.72-1.72a.75.75 0 1 1 1.06 1.06l-1.72 1.72 1.72 1.72a.75.75 0 1 1-1.06-1.06L12 15.685l-1.72 1.72a.75.75 0 1 1-1.06-1.06l1.72-1.72-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
         </svg>
     )
 };
@@ -137,922 +131,815 @@ const FormField: React.FC<{ label: string; children: React.ReactNode; className?
     </div>
 );
 
-// Helper to normalize strings for comparison
-const normalizeString = (str: string | null | undefined) => {
-    if (!str) return '';
-    return str.toLowerCase().replace(/[^a-z0-9]/g, '');
-};
-
 export const QuotationForm: React.FC<QuotationFormProps> = ({
-    salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl, stockStatements, pendingSOs
+  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl
 }) => {
-    const [formData, setFormData] = useState<Quotation | null>(null);
-    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-    const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
-    const [isStockModalOpen, setIsStockModalOpen] = useState(false);
-    const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
-    const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
+  const [formData, setFormData] = useState<Quotation | null>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
+  const [isStockCheckModalOpen, setIsStockCheckModalOpen] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
+  const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
+  
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
+  const [isSearchingProducts, setIsSearchingProducts] = useState(false);
+  const debouncedProductSearchTerm = useDebounce(productSearchTerm, 300);
+  const [fetchedProducts, setFetchedProducts] = useState<Map<number, Product>>(new Map());
 
-    const [productSearchTerm, setProductSearchTerm] = useState('');
-    const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
-    const [isSearchingProducts, setIsSearchingProducts] = useState(false);
-    const debouncedProductSearchTerm = useDebounce(productSearchTerm, 150);
-    const [fetchedProducts, setFetchedProducts] = useState<Map<number, Product>>(new Map());
+  // Data hooks for Stock Check
+  const [stockStatements] = useOnlineStorage<StockItem>('stockStatements');
+  const [pendingSOs] = useOnlineStorage<PendingSO>('pendingSOs');
 
-    // State for async customer search
-    const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
-    const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
-    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
-    const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 150);
-    const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  // State for async customer search
+  const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-    // Refs for grid inputs
-    const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  // Refs for grid inputs
+  const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  
+  // Ref to track the editing session. 
+  // This ensures that if we are drafting (editingQuotationId is null), we don't get reset by background updates.
+  // Session ID will equal editingQuotationId (which can be null).
+  const currentSessionIdRef = useRef<number | null | undefined>(undefined);
 
-    // Ref to track the editing session. 
-    // This ensures that if we are drafting (editingQuotationId is null), we don't get reset by background updates.
-    // Session ID will equal editingQuotationId (which can be null).
-    const currentSessionIdRef = useRef<number | null | undefined>(undefined);
+  const userRole = currentUser.role;
 
-    const userRole = currentUser.role;
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    // Logic to determine if the user can edit this quotation
-    const isReadOnly = useMemo(() => {
-        // Sales Person on Mobile can ONLY view
-        if (userRole === 'Sales Person' && isMobile) return true;
-
-        if (userRole === 'Admin') return false;
-        if (userRole === 'Sales Person') {
-            // If creating new, it's editable
-            if (editingQuotationId === null) return false;
-            // If editing, check ownership
-            const currentSalesPersonId = salesPersons.find(sp => sp.name === currentUser.name)?.id;
-            // If formData is not loaded yet, default to readonly until we check ownership
-            if (!formData) return true;
-            // Allow edit if they are the assigned sales person OR if they prepared the quotation
-            return formData.salesPersonId !== currentSalesPersonId && formData.preparedBy !== currentUser.name;
-        }
-        return true; // Other roles are read-only
-    }, [userRole, editingQuotationId, formData, salesPersons, currentUser, isMobile]);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Logic to determine if the user can edit this quotation
+  const isReadOnly = useMemo(() => {
+      // Sales Person on Mobile can ONLY view
+      if (userRole === 'Sales Person' && isMobile) return true;
+      
+      if (userRole === 'Admin') return false;
+      if (userRole === 'Sales Person') {
+          // If creating new, it's editable
+          if (editingQuotationId === null) return false;
+          // If editing, check ownership
+          const currentSalesPersonId = salesPersons.find(sp => sp.name === currentUser.name)?.id;
+          // If formData is not loaded yet, default to readonly until we check ownership
+          if (!formData) return true;
+          return formData.salesPersonId !== currentSalesPersonId;
+      }
+      return true; // Other roles are read-only
+  }, [userRole, editingQuotationId, formData, salesPersons, currentUser, isMobile]);
 
 
-    const getPriceForDate = useCallback((product: Product, date: string): PriceEntry | null => {
-        if (!product || !product.prices) return null;
-        const targetDate = new Date(date);
-        targetDate.setHours(0, 0, 0, 0);
-        const priceEntry = product.prices.find(p => {
-            const from = new Date(p.validFrom);
-            const to = new Date(p.validTo);
-            from.setHours(0, 0, 0, 0);
-            to.setHours(23, 59, 59, 999);
-            return targetDate >= from && targetDate <= to;
-        })
-        if (priceEntry) return priceEntry;
+  const getPriceForDate = useCallback((product: Product, date: string): PriceEntry | null => {
+    if (!product || !product.prices) return null;
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const priceEntry = product.prices.find(p => {
+        const from = new Date(p.validFrom);
+        const to = new Date(p.validTo);
+        from.setHours(0, 0, 0, 0);
+        to.setHours(23, 59, 59, 999);
+        return targetDate >= from && targetDate <= to;
+    })
+    if(priceEntry) return priceEntry;
 
-        const pastOrCurrentPrices = product.prices.filter(p => new Date(p.validFrom) <= targetDate);
-        if (pastOrCurrentPrices.length > 0) {
-            return pastOrCurrentPrices.sort((a, b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime())[0];
-        }
+    const pastOrCurrentPrices = product.prices.filter(p => new Date(p.validFrom) <= targetDate);
+    if(pastOrCurrentPrices.length > 0) {
+        return pastOrCurrentPrices.sort((a,b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime())[0];
+    }
+    
+    return [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
+  }, []);
 
-        return [...product.prices].sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
-    }, []);
+  const createNewQuotation = useCallback((): Quotation => {
+    // For NEW quotations, we set ID to 0 initially (Offline Mode).
+    // Real ID is generated only on SAVE to prevent collisions and background reset issues.
+    
+    // Auto-assign Sales Person ID if the current user is a Sales Person
+    let defaultSalesPersonId: number | null = null;
+    if (userRole === 'Sales Person') {
+        const me = salesPersons.find(sp => sp.name === currentUser.name);
+        if (me) defaultSalesPersonId = me.id;
+    }
 
-    const createNewQuotation = useCallback((): Quotation => {
-        // For NEW quotations, we set ID to 0 initially (Offline Mode).
-        // Real ID is generated only on SAVE to prevent collisions and background reset issues.
+    return {
+      id: 0, // 0 indicates "New/Pending"
+      quotationDate: getTodayDateString(),
+      enquiryDate: getTodayDateString(),
+      customerId: null,
+      contactPerson: '',
+      contactNumber: '',
+      otherTerms: '± 5% Length Variation',
+      paymentTerms: '100% Against Proforma Invoice',
+      preparedBy: 'Kumar' as PreparedBy,
+      productsBrand: 'Lapp',
+      salesPersonId: defaultSalesPersonId,
+      modeOfEnquiry: 'Customer Email',
+      status: 'Open',
+      comments: '',
+      details: [createEmptyQuotationItem()],
+    };
+  }, [userRole, salesPersons, currentUser]); 
+  
+  const handleCustomerOpen = useCallback(() => {
+    if (searchedCustomers.length === 0 && !isSearchingCustomers) {
+        setIsSearchingCustomers(true);
+        searchCustomers('').then(results => {
+            setSearchedCustomers(results);
+            setIsSearchingCustomers(false);
+        }).catch(err => {
+            console.error(err);
+            setIsSearchingCustomers(false);
+        });
+    }
+  }, [searchedCustomers.length, isSearchingCustomers]);
 
-        // Auto-assign Sales Person ID if the current user is a Sales Person
-        let defaultSalesPersonId: number | null = null;
-        if (userRole === 'Sales Person') {
-            const me = salesPersons.find(sp => sp.name === currentUser.name);
-            if (me) defaultSalesPersonId = me.id;
-        }
+  const handleProductOpen = useCallback(() => {
+      if (searchedProducts.length === 0 && !isSearchingProducts) {
+          setIsSearchingProducts(true);
+          searchProducts('').then(results => {
+              setSearchedProducts(results);
+              setIsSearchingProducts(false);
+          }).catch(err => {
+              console.error(err);
+              setIsSearchingProducts(false);
+          });
+      }
+  }, [searchedProducts.length, isSearchingProducts]);
 
-        return {
-            id: 0, // 0 indicates "New/Pending"
-            quotationDate: getTodayDateString(),
-            enquiryDate: getTodayDateString(),
-            customerId: null,
-            contactPerson: '',
-            contactNumber: '',
-            otherTerms: '± 5% Length Variation',
-            paymentTerms: '100% Against Proforma Invoice',
-            preparedBy: (PREPARED_BY_LIST.includes(currentUser.name as any) ? currentUser.name : 'Kumar') as PreparedBy,
-            productsBrand: 'Lapp',
-            salesPersonId: defaultSalesPersonId,
-            modeOfEnquiry: 'Customer Email',
-            status: 'Open',
-            comments: '',
-            details: [createEmptyQuotationItem()],
-            gstAdded: false,
-        };
-    }, [userRole, salesPersons, currentUser]);
-
-    const handleCustomerOpen = useCallback(() => {
-        if (searchedCustomers.length === 0 && !isSearchingCustomers) {
-            setIsSearchingCustomers(true);
-            searchCustomers('').then(results => {
-                setSearchedCustomers(results);
-                setIsSearchingCustomers(false);
-            }).catch(err => {
-                console.error(err);
-                setIsSearchingCustomers(false);
-            });
-        }
-    }, [searchedCustomers.length, isSearchingCustomers]);
-
-    const handleProductOpen = useCallback(() => {
-        if (searchedProducts.length === 0 && !isSearchingProducts) {
-            setIsSearchingProducts(true);
-            searchProducts('').then(results => {
-                setSearchedProducts(results);
-                setIsSearchingProducts(false);
-            }).catch(err => {
-                console.error(err);
-                setIsSearchingProducts(false);
-            });
-        }
-    }, [searchedProducts.length, isSearchingProducts]);
-
-    useEffect(() => {
-        // STRICT SESSION LOCK:
-        // If we are currently editing a session (editingQuotationId is set, or 0/null for draft),
-        // and we have local form data, we MUST ignore background updates from 'quotations' prop.
-        // This prevents other users' actions (like saving a new quote) from wiping out the current user's draft.
-
-        // Check if we are already in a session
-        if (currentSessionIdRef.current !== undefined) {
-            // If the requested ID (editingQuotationId) matches the current session, 
-            // DO NOT re-initialize from props. Keep local state.
-            if (currentSessionIdRef.current === editingQuotationId && formData !== null) {
-                return;
-            }
-        }
-
-        // Start new session
-        currentSessionIdRef.current = editingQuotationId;
-
-        const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
-
-        // If editingQuotationId is set (not New), but we can't find it in the list:
-        // It might be that 'quotations' list hasn't loaded yet. We shouldn't init as New/Empty in that case.
-        if (editingQuotationId !== null && !quotationToEdit && quotations.length === 0) {
-            // Wait for data to load
+  useEffect(() => {
+    // STRICT SESSION LOCK:
+    // If we are currently editing a session (editingQuotationId is set, or 0/null for draft),
+    // and we have local form data, we MUST ignore background updates from 'quotations' prop.
+    // This prevents other users' actions (like saving a new quote) from wiping out the current user's draft.
+    
+    // Check if we are already in a session
+    if (currentSessionIdRef.current !== undefined) {
+        // If the requested ID (editingQuotationId) matches the current session, 
+        // DO NOT re-initialize from props. Keep local state.
+        if (currentSessionIdRef.current === editingQuotationId && formData !== null) {
             return;
         }
+    }
 
-        // Use structured clone or deep copy to avoid mutating state directly if objects are shared
-        let initialQuotation = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : createNewQuotation();
+    // Start new session
+    currentSessionIdRef.current = editingQuotationId;
 
-        // Sanitize and patch missing fields for legacy data
-        if (initialQuotation.details) {
-            initialQuotation.details = initialQuotation.details.map((item: QuotationItem) => ({
-                ...item,
-                airFreightDetails: item.airFreightDetails || { weightPerMtr: 0, airFreightLeadTime: '' }
-            }));
+    const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
+    
+    // If editingQuotationId is set (not New), but we can't find it in the list:
+    // It might be that 'quotations' list hasn't loaded yet. We shouldn't init as New/Empty in that case.
+    if (editingQuotationId !== null && !quotationToEdit && quotations.length === 0) {
+        // Wait for data to load
+        return;
+    }
+
+    // Use structured clone or deep copy to avoid mutating state directly if objects are shared
+    let initialQuotation = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : createNewQuotation();
+    
+    // Sanitize and patch missing fields for legacy data
+    if (initialQuotation.details) {
+        initialQuotation.details = initialQuotation.details.map((item: QuotationItem) => ({
+            ...item,
+            airFreightDetails: item.airFreightDetails || { weightPerMtr: 0, airFreightLeadTime: '' }
+        }));
+    }
+
+    setFormData(initialQuotation);
+
+    if (initialQuotation.details) {
+        const productIds = initialQuotation.details.map((d: QuotationItem) => d.productId).filter((id: number) => id > 0);
+        if (productIds.length > 0) {
+            getProductsByIds(productIds).then(products => {
+                setFetchedProducts(new Map(products.map(p => [p.id, p])));
+            }).catch(error => console.error("QuotationForm: Failed to fetch product details:", error));
+        } else {
+            setFetchedProducts(new Map());
         }
+    }
+  }, [editingQuotationId, quotations, createNewQuotation]);
 
-        setFormData(initialQuotation);
+  useEffect(() => {
+    const customerId = formData?.customerId;
+    if (customerId && (!selectedCustomerObj || selectedCustomerObj.id !== customerId)) {
+      getCustomersByIds([customerId]).then(customers => {
+        if (customers.length > 0) {
+          setSelectedCustomerObj(customers[0]);
+          setSearchedCustomers(prev => {
+            if (prev.some(c => c.id === customers[0].id)) return prev;
+            return [customers[0], ...prev];
+          });
+        }
+      }).catch(error => console.error("QuotationForm: Failed to fetch selected customer:", error));
+    } else if (!customerId) {
+      setSelectedCustomerObj(null);
+    }
+  }, [formData?.customerId, selectedCustomerObj]);
 
-        if (initialQuotation.details) {
-            const productIds = initialQuotation.details.map((d: QuotationItem) => d.productId).filter((id: number) => id > 0);
-            if (productIds.length > 0) {
-                getProductsByIds(productIds).then(products => {
-                    setFetchedProducts(new Map(products.map(p => [p.id, p])));
-                }).catch(error => console.error("QuotationForm: Failed to fetch product details:", error));
-            } else {
-                setFetchedProducts(new Map());
+  useEffect(() => {
+    if (selectedCustomerObj && selectedCustomerObj.salesPersonId && editingQuotationId === null) {
+        // Only auto-update sales person on NEW quotations when a customer is selected
+        // For existing quotations, we preserve the original sales person
+        setFormData(prev => prev ? {...prev, salesPersonId: selectedCustomerObj.salesPersonId} : null);
+    }
+  }, [selectedCustomerObj, editingQuotationId]);
+
+  useEffect(() => {
+    if (!formData || !formData.details?.length || fetchedProducts.size === 0) return;
+    let wasUpdated = false;
+    const newDetails = formData.details.map(item => {
+        if (item.productId > 0) {
+            const product = fetchedProducts.get(item.productId);
+            if (product) {
+                const priceEntry = getPriceForDate(product, formData.quotationDate);
+                const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
+                if (newPrice !== item.price) {
+                    wasUpdated = true;
+                    const priceSource: 'LP' | 'SP' = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
+                    return { ...item, price: newPrice, priceSource: priceSource };
+                }
             }
         }
-    }, [editingQuotationId, quotations, createNewQuotation]);
+        return item;
+    });
+    if (wasUpdated) setFormData(prev => prev ? { ...prev, details: newDetails } : null);
+  }, [formData?.quotationDate, fetchedProducts, getPriceForDate, formData?.details]);
 
-    useEffect(() => {
-        const customerId = formData?.customerId;
-        if (customerId && (!selectedCustomerObj || selectedCustomerObj.id !== customerId)) {
-            getCustomersByIds([customerId]).then(customers => {
-                if (customers.length > 0) {
-                    setSelectedCustomerObj(customers[0]);
-                    setSearchedCustomers(prev => {
-                        if (prev.some(c => c.id === customers[0].id)) return prev;
-                        return [customers[0], ...prev];
-                    });
-                }
-            }).catch(error => console.error("QuotationForm: Failed to fetch selected customer:", error));
-        } else if (!customerId) {
-            setSelectedCustomerObj(null);
-        }
-    }, [formData?.customerId, selectedCustomerObj]);
+  useEffect(() => {
+    const performSearch = async () => {
+      setIsSearchingProducts(true);
+      const results = await searchProducts(debouncedProductSearchTerm);
+      setSearchedProducts(results);
+      setIsSearchingProducts(false);
+    };
+    performSearch();
+  }, [debouncedProductSearchTerm]);
+  
+  useEffect(() => {
+    const performSearch = async () => {
+      setIsSearchingCustomers(true);
+      const results = await searchCustomers(debouncedCustomerSearchTerm);
+      if (selectedCustomerObj && !results.some(c => c.id === selectedCustomerObj.id)) {
+        setSearchedCustomers([selectedCustomerObj, ...results]);
+      } else {
+        setSearchedCustomers(results);
+      }
+      setIsSearchingCustomers(false);
+    };
+    performSearch();
+  }, [debouncedCustomerSearchTerm, selectedCustomerObj]);
 
-    useEffect(() => {
-        if (selectedCustomerObj && selectedCustomerObj.salesPersonId && editingQuotationId === null) {
-            // Only auto-update sales person on NEW quotations when a customer is selected
-            // For existing quotations, we preserve the original sales person
-            setFormData(prev => prev ? { ...prev, salesPersonId: selectedCustomerObj.salesPersonId } : null);
-        }
-    }, [selectedCustomerObj, editingQuotationId]);
-
-    useEffect(() => {
-        if (!formData || !formData.details?.length || fetchedProducts.size === 0) return;
-        let wasUpdated = false;
-        const newDetails = formData.details.map(item => {
-            if (item.productId > 0) {
-                const product = fetchedProducts.get(item.productId);
-                if (product) {
-                    const priceEntry = getPriceForDate(product, formData.quotationDate);
-                    const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
-                    if (newPrice !== item.price) {
-                        wasUpdated = true;
-                        const priceSource: 'LP' | 'SP' = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
-                        return { ...item, price: newPrice, priceSource: priceSource };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    const isNumericId = name === 'salesPersonId';
+    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
+  };
+  
+  const handleItemChange = async (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
+    setFormData(prev => {
+        if (!prev) return null;
+        const newDetails = prev.details.map((item, i) => {
+            if (i === index) {
+                const updatedItem = { ...item };
+                if (!updatedItem.airFreightDetails) updatedItem.airFreightDetails = { weightPerMtr: 0, airFreightLeadTime: '' }; // Safety init
+                
+                if (field.startsWith('airFreightDetails.')) {
+                    const subField = field.split('.')[1] as keyof QuotationItem['airFreightDetails'];
+                    updatedItem.airFreightDetails = { ...updatedItem.airFreightDetails, [subField]: value };
+                } else { (updatedItem as any)[field] = value; }
+                
+                if (field === 'airFreightDetails.weightPerMtr') {
+                    const product = fetchedProducts.get(updatedItem.productId);
+                    if (product && product.weight !== value) {
+                        updateProduct({ ...product, weight: value });
                     }
                 }
+                if (field === 'airFreight' && value === false) updatedItem.airFreightDetails.airFreightLeadTime = '';
+                return updatedItem;
             }
             return item;
         });
-        if (wasUpdated) setFormData(prev => prev ? { ...prev, details: newDetails } : null);
-    }, [formData?.quotationDate, fetchedProducts, getPriceForDate, formData?.details]);
-
-    useEffect(() => {
-        const performSearch = async () => {
-            setIsSearchingProducts(true);
-            const results = await searchProducts(debouncedProductSearchTerm);
-            setSearchedProducts(results);
-            setIsSearchingProducts(false);
-        };
-        performSearch();
-    }, [debouncedProductSearchTerm]);
-
-    useEffect(() => {
-        const performSearch = async () => {
-            setIsSearchingCustomers(true);
-            const results = await searchCustomers(debouncedCustomerSearchTerm);
-            if (selectedCustomerObj && !results.some(c => c.id === selectedCustomerObj.id)) {
-                setSearchedCustomers([selectedCustomerObj, ...results]);
-            } else {
-                setSearchedCustomers(results);
-            }
-            setIsSearchingCustomers(false);
-        };
-        performSearch();
-    }, [debouncedCustomerSearchTerm, selectedCustomerObj]);
-
-    const getFreeStock = (partNo: string) => {
-        if (!stockStatements || !pendingSOs || !partNo) return null;
-
-        const normPartNo = normalizeString(partNo);
-
-        // Calculate Due Limit Date (Today + 30 Days)
-        const today = new Date();
-        const dueLimit = new Date(today);
-        dueLimit.setDate(today.getDate() + 30);
-
-        // Find Stock Item - matching description to PartNo
-        // Note: This is a loose match as description might contain extra text
-        const stockItem = stockStatements.find(s => normalizeString(s.description).includes(normPartNo));
-
-        if (!stockItem) return null;
-
-        // Find Pending Orders for this item
-        const relevantOrders = pendingSOs.filter(so => {
-            const normItem = normalizeString(so.itemName);
-            const normPN = normalizeString(so.partNo);
-            const normMat = normalizeString(so.materialCode);
-            const normDesc = normalizeString(stockItem.description);
-
-            return (normItem && normDesc.includes(normItem)) ||
-                (normPN && normPN.length > 2 && normDesc.includes(normPN)) ||
-                (normMat && normMat.length > 2 && normDesc.includes(normMat));
-        });
-
-        // Calculate Due Orders (<= 30 Days)
-        const dueOrdersQty = relevantOrders
-            .filter(o => {
-                const d = o.dueOn ? new Date(o.dueOn) : new Date('9999-12-31');
-                return d <= dueLimit;
-            })
-            .reduce((sum, o) => sum + (typeof o.balanceQty === 'number' ? o.balanceQty : parseFloat(String(o.balanceQty)) || 0), 0);
-
-        return Math.max(0, stockItem.quantity - dueOrdersQty);
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        const isNumericId = name === 'salesPersonId';
-        setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
-    };
-
-    const handleItemChange = async (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
-        setFormData(prev => {
-            if (!prev) return null;
-            const newDetails = prev.details.map((item, i) => {
-                if (i === index) {
-                    const updatedItem = { ...item };
-                    if (!updatedItem.airFreightDetails) updatedItem.airFreightDetails = { weightPerMtr: 0, airFreightLeadTime: '' }; // Safety init
-
-                    if (field.startsWith('airFreightDetails.')) {
-                        const subField = field.split('.')[1] as keyof QuotationItem['airFreightDetails'];
-                        updatedItem.airFreightDetails = { ...updatedItem.airFreightDetails, [subField]: value };
-                    } else { (updatedItem as any)[field] = value; }
-
-                    if (field === 'airFreightDetails.weightPerMtr') {
-                        const product = fetchedProducts.get(updatedItem.productId);
-                        if (product && product.weight !== value) {
-                            updateProduct({ ...product, weight: value });
-                        }
-                    }
-                    if (field === 'airFreight' && value === false) updatedItem.airFreightDetails.airFreightLeadTime = '';
-                    return updatedItem;
-                }
-                return item;
-            });
-            return { ...prev, details: newDetails };
-        });
-    };
-
-    const handleProductSelect = (index: number, productId: number | string | null) => {
-        if (!productId) {
-            // Handle clear
-            setFormData(prevFormData => {
-                if (!prevFormData) return null;
-                const newDetails = [...prevFormData.details];
-                newDetails[index] = createEmptyQuotationItem();
-                return { ...prevFormData, details: newDetails };
-            });
-            return;
-        }
+        return { ...prev, details: newDetails };
+    });
+  };
+  
+  const handleProductSelect = (index: number, productId: number | string | null) => {
+    if (!productId) {
+        // Handle clear
         setFormData(prevFormData => {
             if (!prevFormData) return null;
-            const numericProductId = Number(productId);
-            const product = searchedProducts.find(p => p.id === numericProductId);
-            if (product) {
-                setFetchedProducts(prev => new Map(prev).set(product.id, product));
-                const priceEntry = getPriceForDate(product, prevFormData.quotationDate);
-                if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${prevFormData.quotationDate ? new Date(prevFormData.quotationDate).toLocaleDateString() : 'N/A'}. Please check product price validity.`);
-                const newDetails = [...prevFormData.details];
-                newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight } };
-                return { ...prevFormData, details: newDetails };
-            }
-            return prevFormData;
+            const newDetails = [...prevFormData.details];
+            newDetails[index] = createEmptyQuotationItem();
+            return { ...prevFormData, details: newDetails };
         });
+        return;
     }
-
-    const handleAddItem = () => { setFormData(prev => prev ? { ...prev, details: [...prev.details, createEmptyQuotationItem()] } : null); };
-    const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
-    const handleSaveCustomer = async (newCustomer: Customer) => {
-        try {
-            await upsertCustomer(newCustomer);
-            setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null);
-            setSelectedCustomerObj(newCustomer);
-            setIsCustomerModalOpen(false);
-        } catch (error) {
-            alert(error instanceof Error ? error.message : 'Failed to save customer');
+    setFormData(prevFormData => {
+        if (!prevFormData) return null;
+        const numericProductId = Number(productId);
+        const product = searchedProducts.find(p => p.id === numericProductId);
+        if (product) {
+            setFetchedProducts(prev => new Map(prev).set(product.id, product));
+            const priceEntry = getPriceForDate(product, prevFormData.quotationDate);
+            if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${prevFormData.quotationDate ? new Date(prevFormData.quotationDate).toLocaleDateString() : 'N/A'}. Please check product price validity.`);
+            const newDetails = [...prevFormData.details];
+            newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
+            return { ...prevFormData, details: newDetails };
         }
-    };
-    const handleSaveProduct = async (newProduct: Product) => { await addProductsBatch([newProduct]); setIsProductModalOpen(false); };
+        return prevFormData;
+    });
+  }
 
-    const handleSubmit = async (e?: React.FormEvent) => {
-        e?.preventDefault();
-        if (!formData || !formData.customerId) {
-            alert("Please select a customer."); return;
-        }
-        try {
-            const isNew = editingQuotationId === null || formData.id === 0;
+  const handleAddItem = () => { setFormData(prev => prev ? { ...prev, details: [...prev.details, createEmptyQuotationItem()] } : null); };
+  const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
+  const handleSaveCustomer = async (newCustomer: Customer) => { 
+    try {
+        await upsertCustomer(newCustomer);
+        setFormData(prev => prev ? { ...prev, customerId: newCustomer.id } : null); 
+        setSelectedCustomerObj(newCustomer);
+        setIsCustomerModalOpen(false); 
+    } catch (error) {
+        alert(error instanceof Error ? error.message : 'Failed to save customer');
+    }
+  };
+  const handleSaveProduct = async (newProduct: Product) => { await addProductsBatch([newProduct]); setIsProductModalOpen(false); };
 
-            let quotationToSave = { ...formData };
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!formData || !formData.customerId) {
+        alert("Please select a customer."); return;
+    }
+    try {
+      const isNew = editingQuotationId === null || formData.id === 0;
+      
+      const safeQuotations = quotations || [];
+      
+      let idToSave = formData.id;
+      if (isNew) {
+          const maxId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) : 0;
+          idToSave = maxId + 1;
+      }
+      
+      let quotationToSave = { ...formData, id: idToSave };
+      
+      await setQuotations(prev => {
+          const currentQuotations = prev || [];
+          if (isNew) {
+              const freshMaxId = currentQuotations.length > 0 ? Math.max(...currentQuotations.map(q => q.id)) : 0;
+              if (freshMaxId >= idToSave) {
+                  quotationToSave.id = freshMaxId + 1;
+              }
+              return [...currentQuotations, quotationToSave];
+          }
+          return currentQuotations.map(q => q.id === idToSave ? quotationToSave : q);
+      });
 
-            if (isNew) {
-                // Generate a unique 32-bit integer ID
-                // Formula: (seconds since 2024) * 10 + small random
-                // This ensures it fits in a standard 'int4' column (max 2.1B)
-                const epoch = 1704067200; // Jan 1 2024
-                const secondsSinceEpoch = Math.floor(Date.now() / 1000) - epoch;
-                const random = Math.floor(Math.random() * 10);
-                const safeId = (secondsSinceEpoch * 10) + random;
-                
-                quotationToSave.id = safeId;
-            }
+      if(isNew) {
+          setFormData(quotationToSave);
+          currentSessionIdRef.current = quotationToSave.id; 
 
-            // Save to Supabase
-            await setQuotations(prev => {
-                const currentQuotations = prev || [];
-                if (isNew) {
-                    return [...currentQuotations, quotationToSave];
-                }
-                return currentQuotations.map(q => q.id === quotationToSave.id ? quotationToSave : q);
-            });
-
-            if (isNew) {
-                setFormData(quotationToSave);
-                currentSessionIdRef.current = quotationToSave.id;
-                setEditingQuotationId(quotationToSave.id);
-
-                const url = new URL(window.location.href);
-                if (!url.protocol.startsWith('blob')) {
-                    url.searchParams.set('id', String(quotationToSave.id));
-                    window.history.pushState({}, '', url);
-                }
-                setSuccessModalData(quotationToSave);
-            } else {
-                alert("Quotation updated successfully!");
-            }
-
-        } catch (error) {
-            alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the quotation.');
-            console.error('Failed to save quotation:', error);
-        }
-    };
-
-    const handleNewButtonClick = () => {
-        if (isReadOnly && userRole !== 'Sales Person') return;
-        setEditingQuotationId(null);
-        const url = new URL(window.location.href);
-        if (!url.protocol.startsWith('blob')) {
-            url.searchParams.delete('id');
+          setEditingQuotationId(quotationToSave.id);
+          
+          const url = new URL(window.location.href);
+          if (!url.protocol.startsWith('blob')) {
+            url.searchParams.set('id', String(quotationToSave.id));
             window.history.pushState({}, '', url);
+          }
+          setSuccessModalData(quotationToSave);
+      } else {
+          alert("Quotation updated successfully!");
+      }
+      
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the quotation.');
+      console.error('Failed to save quotation:', error);
+    }
+  };
+  
+  const handleNewButtonClick = () => { 
+      if (isReadOnly && userRole !== 'Sales Person') return;
+      setEditingQuotationId(null); 
+      const url = new URL(window.location.href); 
+      if (!url.protocol.startsWith('blob')) { 
+          url.searchParams.delete('id'); 
+          window.history.pushState({}, '', url); 
+      } 
+  }
+  
+  const handleAddProductFromSearch = (product: Product, discount: number) => {
+    setFormData(prev => {
+        if (!prev) return null;
+        const priceEntry = getPriceForDate(product, prev.quotationDate);
+        if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return prev; }
+        const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
+        const emptyItemIndex = prev.details.findIndex(item => !item.productId);
+        const newDetails = [...prev.details];
+        if (emptyItemIndex !== -1) newDetails[emptyItemIndex] = newQuotationItem;
+        else newDetails.push(newQuotationItem);
+        setFetchedProducts(new Map(fetchedProducts).set(product.id, product));
+        setIsProductSearchModalOpen(false);
+        return { ...prev, details: newDetails };
+    });
+  };
+  
+  const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !formData.customerId) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
+  
+  const handleExportExcel = () => {
+      if (!formData || !formData.details.length) {
+          alert("No data to export.");
+          return;
+      }
+
+      const data = formData.details.map((item, index) => {
+          const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+          const amount = unitPrice * (item.moq || 0);
+          
+          const weightPerMtr = item.airFreightDetails?.weightPerMtr || 0;
+          const airFreightPerUnit = item.airFreight ? (weightPerMtr / 1000 * 150) : 0;
+          const airFreightTotal = airFreightPerUnit * (item.moq || 0);
+
+          return {
+              'Sl No': index + 1,
+              'Part No': item.partNo,
+              'Description': item.description,
+              'MOQ': item.moq,
+              'REQ': item.req,
+              'UOM': item.uom,
+              'List Price': item.price,
+              'Discount %': item.discount,
+              'Net Unit Price': unitPrice,
+              'Total Amount': amount,
+              'Stock Status': item.stockStatus,
+              'Air Freight': item.airFreight ? 'Yes' : 'No',
+              'Air Freight Weight (kg/m)': weightPerMtr,
+              'Air Freight Per Unit': airFreightPerUnit,
+              'Air Freight Amount': airFreightTotal
+          };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Quotation Details");
+      XLSX.writeFile(wb, `Quotation_${formData.id || 'New'}_Details.xlsx`);
+  };
+
+  const currentQuotationIndex = useMemo(() => editingQuotationId === null ? -1 : quotations.findIndex(q => q.id === editingQuotationId), [editingQuotationId, quotations]);
+
+  const handleNavigation = (direction: 'first' | 'prev' | 'next' | 'last') => {
+      if (quotations.length === 0) return;
+      let newIndex = 0;
+      if (direction === 'first') newIndex = 0;
+      else if (direction === 'last') newIndex = quotations.length - 1;
+      else if (direction === 'prev') newIndex = Math.max(0, currentQuotationIndex - 1);
+      else if (direction === 'next') newIndex = Math.min(quotations.length - 1, currentQuotationIndex + 1);
+      
+      const newId = quotations[newIndex].id;
+      setEditingQuotationId(newId);
+      const url = new URL(window.location.href);
+      if (!url.protocol.startsWith('blob')) {
+        url.searchParams.set('id', String(newId));
+        window.history.pushState({}, '', url);
+      }
+  };
+  
+  const totals = useMemo(() => {
+      if (!formData || !formData.details) return { moq: 0, req: 0, amount: 0, airFreightAmount: 0 };
+      return formData.details.reduce((acc, item) => {
+          const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+          acc.moq += item.moq || 0;
+          acc.req += item.req || 0;
+          acc.amount += unitPrice * item.moq || 0;
+          const weight = item.airFreightDetails?.weightPerMtr || 0;
+          acc.airFreightAmount += item.airFreight ? (weight / 1000 * 150) * item.moq : 0;
+          return acc;
+      }, { moq: 0, req: 0, amount: 0, airFreightAmount: 0 });
+  }, [formData]);
+
+  const selectedSalesPerson = useMemo(() => salesPersons.find(sp => sp.id === formData?.salesPersonId), [salesPersons, formData?.salesPersonId]);
+
+  const handleGridKeyDown = (e: React.KeyboardEvent, index: number, field: string) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        const nextEl = inputRefs.current[`${index + 1}-${field}`];
+        if (nextEl) {
+            nextEl.focus();
+            nextEl.select();
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevEl = inputRefs.current[`${index - 1}-${field}`];
+        if (prevEl) {
+             prevEl.focus();
+             prevEl.select();
         }
     }
+  };
 
-    const handleAddProductFromSearch = (product: Product, discount: number) => {
-        setFormData(prev => {
-            if (!prev) return null;
-            const priceEntry = getPriceForDate(product, prev.quotationDate);
-            if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return prev; }
-            const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' } };
-            const emptyItemIndex = prev.details.findIndex(item => !item.productId);
-            const newDetails = [...prev.details];
-            if (emptyItemIndex !== -1) newDetails[emptyItemIndex] = newQuotationItem;
-            else newDetails.push(newQuotationItem);
-            setFetchedProducts(new Map(fetchedProducts).set(product.id, product));
-            setIsProductSearchModalOpen(false);
-            return { ...prev, details: newDetails };
-        });
-    };
-
-    const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !formData.customerId) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
-
-    const handleExportExcel = () => {
-        if (!formData || !formData.details.length) {
-            alert("No data to export.");
-            return;
-        }
-
-        const data = formData.details.map((item, index) => {
-            const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-            const amount = unitPrice * (item.moq || 0);
-
-            const weightPerMtr = item.airFreightDetails?.weightPerMtr || 0;
-            const airFreightPerUnit = item.airFreight ? (weightPerMtr / 1000 * 150) : 0;
-            const airFreightTotal = airFreightPerUnit * (item.moq || 0);
-
-            return {
-                'Sl No': index + 1,
-                'Part No': item.partNo,
-                'Description': item.description,
-                'MOQ': item.moq,
-                'REQ': item.req,
-                'UOM': item.uom,
-                'List Price': item.price,
-                'Discount %': item.discount,
-                'Net Unit Price': unitPrice,
-                'Total Amount': amount,
-                'Stock Status': item.stockStatus,
-                'Air Freight': item.airFreight ? 'Yes' : 'No',
-                'Air Freight Weight (kg/m)': weightPerMtr,
-                'Air Freight Per Unit': airFreightPerUnit,
-                'Air Freight Amount': airFreightTotal
-            };
-        });
-
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Quotation Details");
-        XLSX.writeFile(wb, `Quotation_${formData.id || 'New'}_Details.xlsx`);
-    };
-
-    const currentQuotationIndex = useMemo(() => editingQuotationId === null ? -1 : quotations.findIndex(q => q.id === editingQuotationId), [editingQuotationId, quotations]);
-
-    const handleNavigation = (direction: 'first' | 'prev' | 'next' | 'last') => {
-        if (quotations.length === 0) return;
-        let newIndex = 0;
-        if (direction === 'first') newIndex = 0;
-        else if (direction === 'last') newIndex = quotations.length - 1;
-        else if (direction === 'prev') newIndex = Math.max(0, currentQuotationIndex - 1);
-        else if (direction === 'next') newIndex = Math.min(quotations.length - 1, currentQuotationIndex + 1);
-
-        const newId = quotations[newIndex].id;
-        setEditingQuotationId(newId);
-        const url = new URL(window.location.href);
-        if (!url.protocol.startsWith('blob')) {
-            url.searchParams.set('id', String(newId));
-            window.history.pushState({}, '', url);
-        }
-    };
-
-    const totals = useMemo(() => {
-        if (!formData || !formData.details) return { moq: 0, req: 0, amount: 0, airFreightAmount: 0 };
-        return formData.details.reduce((acc, item) => {
-            const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-            acc.moq += item.moq || 0;
-            acc.req += item.req || 0;
-            acc.amount += unitPrice * item.moq || 0;
-            // Safe access with optional chaining for airFreightDetails
-            const weight = item.airFreightDetails?.weightPerMtr || 0;
-            acc.airFreightAmount += item.airFreight ? (weight / 1000 * 150) * item.moq : 0;
-            return acc;
-        }, { moq: 0, req: 0, amount: 0, airFreightAmount: 0 });
-    }, [formData]);
-
-    const selectedSalesPerson = useMemo(() => salesPersons.find(sp => sp.id === formData?.salesPersonId), [salesPersons, formData?.salesPersonId]);
-
-    const handleGridKeyDown = (e: React.KeyboardEvent, index: number, field: string) => {
-        if (e.key === 'ArrowDown' || e.key === 'Enter') {
-            e.preventDefault();
-            const nextEl = inputRefs.current[`${index + 1}-${field}`];
-            if (nextEl) {
-                nextEl.focus();
-                nextEl.select();
-            }
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            const prevEl = inputRefs.current[`${index - 1}-${field}`];
-            if (prevEl) {
-                prevEl.focus();
-                prevEl.select();
-            }
-        }
-    };
-
-    if (previewMode !== 'none') {
-        if (!formData || !selectedCustomerObj) return null;
-
-        const handleCustomerResponseStatusUpdate = async (newStatus: QuotationStatus) => {
-            await setQuotations(prev => (prev || []).map(q => q.id === formData.id ? { ...q, status: newStatus } : q));
-        };
-
-        const handlePrint = () => {
-            const originalTitle = document.title;
-            // Clean filename to remove invalid characters
-            const customerNameSafe = selectedCustomerObj.name.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim();
-            const qtnNoSafe = getQuotationDisplayNumber(formData, quotations).replace(/\//g, '-');
-            document.title = `${customerNameSafe}_${qtnNoSafe}`;
-            
-            setTimeout(() => {
-                window.print();
-                document.title = originalTitle;
-            }, 50);
-        };
-
-        return (
-            <div className="bg-slate-100 min-h-screen">
-                <div className="bg-white shadow-md p-2 mb-4 flex justify-between items-center no-print sticky top-0 z-30">
-                    <h2 className="text-lg font-bold text-black">Preview</h2>
-                    <div className="flex items-center space-x-2">
-                        <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Print</button>
-                        <button onClick={() => setPreviewMode('none')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Close</button>
-                    </div>
-                </div>
-
-                <div id="print-area">
-                    {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} allQuotations={quotations} />}
-                    {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} allQuotations={quotations} />}
-                    {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} onStatusUpdate={handleCustomerResponseStatusUpdate} allQuotations={quotations} />}
-                </div>
-            </div>
-        );
-    }
-
-    if (!formData) return <div className="p-8 text-center text-xs text-black">Loading form...</div>;
-
-    // Define Grid Columns based on user request
-    const gridColumns = ['SL No', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount%', 'Unit Price', 'Amount', 'Stock Status', 'Air per Unit', 'Air Freight Amt', 'Air Lead Time'];
-    if (!isReadOnly) gridColumns.push('');
-
+  if (previewMode !== 'none') {
+    if (!formData || !selectedCustomerObj) return null;
     return (
-        <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
-            <div className="bg-white rounded-lg shadow-lg">
-                <header className="bg-slate-950 text-white px-4 py-3 flex justify-between items-center rounded-t-lg">
-                    <h1 className="text-base font-extrabold uppercase tracking-wider">Quotation Details</h1>
-                    <div className="flex items-center space-x-1">
-                        <NavButton onClick={() => handleNavigation('first')} disabled={currentQuotationIndex <= 0}>|◀</NavButton>
-                        <NavButton onClick={() => handleNavigation('prev')} disabled={currentQuotationIndex <= 0}>◀</NavButton>
-                        <button onClick={() => setView('quotations')} className="bg-blue-600 hover:bg-blue-500 text-white rounded-md h-6 px-3 flex items-center justify-center font-bold text-xs" title="Back to Quotations List">
-                            Back
-                        </button>
-                        <NavButton onClick={() => handleNavigation('next')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
-                        <NavButton onClick={() => handleNavigation('last')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
-                    </div>
-                </header>
-
-                <form onSubmit={handleSubmit} className="p-2">
-                    <div className="bg-slate-50 p-2 flex flex-wrap items-center gap-3 border border-slate-200 mb-3 rounded-md shadow-sm">
-                        {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
-                        {!isReadOnly && <ActionButton onClick={handleSubmit} title="Save Quotation"><Icons.Save /><span>Save</span></ActionButton>}
-                        <div className="h-6 border-l border-slate-300 mx-1"></div>
-                        <ActionButton onClick={() => handlePreview('standard')} title="Preview Standard"><Icons.PrintStandard /><span>Preview</span></ActionButton>
-                        <ActionButton onClick={() => handlePreview('discounted')} title="Preview with Discount"><Icons.PrintDiscount /><span>Discounted</span></ActionButton>
-                        <ActionButton onClick={() => handlePreview('withAirFreight')} title="Preview with Air Freight"><Icons.PrintAirFreight /><span>Air Freight</span></ActionButton>
-                        <div className="h-6 border-l border-slate-300 mx-1"></div>
-                        <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span>Export Excel</span></ActionButton>
-                        <div className="h-6 border-l border-slate-300 mx-1"></div>
-                        {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span>Customer</span></ActionButton>}
-                        {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span>Product</span></ActionButton>}
-                        {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
-                        <div className="h-6 border-l border-slate-300 mx-1"></div>
-                        <ActionButton onClick={() => setIsStockModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span>Stock Check</span></ActionButton>
-                        <button
-                            type="button"
-                            onClick={() => setFormData(prev => prev ? { ...prev, gstAdded: !prev.gstAdded } : null)}
-                            className={`flex items-center gap-1.5 border border-slate-200 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold transition-all transform active:scale-95 ${formData.gstAdded ? 'bg-green-600 text-white border-green-700' : 'bg-white text-black hover:bg-slate-50'}`}
-                            title="Toggle GST Added Option"
-                        >
-                            {formData.gstAdded ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                                </svg>
-                            ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-600">
-                                    <path d="M12 7.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
-                                    <path fillRule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v14.25c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 19.125V4.875zM11.25 15a3 3 0 116 0 3 3 0 01-6 0zM3.75 15a3 3 0 116 0 3 3 0 01-6 0z" clipRule="evenodd" />
-                                </svg>
-                            )}
-                            <span>GST Added</span>
-                        </button>
-                    </div>
-
-                    {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
-                        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs text-yellow-700">
-                            <p className="font-bold">View Only Mode</p>
-                            <p>You are viewing a quotation created by another Sales Person. You cannot edit this.</p>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-2 gap-y-1 text-xs">
-                        <div className="space-y-1">
-                            <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId === null && formData.id <= 0 ? "New" : getQuotationDisplayNumber(formData, formData.id > 0 ? quotations : null)}</div></FormField>
-                            <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
-                            <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
-                            <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if (!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if (customer) setSelectedCustomerObj(customer); } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen} /></div></FormField>
-                            {selectedCustomerObj && (
-                                <div className="ml-[33.33%] pl-1 text-[10px] text-black whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address}, ${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`}>
-                                    {selectedCustomerObj.address}, {selectedCustomerObj.city} - {selectedCustomerObj.pincode}
-                                </div>
-                            )}
-                        </div>
-                        <div className="space-y-1">
-                            <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
-                            <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly} /></FormField>
-                            <FormField label="Other Terms">
-                                <DropdownInput
-                                    value={formData.otherTerms}
-                                    options={['± 5% Length Variation', '± 10% Length Variation', 'Standard Terms Apply']}
-                                    onChange={val => { if (!isReadOnly) setFormData(prev => prev ? { ...prev, otherTerms: val } : null); }}
-                                    placeholder="Type other terms..."
-                                    disabled={isReadOnly}
-                                />
-                            </FormField>
-                            <FormField label="Payment">
-                                <DropdownInput
-                                    value={formData.paymentTerms}
-                                    options={[...PAYMENT_TERMS]}
-                                    onChange={val => { if (!isReadOnly) setFormData(prev => prev ? { ...prev, paymentTerms: val } : null); }}
-                                    placeholder="Type or select payment terms..."
-                                    disabled={isReadOnly}
-                                />
-                            </FormField>
-                            <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
-                        </div>
-                        <div className="space-y-1">
-                            <FormField label="Products Brand"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
-                            <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
-                            <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
-                            <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black">{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
-                            {selectedCustomerObj && selectedCustomerObj.discountStructure && (
-                                <div className="flex flex-wrap gap-1 mt-1 text-[10px] border border-slate-200 p-1 rounded bg-slate-50 text-black">
-                                    {Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => {
-                                        const val = Number(value);
-                                        if (!isNaN(val) && val > 0) {
-                                            return (
-                                                <div key={key} className="px-1 bg-slate-200 rounded">
-                                                    <span className="font-semibold capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>: {val}%
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="mt-3 overflow-x-auto">
-                        <table className="min-w-full border-collapse border border-slate-300 text-[11px]">
-                            <thead className="bg-slate-200 text-black font-semibold">
-                                <tr className="divide-x divide-slate-300">
-                                    {gridColumns.map(h => <th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white text-xs text-black">{(formData.details || []).map((item, index) => {
-                                const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-                                const amount = unitPrice * (item.moq || 0);
-                                const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0;
-                                const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0;
-                                const currentProduct = fetchedProducts.get(item.productId);
-                                const optionsForSelect = [...searchedProducts];
-                                if (currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
-                                    optionsForSelect.unshift(currentProduct);
-                                }
-
-                                // Inline Stock Check
-                                let freeStockDisplay = null;
-                                if (item.partNo) {
-                                    const freeStock = getFreeStock(item.partNo);
-                                    if (freeStock !== null && freeStock > (item.moq || 0)) {
-                                        freeStockDisplay = <span className="block text-[9px] text-green-600 font-semibold">(Free: {freeStock.toLocaleString()})</span>;
-                                    }
-                                }
-
-                                return (
-                                    <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50">
-                                        {/* SL No */}
-                                        <td className="border-t border-slate-300 p-1 text-center bg-slate-50 text-black">{index + 1}</td>
-
-                                        {/* Part No */}
-                                        <td className="border-t border-slate-300 w-40 align-top">
-                                            <div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
-                                                <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if (!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
-                                            </div>
-                                        </td>
-
-                                        {/* Description */}
-                                        <td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-black truncate" title={item.description}>{item.description}</td>
-
-                                        {/* MOQ */}
-                                        <td className="border-t border-slate-300 align-top">
-                                            <input
-                                                type="number"
-                                                ref={(el) => { inputRefs.current[`${index}-moq`] = el; }}
-                                                value={item.moq}
-                                                onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)}
-                                                onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
-                                                onFocus={(e) => e.target.select()}
-                                                className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black"
-                                                disabled={isReadOnly}
-                                            />
-                                        </td>
-
-                                        {/* REQ */}
-                                        <td className="border-t border-slate-300 align-top">
-                                            <input
-                                                type="number"
-                                                ref={(el) => { inputRefs.current[`${index}-req`] = el; }}
-                                                value={item.req}
-                                                onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)}
-                                                onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
-                                                onFocus={(e) => e.target.select()}
-                                                className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black"
-                                                disabled={isReadOnly}
-                                            />
-                                        </td>
-
-                                        {/* Price (LP/SP) */}
-                                        <td className="border-t border-slate-300 align-top">
-                                            <div className="flex items-center bg-slate-100 h-6">
-                                                <input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black" disabled />
-                                                <select
-                                                    value={item.priceSource}
-                                                    className="bg-transparent border-l border-slate-200 p-0 text-[9px] text-black h-full appearance-none text-center w-6 focus:outline-none"
-                                                    disabled
-                                                >
-                                                    <option value="LP">LP</option><option value="SP">SP</option>
-                                                </select>
-                                            </div>
-                                        </td>
-
-                                        {/* Discount % */}
-                                        <td className="border-t border-slate-300 align-top">
-                                            <input
-                                                type="text"
-                                                ref={(el) => { inputRefs.current[`${index}-discount`] = el; }}
-                                                value={item.discount}
-                                                onChange={e => handleItemChange(index, 'discount', e.target.value)}
-                                                onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
-                                                onFocus={(e) => e.target.select()}
-                                                className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black"
-                                                disabled={isReadOnly}
-                                            />
-                                        </td>
-
-                                        {/* Unit Price */}
-                                        <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
-                                            {unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-
-                                        {/* Amount */}
-                                        <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
-                                            {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-
-                                        {/* Stock Status */}
-                                        <td className="border-t border-slate-300 align-top">
-                                            <input
-                                                type="text"
-                                                ref={(el) => { inputRefs.current[`${index}-stockStatus`] = el; }}
-                                                value={item.stockStatus}
-                                                onChange={e => handleItemChange(index, 'stockStatus', e.target.value)}
-                                                onKeyDown={(e) => handleGridKeyDown(e, index, 'stockStatus')}
-                                                onFocus={(e) => e.target.select()}
-                                                className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black"
-                                                disabled={isReadOnly}
-                                            />
-                                            {freeStockDisplay}
-                                        </td>
-
-                                        {/* Air per Unit (with Checkbox for toggle if editable) */}
-                                        <td className="border-t border-slate-300 align-top min-w-[100px]">
-                                            <div className="flex items-center gap-1 h-6 px-1">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.airFreight}
-                                                    onChange={e => handleItemChange(index, 'airFreight', e.target.checked)}
-                                                    className="h-3 w-3 disabled:bg-slate-100"
-                                                    disabled={isReadOnly}
-                                                    title="Toggle Air Freight"
-                                                />
-                                                {!isReadOnly && item.airFreight ? (
-                                                    <input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-full p-0.5 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded text-xs text-black" title="Weight (kg/m) for calculation" />
-                                                ) : (
-                                                    <span className="text-right flex-grow text-[10px] text-black">{freightPerMtr.toFixed(2)}</span>
-                                                )}
-                                            </div>
-                                        </td>
-
-                                        {/* Air Freight Amt */}
-                                        <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
-                                            {freightTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-
-                                        {/* Air Lead Time */}
-                                        <td className="border-t border-slate-300 align-top">
-                                            <input
-                                                type="text"
-                                                ref={(el) => { inputRefs.current[`${index}-airFreightLeadTime`] = el; }}
-                                                value={item.airFreightDetails?.airFreightLeadTime || ''}
-                                                onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)}
-                                                onKeyDown={(e) => handleGridKeyDown(e, index, 'airFreightLeadTime')}
-                                                onFocus={(e) => e.target.select()}
-                                                className="w-20 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black"
-                                                disabled={!item.airFreight || isReadOnly}
-                                            />
-                                        </td>
-
-                                        {/* Actions */}
-                                        {!isReadOnly && (
-                                            <td className="border-t border-slate-300 text-center align-middle">
-                                                <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item">
-                                                    <Icons.Trash />
-                                                </button>
-                                            </td>
-                                        )}
-                                    </tr>
-                                );
-                            })}</tbody>
-                        </table>
-                    </div>
-                    <div className="flex justify-end mt-2 mb-4">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-xs rounded">+ Add Row</button>}</div>
-                </form>
+        <div className="bg-slate-100 min-h-screen">
+          <div className="bg-white shadow-md p-2 mb-4 flex justify-between items-center no-print sticky top-0 z-30">
+            <h2 className="text-lg font-bold text-black">Preview</h2>
+            <div className="flex items-center space-x-2">
+              <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Print</button>
+              <button onClick={() => setPreviewMode('none')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Close</button>
             </div>
-            <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
-            <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} />
-            <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch} />
-            <StockCheckModal isOpen={isStockModalOpen} onClose={() => setIsStockModalOpen(false)} stockStatements={stockStatements || []} pendingSOs={pendingSOs || []} />
-            <QuotationSuccessModal
-                isOpen={!!successModalData}
-                onClose={() => setSuccessModalData(null)}
-                quotation={successModalData}
-                customer={selectedCustomerObj}
-                salesPerson={salesPersons.find(sp => sp.id === successModalData?.salesPersonId) || null}
-                onPrint={() => { setSuccessModalData(null); handlePreview('standard'); }}
-            />
-
-            <div className="fixed bottom-0 left-0 w-full bg-slate-800 text-white p-2 shadow-inner z-40 flex items-center justify-between px-6 text-xs font-medium">
-                <div className="flex gap-6">
-                    <div>Total MOQ: <span className="font-bold text-yellow-400 ml-1">{totals.moq}</span></div>
-                    <div>Total REQ: <span className="font-bold text-yellow-400 ml-1">{totals.req}</span></div>
-                </div>
-                <div className="flex gap-6">
-                    <div>Amount: <span className="font-bold text-green-400 ml-1">{totals.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                    <div>Air Freight: <span className="font-bold text-blue-400 ml-1">{totals.airFreightAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                    <div className="border-l border-slate-600 pl-4">Grand Total: <span className="font-bold text-white text-sm ml-1">{(totals.amount + totals.airFreightAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                </div>
-            </div>
+          </div>
+          <div id="print-area">
+             {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+          </div>
         </div>
     );
+  }
+
+  if (!formData) return <div className="p-8 text-center text-xs text-black">Loading form...</div>;
+
+  // Define Grid Columns based on user request
+  const gridColumns = ['SL No', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount%', 'Unit Price', 'Amount', 'Stock Status', 'Air per Unit', 'Air Freight Amt', 'Air Lead Time'];
+  if (!isReadOnly) gridColumns.push('');
+
+  return (
+    <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
+      <div className="bg-white rounded-lg shadow-lg">
+        <header className="bg-slate-950 text-white px-4 py-3 flex justify-between items-center rounded-t-lg">
+           <h1 className="text-base font-extrabold uppercase tracking-wider">Quotation Details</h1>
+           <div className="flex items-center space-x-1">
+                <NavButton onClick={() => handleNavigation('first')} disabled={currentQuotationIndex <= 0}>|◀</NavButton>
+                <NavButton onClick={() => handleNavigation('prev')} disabled={currentQuotationIndex <= 0}>◀</NavButton>
+                <button onClick={() => setView('quotations')} className="bg-blue-600 hover:bg-blue-500 text-white rounded-md h-6 px-3 flex items-center justify-center font-bold text-xs" title="Back to Quotations List">
+                    Back
+                </button>
+                <NavButton onClick={() => handleNavigation('next')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
+                <NavButton onClick={() => handleNavigation('last')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
+            </div>
+        </header>
+        
+        <form onSubmit={handleSubmit} className="p-2">
+            <div className="bg-slate-50 p-2 flex flex-wrap items-center gap-3 border border-slate-200 mb-3 rounded-md shadow-sm">
+                {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
+                {!isReadOnly && <ActionButton onClick={handleSubmit} title="Save Quotation"><Icons.Save /><span>Save</span></ActionButton>}
+                <div className="h-6 border-l border-slate-300 mx-1"></div>
+                <ActionButton onClick={() => handlePreview('standard')} title="Preview Standard"><Icons.PrintStandard /><span>Preview</span></ActionButton>
+                <ActionButton onClick={() => handlePreview('discounted')} title="Preview with Discount"><Icons.PrintDiscount /><span>Discounted</span></ActionButton>
+                <ActionButton onClick={() => handlePreview('withAirFreight')} title="Preview with Air Freight"><Icons.PrintAirFreight /><span>Air Freight</span></ActionButton>
+                <div className="h-6 border-l border-slate-300 mx-1"></div>
+                <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span>Export Excel</span></ActionButton>
+                <div className="h-6 border-l border-slate-300 mx-1"></div>
+                <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span>Check Stock</span></ActionButton>
+                <div className="h-6 border-l border-slate-300 mx-1"></div>
+                {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span>Customer</span></ActionButton>}
+                {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span>Product</span></ActionButton>}
+                {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
+            </div>
+            
+            {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs text-yellow-700">
+                    <p className="font-bold">View Only Mode</p>
+                    <p>You are viewing a quotation created by another Sales Person. You cannot edit this.</p>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-2 gap-y-1 text-xs">
+                <div className="space-y-1">
+                    <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId ?? (formData.id > 0 ? formData.id : "New")}</div></FormField>
+                    <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
+                     {selectedCustomerObj && (
+                        <div className="ml-[33.33%] pl-1 text-[10px] text-black whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address}, ${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`}>
+                            {selectedCustomerObj.address}, {selectedCustomerObj.city} - {selectedCustomerObj.pincode}
+                        </div>
+                     )}
+                </div>
+                <div className="space-y-1">
+                    <FormField label="Contact Name"><input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Contact No"><input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Other Terms"><input type="text" name="otherTerms" value={formData.otherTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Payment"><select name="paymentTerms" value={formData.paymentTerms} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PAYMENT_TERMS.map(t => <option key={t} value={t}>{t}</option>)}</select></FormField>
+                    <FormField label="Prepared By"><select name="preparedBy" value={formData.preparedBy} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PREPARED_BY_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></FormField>
+                </div>
+                <div className="space-y-1">
+                    <FormField label="Products Brand"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
+                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
+                    <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
+                    <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black">{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
+                    {selectedCustomerObj && selectedCustomerObj.discountStructure && (
+                        <div className="flex flex-wrap gap-1 mt-1 text-[10px] border border-slate-200 p-1 rounded bg-slate-50 text-black">
+                            {Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => {
+                                const val = Number(value);
+                                if (!isNaN(val) && val > 0) {
+                                    return (
+                                        <div key={key} className="px-1 bg-slate-200 rounded">
+                                            <span className="font-semibold capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>: {val}%
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="mt-3 overflow-x-auto">
+                <table className="min-w-full border-collapse border border-slate-300 text-[11px]">
+                    <thead className="bg-slate-200 text-black font-semibold">
+                        <tr className="divide-x divide-slate-300">
+                            {gridColumns.map(h => <th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white text-xs text-black">{(formData.details || []).map((item, index) => {
+                        const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); 
+                        const amount = unitPrice * (item.moq || 0); 
+                        const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0; 
+                        const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
+                        const currentProduct = fetchedProducts.get(item.productId);
+                        const optionsForSelect = [...searchedProducts];
+                        if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
+                            optionsForSelect.unshift(currentProduct);
+                        }
+                        return (
+                        <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50">
+                            {/* SL No */}
+                            <td className="border-t border-slate-300 p-1 text-center bg-slate-50 text-black">{index + 1}</td>
+                            
+                            {/* Part No */}
+                            <td className="border-t border-slate-300 w-40 align-top">
+                                <div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
+                                    <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
+                                </div>
+                            </td>
+                            
+                            {/* Description */}
+                            <td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-black truncate" title={item.description}>{item.description}</td>
+                            
+                            {/* MOQ */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="number" 
+                                    ref={(el) => { inputRefs.current[`${index}-moq`] = el; }}
+                                    value={item.moq} 
+                                    onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
+                                    disabled={isReadOnly}
+                                />
+                            </td>
+
+                            {/* REQ */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="number" 
+                                    ref={(el) => { inputRefs.current[`${index}-req`] = el; }}
+                                    value={item.req} 
+                                    onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
+                                    disabled={isReadOnly}
+                                />
+                            </td>
+                            
+                            {/* Price (LP/SP) */}
+                            <td className="border-t border-slate-300 align-top">
+                                <div className="flex items-center bg-slate-100 h-6">
+                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black" disabled/>
+                                    <select 
+                                        value={item.priceSource} 
+                                        className="bg-transparent border-l border-slate-200 p-0 text-[9px] text-black h-full appearance-none text-center w-6 focus:outline-none" 
+                                        disabled
+                                    >
+                                        <option value="LP">LP</option><option value="SP">SP</option>
+                                    </select>
+                                </div>
+                            </td>
+                            
+                            {/* Discount % */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="text" 
+                                    ref={(el) => { inputRefs.current[`${index}-discount`] = el; }}
+                                    value={item.discount} 
+                                    onChange={e => handleItemChange(index, 'discount', e.target.value)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
+                                    disabled={isReadOnly}
+                                />
+                            </td>
+                            
+                            {/* Unit Price */}
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
+                                {unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+
+                            {/* Amount */}
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
+                                {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            
+                            {/* Stock Status */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="text" 
+                                    ref={(el) => { inputRefs.current[`${index}-stockStatus`] = el; }}
+                                    value={item.stockStatus} 
+                                    onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'stockStatus')}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
+                                    disabled={isReadOnly}
+                                />
+                            </td>
+                            
+                            {/* Air per Unit (with Checkbox for toggle if editable) */}
+                            <td className="border-t border-slate-300 align-top min-w-[100px]">
+                                <div className="flex items-center gap-1 h-6 px-1">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={item.airFreight} 
+                                        onChange={e => handleItemChange(index, 'airFreight', e.target.checked)} 
+                                        className="h-3 w-3 disabled:bg-slate-100" 
+                                        disabled={isReadOnly}
+                                        title="Toggle Air Freight"
+                                    />
+                                    {!isReadOnly && item.airFreight ? (
+                                         <input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-full p-0.5 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded text-xs text-black" title="Weight (kg/m) for calculation"/>
+                                    ) : (
+                                        <span className="text-right flex-grow text-[10px] text-black">{freightPerMtr.toFixed(2)}</span>
+                                    )}
+                                </div>
+                            </td>
+
+                            {/* Air Freight Amt */}
+                            <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
+                                {freightTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </td>
+
+                            {/* Air Lead Time */}
+                            <td className="border-t border-slate-300 align-top">
+                                <input 
+                                    type="text" 
+                                    value={item.airFreightDetails?.airFreightLeadTime || ''} 
+                                    onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} 
+                                    className="w-20 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
+                                    disabled={!item.airFreight || isReadOnly}
+                                />
+                            </td>
+
+                            {/* Actions */}
+                            {!isReadOnly && (
+                                <td className="border-t border-slate-300 text-center align-middle">
+                                    <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item">
+                                        <Icons.Trash />
+                                    </button>
+                                </td>
+                            )}
+                        </tr>
+                    );})}</tbody>
+                </table>
+            </div>
+             <div className="flex justify-end mt-2 mb-4">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-xs rounded">+ Add Row</button>}</div>
+        </form>
+      </div>
+      <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
+      <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} />
+      <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
+      <StockCheckModal 
+        isOpen={isStockCheckModalOpen}
+        onClose={() => setIsStockCheckModalOpen(false)}
+        stockStatements={stockStatements}
+        pendingSOs={pendingSOs}
+      />
+      <QuotationSuccessModal 
+         isOpen={!!successModalData} 
+         onClose={() => setSuccessModalData(null)} 
+         quotation={successModalData} 
+         customer={selectedCustomerObj}
+         salesPerson={salesPersons.find(sp => sp.id === successModalData?.salesPersonId) || null}
+         onPrint={() => { setSuccessModalData(null); handlePreview('standard'); }}
+      />
+      
+      <div className="fixed bottom-0 left-0 w-full bg-slate-800 text-white p-2 shadow-inner z-40 flex items-center justify-between px-6 text-xs font-medium">
+          <div className="flex gap-6">
+              <div>Total MOQ: <span className="font-bold text-yellow-400 ml-1">{totals.moq}</span></div>
+              <div>Total REQ: <span className="font-bold text-yellow-400 ml-1">{totals.req}</span></div>
+          </div>
+          <div className="flex gap-6">
+              <div>Amount: <span className="font-bold text-green-400 ml-1">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+              <div>Air Freight: <span className="font-bold text-blue-400 ml-1">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+              <div className="border-l border-slate-600 pl-4">Grand Total: <span className="font-bold text-white text-sm ml-1">{(totals.amount + totals.airFreightAmount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+          </div>
+      </div>
+    </div>
+  );
 };

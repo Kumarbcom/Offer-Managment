@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { get, countRecords } from '../supabase';
+import { getCustomersByIds } from '../supabase';
 
 // Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
@@ -20,8 +20,11 @@ interface DashboardProps {
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatCurrencyCompact = (value: number | null | undefined) => {
     const val = Number(value);
-    if (isNaN(val) || val === 0) return '0';
-    return `₹${val.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    if (isNaN(val) || val === 0) return '0'; // Return simple 0 for cleaner look in table when 0
+    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
+    if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k`;
+    return `₹${Math.round(val)}`;
 }
 
 // Enhanced Icon Helper Component
@@ -37,12 +40,8 @@ const StatusIcon = ({ status, className }: { status: string, className?: string 
             return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" /><path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.133 2.845a.75.75 0 0 1 1.06 0l1.72 1.72 1.72-1.72a.75.75 0 1 1 1.06 1.06l-1.72 1.72 1.72 1.72a.75.75 0 1 1-1.06-1.06L12 15.685l-1.72 1.72a.75.75 0 1 1-1.06-1.06l1.72-1.72-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>;
         case 'Expired': // Amber - Clock alert
             return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clipRule="evenodd" /></svg>;
-        case 'Under Review': // Amber - Magnifying glass
-            return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clipRule="evenodd" /></svg>;
-        case 'Need Amendment': // Violet - Pencil
-            return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" /><path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" /></svg>;
         default:
-            return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm11.378-3.917c-.89-.777-2.366-.777-3.255 0a.75.75 0 0 1-.988-1.129c1.454-1.272 3.776-1.272 5.23 0 1.513 1.324 1.513 3.518 0 4.842a3.75 3.75 0 0 1-.837.552c-.676.328-1.028.774-1.028 1.152v.75a.75.75 0 0 1-1.5 0v-.75c0-1.279 1.06-2.107 1.875-2.502.182-.088.351-.199.503-.331.83-.727.83-1.857 0-2.584ZM12 18a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" /></svg>;
+            return null;
     }
 }
 
@@ -55,43 +54,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const topCustomersChartRef = useRef<HTMLCanvasElement>(null);
 
     const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<number | 'all'>('all');
-    const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('month');
+    const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
     const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
     const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
     const [orderStatusMode, setOrderStatusMode] = useState<'count' | 'value'>('value');
-    const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count');
+    const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count'); // New state for Performance Table
     const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
-    const [dbQuotationCount, setDbQuotationCount] = useState<number | null>(null);
-    const [isCustomersLoaded, setIsCustomersLoaded] = useState(false);
 
-    // Fetch exact DB count to compare with loaded count
     useEffect(() => {
-        countRecords('quotations').then(count => {
-            setDbQuotationCount(count);
-            const loadedCount = quotations?.length ?? 0;
-            if (count !== loadedCount) {
-                console.warn(`[Dashboard] DB has ${count} quotations but only ${loadedCount} loaded. Missing: ${count - loadedCount}`);
-            } else {
-                console.log(`[Dashboard] All ${count} quotations loaded correctly.`);
-            }
-        }).catch(err => console.error('[Dashboard] Failed to get DB count:', err));
-    }, [quotations?.length]);
+        if (quotations) {
+            const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
+                .filter((id): id is number => id !== null && !customerMap.has(id));
 
-    // Fetch all customers securely and comprehensively to guarantee display names for statistics
-    useEffect(() => {
-        if (!isCustomersLoaded) {
-            get('customers').then(customers => {
-                setCustomerMap(prevMap => {
-                    const newMap = new Map(prevMap);
-                    customers.forEach((c: any) => newMap.set(c.id, c.name));
-                    return newMap;
+            if (customerIdsToFetch.length > 0) {
+                getCustomersByIds(customerIdsToFetch).then(customers => {
+                    setCustomerMap(prevMap => {
+                        const newMap = new Map(prevMap);
+                        customers.forEach(c => newMap.set(c.id, c.name));
+                        return newMap;
+                    });
                 });
-                setIsCustomersLoaded(true);
-            }).catch(err => {
-                console.error("Dashboard full customer load error:", err);
-            });
+            }
         }
-    }, [isCustomersLoaded]);
+    }, [quotations, customerMap]);
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -135,33 +120,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         if (startDate) {
             startDate.setHours(0, 0, 0, 0); // Start of the day
         }
-
+        
         // Determine if current user is restricted
         let currentSalesPersonId: number | undefined;
-        let currentUserHasSalesPersonRecord = false;
         if (currentUser.role === 'Sales Person') {
-            const matchedSP = salesPersons?.find(sp => sp.name === currentUser.name);
-            if (matchedSP) {
-                currentSalesPersonId = matchedSP.id;
-                currentUserHasSalesPersonRecord = true;
-            }
+             currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
         }
 
         return quotations.filter(q => {
             let salesPersonMatch = true;
-
+            
             if (currentUser.role === 'Sales Person') {
-                if (currentUserHasSalesPersonRecord) {
-                    // User has a salesPerson record — filter by salesPersonId only
-                    salesPersonMatch = q.salesPersonId === currentSalesPersonId;
+                if (currentSalesPersonId !== undefined) {
+                     salesPersonMatch = q.salesPersonId === currentSalesPersonId;
+                } else {
+                    // Should not happen if data is correct, but fail safe
+                    salesPersonMatch = false;
                 }
-                // else: Sales Person user with no salesPerson record (e.g., Vandita)
-                // — show ALL quotations, salesPersonMatch stays true
             } else {
-                // Admin / Manager logic
-                salesPersonMatch = selectedSalesPersonId === 'all' || q.salesPersonId === selectedSalesPersonId;
+                 // Admin / Manager logic
+                 salesPersonMatch = selectedSalesPersonId === 'all' || q.salesPersonId === selectedSalesPersonId;
             }
-
+            
             if (!salesPersonMatch) return false;
 
             if (selectedDateRange === 'all' || !startDate) {
@@ -247,7 +227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         salesPersonStats.forEach(stat => {
             totals.total.count += stat.total.count;
             totals.total.value += stat.total.value;
-
+            
             totals['Open'].count += stat['Open'].count;
             totals['Open'].value += stat['Open'].value;
 
@@ -451,13 +431,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         const spacerData = funnelData.map(value => (maxDataValue - value) / 2);
 
         const colorMap: Record<QuotationStatus, string> = {
-            'Open': '#3b82f6',           // Blue 500
-            'PO received': '#22c55e',    // Green 500
+            'Open': '#3b82f6', // Blue 500
+            'PO received': '#22c55e', // Green 500
             'Partial PO Received': '#14b8a6', // Teal 500
-            'Under Review': '#f59e0b',   // Amber 500
-            'Need Amendment': '#8b5cf6', // Violet 500
-            'Expired': '#fb923c',        // Orange 400
-            'Lost': '#ef4444',           // Red 500
+            'Expired': '#f59e0b', // Amber 500
+            'Lost': '#ef4444', // Red 500
         };
         const funnelColors = funnelCounts.map(item => colorMap[item.status]);
 
@@ -547,8 +525,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
         const customerValues = new Map<string, number>();
         filteredQuotations.forEach(q => {
-            const safeId = Number(q.customerId);
-            const customerName = (safeId && !isNaN(safeId)) ? customerMap.get(safeId) || 'Unknown' : 'Unknown';
+            const customerName = q.customerId ? customerMap.get(q.customerId) || 'Unknown' : 'Unknown';
             customerValues.set(customerName, (customerValues.get(customerName) || 0) + calculateTotalAmount(q.details));
         });
 
@@ -615,16 +592,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             >
                 <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
                     <div className="flex items-center gap-3">
-                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl shadow-lg ring-2 ring-indigo-500/30 ring-offset-2 ring-offset-white">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <div className="bg-indigo-600 p-1.5 rounded-lg shadow-sm">
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-fuchsia-600 tracking-tight">Siddhi Kable Corporation Pvt Ltd</h2>
-                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">Performance Dashboard</p>
+                            <h2 className="text-lg font-bold text-black tracking-tight">Dashboard</h2>
                         </div>
                     </div>
                     {/* Logo Upload for Admin - Moved for visibility */}
-                    {currentUser.role === 'Admin' && (
+                     {currentUser.role === 'Admin' && (
                         <div className="relative inline-flex items-center md:hidden">
                             <input type="file" id="logo-upload-mobile" accept="image/*" className="hidden" onChange={handleLogoChange} />
                             <label htmlFor="logo-upload-mobile" className="p-2 bg-slate-50 rounded-full text-indigo-600 border border-slate-200">
@@ -674,7 +650,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         ))}
                     </div>
 
-                    {currentUser.role === 'Admin' && (
+                     {currentUser.role === 'Admin' && (
                         <div className="relative hidden md:inline-flex items-center">
                             <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={handleLogoChange} />
                             <label htmlFor="logo-upload" className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-md text-black hover:bg-slate-50 cursor-pointer transition-colors shadow-sm h-full" title="Upload Company Logo">
@@ -684,8 +660,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                 <span>{logoUrl ? 'Change Logo' : 'Upload Logo'}</span>
                             </label>
                             {logoUrl && (
-                                <button
-                                    onClick={() => { if (window.confirm('Are you sure you want to remove the logo?')) onLogoUpload(null); }}
+                                <button 
+                                    onClick={() => { if(window.confirm('Are you sure you want to remove the logo?')) onLogoUpload(null); }}
                                     className="ml-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
                                     title="Remove Logo"
                                 >
@@ -700,8 +676,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             </motion.div>
 
             {/* Overall Statistics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-9 gap-2">
-                <motion.div
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
@@ -710,59 +686,51 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-indigo-600 mb-1">
                         <path d="M4.5 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM14.25 8.625a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM1.5 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM17.25 19.128l-.001.144a2.25 2.25 0 0 1-.233.96 10.088 10.088 0 0 0 5.06-1.01.75.75 0 0 0 .42-.643 4.875 4.875 0 0 0-6.957-4.611 8.586 8.586 0 0 1 1.71 5.157v.003Z" />
                     </svg>
-                    <div className="text-2xl font-bold text-black mb-0.5">{uniqueCustomerCount.toLocaleString('en-IN')}</div>
+                    <div className="text-2xl font-bold text-black mb-0.5">{uniqueCustomerCount}</div>
                     <div className="text-[9px] font-bold text-black uppercase tracking-wider text-center">Active Customers</div>
-                    <div className="text-3xl md:text-4xl font-black drop-shadow-md">{uniqueCustomerCount.toLocaleString('en-IN')}</div>
-                    <div className="text-[10px] font-black uppercase tracking-widest mt-2 text-center text-purple-200">Active Customers</div>
                 </motion.div>
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-4 rounded-2xl shadow-xl flex flex-col justify-center items-center text-white transform hover:scale-105 transition-all duration-300 ring-4 ring-indigo-500/20"
+                    className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-2 rounded-xl shadow-sm text-white flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-indigo-200 mb-2 drop-shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white mb-1">
                         <path fillRule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875ZM12.75 12a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V18a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V12Z" clipRule="evenodd" />
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
-                    <div className="text-3xl md:text-4xl font-black drop-shadow-md">{overallStats.total.count.toLocaleString('en-IN')}</div>
-                    <div className="text-[12px] font-bold text-indigo-100 bg-black/20 px-3 py-1 rounded-full mt-2 backdrop-blur-sm">{formatCurrencyCompact(overallStats.total.value)}</div>
-                    <div className="text-[10px] font-black uppercase tracking-widest mt-2 text-center text-indigo-200">Total Enquiries</div>
+                    <div className="text-xl md:text-2xl font-bold">{overallStats.total.count}</div>
+                    <div className="text-[10px] font-medium opacity-100">{formatCurrencyCompact(overallStats.total.value)}</div>
+                    <div className="text-[9px] font-bold uppercase tracking-wider mt-1 text-center">Total Enquiries</div>
                 </motion.div>
                 {QUOTATION_STATUSES.map((status, i) => {
                     const colors: Record<string, string> = {
-                        'Open': 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/30',
-                        'PO received': 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-emerald-500/30',
-                        'Partial PO Received': 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-teal-500/30',
-                        'Under Review': 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-amber-500/30',
-                        'Need Amendment': 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/30',
-                        'Lost': 'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-rose-500/30',
-                        'Expired': 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-orange-500/30'
+                        'Open': 'border-blue-500 text-blue-600',
+                        'PO received': 'border-green-500 text-green-600',
+                        'Partial PO Received': 'border-teal-500 text-teal-600',
+                        'Lost': 'border-rose-500 text-rose-600',
+                        'Expired': 'border-amber-500 text-amber-600'
                     };
-                    const colorEntry = colors[status] || 'bg-slate-500 text-white';
+                    const iconColor = colors[status].split(' ')[1];
                     return (
                         <motion.div
                             key={status}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ delay: 0.2 + (i * 0.05), duration: 0.2 }}
-                            className={`${colorEntry} p-3 rounded-2xl shadow-lg flex flex-col justify-center items-center min-h-[110px] relative overflow-hidden`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 + (i * 0.05) }}
+                            className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colors[status].split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]`}
                         >
-                            <div className="absolute -right-4 -top-4 opacity-20 transform rotate-12">
-                                <StatusIcon status={status} className="w-16 h-16" />
-                            </div>
-                            <StatusIcon status={status} className="w-6 h-6 mb-2 drop-shadow-md z-10" />
-                            <div className="text-2xl md:text-3xl font-black drop-shadow-md z-10">{overallStats[status].count.toLocaleString('en-IN')}</div>
-                            <div className="text-[11px] font-bold bg-black/20 px-2.5 py-0.5 rounded-full mt-1.5 backdrop-blur-sm z-10">{formatCurrencyCompact(overallStats[status].value)}</div>
-                            <div className="text-[9px] font-black uppercase tracking-widest mt-2 text-center truncate w-full opacity-90 z-10">{status}</div>
+                            <StatusIcon status={status} className={`w-7 h-7 mb-1 ${iconColor}`} />
+                            <div className="text-lg md:text-xl font-bold text-black">{overallStats[status].count}</div>
+                            <div className={`text-[10px] font-semibold text-black mt-0.5`}>{formatCurrencyCompact(overallStats[status].value)}</div>
+                            <div className="text-[9px] font-bold text-black uppercase tracking-wider mt-1 text-center truncate w-full">{status}</div>
                         </motion.div>
                     )
                 })}
             </div>
 
             {/* Charts Row 1: Funnel, Value Trend, Top 5 Customers */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -781,7 +749,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     <h3 className="text-xs font-bold text-black mb-4 uppercase tracking-wide">Value Trend</h3>
                     <div className="h-40 md:h-48"><canvas ref={lineChartRef}></canvas></div>
                 </motion.div>
-                <motion.div
+                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 }}
@@ -818,7 +786,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     transition={{ delay: 0.6 }}
                     className="bg-white p-3 rounded-xl shadow-sm border border-slate-100"
                 >
-                    <div className="flex justify-between items-center mb-2">
+                     <div className="flex justify-between items-center mb-2">
                         <h3 className="text-xs font-bold text-black uppercase tracking-wide">Order Status</h3>
                         <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
                             <button type="button" onClick={() => setOrderStatusMode('count')} className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-black hover:text-slate-700'}`}>No</button>
@@ -883,7 +851,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
                                 <tr>
                                     <td className="px-2 py-1 text-[10px] text-black">TOTAL</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-black">{(typeof getCellValue(performanceTotals.total) === 'number' ? performanceTotals.total.count.toLocaleString('en-IN') : getCellValue(performanceTotals.total))}</td>
+                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals.total)}</td>
                                     <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Open'])}</td>
                                     <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['PO received'])}</td>
                                     <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Partial PO Received'])}</td>
@@ -925,12 +893,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                             <div className="text-[10px] font-bold text-indigo-600">#{q.id}</div>
                                         </td>
                                         <td className="px-2 py-1">
-                                            {(() => {
-                                                const safeId = Number(q.customerId);
-                                                const hasId = safeId && !isNaN(safeId);
-                                                const dispName = hasId ? customerMap.get(safeId) || '...' : 'N/A';
-                                                return <div className="text-[10px] font-semibold text-black truncate max-w-[80px]" title={hasId ? customerMap.get(safeId) : ''}>{dispName}</div>;
-                                            })()}
+                                            <div className="text-[10px] font-semibold text-black truncate max-w-[80px]" title={q.customerId ? customerMap.get(q.customerId) : ''}>{q.customerId ? customerMap.get(q.customerId) || '...' : 'N/A'}</div>
                                         </td>
                                         <td className="px-2 py-1 whitespace-nowrap text-right">
                                             <div className="text-[10px] font-bold text-black">{formatCurrencyCompact(calculateTotalAmount(q.details))}</div>

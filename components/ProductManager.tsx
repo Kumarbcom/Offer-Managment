@@ -1,4 +1,4 @@
-﻿
+
 
 
 
@@ -51,56 +51,25 @@ const getEffectivePriceValue = (product: Product): number => {
     return price.lp > 0 ? price.lp : price.sp;
 };
 
-const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete, canManage }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; canManage: boolean; }) => {
+// Memoized ProductRow component to prevent unnecessary re-renders
+const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; }) => {
     const currentPrice = getCurrentPrice(product);
-    const hasPrice = currentPrice !== null;
-    const initials = product.partNo.slice(0, 2).toUpperCase();
-    const avatarColors = [
-        'bg-gradient-to-br from-indigo-400 to-purple-600',
-        'bg-gradient-to-br from-emerald-400 to-teal-600',
-        'bg-gradient-to-br from-amber-400 to-orange-500',
-        'bg-gradient-to-br from-rose-400 to-pink-600',
-        'bg-gradient-to-br from-cyan-400 to-blue-600',
-        'bg-gradient-to-br from-fuchsia-400 to-purple-600',
-    ];
-    const avatarColor = avatarColors[product.id % avatarColors.length];
     return (
-        <tr className={`${isSelected ? 'bg-indigo-50/80 shadow-inner' : 'hover:bg-white/80 hover:shadow-sm'} transition-all duration-200 group`}>
-            <td className="px-3 py-2"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/></td>
-            <td className="px-3 py-2 whitespace-nowrap text-[11px] text-slate-500 font-medium">#{product.id}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-[11px] font-bold text-slate-800">
-                <div className="flex items-center gap-2">
-                    <div className={`h-6 w-6 rounded-lg flex items-center justify-center text-[9px] font-black text-white shrink-0 shadow-sm ${avatarColor}`}>{initials}</div>
-                    <span>{product.partNo}</span>
-                </div>
+        <tr className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-sm`}>
+            <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/></td>
+            <td className="px-3 py-2 whitespace-nowrap text-black">{product.id}</td>
+            <td className="px-3 py-2 whitespace-nowrap font-medium text-black">{product.partNo}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black max-w-xs truncate">{product.description}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black">{product.hsnCode}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{currentPrice ? currentPrice.lp.toFixed(2) : 'N/A'}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{currentPrice ? currentPrice.sp.toFixed(2) : 'N/A'}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black">{product.uom}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black">{product.plant}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{product.weight}</td>
+            <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                <button onClick={() => onEdit(product)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
+                <button onClick={() => onDelete(product.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
             </td>
-            <td className="px-3 py-2 text-[11px] text-slate-600 max-w-[220px] break-words leading-relaxed">{product.description}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-[11px] text-slate-500">{product.hsnCode}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-[11px] text-right font-semibold">
-                {hasPrice && currentPrice!.lp > 0
-                    ? <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold">₹{currentPrice!.lp.toFixed(2)}</span>
-                    : <span className="text-slate-300">—</span>}
-            </td>
-            <td className="px-3 py-2 whitespace-nowrap text-[11px] text-right font-semibold">
-                {hasPrice && currentPrice!.sp > 0
-                    ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold">₹{currentPrice!.sp.toFixed(2)}</span>
-                    : <span className="text-slate-300">—</span>}
-            </td>
-            <td className="px-3 py-2 whitespace-nowrap text-[11px] text-slate-500">{product.uom}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-[11px] text-slate-500">{product.plant}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-[11px] text-right text-slate-500">{product.weight}</td>
-            {canManage && (
-            <td className="px-3 py-2 whitespace-nowrap text-right text-[11px] font-medium">
-                <div className="flex justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onEdit(product)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-colors" title="Edit Product">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                    </button>
-                    <button onClick={() => onDelete(product.id)} className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-lg transition-colors" title="Delete Product">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                </div>
-            </td>
-            )}
         </tr>
     );
 });
@@ -536,162 +505,92 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
   const isAllSelected = selectedProductIds.size > 0 && selectedProductIds.size === displayedProducts.length;
 
-  // Compute summary stats from displayed products
-  const summaryStats = useMemo(() => {
-    const totalProducts = displayedProducts.length;
-    const withPrice = displayedProducts.filter(p => getCurrentPrice(p) !== null).length;
-    const withoutPrice = totalProducts - withPrice;
-    const avgLP = displayedProducts.reduce((sum, p) => {
-        const cp = getCurrentPrice(p);
-        return sum + (cp?.lp || 0);
-    }, 0) / (withPrice || 1);
-    const plants = new Set(displayedProducts.map(p => p.plant).filter(Boolean));
-    return { totalProducts, withPrice, withoutPrice, avgLP, plantCount: plants.size };
-  }, [displayedProducts]);
-
   return (
     <div className="space-y-6">
-
-      {/* Summary Labels */}
-      <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl shadow-lg border border-slate-100 relative overflow-hidden ring-1 ring-slate-900/5">
-        <div className="absolute top-0 left-0 w-96 h-40 bg-gradient-to-br from-indigo-400/10 to-fuchsia-400/10 blur-3xl rounded-full pointer-events-none"></div>
-        <h3 className="text-base font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-500 mb-3 tracking-tight flex items-center gap-2">
-            <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-            Product Catalog Overview
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 relative z-10">
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-3 rounded-2xl flex flex-col shadow-md border border-indigo-400 relative overflow-hidden group cursor-default">
-                <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
-                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1">Loaded Products</span>
-                <span className="font-extrabold text-2xl leading-none">{summaryStats.totalProducts}</span>
-                <span className="text-[10px] mt-auto pt-1 opacity-70">Showing on page</span>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-400 to-teal-600 text-white p-3 rounded-2xl flex flex-col shadow-md border border-emerald-300 relative overflow-hidden group cursor-default">
-                <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
-                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1">With Active Price</span>
-                <span className="font-extrabold text-2xl leading-none">{summaryStats.withPrice}</span>
-                <span className="text-[10px] mt-auto pt-1 opacity-70">LP / SP configured</span>
-            </div>
-            <div className="bg-gradient-to-br from-rose-400 to-pink-600 text-white p-3 rounded-2xl flex flex-col shadow-md border border-rose-300 relative overflow-hidden group cursor-default">
-                <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
-                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1">No Price Set</span>
-                <span className="font-extrabold text-2xl leading-none">{summaryStats.withoutPrice}</span>
-                <span className="text-[10px] mt-auto pt-1 opacity-70">Needs attention</span>
-            </div>
-            <div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white p-3 rounded-2xl flex flex-col shadow-md border border-amber-300 relative overflow-hidden group cursor-default">
-                <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
-                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1">Avg List Price</span>
-                <span className="font-extrabold text-xl leading-none">₹{summaryStats.avgLP.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
-                <span className="text-[10px] mt-auto pt-1 opacity-70">Average LP</span>
-            </div>
-            <div className="bg-gradient-to-br from-cyan-400 to-blue-600 text-white p-3 rounded-2xl flex flex-col shadow-md border border-cyan-300 relative overflow-hidden group cursor-default">
-                <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-bl-full group-hover:scale-110 transition-transform"></div>
-                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1">Plants</span>
-                <span className="font-extrabold text-2xl leading-none">{summaryStats.plantCount}</span>
-                <span className="text-[10px] mt-auto pt-1 opacity-70">Unique plants</span>
-            </div>
-        </div>
-      </div>
-
-      {/* Main Table Card */}
-      <div className="bg-white/90 backdrop-blur-xl p-4 md:p-6 rounded-2xl shadow-lg border border-slate-100 relative overflow-hidden">
-         <div className="flex flex-wrap gap-4 justify-between items-center mb-6 pb-4 border-b border-slate-100">
-            <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-500 tracking-tight">
-                Products <span className="text-lg bg-slate-100 text-slate-600 px-3 py-1 rounded-full ml-1 align-middle">{summaryStats.totalProducts}</span>
-            </h2>
-
-            {/* Mobile-only Upload/Add buttons */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+         <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-black">Products</h2>
+            {/* Mobile-only Upload/Add buttons compact row */}
             {canManageProducts && (
             <div className="flex md:hidden gap-2">
-                <button onClick={handleAddNew} className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"></path></svg>Add
-                </button>
-                <button onClick={handleUploadClick} className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>Upload
-                </button>
+                <button onClick={handleAddNew} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">Add</button>
+                <button onClick={handleUploadClick} className="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold">Upload</button>
             </div>
             )}
-
+            
             {/* Desktop Buttons */}
             <div className="hidden md:flex flex-wrap gap-2 text-sm">
                 {canManageProducts && (
-                    <div className="flex gap-2 border-r border-slate-200 pr-3 mr-1">
-                        <button onClick={handleExportPriceList} disabled={isUploading} className="bg-white border-2 border-amber-400 hover:bg-amber-50 text-amber-700 font-bold py-1.5 px-3 rounded-xl transition duration-300 disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            Price List
+                    <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
+                        <button onClick={handleExportPriceList} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">
+                            Export Full Price List
                         </button>
                         <input type="file" ref={priceUpdateInputRef} onChange={handlePriceUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
-                        <button onClick={handlePriceUpdateUploadClick} disabled={isUploading} className="bg-white border-2 border-orange-400 hover:bg-orange-50 text-orange-700 font-bold py-1.5 px-3 rounded-xl transition duration-300 disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                            Import Prices
+                        <button onClick={handlePriceUpdateUploadClick} disabled={isUploading} className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">
+                            Import Price Updates
                         </button>
                     </div>
                 )}
-                <button onClick={handleExport} disabled={isUploading} className="bg-white border-2 border-slate-200 hover:border-teal-500 hover:text-teal-600 hover:bg-teal-50 text-slate-700 font-bold py-1.5 px-3 rounded-xl transition duration-300 disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    Export
-                </button>
-                <button onClick={handleDownloadTemplate} disabled={isUploading} className="bg-white border-2 border-slate-200 hover:border-sky-500 hover:text-sky-600 hover:bg-sky-50 text-slate-700 font-bold py-1.5 px-3 rounded-xl transition duration-300 disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Template
-                </button>
+                
+                <button onClick={handleExport} disabled={isUploading} className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Export Visible</button>
+                <button onClick={handleDownloadTemplate} disabled={isUploading} className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Template</button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
-                <button onClick={handleUploadClick} disabled={isUploading} className="bg-white border-2 border-slate-200 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 text-slate-700 font-bold py-1.5 px-3 rounded-xl transition duration-300 disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                <button onClick={handleUploadClick} disabled={isUploading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">
                     {isUploading ? 'Uploading...' : 'Upload'}
                 </button>
-                {canManageProducts && (
-                <button onClick={handleAddNew} disabled={isUploading} className="bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-1.5 px-5 rounded-xl shadow-lg ring-2 ring-blue-500/30 transition duration-300 disabled:opacity-50 flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"></path></svg>
-                    Add New
-                </button>
-                )}
+                <button onClick={handleAddNew} disabled={isUploading} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Add New</button>
             </div>
          </div>
 
-         {isUploading && ( <div className="my-4 p-3 text-center text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl" role="status">{uploadProgress}</div> )}
-
+         {isUploading && ( <div className="my-2 p-2 text-center text-sm font-semibold text-indigo-700 bg-indigo-100 rounded-md" role="status">{uploadProgress}</div> )}
+         
          {selectedProductIds.size > 0 && (
-            <div className="my-3 p-3 bg-rose-50 border-2 border-rose-200 rounded-xl flex flex-wrap items-center gap-4">
-              <div className="font-bold text-rose-800 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  {selectedProductIds.size} product{selectedProductIds.size > 1 ? 's' : ''} selected
-              </div>
-              <button onClick={handleDeleteSelected} className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-4 rounded-xl transition duration-300 text-sm flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  Delete Selected
-              </button>
+            <div className="my-3 p-3 bg-rose-50 border border-rose-200 rounded-lg flex flex-wrap items-center gap-4">
+              <div className="font-semibold text-rose-800">{selectedProductIds.size} product{selectedProductIds.size > 1 ? 's' : ''} selected.</div>
+              <button onClick={handleDeleteSelected} className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 text-sm">Delete Selected</button>
             </div>
          )}
-
+         
          {/* Mobile Search and Discount */}
-         <div className="block md:hidden space-y-3 mb-4 bg-slate-50/60 p-3 rounded-xl border border-slate-100">
+         <div className="block md:hidden space-y-3 mb-4 border-b pb-4 border-slate-100">
              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Universal Search</label>
-                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none" placeholder="Search Part No or Description..."/>
+                <label className="text-xs font-bold text-black uppercase">Universal Search</label>
+                <input 
+                    type="text" 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    className="w-full mt-1 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
+                    placeholder="Search Part No or Description..."
+                />
              </div>
              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Discount %</label>
+                <label className="text-xs font-bold text-black uppercase">Discount %</label>
                 <div className="relative">
-                    <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none" placeholder="0"/>
-                    <span className="absolute right-3 top-3 text-slate-400 text-sm">%</span>
+                    <input 
+                        type="number" 
+                        value={discount} 
+                        onChange={e => setDiscount(e.target.value)} 
+                        className="w-full mt-1 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
+                        placeholder="0"
+                    />
+                    <span className="absolute right-3 top-3 text-black text-sm">%</span>
                 </div>
              </div>
          </div>
 
          {/* Desktop Filters */}
-         <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+         <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
             <div>
-                <label htmlFor="searchTerm" className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search Part No</label>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="block w-full px-3 py-1.5 border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px]" placeholder="e.g. OLFLEX*UNITRONIC" />
+                <label htmlFor="searchTerm" className="block text-xs font-medium text-black">Search Part No (use * for OR)</label>
+                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. OLFLEX*UNITRONIC" />
             </div>
              <div>
-                <label htmlFor="searchDescription" className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search Description</label>
-                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="block w-full px-3 py-1.5 border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px]" placeholder="e.g. CABLE*POWER" />
+                <label htmlFor="searchDescription" className="block text-xs font-medium text-black">Search Description (use * for OR)</label>
+                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. CABLE*POWER" />
             </div>
             <div>
-                <label htmlFor="sortBy" className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Sort By</label>
-                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="block w-full px-3 py-1.5 border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] bg-white">
+                <label htmlFor="sortBy" className="block text-xs font-medium text-black">Sort By</label>
+                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black">
                     <option value="price">Price (LP)</option>
                     <option value="id">ID</option>
                     <option value="partNo">Part No</option>
@@ -700,9 +599,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 </select>
             </div>
             <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Order</label>
-                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="w-full bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold py-1.5 px-4 border border-slate-200 rounded-xl shadow-sm flex items-center justify-center text-[11px] transition-colors">
-                    {sortOrder === 'asc' ? '▲ Ascending' : '▼ Descending'}
+                <label className="block text-xs font-medium text-black">Order</label>
+                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-black font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
+                    {sortOrder === 'asc' ? 'Ascending ▲' : 'Descending ▼'}
                 </button>
             </div>
          </div>
@@ -716,46 +615,34 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 const basePrice = lp > 0 ? lp : sp;
                 const discountVal = parseFloat(discount) || 0;
                 const discountedPrice = basePrice * (1 - discountVal / 100);
-                const avatarColors = ['from-indigo-400 to-purple-600','from-emerald-400 to-teal-600','from-amber-400 to-orange-500','from-rose-400 to-pink-600','from-cyan-400 to-blue-600'];
-                const avatarColor = avatarColors[product.id % avatarColors.length];
+                
                 return (
-                    <div key={product.id} className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm hover:shadow-md transition-shadow">
+                    <div key={product.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
                         <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-2">
-                                <div className={`h-8 w-8 rounded-xl bg-gradient-to-br ${avatarColor} flex items-center justify-center text-[10px] font-black text-white shadow`}>{product.partNo.slice(0,2).toUpperCase()}</div>
-                                <div>
-                                    <h3 className="text-xs font-bold text-indigo-700">{product.partNo}</h3>
-                                    <div className="text-[10px] text-slate-400">#{product.id}</div>
-                                </div>
-                            </div>
-                            {currentPrice ? (
-                                <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">Priced</span>
-                            ) : (
-                                <span className="text-[10px] bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full">No Price</span>
-                            )}
+                            <h3 className="text-sm font-bold text-indigo-700">{product.partNo}</h3>
+                            <div className="text-xs text-black">#{product.id}</div>
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-2 line-clamp-2 leading-relaxed">{product.description}</p>
-                        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-50 pt-2">
+                        <p className="text-xs text-black mt-1 line-clamp-2">{product.description}</p>
+                        
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2">
                             <div>
-                                <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mb-1">Standard Price</p>
-                                <div className="flex gap-2 text-xs font-bold">
-                                    <span className={lp > 0 ? "text-emerald-600" : "text-slate-300"}>LP: {lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</span>
-                                    <span className={sp > 0 ? "text-blue-600" : "text-slate-300"}>SP: {sp > 0 ? `₹${sp.toFixed(2)}` : '—'}</span>
+                                <p className="text-[10px] text-black uppercase">Standard Price</p>
+                                <div className="flex gap-2 text-xs font-medium">
+                                    <span className={lp > 0 ? "text-black" : "text-slate-400"}>LP: {lp > 0 ? lp.toFixed(2) : '-'}</span>
+                                    <span className={sp > 0 ? "text-black" : "text-slate-400"}>SP: {sp > 0 ? sp.toFixed(2) : '-'}</span>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mb-1">After Discount</p>
-                                <p className="text-sm font-black text-indigo-600">{discountedPrice.toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}</p>
+                                <p className="text-[10px] text-black uppercase">Discounted Price</p>
+                                <p className="text-sm font-bold text-green-600">
+                                    {discountedPrice.toLocaleString('en-IN', {style: 'currency', currency: 'INR'})}
+                                </p>
                             </div>
                         </div>
                         {canManageProducts && (
-                        <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-50">
-                            <button onClick={() => handleEdit(product)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit">
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                            </button>
-                            <button onClick={() => handleDelete(product.id)} className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors" title="Delete">
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
+                        <div className="flex justify-end gap-3 mt-2 pt-2 border-t border-slate-50">
+                            <button onClick={() => handleEdit(product)} className="text-indigo-600 text-xs font-semibold">Edit</button>
+                            <button onClick={() => handleDelete(product.id)} className="text-rose-600 text-xs font-semibold">Delete</button>
                         </div>
                         )}
                     </div>
@@ -765,16 +652,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto -mx-4">
-            <table className="min-w-full">
-            <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/40 border-b-2 border-slate-200/60">
+            <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
                 <tr>
-                    <th className="px-3 py-3"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
-                    {['ID', 'Part No', 'Description', 'HSN Code', 'Current LP', 'Current SP', 'UOM', 'Plant', 'Weight', ...(canManageProducts ? ['Actions'] : [])].map(header => (
-                    <th key={header} scope="col" className={`px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider ${['Current LP', 'Current SP', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
+                    <th className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
+                    {['ID', 'Part No', 'Description', 'HSN Code', 'Current LP', 'Current SP', 'UOM', 'Plant', 'Weight', 'Actions'].map(header => (
+                    <th key={header} scope="col" className={`px-3 py-2 text-left text-xs font-semibold text-black uppercase tracking-wider ${['Current LP', 'Current SP', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
                     ))}
                 </tr>
             </thead>
-            <tbody className="bg-white/40 divide-y divide-slate-100/60">
+            <tbody className="bg-white divide-y divide-slate-200">
                 {displayedProducts.map(product => (
                     <ProductRow
                         key={product.id}
@@ -783,20 +670,25 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                         onSelect={handleSelectOne}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
-                        canManage={canManageProducts}
                     />
                 ))}
             </tbody>
             </table>
         </div>
-        {isLoading && <p className="text-slate-500 text-center py-8 text-sm">Loading products...</p>}
+        {isLoading && <p className="text-black text-center py-8">Loading products...</p>}
         {!isLoading && displayedProducts.length === 0 && (
-          <p className="text-slate-500 text-center py-8 text-sm">No products match your search criteria.</p>
+          <p className="text-black text-center py-8">
+            No products match your search criteria.
+        </p>
         )}
         {!isLoading && hasMore && (
-            <div className="mt-6 text-center">
-                <button onClick={() => fetchProducts(true)} disabled={isLoadingMore} className="bg-gradient-to-br from-slate-500 to-slate-700 hover:from-slate-600 hover:to-slate-800 text-white font-bold py-2 px-6 rounded-xl transition duration-300 disabled:opacity-50 shadow-md">
-                    {isLoadingMore ? 'Loading...' : 'Load More Products'}
+            <div className="mt-4 text-center">
+                <button
+                    onClick={() => fetchProducts(true)}
+                    disabled={isLoadingMore}
+                    className="bg-slate-600 hover:bg-slate-700 text-white font-semibold py-2 px-4 rounded-md transition duration-300 disabled:opacity-50"
+                >
+                    {isLoadingMore ? 'Loading...' : 'Load More'}
                 </button>
             </div>
         )}

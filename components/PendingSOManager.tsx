@@ -95,7 +95,8 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
                 date: parseDate(row['date']),
                 orderNo: String(orderNo),
                 partyName: String(row["party'sname"] || row['partyname'] || row['customername'] || ''),
-                itemName: String(row['nameofitem'] || row['itemname'] || row['materialdescription'] || row['description'] || ''),
+                // Prioritize 'description' but keep fallbacks
+                itemName: String(row['description'] || row['nameofitem'] || row['itemname'] || row['materialdescription'] || ''),
                 materialCode: String(row['materialcode'] || row['material'] || ''),
                 partNo: String(row['partno'] || row['partnumber'] || ''),
                 orderedQty: safeFloat(row['ordered'] || row['orderedqty']),
@@ -111,7 +112,7 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
             await setPendingSOs(prev => [...(prev || []), ...newItems]);
             alert(`Successfully loaded ${newItems.length} pending orders.`);
         } else {
-            alert('No valid data found. Please check Excel headers (e.g., Order, Party Name, Name of Item).');
+            alert('No valid data found. Please check Excel headers (e.g., Order, Party Name, Description).');
         }
 
       } catch (error) {
@@ -126,12 +127,12 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to delete ALL pending sales orders? This action cannot be undone.')) {
+    if (window.confirm('Are you sure you want to CLEAR the entire Pending SO Report? This cannot be undone.')) {
         setIsClearing(true);
         try {
             await clearTable('pendingSOs');
             await setPendingSOs([]);
-            alert("Pending orders cleared successfully.");
+            alert("Pending Sales Order Report cleared successfully.");
         } catch (e) {
             console.error(e);
             alert(`Failed to clear pending orders: ${e instanceof Error ? e.message : String(e)}`);
@@ -142,11 +143,12 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
   };
 
   const handleDownloadTemplate = () => {
-      const headers = ['Date', 'Order', "Party's Name", 'Name of Item', 'Material Code', 'Part No', 'Ordered', 'Balance', 'Rate', 'Discount', 'Value', 'Due on'];
+      // Changed 'Name of Item' to 'Description'
+      const headers = ['Date', 'Order', "Party's Name", 'Description', 'Material Code', 'Part No', 'Ordered', 'Balance', 'Rate', 'Discount', 'Value', 'Due on'];
       const ws = XLSX.utils.aoa_to_sheet([headers]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "PendingSO");
-      XLSX.writeFile(wb, "Pending_SO_Template.xlsx");
+      XLSX.writeFile(wb, "Pending_SO_Report_Template.xlsx");
   }
 
   const handleAddNew = () => {
@@ -183,22 +185,21 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h2 className="text-2xl font-bold text-gray-800">Pending Sales Orders</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Pending Sales Order Report</h2>
         <div className="flex flex-wrap gap-2 text-sm">
             <button 
                 onClick={handleAddNew}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold"
             >
-                Add Order
+                Add Manual
             </button>
             <div className="h-8 border-l border-gray-300 mx-1 hidden md:block"></div>
             <button 
                 onClick={handleClearAll} 
-                // Enable button even if pendingSOs is apparently empty to allow clearing remote DB issues
                 disabled={isClearing}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                {isClearing ? 'Clearing...' : 'Clear All'}
+                {isClearing ? 'Clearing...' : 'Clear Total Report'}
             </button>
             <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold">Template</button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />
@@ -207,7 +208,7 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
                 disabled={isUploading}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50"
             >
-                {isUploading ? 'Uploading...' : 'Upload Excel'}
+                {isUploading ? 'Uploading...' : 'Upload from Excel'}
             </button>
         </div>
       </div>
@@ -226,13 +227,19 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
         <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
                 <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Party</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due On</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Date</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Order</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Party's Name</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Material Code</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Part No</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Ordered</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Balance</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Rate</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Discount</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Value</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Due on</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -240,15 +247,21 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
                     const isOverdue = new Date(item.dueOn) < new Date();
                     return (
                         <tr key={item.id || idx} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm text-gray-900">{new Date(item.date).toLocaleDateString()}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 font-medium">{item.orderNo}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 truncate max-w-xs">{item.partyName}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 truncate max-w-xs">{item.itemName || item.partNo}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.balanceQty}</td>
-                            <td className={`px-4 py-3 text-sm font-semibold ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
+                            <td className="px-3 py-2 text-xs text-gray-900 whitespace-nowrap">{new Date(item.date).toLocaleDateString()}</td>
+                            <td className="px-3 py-2 text-xs text-gray-900 font-medium whitespace-nowrap">{item.orderNo}</td>
+                            <td className="px-3 py-2 text-xs text-gray-900 whitespace-nowrap max-w-[150px] truncate" title={item.partyName}>{item.partyName}</td>
+                            <td className="px-3 py-2 text-xs text-gray-900 whitespace-nowrap max-w-[150px] truncate" title={item.itemName}>{item.itemName}</td>
+                            <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{item.materialCode}</td>
+                            <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{item.partNo}</td>
+                            <td className="px-3 py-2 text-xs text-gray-900 text-right whitespace-nowrap">{item.orderedQty}</td>
+                            <td className="px-3 py-2 text-xs text-gray-900 text-right font-bold whitespace-nowrap">{item.balanceQty}</td>
+                            <td className="px-3 py-2 text-xs text-gray-900 text-right whitespace-nowrap">{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="px-3 py-2 text-xs text-gray-900 text-right whitespace-nowrap">{item.discount}%</td>
+                            <td className="px-3 py-2 text-xs text-gray-900 text-right whitespace-nowrap">{item.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className={`px-3 py-2 text-xs font-semibold whitespace-nowrap ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
                                 {new Date(item.dueOn).toLocaleDateString()}
                             </td>
-                            <td className="px-4 py-3 text-sm text-right space-x-2">
+                            <td className="px-3 py-2 text-xs text-right whitespace-nowrap space-x-2">
                                 <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 font-medium">Edit</button>
                                 <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900 font-medium">Delete</button>
                             </td>
@@ -256,7 +269,7 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
                     );
                 }) : (
                     <tr>
-                        <td colSpan={7} className="px-6 py-10 text-center text-gray-500">No pending orders found. Add or upload data.</td>
+                        <td colSpan={13} className="px-6 py-10 text-center text-gray-500">No pending orders found. Add or upload data.</td>
                     </tr>
                 )}
             </tbody>
