@@ -28,34 +28,35 @@ export function toSupabaseTableName(tableName: TableName): string {
 }
 
 /**
- * Automagically maps camelCase to snake_case for Supabase
+ * Maps camelCase to snake_case for Supabase
  */
 function mapToSupabase(tableName: TableName, item: any): any {
     const mapped: any = {};
-    
     Object.keys(item).forEach(key => {
-        // Convert camelCase to snake_case
+        // Handle explicit exceptions if needed
         const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
         mapped[snakeKey] = item[key];
     });
-
-    // Special table name mappings if any (e.g. stock_statement vs stockStatements)
-    // But mostly the column names follow the pattern.
-
     return mapped;
 }
 
 /**
- * Automagically maps snake_case back to camelCase for the App
+ * Maps snake_case back to camelCase for the App
  */
 function mapFromSupabase(tableName: TableName, item: any): any {
     const mapped: any = {};
-    
     Object.keys(item).forEach(key => {
-        // Convert snake_case to camelCase
-        const camelKey = key.replace(/(_[a-z])/g, group => group.toUpperCase().replace('_', ''));
+        // Robust snake_case to camelCase conversion
+        const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
         mapped[camelKey] = item[key];
     });
+
+    // SAFETY CHECK: If specific critical fields are missing, try to find them by common aliases
+    if (!mapped.quotationDate && item.quotation_date) mapped.quotationDate = item.quotation_date;
+    if (!mapped.contactPerson && item.contact_person) mapped.contactPerson = item.contact_person;
+    if (!mapped.salesPersonId && item.sales_person_id) mapped.salesPersonId = item.sales_person_id;
+    if (!mapped.customerId && item.customer_id) mapped.customerId = item.customer_id;
+    if (!mapped.contactNumber && item.contact_number) mapped.contactNumber = item.contact_number;
 
     return mapped;
 }
@@ -65,17 +66,26 @@ export async function get(tableName: TableName): Promise<any[]> {
     const supabaseTableName = toSupabaseTableName(tableName);
     const { data, error } = await supabase.from(supabaseTableName).select('*');
     if (error) throw new Error(error.message);
-    return (data || []).map(item => mapFromSupabase(tableName, item));
+    
+    const results = (data || []).map(item => mapFromSupabase(tableName, item));
+    
+    // Debug Logging (Only for developer)
+    if (tableName === 'quotations' && results.length > 0) {
+        console.log("Supabase Fetch Debug (Quotation 0):", { 
+            raw: data![0], 
+            mapped: results[0] 
+        });
+    }
+    
+    return results;
 }
 
 export async function set(tableName: TableName, previousState: any[] | null, newState: any[]): Promise<any[]> {
     if (!supabase) throw new Error("Supabase client not initialized");
     const supabaseTableName = toSupabaseTableName(tableName);
-
-    // Identify primary key
     const pk = (tableName === 'users') ? 'name' : 'id';
 
-    // 1. Identify Deletions
+    // Identify Deletions
     if (previousState) {
         const currentKeys = new Set(newState.map(item => item[pk]));
         const toDelete = previousState.filter(item => !currentKeys.has(item[pk]));
@@ -84,14 +94,13 @@ export async function set(tableName: TableName, previousState: any[] | null, new
         }
     }
 
-    // 2. Upserts
+    // Upserts
     const toUpsert = newState.map(item => mapToSupabase(tableName, item));
     if (toUpsert.length > 0) {
         const { data, error } = await supabase.from(supabaseTableName).upsert(toUpsert, { onConflict: pk }).select();
         if (error) throw new Error(error.message);
         return (data || []).map(item => mapFromSupabase(tableName, item));
     }
-
     return [];
 }
 
@@ -112,11 +121,7 @@ export async function clearTable(tableName: TableName): Promise<void> {
 // RESTORED HELPERS
 export async function searchProducts(term: string) {
     if (!supabase) return [];
-    let query = supabase.from('products').select('*');
-    if (term) {
-        query = query.or(`part_no.ilike.*${term}*,description.ilike.*${term}*`);
-    }
-    const { data, error } = await query.limit(50);
+    const { data, error } = await supabase.from('products').select('*').or(`part_no.ilike.%${term}%,description.ilike.%${term}%`).limit(50);
     if (error) throw new Error(error.message);
     return (data || []).map(item => mapFromSupabase('products', item));
 }
