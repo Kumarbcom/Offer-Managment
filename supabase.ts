@@ -107,6 +107,15 @@ const mapToSupabase = (tableName: TableName, item: any) => {
     if ('email' in item && tableName === 'salesPersons') mapped.email = item.email;
     if ('mobile' in item && tableName === 'salesPersons') mapped.mobile = item.mobile;
 
+    // For User fields (primary key is 'name', not 'id')
+    if (tableName === 'users') {
+        if ('name' in item) mapped.name = item.name;
+        if ('password' in item) mapped.password = item.password;
+        if ('role' in item) mapped.role = item.role;
+        // Users use 'name' as PK — remove any numeric 'id' to avoid column mismatch
+        delete mapped.id;
+    }
+
     return mapped;
 };
 

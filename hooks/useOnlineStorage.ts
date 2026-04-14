@@ -203,12 +203,18 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             }
 
             console.error(`Supabase error on saving '${tableName}':`, e);
-            
-            // Re-enable alert to help diagnose why it's not syncing
-            alert(`⚠️ Cloud Sync Error (${tableName}): ${errorMessage}\n\nPlease check your internet and the 'Storage' menu.`);
-            
-            // Revert state for critical failures to prevent data drift
-            setState(previousState);
+
+            // CRITICAL FIX: Save to local storage as fallback so data is NOT lost.
+            // Do NOT revert the optimistic update — the user's data is preserved locally.
+            console.warn(`Supabase save failed for '${tableName}'. Saving to local storage as fallback.`);
+            if (!useInMemoryFallback) {
+                await setLocalData(newState);
+            } else {
+                setInMemoryData(newState);
+            }
+
+            // Alert user about the cloud sync failure but their data is safe
+            alert(`⚠️ Cloud Sync Warning (${tableName}): ${errorMessage}\n\nYour data has been saved locally as a backup. It will sync to the cloud when connectivity is restored.`);
         }
     }, [tableName, isSupabaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
     

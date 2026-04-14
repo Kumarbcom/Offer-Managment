@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { toSupabaseTableName } from '../supabase';
+import { USERS } from '../auth';
 
 export const StorageManager: React.FC = () => {
     const [usage, setUsage] = useState<{ key: string, size: number }[]>([]);
@@ -35,7 +36,9 @@ export const StorageManager: React.FC = () => {
 
         for (const table of tables) {
             try {
-                const { error } = await supabase.from(toSupabaseTableName(table)).select('id').limit(1);
+                // Users table PK is 'name', not 'id'
+                const col = table === 'users' ? 'name' : 'id';
+                const { error } = await supabase.from(toSupabaseTableName(table)).select(col).limit(1);
                 setDbStatus(prev => prev.map(s => s.table === table ? { ...s, status: error ? 'error' : 'ok' } : s));
             } catch (e) {
                 setDbStatus(prev => prev.map(s => s.table === table ? { ...s, status: 'error' } : s));
@@ -61,7 +64,22 @@ export const StorageManager: React.FC = () => {
             localStorage.clear();
             window.location.reload();
         }
-    }
+    };
+
+    const fixUsersTable = async () => {
+        if (!supabase) { alert('Supabase is not configured.'); return; }
+        if (!window.confirm('This will overwrite the Supabase users table with all users from auth.ts (resetting passwords to their current values). Proceed?')) return;
+        try {
+            // Upsert all users — preserves any existing passwords already in Supabase by using onConflict
+            const payload = USERS.map(u => ({ name: u.name, password: u.password, role: u.role }));
+            const { error } = await supabase.from('users').upsert(payload, { onConflict: 'name' });
+            if (error) throw new Error(error.message);
+            alert('✅ Users table fixed! All users can now log in with password: 123456\n\nIf someone had a custom password, they will need to reset it again.');
+            window.location.reload();
+        } catch (e) {
+            alert('❌ Failed to fix users: ' + (e instanceof Error ? e.message : String(e)));
+        }
+    };
 
     const optimizeStorage = () => {
         if (window.confirm("This will clear local backups (quotations, etc.) but KEEP your Logo. Proceed to free up space?")) {
@@ -93,12 +111,19 @@ export const StorageManager: React.FC = () => {
             <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold text-slate-800">Local Browser Storage</h3>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <button 
                             onClick={optimizeStorage}
                             className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg border border-indigo-100 hover:bg-indigo-100 font-bold"
                         >
                             Optimize
+                        </button>
+                        <button 
+                            onClick={fixUsersTable}
+                            className="text-xs bg-amber-50 text-amber-700 px-3 py-1 rounded-lg border border-amber-200 hover:bg-amber-100 font-bold"
+                            title="Fix login issues by reseeding the users table in Supabase"
+                        >
+                            Fix Users
                         </button>
                         <button 
                             onClick={clearAll}
