@@ -129,6 +129,27 @@ export const StorageManager: React.FC = () => {
                             Fix Users
                         </button>
                         <button 
+                            onClick={async () => {
+                                if (!window.confirm("Seed ALL cloud tables with initial data? This will populate your clean database.")) return;
+                                try {
+                                    const { INITIAL_DATA } = await import('../initialData');
+                                    const { set } = await import('../supabase');
+                                    const tables = ['users', 'customers', 'products', 'salesPersons'] as const;
+                                    for (const t of tables) {
+                                        await set(t, [], INITIAL_DATA[t]);
+                                    }
+                                    alert("✅ Initial data seeded to Supabase!");
+                                    window.location.reload();
+                                } catch (e) {
+                                    alert("❌ Seeding failed: " + (e instanceof Error ? e.message : String(e)));
+                                }
+                            }}
+                            className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-200 hover:bg-indigo-100 font-bold"
+                            title="Populate Supabase with initial demo data"
+                        >
+                            Seed Cloud
+                        </button>
+                        <button 
                             onClick={clearAll}
                             className="text-xs bg-red-50 text-red-600 px-3 py-1 rounded-lg border border-red-100 hover:bg-red-100 font-bold"
                         >

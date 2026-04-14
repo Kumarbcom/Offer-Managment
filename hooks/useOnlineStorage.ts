@@ -28,7 +28,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
 
     useEffect(() => {
         if (!isSupabaseConfigured) {
-            console.warn(`Supabase NOT configured for '${tableName}'. Operating in Memory-Only mode (data will be lost on refresh).`);
+            console.warn(`Supabase NOT configured for '${tableName}'. Operating in Memory-Only mode.`);
             setState(initialData);
             setIsLoading(false);
             return;
@@ -40,10 +40,10 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             try {
                 let data = await get(tableName);
                 
-                // Seed empty tables with initial data if needed
-                if (data.length === 0) {
+                // If cloud is empty and we have initial data, seed it automatically
+                if (data.length === 0 && initialData.length > 0) {
                     if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
-                        console.log(`Supabase table '${tableName}' is empty. Seeding...`);
+                        console.log(`Supabase table '${tableName}' is empty. Seeding initial data...`);
                         await set(tableName, [], initialData);
                         data = await get(tableName);
                     }
@@ -52,7 +52,6 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                 setState(data as T[]);
             } catch (e) {
                 console.error(`Supabase error on loading '${tableName}':`, e);
-                // Fallback to initial data in memory if Supabase fails to load
                 setState(initialData);
             } finally {
                 setIsLoading(false);
@@ -114,7 +113,6 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         const previousState = stateRef.current;
         const newState = value instanceof Function ? value(previousState!) : value;
 
-        // Optimistic Update
         setState(newState);
         
         if (!isSupabaseConfigured) return;
@@ -122,7 +120,6 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         try {
             const savedData = await set(tableName, previousState, newState);
             
-            // Sync any server-side generated fields (like IDs)
             if (savedData && Array.isArray(savedData) && savedData.length > 0) {
                 setState(current => {
                     const currentMap = new Map((current || []).map(item => [item.id, item]));
@@ -135,10 +132,8 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
             console.error(`Supabase save error for '${tableName}':`, e);
-            
-            // Revert state on error since we are not saving locally
             setState(previousState);
-            alert(`❌ Cloud Sync Failed: ${errorMessage}\n\nNo local copy was saved. Please ensure your internet is working and RLS policies are fixed.`);
+            alert(`❌ Cloud Sync Failed: ${errorMessage}`);
         }
     }, [tableName]);
     
