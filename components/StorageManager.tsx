@@ -160,6 +160,28 @@ export const StorageManager: React.FC = () => {
                         </button>
                         <button 
                             onClick={async () => {
+                                if (!window.confirm("Repair all cloud data? This will fix misnamed columns and restore missing dates/names by re-syncing your live data.")) return;
+                                try {
+                                    const tables = ['quotations', 'customers', 'products', 'salesPersons'] as const;
+                                    for (const t of tables) {
+                                        const data = await get(t);
+                                        if (data.length > 0) {
+                                            await set(t, null, data);
+                                        }
+                                    }
+                                    alert("✅ Cloud data successfully repaired and re-synced! Your columns are now fixed.");
+                                    window.location.reload();
+                                } catch (e) {
+                                    alert("❌ Repair failed: " + (e instanceof Error ? e.message : String(e)));
+                                }
+                            }}
+                            className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-100 font-bold"
+                            title="Fix all database columns and re-sync data"
+                        >
+                            Repair Cloud
+                        </button>
+                        <button 
+                            onClick={async () => {
                                 const tables = ['quotations', 'customers', 'products', 'salesPersons'] as const;
                                 console.log("--- CLOUD DATA INSPECTOR ---");
                                 for (const t of tables) {
