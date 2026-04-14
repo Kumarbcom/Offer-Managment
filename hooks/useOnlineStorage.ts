@@ -187,7 +187,6 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             console.error(`Supabase error on saving '${tableName}':`, e);
             
             // Re-enable alert to help diagnose why it's not syncing
-            const errorMessage = e instanceof Error ? e.message : String(e);
             alert(`⚠️ Cloud Sync Error (${tableName}): ${errorMessage}\n\nPlease check your internet and the 'Storage' menu.`);
             
             // Revert state for critical failures to prevent data drift
