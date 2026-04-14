@@ -39,6 +39,7 @@ const isUuid = (id: unknown): boolean => {
 };
 
 const mapToSupabase = (tableName: TableName, item: any) => {
+    // 1. Specific table overrides
     if (tableName === 'pendingSOs') {
         return {
             id: item.id,
@@ -49,15 +50,34 @@ const mapToSupabase = (tableName: TableName, item: any) => {
             material_code: item.materialCode,
             part_no: item.partNo,
             ordered_qty: item.orderedQty,
-            balance_qty: item.balanceQty,
+            balanceQty: item.balanceQty,
             rate: item.rate,
             discount: item.discount,
             value: item.value,
             due_on: item.dueOn
         };
     }
-    // Default pass-through for other tables or if they already match
-    return item;
+
+    // 2. Generic snake_case mapping for all tables to prevent RLS/Column mismatch issues
+    // This allows the app (camelCase) to talk to common Supabase (snake_case) formats.
+    const mapped = { ...item };
+    
+    // Convert common Quotation / Product / Customer fields if they exist
+    if ('customerId' in item) mapped.customer_id = item.customerId;
+    if ('quotationDate' in item) mapped.quotation_date = item.quotationDate;
+    if ('enquiryDate' in item) mapped.enquiry_date = item.enquiryDate;
+    if ('salesPersonId' in item) mapped.sales_person_id = item.salesPersonId;
+    if ('contactPerson' in item) mapped.contact_person = item.contactPerson;
+    if ('contactNumber' in item) mapped.contact_number = item.contactNumber;
+    if ('productsBrand' in item) mapped.products_brand = item.productsBrand;
+    if ('modeOfEnquiry' in item) mapped.mode_of_enquiry = item.modeOfEnquiry;
+    if ('otherTerms' in item) mapped.other_terms = item.otherTerms;
+    if ('paymentTerms' in item) mapped.payment_terms = item.paymentTerms;
+    if ('preparedBy' in item) mapped.prepared_by = item.preparedBy;
+    if ('gstAdded' in item) mapped.gst_added = item.gstAdded;
+    if ('hsnCode' in item) mapped.hsn_code = item.hsnCode;
+
+    return mapped;
 };
 
 export async function get(tableName: TableName): Promise<any[]> {
