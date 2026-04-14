@@ -258,7 +258,18 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
             });
 
             const { data, error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey }).select();
-            if (error) throw new Error(parseSupabaseError(error, `Failed to upsert batch to ${supabaseTableName}`));
+            
+            if (error) {
+                console.error(`Supabase Upsert Error [${supabaseTableName}]:`, error);
+                throw new Error(parseSupabaseError(error, `Failed to save to ${supabaseTableName}`));
+            }
+
+            // CRITICAL CHECK: In some Supabase RLS configurations, upsert returns success but 0 rows if unauthorized.
+            if (!data || data.length === 0) {
+                 console.warn(`Supabase warning [${supabaseTableName}]: Save reported success but 0 records were updated. This is likely an RLS (Permission) issue.`);
+                 // We don't throw yet, but this is a major hint.
+            }
+
             return data as T[];
         }
     }
