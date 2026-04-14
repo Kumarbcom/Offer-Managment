@@ -110,8 +110,11 @@ export const StorageManager: React.FC = () => {
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-slate-800">Local Browser Storage</h3>
+                    <h3 className="text-lg font-bold text-slate-800">Storage System</h3>
                     <div className="flex gap-2 flex-wrap">
+                        <span className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full font-bold border border-green-200 uppercase tracking-wider">
+                            Cloud Only Mode
+                        </span>
                         <button 
                             onClick={optimizeStorage}
                             className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg border border-indigo-100 hover:bg-indigo-100 font-bold"
@@ -134,7 +137,7 @@ export const StorageManager: React.FC = () => {
                     </div>
                 </div>
                 <p className="text-[10px] text-slate-500 leading-tight">
-                    "Optimize" clears backups while keeping your Logo. Data syncs automatically to Supabase.
+                    This application is configured for <strong>Cloud-Only Storage</strong>. No application data is saved on this device.
                 </p>
             </div>
 
@@ -172,7 +175,7 @@ export const StorageManager: React.FC = () => {
             </div>
             
             <p className="text-[10px] text-slate-400 italic">
-                Note: Local storage is a backup. If you have Supabase connectivity, data should be synced online.
+                Note: Local storage is disabled for data security. If Supabase is unreachable, data will only exist in memory until you refresh.
             </p>
 
             <div className="pt-4 border-t border-slate-100">
