@@ -143,6 +143,8 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         const previousState = stateRef.current;
         const newState = value instanceof Function ? value(previousState!) : value;
 
+        console.log(`[DEBUG-STORAGE] setValue called for '${tableName}', newState.length=${newState?.length || 0}`);
+
         setState(newState);
         
         if (newState === undefined) {
@@ -151,6 +153,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         }
 
         if (!isSupabaseConfigured) {
+            console.log(`[DEBUG-STORAGE] Supabase NOT configured for '${tableName}', using local storage`);
             if (useInMemoryFallback) {
                 setInMemoryData(newState);
             } else {
@@ -160,6 +163,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         }
 
         try {
+            console.log(`[DEBUG-STORAGE] Calling Supabase.set() for '${tableName}'`);
             const savedData = await set(tableName, previousState, newState);
             
             // 2. IMPORTANT: If Supabase returned data (e.g. with new IDs), 

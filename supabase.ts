@@ -289,6 +289,8 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
     const primaryKey = tableName === 'users' ? 'name' : 'id';
     const isUuidTable = tableName === 'stockStatements' || tableName === 'pendingSOs';
 
+    console.log(`[DEBUG-SET] Called with tableName=${tableName}, newData.length=${newData.length}`);
+
     const previousDataMap = new Map<string | number, T>();
     if (previousData) {
         previousData.forEach(item => {
@@ -336,10 +338,14 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
         }
     }
 
+    console.log(`[DEBUG-SET] Change detection: ${newDataMap.size} new items, ${toUpsert.length} to upsert`);
+
     if (toUpsert.length > 0) {
         // Upserts use POST body, so larger batch size is safe
         const BATCH_SIZE = 200;
         let allUpsertedData: T[] = [];
+        
+        console.log(`[DEBUG-SET] Starting upsert of ${toUpsert.length} items for table '${tableName}'`);
         
         for (let i = 0; i < toUpsert.length; i += BATCH_SIZE) {
             let batch = toUpsert.slice(i, i + BATCH_SIZE);
@@ -368,11 +374,14 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
 
                 return payload;
             });
+            
+            console.log(`[DEBUG-SET] Batch ${Math.floor(i / BATCH_SIZE) + 1} sample payload:`, JSON.stringify(mappedBatch[0], null, 2));
 
             const { data, error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey }).select();
             
+            console.log(`[DEBUG-SET] Supabase response - Has error: ${!!error}, Returned ${data?.length || 0} rows`);
             if (error) {
-                console.error(`Supabase Upsert Error [${supabaseTableName}]:`, error);
+                console.error(`[ERROR-SET] Supabase Upsert Error [${supabaseTableName}]:`, JSON.stringify(error, null, 2));
                 throw new Error(parseSupabaseError(error, `Failed to save to ${supabaseTableName}`));
             }
 
@@ -386,6 +395,7 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
             allUpsertedData = [...allUpsertedData, ...data];
         }
         
+        console.log(`[DEBUG-SET] Upsert completed for '${tableName}', total ${allUpsertedData.length} rows returned`);
         return allUpsertedData as T[];
     }
     return null;
