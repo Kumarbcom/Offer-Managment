@@ -135,10 +135,13 @@ export const StorageManager: React.FC = () => {
                                     const { INITIAL_DATA } = await import('../initialData');
                                     const { set } = await import('../supabase');
                                     const tables = ['users', 'customers', 'products', 'salesPersons'] as const;
+                                    
                                     for (const t of tables) {
-                                        await set(t, [], INITIAL_DATA[t]);
+                                        // Cast to any[] to bypass strict union-type check during the seeding loop
+                                        const dataToSeed = INITIAL_DATA[t] as any[];
+                                        await set(t, [], dataToSeed);
                                     }
-                                    alert("✅ Initial data seeded to Supabase!");
+                                    alert("✅ All cloud tables successfully seeded! Your data is now live.");
                                     window.location.reload();
                                 } catch (e) {
                                     alert("❌ Seeding failed: " + (e instanceof Error ? e.message : String(e)));
