@@ -63,8 +63,41 @@ export const StorageManager: React.FC = () => {
         }
     }
 
+    const forceSyncKey = async (key: string) => {
+        try {
+            const dataStr = localStorage.getItem(key);
+            if (!dataStr) {
+                alert(`No local data found for ${key}`);
+                return;
+            }
+            const data = JSON.parse(dataStr);
+            if (!Array.isArray(data)) {
+                alert(`Local data for ${key} is not a valid list.`);
+                return;
+            }
+
+            if (!window.confirm(`Found ${data.length} items in local storage for "${key}". Press OK to push/sync ALL these to Supabase. This will fix data that is missing from the cloud.`)) {
+                return;
+            }
+
+            const tableName = toSupabaseTableName(key as any);
+            const chunkSize = 50;
+            for (let i = 0; i < data.length; i += chunkSize) {
+                const chunk = data.slice(i, i + chunkSize);
+                const { error } = await supabase!.from(tableName).upsert(chunk);
+                if (error) throw error;
+            }
+
+            alert(`Successfully synced ${data.length} items from local storage to Supabase for ${key}!`);
+            checkSupabase();
+        } catch (e) {
+            console.error(e);
+            alert(`Failed to sync ${key}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    };
+
     const optimizeStorage = () => {
-        if (window.confirm("This will clear local backups of quotations and other data. If you have a stable internet connection, this data is already safe in the cloud. Proceed to free up space?")) {
+        if (window.confirm("This will clear local backups (quotations, etc.) but KEEP your Logo. Proceed to free up space?")) {
             const keysToKeep = ['company_logo', 'sb-token', 'supabase.auth.token'];
             let clearedCount = 0;
             for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -74,7 +107,7 @@ export const StorageManager: React.FC = () => {
                     clearedCount++;
                 }
             }
-            alert(`Cleared ${clearedCount} local data items. Your settings and logo were kept.`);
+            alert(`Cleared ${clearedCount} local data items.`);
             checkUsage();
         }
     };
@@ -109,7 +142,7 @@ export const StorageManager: React.FC = () => {
                     </div>
                 </div>
                 <p className="text-[10px] text-slate-500 leading-tight">
-                    "Optimize" clears local backups while keeping your logo and login. "Clear All" resets everything.
+                    "Optimize" clears backups. Items with the ⬆️ icon can be synced to Cloud to recover missing data.
                 </p>
             </div>
 
@@ -128,18 +161,27 @@ export const StorageManager: React.FC = () => {
 
             <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                 {usage.map(item => (
-                    <div key={item.key} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-sm group">
+                    <div key={item.key} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-sm border border-slate-100 group">
                         <div className="flex flex-col">
                             <span className="font-bold text-slate-700">{item.key}</span>
                             <span className="text-[10px] text-slate-500">{formatSize(item.size)}</span>
                         </div>
-                        <button 
-                            onClick={() => clearKey(item.key)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                            title="Delete this item"
-                        >
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
+                        <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                                onClick={() => forceSyncKey(item.key)}
+                                className="p-1.5 text-indigo-500 hover:bg-indigo-50 rounded-md transition-colors"
+                                title="Force Sync to Cloud (Recover Data)"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                            </button>
+                            <button 
+                                onClick={() => clearKey(item.key)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                title="Delete local backup"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>

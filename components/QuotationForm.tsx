@@ -535,39 +535,29 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 // 3. Assign maxId + 1
                 // This minimizes race conditions by getting latest data immediately before assignment
                 
-                const allIds = (quotations || []).map(q => q.id).filter(id => typeof id === 'number');
-                const maxId = allIds.length > 0 ? Math.max(...allIds) : 0;
+            if (isNew) {
+                // Better ID generation: 
+                // We use a timestamp + random to ensure global uniqueness across users
+                // but keep it as a number for rank calculation.
+                // Rank calculation in quotationNumber.ts handles large numeric IDs fine.
+                const timestamp = Date.now();
+                const random = Math.floor(Math.random() * 1000);
+                // ID format: 1713... (timestamp)
+                const uniqueId = timestamp + random;
                 
-                // Generate ID with additional safety: max + 1 + small random buffer
-                // This helps if multiple saves happen in quick succession
-                const baseNewId = maxId + 1;
-                const safeNewId = baseNewId + Math.floor(Math.random() * 10);
-                
-                // Double-check no existing quotation has this ID
-                const conflictingId = (quotations || []).find(q => q.id === safeNewId);
-                const finalNewId = conflictingId ? baseNewId : safeNewId;
-                
-                quotationToSave.id = finalNewId;
+                quotationToSave.id = uniqueId;
             }
 
-            // Save to Supabase with the assigned ID
+            // Save to Supabase
             await setQuotations(prev => {
                 const currentQuotations = prev || [];
                 if (isNew) {
-                    // Final verification inside setter - if ID conflict exists, recalculate
-                    const existingIds = currentQuotations.map(q => q.id).filter(id => typeof id === 'number');
-                    if (existingIds.includes(quotationToSave.id)) {
-                        const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-                        quotationToSave.id = maxId + 1;
-                    }
                     return [...currentQuotations, quotationToSave];
                 }
-                // Update: only update if ID matches and data is different
                 return currentQuotations.map(q => q.id === quotationToSave.id ? quotationToSave : q);
             });
 
             if (isNew) {
-                // CRITICAL: Update local form with confirmed ID
                 setFormData(quotationToSave);
                 currentSessionIdRef.current = quotationToSave.id;
                 setEditingQuotationId(quotationToSave.id);

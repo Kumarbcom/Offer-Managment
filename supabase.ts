@@ -193,7 +193,8 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
         if (key !== undefined) newDataMap.set(key, item);
     });
 
-    // Detect deletions
+    // --- Detect deletions (DISABLED to prevent accidental data loss in multi-user environments) ---
+    /*
     let toDelete: (string | number)[] = [];
     for (const key of previousDataMap.keys()) {
         if (!newDataMap.has(key)) {
@@ -201,17 +202,12 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
         }
     }
 
-    // SANITIZE DELETIONS: Remove non-UUID keys for UUID tables to prevent DB crash
     if (isUuidTable) {
         const originalCount = toDelete.length;
         toDelete = toDelete.filter(key => isUuid(key));
-        if (toDelete.length < originalCount) {
-            console.warn(`Filtered out ${originalCount - toDelete.length} invalid UUIDs from delete batch for ${tableName}`);
-        }
     }
 
     if (toDelete.length > 0) {
-        // CRITICAL FIX: Reduced batch size to 20 for deletions
         const BATCH_SIZE = 20;
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
             const batch = toDelete.slice(i, i + BATCH_SIZE);
@@ -219,6 +215,7 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
             if (error) throw new Error(parseSupabaseError(error, `Failed to delete batch from ${supabaseTableName}`));
         }
     }
+    */
 
     // Detect Upserts
     let toUpsert: T[] = [];
