@@ -90,6 +90,7 @@ function mapFromSupabase(tableName: TableName, item: any): any {
     if ('quotation_date' in item) mapped.quotationDate = item.quotation_date;
     if ('enquiry_date' in item) mapped.enquiryDate = item.enquiry_date;
     if ('sales_person_id' in item) mapped.salesPersonId = item.sales_person_id;
+    if ('customer_id' in item) mapped.customerId = item.customer_id;
     if ('contact_person' in item) mapped.contactPerson = item.contact_person;
     if ('contact_number' in item) mapped.contactNumber = item.contact_number;
     if ('products_brand' in item) mapped.productsBrand = item.products_brand;
@@ -99,7 +100,6 @@ function mapFromSupabase(tableName: TableName, item: any): any {
     if ('prepared_by' in item) mapped.preparedBy = item.prepared_by;
     if ('gst_added' in item) mapped.gstAdded = item.gst_added;
     if ('hsn_code' in item) mapped.hsnCode = item.hsn_code;
-    if ('customer_id' in item) mapped.customerId = item.customer_id;
 
     // Product fields
     if ('part_no' in item) mapped.partNo = item.part_no;
