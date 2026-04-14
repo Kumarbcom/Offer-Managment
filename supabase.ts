@@ -151,6 +151,11 @@ export async function get(tableName: TableName): Promise<any[]> {
     }
 
     console.log(`[get] Loaded ${allData.length} records from '${tableName}'`);
+    
+    // DEBUG: Log first item to see what Supabase returned
+    if (allData.length > 0) {
+        console.log(`[get] Sample ${tableName} record from Supabase:`, JSON.stringify(allData[0], null, 2));
+    }
 
     // Map back from Supabase snake_case to camelCase for specific tables if needed
     if (tableName === 'pendingSOs' && allData.length > 0) {
@@ -174,17 +179,17 @@ export async function get(tableName: TableName): Promise<any[]> {
     if (tableName === 'quotations' && allData.length > 0) {
         return allData.map((item: any) => ({
             id: item.id,
-            quotationDate: item.quotation_date,
-            enquiryDate: item.enquiry_date,
-            customerId: item.customer_id,
-            contactPerson: item.contact_person,
-            contactNumber: item.contact_number,
-            otherTerms: item.other_terms,
-            paymentTerms: item.payment_terms,
-            preparedBy: item.prepared_by,
-            productsBrand: item.products_brand,
-            salesPersonId: item.sales_person_id,
-            modeOfEnquiry: item.mode_of_enquiry,
+            quotationDate: item.quotation_date || item.quotationDate,
+            enquiryDate: item.enquiry_date || item.enquiryDate,
+            customerId: item.customer_id ?? item.customerId,
+            contactPerson: item.contact_person || item.contactPerson,
+            contactNumber: item.contact_number || item.contactNumber,
+            otherTerms: item.other_terms || item.otherTerms,
+            paymentTerms: item.payment_terms || item.paymentTerms,
+            preparedBy: item.prepared_by || item.preparedBy,
+            productsBrand: item.products_brand || item.productsBrand,
+            salesPersonId: item.sales_person_id ?? item.salesPersonId,
+            modeOfEnquiry: item.mode_of_enquiry || item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
             details: item.details,
@@ -199,17 +204,17 @@ export async function get(tableName: TableName): Promise<any[]> {
             address: item.address,
             city: item.city,
             pincode: item.pincode,
-            salesPersonId: item.sales_person_id,
-            discountStructure: item.discount_structure
+            salesPersonId: item.sales_person_id ?? item.salesPersonId,
+            discountStructure: item.discount_structure || item.discountStructure
         }));
     }
 
     if (tableName === 'products' && allData.length > 0) {
         return allData.map((item: any) => ({
             id: item.id,
-            partNo: item.part_no,
+            partNo: item.part_no || item.partNo,
             description: item.description,
-            hsnCode: item.hsn_code,
+            hsnCode: item.hsn_code || item.hsnCode,
             prices: item.prices,
             uom: item.uom,
             plant: item.plant,
