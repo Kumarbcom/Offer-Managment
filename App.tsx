@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem } from './types';
+import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem, PendingSO } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { SalesPersonManager } from './components/SalesPersonManager';
 import { CustomerManager } from './components/CustomerManager';
@@ -17,6 +17,7 @@ import { UserManual } from './components/UserManual';
 import { StockManager } from './components/StockManager';
 import { CustomerResponsePage } from './components/CustomerResponsePage';
 import { StorageManager } from './components/StorageManager';
+import { PendingSOManager } from './components/PendingSOManager';
 
 
 
@@ -25,6 +26,7 @@ function App() {
   const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
   const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
   const [stockStatements, setStockStatements, stockStatementsLoading, stockStatementsError] = useOnlineStorage<StockItem>('stockStatements');
+  const [pendingSOs, setPendingSOs, pendingSOsLoading, pendingSOsError] = useOnlineStorage<PendingSO>('pendingSOs');
 
   const [view, setView] = useState<View | 'calendar'>('dashboard');
   const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null);
@@ -42,8 +44,8 @@ function App() {
     }
   });
 
-  const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading;
-  const dataError = usersError || salesPersonsError || quotationsError;
+  const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || pendingSOsLoading;
+  const dataError = usersError || salesPersonsError || quotationsError || pendingSOsError;
 
   // Handle Deep Linking for Quotations
   useEffect(() => {
@@ -235,6 +237,10 @@ function App() {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" /><path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
                     Stock
                   </button>
+                  <button onClick={() => handleSetView('pending-so')} className={headerBtnClass(view === 'pending-so')}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000-2H6a6 6 0 100 12H4a2 2 0 01-2-2v-4a2 2 0 012-2zm9-1a1 1 0 110 2 1 1 0 010-2zm-6 4a1 1 0 11-2 0 1 1 0 012 0zm6 0a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" /></svg>
+                    Pending SO
+                  </button>
                 </>
               )}
               {currentUser.role === 'Admin' && (
@@ -303,12 +309,13 @@ function App() {
         {view === 'products' && <ProductManager currentUser={currentUser} />}
         {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
         {view === 'quotations' && <QuotationManager quotations={quotations} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
-        {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} stockStatements={stockStatements} pendingSOs={[]} />}
+        {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} stockStatements={stockStatements} pendingSOs={pendingSOs || []} />}
         {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
         {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
         {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
         {view === 'user-manual' && <UserManual />}
-        {view === 'stock' && <StockManager stockStatements={stockStatements} setStockStatements={setStockStatements} pendingSOs={[]} />}
+        {view === 'stock' && <StockManager stockStatements={stockStatements} setStockStatements={setStockStatements} pendingSOs={pendingSOs || []} />}
+        {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
       </main>
 
       {/* Mobile Bottom Navigation */}
