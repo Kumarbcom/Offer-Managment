@@ -38,7 +38,12 @@ export const getQuotationDisplayNumber = (
 ): string => {
     if (quotation.id <= 0) return 'DRAFT';
 
+    // Validate date - if invalid, return error format
     const qDate = new Date(quotation.quotationDate);
+    if (isNaN(qDate.getTime())) {
+        console.error(`Invalid quotation date for quotation ${quotation.id}:`, quotation.quotationDate);
+        return `SKC/QTN/${quotation.id}-ERROR`;
+    }
 
     // Old-style: quotations before the new numbering cutoff
     if (qDate < NEW_NUMBERING_START) {
@@ -48,6 +53,12 @@ export const getQuotationDisplayNumber = (
     // New-style: compute fiscal year and rank within that FY
     const fyLabel = getFiscalYearLabel(qDate);
     const fyStartYear = parseInt(fyLabel.split('-')[0], 10);
+    
+    if (isNaN(fyStartYear)) {
+        console.error(`Failed to parse fiscal year for date ${quotation.quotationDate}`);
+        return `SKC/QTN/${quotation.id}-ERROR`;
+    }
+    
     const fyStart = new Date(`${fyStartYear}-04-01`);
     const fyEnd = new Date(`${fyStartYear + 1}-03-31T23:59:59`);
 
@@ -60,6 +71,8 @@ export const getQuotationDisplayNumber = (
     const fyQuotations = allQuotations
         .filter(q => {
             const d = new Date(q.quotationDate);
+            // Skip invalid dates
+            if (isNaN(d.getTime())) return false;
             return d >= NEW_NUMBERING_START && d >= fyStart && d <= fyEnd;
         })
         .sort((a, b) => {
