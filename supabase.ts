@@ -3,9 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Product, Customer, SalesPerson, User, Quotation } from './types';
 
 export const supabaseConfig = {
-    // @ts-ignore
     url: import.meta.env.VITE_SUPABASE_URL || '',
-    // @ts-ignore
     key: import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 };
 
