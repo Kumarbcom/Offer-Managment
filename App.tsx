@@ -1,5 +1,5 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { SalesPersonManager } from './components/SalesPersonManager';
@@ -16,6 +16,8 @@ import { CalendarView } from './components/CalendarView';
 import { UserManual } from './components/UserManual';
 import { StockManager } from './components/StockManager';
 import { CustomerResponsePage } from './components/CustomerResponsePage';
+import { StorageManager } from './components/StorageManager';
+
 
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
+  const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
+
   const [logoUrl, setLogoUrl] = useState<string | null>(() => {
     try {
       return localStorage.getItem('company_logo');
@@ -249,6 +253,15 @@ function App() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
                 Help
               </button>
+              <button 
+                onClick={() => setIsStorageModalOpen(true)} 
+                className={headerBtnClass(isStorageModalOpen)}
+                title="Storage Settings"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" /></svg>
+                Storage
+              </button>
+
             </div>
             <div className="flex items-center space-x-4 ml-4 shrink-0">
               <div className="flex flex-col items-end">
@@ -312,7 +325,37 @@ function App() {
         onSave={handlePasswordChange}
         isForced={isPasswordChangeRequired}
       />
+
+      {/* Storage Management Modal */}
+      {isStorageModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+          >
+            <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
+              <h2 className="text-lg font-bold">Storage Management</h2>
+              <button onClick={() => setIsStorageModalOpen(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6">
+               <StorageManager />
+               <div className="mt-6 flex justify-end">
+                   <button 
+                    onClick={() => setIsStorageModalOpen(false)}
+                    className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                   >
+                       Done
+                   </button>
+               </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
+
   );
 }
 
