@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Product, Customer, SalesPerson, User, Quotation } from './types';
 
 export const supabaseConfig = {
-    url: (import.meta as any).env.VITE_SUPABASE_URL || '',
-    key: (import.meta as any).env.VITE_SUPABASE_ANON_KEY || ''
+    url: (import.meta.env as any).VITE_SUPABASE_URL || '',
+    key: (import.meta.env as any).VITE_SUPABASE_ANON_KEY || ''
 };
 
 export const supabase = (supabaseConfig.url && supabaseConfig.key) 
@@ -146,14 +146,12 @@ export async function set(tableName: TableName, previousState: any[] | null, new
     return [];
 }
 
-// Fixed existing product search functions to use snake_case
 export async function searchProducts(term: string) {
     if (!supabase) return [];
     let query = supabase.from('products').select('*').limit(50);
     if (term) {
         const terms = term.split('*').map(t => t.trim()).filter(Boolean);
         if (terms.length > 0) {
-            // Use snake_case column names for the query
             const partNoFilters = terms.map(t => `part_no.ilike.*${t}*`).join(',');
             const descriptionFilters = terms.map(t => `description.ilike.*${t}*`).join(',');
             query = query.or(`${partNoFilters},${descriptionFilters}`);
@@ -162,6 +160,80 @@ export async function searchProducts(term: string) {
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data || []).map(item => mapFromSupabase('products', item));
+}
+
+// Helper for CustomerAddModal
+export async function getCustomersPaginated(page: number, pageSize: number) {
+    if (!supabase) return { data: [], count: 0 };
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact' })
+        .order('name')
+        .range(from, to);
+    
+    if (error) throw new Error(error.message);
+    return {
+        data: (data || []).map(item => mapFromSupabase('customers', item)),
+        count: count || 0
+    };
+}
+
+export async function getSalesPersons() {
+    return get('salesPersons');
+}
+
+export async function upsertCustomer(customer: any) {
+    const toUpsert = mapToSupabase('customers', customer);
+    const { data, error } = await supabase!.from('customers').upsert(toUpsert).select();
+    if (error) throw new Error(error.message);
+    return (data || []).map(item => mapFromSupabase('customers', item))[0];
+}
+
+export async function deleteCustomer(id: number) {
+    const { error } = await supabase!.from('customers').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+}
+
+export async function addCustomersBatch(customers: any[]) {
+    const toUpsert = customers.map(c => mapToSupabase('customers', c));
+    const { error } = await supabase!.from('customers').upsert(toUpsert);
+    if (error) throw new Error(error.message);
+}
+
+export async function deleteProductsBatch(ids: number[]) {
+    const { error } = await supabase!.from('products').delete().in('id', ids);
+    if (error) throw new Error(error.message);
+}
+
+export async function updateProduct(product: any) {
+    const toUpsert = mapToSupabase('products', product);
+    const { error } = await supabase!.from('products').update(toUpsert).eq('id', product.id);
+    if (error) throw new Error(error.message);
+}
+
+export async function addProductsBatch(products: any[]) {
+    const toUpsert = products.map(p => mapToSupabase('products', p));
+    const { error } = await supabase!.from('products').upsert(toUpsert);
+    if (error) throw new Error(error.message);
+}
+
+export async function getProductsPaginated(page: number, pageSize: number) {
+    if (!supabase) return { data: [], count: 0 };
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await supabase
+        .from('products')
+        .select('*', { count: 'exact' })
+        .order('id')
+        .range(from, to);
+    
+    if (error) throw new Error(error.message);
+    return {
+        data: (data || []).map(item => mapFromSupabase('products', item)),
+        count: count || 0
+    };
 }
 
 export async function getProductsByIds(ids: number[]) {
@@ -176,4 +248,46 @@ export async function getProductsByPartNos(partNos: string[]) {
     const { data, error } = await supabase.from('products').select('*').in('part_no', partNos);
     if (error) throw new Error(error.message);
     return (data || []).map(item => mapFromSupabase('products', item));
+}
+
+export async function fetchAllProductsForExport() {
+    return get('products');
+}
+
+export async function searchCustomers(term: string) {
+    if (!supabase) return [];
+    let query = supabase.from('customers').select('*').limit(50);
+    if (term) {
+        query = query.ilike('name', `%${term}%`);
+    }
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return (data || []).map(item => mapFromSupabase('customers', item));
+}
+
+export async function getCustomersByIds(ids: number[]) {
+    if (!supabase || !ids.length) return [];
+    const { data, error } = await supabase.from('customers').select('*').in('id', ids);
+    if (error) throw new Error(error.message);
+    return (data || []).map(item => mapFromSupabase('customers', item));
+}
+
+export async function countRecords(tableName: TableName): Promise<number> {
+    if (!supabase) return 0;
+    const { count, error } = await supabase
+        .from(toSupabaseTableName(tableName))
+        .select('*', { count: 'exact', head: true });
+    
+    if (error) throw new Error(error.message);
+    return count || 0;
+}
+
+export async function clearTable(tableName: TableName): Promise<void> {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    const { error } = await supabase
+        .from(toSupabaseTableName(tableName))
+        .delete()
+        .neq('id', -999); // Deletes all rows where ID is not -999 (standard way to clear table without TRUNCATE permissions)
+    
+    if (error) throw new Error(error.message);
 }
