@@ -59,6 +59,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const [orderStatusMode, setOrderStatusMode] = useState<'count' | 'value'>('value');
     const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count');
     const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
+    const [reportMode, setReportMode] = useState<'count' | 'value'>('value');
 
     useEffect(() => {
         if (quotations) {
@@ -217,6 +218,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     useEffect(() => {
         if (!filteredQuotations || filteredQuotations.length === 0) return;
 
+        // Register DataLabels plugin
+        if (typeof ChartDataLabels !== 'undefined') {
+            Chart.register(ChartDataLabels);
+        }
+
         const charts: any[] = [];
 
         const destroyCharts = () => {
@@ -228,13 +234,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         if (funnelChartRef.current) {
             const ctx = funnelChartRef.current.getContext('2d');
             if (ctx) {
-                const data = QUOTATION_STATUSES.map(status => overallStats[status].count);
+                const data = QUOTATION_STATUSES.map(status => reportMode === 'count' ? overallStats[status].count : overallStats[status].value);
                 charts.push(new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: QUOTATION_STATUSES,
                         datasets: [{
-                            label: 'Quotations',
+                            label: reportMode === 'count' ? 'Quotations' : 'Value (₹)',
                             data: data,
                             backgroundColor: ['#3b82f6', '#10b981', '#14b8a6', '#f43f5e', '#f59e0b'],
                             borderRadius: 6
@@ -244,8 +250,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         indexAxis: 'y',
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } }
+                        plugins: { 
+                            legend: { display: false },
+                            datalabels: {
+                                color: '#fff',
+                                font: { weight: 'bold', size: 10 },
+                                anchor: 'end',
+                                align: 'start',
+                                offset: 4,
+                                formatter: (value: any) => value > 0 ? (reportMode === 'count' ? value : formatCurrencyCompact(value)) : ''
+                            }
+                        },
+                        scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, callback: (v: any) => reportMode === 'count' ? v : formatCurrencyCompact(v) } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } }
                     }
                 }));
             }
@@ -317,7 +333,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9 } } } },
+                        plugins: { 
+                            legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9 } } },
+                            datalabels: {
+                                color: '#fff',
+                                font: { weight: 'bold', size: 9 },
+                                formatter: (value: any, ctx: any) => {
+                                    const sum = ctx.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                                    const percentage = (value * 100 / sum).toFixed(0) + "%";
+                                    return percentage;
+                                }
+                            }
+                        },
                         cutout: '60%'
                     }
                 }));
@@ -325,7 +352,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         }
 
         return destroyCharts;
-    }, [filteredQuotations, overallStats, customerMap]);
+    }, [filteredQuotations, overallStats, customerMap, reportMode]);
 
     return (
         <div className="space-y-3 p-1 md:p-3">
@@ -409,18 +436,129 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 })}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
+                    <h3 className="text-xs font-black text-black mb-4 uppercase tracking-wide">Company Logo</h3>
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-32 h-20 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
+                            {logoUrl ? (
+                                <img src={logoUrl} alt="Company Logo" className="max-w-full max-h-full object-contain" />
+                            ) : (
+                                <span className="text-[10px] text-slate-400 font-bold">No Logo</span>
+                            )}
+                        </div>
+                        <div className="w-full">
+                            <label className="block w-full text-center px-4 py-2 bg-indigo-50 text-indigo-700 text-xs font-black rounded-lg cursor-pointer hover:bg-indigo-100 transition-colors">
+                                {logoUrl ? 'Change Logo' : 'Upload Logo'}
+                                <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
+                            </label>
+                            {logoUrl && (
+                                <button 
+                                    onClick={() => onLogoUpload(null)}
+                                    className="block w-full mt-2 text-center text-[10px] text-rose-500 font-bold hover:underline"
+                                >
+                                    Remove Logo
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-[9px] text-slate-400 text-center leading-tight">
+                            Recommended: Transparent PNG<br/>Max size: 500KB
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
                     <h3 className="text-xs font-black text-black mb-4 uppercase tracking-wide">Quotation Funnel</h3>
                     <div className="h-48"><canvas ref={funnelChartRef}></canvas></div>
                 </div>
-                <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
                     <h3 className="text-xs font-black text-black mb-4 uppercase tracking-wide">Value Trend</h3>
                     <div className="h-48"><canvas ref={lineChartRef}></canvas></div>
                 </div>
-                 <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                 <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
                     <h3 className="text-xs font-black text-black mb-4 uppercase tracking-wide">Top 5 Customers</h3>
                     <div className="h-48"><canvas ref={topCustomersChartRef}></canvas></div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {/* Latest 10 Offers */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xs font-black text-black uppercase tracking-wide">Latest 10 Offers</h3>
+                        <span className="text-[10px] text-slate-400 font-bold">Recent Activity</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[10px]">
+                            <thead className="bg-slate-50 text-slate-500 uppercase">
+                                <tr>
+                                    <th className="px-2 py-2 font-black border-b">ID</th>
+                                    <th className="px-2 py-2 font-black border-b">Customer</th>
+                                    <th className="px-2 py-2 font-black border-b">Date</th>
+                                    <th className="px-2 py-2 font-black border-b text-right">Value</th>
+                                    <th className="px-2 py-2 font-black border-b text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {[...filteredQuotations].sort((a, b) => b.id - a.id).slice(0, 10).map(q => (
+                                    <tr key={q.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-2 py-2 font-bold text-indigo-600">#{q.id}</td>
+                                        <td className="px-2 py-2 font-medium truncate max-w-[120px]">{customerMap.get(q.customerId || 0) || 'N/A'}</td>
+                                        <td className="px-2 py-2 text-slate-500">{new Date(q.quotationDate).toLocaleDateString('en-GB')}</td>
+                                        <td className="px-2 py-2 text-right font-bold">{formatCurrencyCompact(calculateTotalAmount(q.details))}</td>
+                                        <td className="px-2 py-2 text-center">
+                                            <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase ${
+                                                q.status === 'PO received' ? 'bg-green-100 text-green-700' :
+                                                q.status === 'Lost' ? 'bg-rose-100 text-rose-700' :
+                                                'bg-blue-100 text-blue-700'
+                                            }`}>
+                                                {q.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Group-wise Status Report */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xs font-black text-black uppercase tracking-wide">Sales Performance Summary</h3>
+                        <div className="flex bg-slate-100 p-0.5 rounded-lg">
+                            <button onClick={() => setReportMode('count')} className={`px-2 py-1 text-[9px] font-black rounded-md transition-all ${reportMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Count</button>
+                            <button onClick={() => setReportMode('value')} className={`px-2 py-1 text-[9px] font-black rounded-md transition-all ${reportMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Value</button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[10px]">
+                            <thead className="bg-slate-50 text-slate-500 uppercase">
+                                <tr>
+                                    <th className="px-2 py-2 font-black border-b">Sales Person</th>
+                                    {QUOTATION_STATUSES.map(status => (
+                                        <th key={status} className="px-2 py-2 font-black border-b text-center">{status}</th>
+                                    ))}
+                                    <th className="px-2 py-2 font-black border-b text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {salesPersonStats.map(sp => (
+                                    <tr key={sp.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-2 py-2 font-bold">{sp.name}</td>
+                                        {QUOTATION_STATUSES.map(status => (
+                                            <td key={status} className="px-2 py-2 text-center font-medium">
+                                                {reportMode === 'count' ? sp[status].count : formatCurrencyCompact(sp[status].value)}
+                                            </td>
+                                        ))}
+                                        <td className="px-2 py-2 text-right font-black text-indigo-600">
+                                            {reportMode === 'count' ? sp.total.count : formatCurrencyCompact(sp.total.value)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
