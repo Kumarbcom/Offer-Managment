@@ -13,7 +13,8 @@ type DateRange = 'today' | 'week' | 'month';
 
 export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, currentUser }) => {
   const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<number | 'all'>('all');
-  const [dateRange, setDateRange] = useState<DateRange>('today');
+  // Default to Month as requested (rolling 30 days)
+  const [dateRange, setDateRange] = useState<DateRange>('month');
   const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
 
   // Initialize selected Sales Person based on logged-in user
@@ -40,7 +41,7 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
     if (dateRange === 'week') {
       startDate.setDate(today.getDate() - 7); // Last 7 days
     } else if (dateRange === 'month') {
-      startDate.setDate(1); // Start of current month
+      startDate.setDate(today.getDate() - 30); // rolling 30 days as requested ("last 1 month")
     }
 
     return quotations.filter(q => {
@@ -49,8 +50,6 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
         return false;
       }
       if (currentUser.role === 'Sales Person' && selectedSalesPersonId === 'all') {
-         // Safety fallback: if logged in as SP but somehow 'all' selected, enforce filtering
-         // Note: The useEffect above attempts to set the ID, but this is a hard check.
          const me = salesPersons?.find(sp => sp.name === currentUser.name);
          if (me && q.salesPersonId !== me.id) return false;
       }
@@ -97,7 +96,7 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
     }
 
     let message = `*Sales Report - ${sp.name}*\n`;
-    message += `Period: ${dateRange.toUpperCase()}\n`;
+    message += `Period: ${dateRange === 'month' ? 'Last 30 Days' : dateRange.toUpperCase()}\n`;
     message += `------------------------\n`;
     
     if (filteredQuotations.length === 0) {
@@ -129,7 +128,6 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
         <h2 className="text-2xl font-bold text-gray-800">Sales Reports</h2>
         
         <div className="flex flex-wrap gap-3 items-center">
-             {/* Sales Person Selector */}
              <div className="w-full md:w-auto">
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sales Person</label>
                 <select
@@ -145,7 +143,6 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
                 </select>
             </div>
 
-            {/* Date Range Selector */}
              <div className="w-full md:w-auto">
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Period</label>
                 <div className="flex bg-gray-100 rounded-md p-1">
@@ -159,7 +156,7 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                             }`}
                         >
-                            {range === 'today' ? 'Today' : range === 'week' ? 'Week' : 'Month'}
+                            {range === 'today' ? 'Today' : range === 'week' ? '1 Wk' : '1 Mo'}
                         </button>
                     ))}
                 </div>
@@ -167,7 +164,6 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
         </div>
       </div>
 
-      {/* Action Bar */}
       <div className="flex justify-end mb-4">
           <button
             onClick={handleWhatsAppShare}
@@ -181,7 +177,6 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
           </button>
       </div>
 
-      {/* Grid View */}
       <div className="overflow-x-auto border rounded-lg">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -198,7 +193,7 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
             {filteredQuotations.length > 0 ? (
                 filteredQuotations.map(q => (
                 <tr key={q.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{new Date(q.quotationDate).toLocaleDateString('en-GB')}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{q.quotationDate ? new Date(q.quotationDate).toLocaleDateString('en-GB') : 'N/A'}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800">{q.id}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{customerMap.get(q.customerId!) || 'Loading...'}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">

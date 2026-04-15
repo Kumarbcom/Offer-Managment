@@ -20,7 +20,7 @@ export const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: R
     } catch (error) {
       console.error(error);
       if (error instanceof Error && (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
-          console.warn("Storage Limit Reached: Local browser storage is full. Data is being synced to cloud instead.");
+          alert("Storage Limit Reached: Your local browser storage is full. Please clear some data or ensure Supabase connectivity to save properly.");
       }
     }
   }, [key, storedValue]);

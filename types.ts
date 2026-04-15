@@ -24,6 +24,10 @@ export interface Customer {
   address: string;
   city: string;
   pincode: string;
+  gstNo?: string;
+  contactPerson?: string;
+  contactNumber?: string;
+  email?: string;
   salesPersonId: number | null;
   discountStructure: {
     singleCore: number;
@@ -72,7 +76,7 @@ export interface QuotationItem {
   };
 }
 
-export type PaymentTerm = typeof PAYMENT_TERMS[number] | (string & {});
+export type PaymentTerm = typeof PAYMENT_TERMS[number];
 export type PreparedBy = typeof PREPARED_BY_LIST[number];
 export type ProductBrand = typeof PRODUCTS_BRANDS[number];
 export type ModeOfEnquiry = typeof MODES_OF_ENQUIRY[number];
@@ -94,7 +98,6 @@ export interface Quotation {
   status: QuotationStatus;
   comments: string;
   details: QuotationItem[];
-  gstAdded: boolean;
 }
 
 export interface DeliveryChallanItem {

@@ -64,6 +64,20 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
         return null;
     };
 
+    const formatDate = (dateStr: string | undefined | null) => {
+        if (!dateStr) return 'N/A';
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleDateString('en-GB');
+    };
+
+    const getDisplayId = (id: number) => {
+        if (id >= 2363) {
+            const seq = id - 2362;
+            return `SKC/QTN/${String(seq).padStart(4, '0')}-2026-27`;
+        }
+        return `SKC/QTN/${id}`;
+    };
+
     return (
         <div className="bg-white p-2 font-sans text-xs text-slate-800 print-wrapper">
             <div className="print-main-content">
@@ -93,9 +107,10 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         <p><span className="font-semibold">Attn:</span> {quotation.contactPerson} ({quotation.contactNumber})</p>
                     </div>
                     <div className="text-right space-y-0.5 border p-2 rounded-md">
-                        <p><span className="font-semibold">Quotation No:</span> {quotation.id > 0 ? `SKC/QTN/${quotation.id}` : 'DRAFT'}</p>
-                        <p><span className="font-semibold">Date:</span> {new Date(quotation.quotationDate).toLocaleDateString('en-GB')}</p>
-                        <p><span className="font-semibold">Enquiry Date:</span> {new Date(quotation.enquiryDate).toLocaleDateString('en-GB')}</p>
+                        <p><span className="font-semibold">Quotation No:</span> {quotation.id > 0 ? getDisplayId(quotation.id) : 'DRAFT'}</p>
+                        <p><span className="font-semibold">Date:</span> {formatDate(quotation.quotationDate)}</p>
+                        <p><span className="font-semibold">Enquiry Date:</span> {formatDate(quotation.enquiryDate)}</p>
+                        <p><span className="font-semibold">Sales Person:</span> {salesPerson?.name || 'N/A'}</p>
                     </div>
                 </section>
                 

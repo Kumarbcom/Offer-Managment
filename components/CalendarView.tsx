@@ -152,13 +152,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ quotations, salesPer
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
   const isCommentEditable = canEdit;
 
+  const formatDate = (dateStr: string | undefined | null) => {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleDateString();
+  };
+
   // Reusable Card Renderer for List View
   const renderQuotationCard = (q: Quotation, key: string, isReminder: boolean = false) => (
      <div key={key} className={`bg-white border ${isReminder ? 'border-orange-300 bg-orange-50' : 'border-slate-200'} rounded-lg p-3 shadow-sm mb-2`}>
         <div className="flex justify-between items-start mb-2">
             <div>
                     <div className="text-sm font-bold text-indigo-600 flex items-center gap-2" onClick={() => onSelectQuotation(q.id)}>
-                    #{q.id} <span className="text-xs text-slate-400 font-normal">{new Date(q.quotationDate).toLocaleDateString()}</span>
+                    #{q.id} <span className="text-xs text-slate-400 font-normal">{formatDate(q.quotationDate)}</span>
                     </div>
                     <div className="text-sm font-semibold text-slate-800">{q.customerId ? customerMap.get(q.customerId) || 'Loading...' : 'N/A'}</div>
                     <div className="text-xs text-slate-500">{q.contactPerson}</div>

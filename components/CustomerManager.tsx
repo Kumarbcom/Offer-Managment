@@ -94,9 +94,10 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
   }, [currentPage, fetchCustomers]);
 
 
-  const getSalesPersonName = (id: number | null) => {
-    if (id === null || !salesPersons) return 'N/A';
-    return salesPersons.find(sp => sp.id === id)?.name || 'Unknown';
+  const getSalesPersonName = (id: number | string | null) => {
+    if (id === null || id === undefined || !salesPersons) return 'N/A';
+    const numericId = Number(id);
+    return salesPersons.find(sp => sp.id === numericId)?.name || 'Unknown';
   };
 
   const allQuotationStats = useMemo(() => {

@@ -6,14 +6,13 @@ import { CustomerAddModal } from './CustomerAddModal';
 import { ProductAddModal } from './ProductAddModal';
 import { ProductSearchModal } from './ProductSearchModal';
 import { QuotationSuccessModal } from './QuotationSuccessModal';
-import { StockCheckModal } from './StockCheckModal';
 import { SearchableSelect } from './common/SearchableSelect';
 import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { useDebounce } from '../hooks/useDebounce';
-import { useOnlineStorage } from '../hooks/useOnlineStorage';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds } from '../supabase';
+import { StockCheckModal } from './StockCheckModal';
 
 declare var XLSX: any;
 
@@ -26,6 +25,8 @@ interface QuotationFormProps {
   setEditingQuotationId: (id: number | null) => void;
   currentUser: User;
   logoUrl?: string | null;
+  stockStatements?: StockItem[] | null;
+  pendingSOs?: PendingSO[] | null;
 }
 
 const createEmptyQuotationItem = (): QuotationItem => ({
@@ -44,6 +45,14 @@ const createEmptyQuotationItem = (): QuotationItem => ({
 });
 
 const getTodayDateString = () => new Date().toISOString().split('T')[0];
+
+const getDisplayId = (id: number) => {
+  if (id >= 2363) {
+    const seq = id - 2362;
+    return `SKC/QTN/${String(seq).padStart(4, '0')}-2026-27`;
+  }
+  return `#${id}`;
+};
 
 const NavButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode }> = ({ onClick, disabled, children }) => (
     <button type="button" onClick={onClick} disabled={disabled} className="bg-slate-700 hover:bg-slate-600 text-white rounded-md h-6 w-8 flex items-center justify-center font-semibold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -108,16 +117,17 @@ const Icons = {
             <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.125 4.5a4.125 4.125 0 102.338 7.524l2.007 2.006a.75.75 0 101.06-1.06l-2.006-2.007a4.125 4.125 0 00-3.399-6.463z" clipRule="evenodd" />
         </svg>
     ),
-    Stock: () => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-violet-600">
-            <path fillRule="evenodd" d="M2.25 6a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V6Zm3.9 7.5a.75.75 0 0 0 .6.3h6.75a.75.75 0 0 0 .6-.3l2.25-3a.75.75 0 0 0 0-.9l-2.25-3a.75.75 0 0 0-.6-.3H6.75a.75.75 0 0 0-.6.3L3.9 9.6a.75.75 0 0 0 0 .9l2.25 3Z" clipRule="evenodd" />
-        </svg>
-    ),
     Trash: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>,
     Excel: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-green-600">
             <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM9.763 9.51a2.25 2.25 0 013.828-1.351.75.75 0 011.06-1.06 3.75 3.75 0 00-6.38 2.252c-.033.307-.052.618-.057.933l-.024 1.399c-.003.158-.003.316.002.473l.024 1.4c.005.315.024.626.057.933a3.75 3.75 0 006.38 2.252.75.75 0 00-1.06-1.06 2.25 2.25 0 01-3.828-1.351l-.025-1.402a9.55 9.55 0 01-.001-.472l.025-1.402z" clipRule="evenodd" /> {/* Stylized generic sheet */}
             <path d="M11.5 9.5a.5.5 0 01.5.5v4a.5.5 0 01-.5.5H9.5a.5.5 0 01-.5-.5v-4a.5.5 0 01.5-.5h2z" />
+        </svg>
+    ),
+    Stock: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-orange-600">
+            <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" />
+            <path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.133 2.845a.75.75 0 0 1 1.06 0l1.72 1.72 1.72-1.72a.75.75 0 1 1 1.06 1.06l-1.72 1.72 1.72 1.72a.75.75 0 1 1-1.06-1.06L12 15.685l-1.72 1.72a.75.75 0 1 1-1.06-1.06l1.72-1.72-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
         </svg>
     )
 };
@@ -131,14 +141,20 @@ const FormField: React.FC<{ label: string; children: React.ReactNode; className?
     </div>
 );
 
+// Helper to normalize strings for comparison
+const normalizeString = (str: string | null | undefined) => {
+    if (!str) return '';
+    return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+};
+
 export const QuotationForm: React.FC<QuotationFormProps> = ({
-  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl
+  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl, stockStatements, pendingSOs
 }) => {
   const [formData, setFormData] = useState<Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
-  const [isStockCheckModalOpen, setIsStockCheckModalOpen] = useState(false);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
   const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
   
@@ -147,10 +163,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
   const debouncedProductSearchTerm = useDebounce(productSearchTerm, 300);
   const [fetchedProducts, setFetchedProducts] = useState<Map<number, Product>>(new Map());
-
-  // Data hooks for Stock Check
-  const [stockStatements] = useOnlineStorage<StockItem>('stockStatements');
-  const [pendingSOs] = useOnlineStorage<PendingSO>('pendingSOs');
 
   // State for async customer search
   const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
@@ -342,10 +354,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [formData?.customerId, selectedCustomerObj]);
 
   useEffect(() => {
-    if (selectedCustomerObj && selectedCustomerObj.salesPersonId && editingQuotationId === null) {
-        // Only auto-update sales person on NEW quotations when a customer is selected
-        // For existing quotations, we preserve the original sales person
-        setFormData(prev => prev ? {...prev, salesPersonId: selectedCustomerObj.salesPersonId} : null);
+    if (selectedCustomerObj && editingQuotationId === null) {
+        // Only auto-update details on NEW quotations when a customer is selected
+        // For existing quotations, we preserve the original details
+        setFormData(prev => prev ? {
+            ...prev, 
+            salesPersonId: selectedCustomerObj.salesPersonId || prev.salesPersonId,
+            contactPerson: selectedCustomerObj.contactPerson || prev.contactPerson,
+            contactNumber: selectedCustomerObj.contactNumber || prev.contactNumber
+        } : null);
     }
   }, [selectedCustomerObj, editingQuotationId]);
 
@@ -394,10 +411,49 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     performSearch();
   }, [debouncedCustomerSearchTerm, selectedCustomerObj]);
 
+  const getFreeStock = (partNo: string) => {
+      if (!stockStatements || !pendingSOs || !partNo) return null;
+      
+      const normPartNo = normalizeString(partNo);
+      
+      // Calculate Due Limit Date (Today + 30 Days)
+      const today = new Date();
+      const dueLimit = new Date(today);
+      dueLimit.setDate(today.getDate() + 30);
+
+      // Find Stock Item - matching description to PartNo
+      // Note: This is a loose match as description might contain extra text
+      const stockItem = stockStatements.find(s => normalizeString(s.description).includes(normPartNo));
+      
+      if (!stockItem) return null;
+
+      // Find Pending Orders for this item
+      const relevantOrders = pendingSOs.filter(so => {
+          const normItem = normalizeString(so.itemName);
+          const normPN = normalizeString(so.partNo);
+          const normMat = normalizeString(so.materialCode);
+          const normDesc = normalizeString(stockItem.description);
+          
+          return (normItem && normDesc.includes(normItem)) || 
+                 (normPN && normPN.length > 2 && normDesc.includes(normPN)) ||
+                 (normMat && normMat.length > 2 && normDesc.includes(normMat));
+      });
+
+      // Calculate Due Orders (<= 30 Days)
+      const dueOrdersQty = relevantOrders
+          .filter(o => {
+              const d = o.dueOn ? new Date(o.dueOn) : new Date('9999-12-31');
+              return d <= dueLimit;
+          })
+          .reduce((sum, o) => sum + (typeof o.balanceQty === 'number' ? o.balanceQty : parseFloat(String(o.balanceQty)) || 0), 0);
+
+      return Math.max(0, stockItem.quantity - dueOrdersQty);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const isNumericId = name === 'salesPersonId';
-    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
+    const isNumericId = name === 'salesPersonId' || name === 'customerId';
+    setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? Number(value) : null) : value } : null);
   };
   
   const handleItemChange = async (index: number, field: keyof QuotationItem | `airFreightDetails.${keyof QuotationItem['airFreightDetails']}`, value: any) => {
@@ -477,10 +533,17 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     try {
       const isNew = editingQuotationId === null || formData.id === 0;
       
+      // Get the LATEST quotations list from props to ensure ID uniqueness.
+      // NOTE: 'quotations' prop might be slightly stale if a background update just happened, 
+      // but typical latency is low. For true safety, backend generation is best, 
+      // but here we use max+1 on client side.
       const safeQuotations = quotations || [];
       
       let idToSave = formData.id;
       if (isNew) {
+          // Find max ID in current list and increment. If list empty, start at 1.
+          // This ensures that even if 'quotations' updated in background (which we ignored in useEffect),
+          // we are now using the fresh list to calc the ID.
           const maxId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) : 0;
           idToSave = maxId + 1;
       }
@@ -490,6 +553,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       await setQuotations(prev => {
           const currentQuotations = prev || [];
           if (isNew) {
+              // Check AGAIN inside the setter just in case 'quotations' prop was stale but 'prev' is fresh
               const freshMaxId = currentQuotations.length > 0 ? Math.max(...currentQuotations.map(q => q.id)) : 0;
               if (freshMaxId >= idToSave) {
                   quotationToSave.id = freshMaxId + 1;
@@ -500,6 +564,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       });
 
       if(isNew) {
+          // CRITICAL: Manually update local state to match the newly assigned ID.
+          // Also update the session ref so the subsequent re-render (caused by parent state update)
+          // knows we are still in the same logical session and doesn't wipe the form.
           setFormData(quotationToSave);
           currentSessionIdRef.current = quotationToSave.id; 
 
@@ -510,6 +577,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             url.searchParams.set('id', String(quotationToSave.id));
             window.history.pushState({}, '', url);
           }
+          // Show success modal only for new quotations
           setSuccessModalData(quotationToSave);
       } else {
           alert("Quotation updated successfully!");
@@ -614,6 +682,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           acc.moq += item.moq || 0;
           acc.req += item.req || 0;
           acc.amount += unitPrice * item.moq || 0;
+          // Safe access with optional chaining for airFreightDetails
           const weight = item.airFreightDetails?.weightPerMtr || 0;
           acc.airFreightAmount += item.airFreight ? (weight / 1000 * 150) * item.moq : 0;
           return acc;
@@ -693,11 +762,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 <div className="h-6 border-l border-slate-300 mx-1"></div>
                 <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span>Export Excel</span></ActionButton>
                 <div className="h-6 border-l border-slate-300 mx-1"></div>
-                <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span>Check Stock</span></ActionButton>
-                <div className="h-6 border-l border-slate-300 mx-1"></div>
                 {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span>Customer</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span>Product</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
+                <div className="h-6 border-l border-slate-300 mx-1"></div>
+                <ActionButton onClick={() => setIsStockModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span>Stock Check</span></ActionButton>
             </div>
             
             {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
@@ -709,8 +778,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-2 gap-y-1 text-xs">
                 <div className="space-y-1">
-                    <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId ?? (formData.id > 0 ? formData.id : "New")}</div></FormField>
-                    <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId ? getDisplayId(editingQuotationId) : (formData.id > 0 ? getDisplayId(formData.id) : "New")}</div></FormField>
+                    <FormField label="Quotation Date">
+                        <div className="relative w-full h-full">
+                            <input 
+                                type="date" 
+                                name="quotationDate" 
+                                value={formData.quotationDate} 
+                                onChange={handleChange} 
+                                className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" 
+                                disabled={isReadOnly}
+                            />
+                            {!isReadOnly && <span className="absolute right-8 top-1/2 -translate-y-1/2 text-[8px] text-slate-400 pointer-events-none hidden md:block">YYYY-MM-DD</span>}
+                        </div>
+                    </FormField>
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
                     <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
                      {selectedCustomerObj && (
@@ -728,7 +809,23 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 </div>
                 <div className="space-y-1">
                     <FormField label="Products Brand"><select name="productsBrand" value={formData.productsBrand} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{PRODUCTS_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}</select></FormField>
-                    <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
+                    <FormField label="Sales Person">
+                        <div className="relative w-full h-full">
+                            <select 
+                                name="salesPersonId" 
+                                value={formData.salesPersonId || ''} 
+                                onChange={handleChange} 
+                                className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black pr-12" 
+                                disabled={isReadOnly}
+                            >
+                                <option value="">Select...</option>
+                                {salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                            {selectedCustomerObj && formData.salesPersonId === selectedCustomerObj.salesPersonId && (
+                                <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[9px] text-green-600 font-black bg-green-50 px-1 rounded border border-green-200" title="Linked to Customer Master">LINKED</span>
+                            )}
+                        </div>
+                    </FormField>
                     <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
                     <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black">{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
                     {selectedCustomerObj && selectedCustomerObj.discountStructure && (
@@ -766,6 +863,16 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
                             optionsForSelect.unshift(currentProduct);
                         }
+                        
+                        // Inline Stock Check
+                        let freeStockDisplay = null;
+                        if (item.partNo) {
+                            const freeStock = getFreeStock(item.partNo);
+                            if (freeStock !== null && freeStock > (item.moq || 0)) {
+                                freeStockDisplay = <span className="block text-[9px] text-green-600 font-semibold">(Free: {freeStock.toLocaleString()})</span>;
+                            }
+                        }
+
                         return (
                         <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50">
                             {/* SL No */}
@@ -859,6 +966,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={isReadOnly}
                                 />
+                                {freeStockDisplay}
                             </td>
                             
                             {/* Air per Unit (with Checkbox for toggle if editable) */}
@@ -914,12 +1022,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
       <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} />
       <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
-      <StockCheckModal 
-        isOpen={isStockCheckModalOpen}
-        onClose={() => setIsStockCheckModalOpen(false)}
-        stockStatements={stockStatements}
-        pendingSOs={pendingSOs}
-      />
+      <StockCheckModal isOpen={isStockModalOpen} onClose={() => setIsStockModalOpen(false)} stockStatements={stockStatements || []} pendingSOs={pendingSOs || []} />
       <QuotationSuccessModal 
          isOpen={!!successModalData} 
          onClose={() => setSuccessModalData(null)} 

@@ -79,7 +79,34 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     return customerMap.get(id) || 'Loading...';
   };
   
-  const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || 'N/A';
+  const getSalesPersonName = (id: number | string | null) => {
+    if (id === null || id === undefined || id === '') return 'N/A';
+    const numericId = Number(id);
+    return salesPersons?.find(sp => sp.id === numericId)?.name || 'N/A';
+  };
+
+  const getDisplayId = (id: number) => {
+    if (id >= 2363) {
+      const seq = id - 2362;
+      return `SKC/QTN/${String(seq).padStart(4, '0')}-2026-27`;
+    }
+    return `#${id}`;
+  };
+
+  const formatDate = (dateStr: string | undefined | null) => {
+    if (!dateStr) return 'N/A';
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) {
+            // Try parsing if it's in a weird format or just return the string if it looks like a date
+            if (dateStr.includes('-') || dateStr.includes('/')) return dateStr;
+            return 'Invalid Date';
+        }
+        return date.toLocaleDateString('en-IN');
+    } catch (e) {
+        return dateStr || 'N/A';
+    }
+  };
   
   const calculateTotalAmount = (details: Quotation['details'] | undefined): number => {
       if (!details || !Array.isArray(details)) return 0;
@@ -103,32 +130,36 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
     }
 
-    const preFilteredQuotations = quotationFilter
-      ? quotations.filter(q => {
-          const customerMatch = !quotationFilter.customerIds || (q.customerId !== null && quotationFilter.customerIds.includes(q.customerId));
-          const statusMatch = !quotationFilter.status || q.status === quotationFilter.status;
-          return customerMatch && statusMatch;
-        })
-      : quotations;
-    
-    return preFilteredQuotations
-      .filter(q => {
-        // 2. Role-Based Restriction
+    // 2. Apply Filters (including ID filter for 2363)
+    const preFilteredQuotations = quotations.filter(q => {
+        // ID Filter: Remove data before ID 2363
+        if (q.id < 2363) return false;
+
+        // Role-Based Restriction
         if (userRole === 'Sales Person' && currentSalesPersonId !== undefined) {
              if (q.salesPersonId !== currentSalesPersonId) return false;
+        }
+
+        // Custom Filters (Customer/Status)
+        if (quotationFilter) {
+            const customerMatch = !quotationFilter.customerIds || (q.customerId !== null && quotationFilter.customerIds.includes(q.customerId));
+            const statusMatch = !quotationFilter.status || q.status === quotationFilter.status;
+            if (!customerMatch || !statusMatch) return false;
         }
 
         // 3. Search Logic
         if (!universalSearchTerm) return true;
         const term = universalSearchTerm.toLowerCase();
-        return String(q.id).includes(term) 
+        return String(q.id || '').includes(term) 
+            || getDisplayId(q.id).toLowerCase().includes(term)
             || getCustomerName(q.customerId).toLowerCase().includes(term)
-            || q.contactPerson.toLowerCase().includes(term)
+            || (q.contactPerson || '').toLowerCase().includes(term)
             || getSalesPersonName(q.salesPersonId).toLowerCase().includes(term)
-            || q.status.toLowerCase().includes(term)
-            || q.contactNumber.toLowerCase().includes(term);
-      })
-      .sort((a, b) => {
+            || (q.status || '').toLowerCase().includes(term)
+            || (q.contactNumber || '').toLowerCase().includes(term);
+    });
+    
+    return preFilteredQuotations.sort((a, b) => {
         let comparison = 0;
         switch (sortBy) {
           case 'id': comparison = a.id - b.id; break;
@@ -187,7 +218,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         return (q.details || []).map(item => {
             const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
             return {
-                'Quotation ID': q.id, 'Date': new Date(q.quotationDate).toLocaleDateString(), 'Customer': getCustomerName(q.customerId), 'Contact Person': q.contactPerson, 'Contact No': q.contactNumber, 'Sales Person': getSalesPersonName(q.salesPersonId), 'Status': q.status, 'Total Amount': quotationTotal,
+                'Quotation ID': q.id, 'Date': formatDate(q.quotationDate), 'Customer': getCustomerName(q.customerId), 'Contact Person': q.contactPerson, 'Contact No': q.contactNumber, 'Sales Person': getSalesPersonName(q.salesPersonId), 'Status': q.status, 'Total Amount': quotationTotal,
                 'Part No': item.partNo, 'Description': item.description, 'MOQ': item.moq, 'REQ': item.req, 'Price Source': item.priceSource, 'Base Price': item.price, 'Discount %': item.discount, 'Unit Price': unitPrice, 'Item Amount': unitPrice * item.moq, 'Stock Status': item.stockStatus,
             };
         });
@@ -350,7 +381,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 <div className="flex justify-between items-start mb-2">
                     <div>
                          <div className="text-sm font-bold text-indigo-600 flex items-center gap-2" onClick={() => handleEdit(q.id)}>
-                            #{q.id} <span className="text-xs text-black font-normal">{new Date(q.quotationDate).toLocaleDateString()}</span>
+                            {getDisplayId(q.id)} <span className="text-xs text-black font-normal">{formatDate(q.quotationDate)}</span>
                          </div>
                          <div className="text-sm font-semibold text-black">{getCustomerName(q.customerId)}</div>
                          <div className="text-xs text-black">{q.contactPerson}</div>
@@ -468,8 +499,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                             aria-label={`Select quotation ${q.id}`}
                           />
                         </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-black">{q.id}</td>
-                        <td className="px-2 py-1 whitespace-nowrap text-black">{new Date(q.quotationDate).toLocaleDateString()}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-black">{getDisplayId(q.id)}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-black">{formatDate(q.quotationDate)}</td>
                         <td className="px-2 py-1 whitespace-nowrap font-medium text-black max-w-[150px] truncate" title={getCustomerName(q.customerId)}>{getCustomerName(q.customerId)}</td>
                         <td className="px-2 py-1 whitespace-nowrap">
                             <div className="font-medium text-black truncate max-w-[120px]" title={q.contactPerson}>{q.contactPerson}</div>

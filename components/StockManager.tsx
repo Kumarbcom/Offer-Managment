@@ -1,12 +1,13 @@
 
-import React, { useState, useRef } from 'react';
-import type { StockItem } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import type { StockItem, PendingSO } from '../types';
 
 declare var XLSX: any;
 
 interface StockManagerProps {
   stockStatements: StockItem[] | null;
   setStockStatements: (value: React.SetStateAction<StockItem[]>) => Promise<void>;
+  pendingSOs?: PendingSO[] | null;
 }
 
 const generateUUID = () => {
@@ -19,12 +20,72 @@ const generateUUID = () => {
   });
 };
 
-export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, setStockStatements }) => {
+const normalizeString = (str: string | null | undefined) => {
+    if (!str) return '';
+    return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+};
+
+export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, setStockStatements, pendingSOs }) => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredStock = (stockStatements || []).filter(item => 
+  const processedData = useMemo(() => {
+      const currentStock = stockStatements || [];
+      const orders = pendingSOs || [];
+      const today = new Date();
+      const dueLimit = new Date(today);
+      dueLimit.setDate(today.getDate() + 30); // Immediate Demand = Due within 30 Days
+
+      // Pre-process Pending SOs for efficient matching
+      const preparedOrders = orders.map(so => {
+          const normItemName = normalizeString(so.itemName);
+          const normPartNo = normalizeString(so.partNo);
+          const dueDateObj = so.dueOn ? new Date(so.dueOn) : new Date('9999-12-31');
+          const isDueImmediate = dueDateObj <= dueLimit;
+
+          return {
+            ...so,
+            normItemName,
+            normPartNo,
+            isDueImmediate,
+            balanceQty: typeof so.balanceQty === 'number' ? so.balanceQty : parseFloat(String(so.balanceQty)) || 0
+          };
+      });
+
+      return currentStock.map(item => {
+          const normDesc = normalizeString(item.description);
+          
+          const relevantOrders = preparedOrders.filter(so => {
+              if (so.normItemName && (normDesc.includes(so.normItemName) || so.normItemName.includes(normDesc))) return true;
+              if (so.normPartNo && so.normPartNo.length > 3 && normDesc.includes(so.normPartNo)) return true;
+              return false;
+          });
+
+          const dueOrders = relevantOrders
+              .filter(o => o.isDueImmediate)
+              .reduce((sum, o) => sum + o.balanceQty, 0);
+          
+          const scheduledOrders = relevantOrders
+              .filter(o => !o.isDueImmediate)
+              .reduce((sum, o) => sum + o.balanceQty, 0);
+
+          // Free Stock = Physical Stock - Due Orders (Immediate)
+          // Scheduled orders are future liabilities, not immediate deductions from free stock typically,
+          // but if user wants strictly "Available to Sell", often it's (Stock - All Orders). 
+          // Based on user prompt: "Free Stock Qty - Due order"
+          const freeStock = item.quantity - dueOrders;
+
+          return {
+              ...item,
+              dueOrders,
+              scheduledOrders,
+              freeStock
+          };
+      });
+  }, [stockStatements, pendingSOs]);
+
+  const filteredStock = processedData.filter(item => 
     item.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -127,8 +188,11 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
         <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
                 <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-orange-600 uppercase tracking-wider">Due Orders<br/><span className="text-[9px] font-normal text-gray-400">(&le;30 Days)</span></th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">Scheduled<br/><span className="text-[9px] font-normal text-gray-400">(&gt;30 Days)</span></th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-green-600 uppercase tracking-wider">Free Stock</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
                 </tr>
@@ -136,14 +200,23 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
             <tbody className="bg-white divide-y divide-gray-200">
                 {filteredStock.length > 0 ? filteredStock.map((item, idx) => (
                     <tr key={item.id || idx} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900">{item.description}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.quantity}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">{item.description}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right font-semibold">{item.quantity.toLocaleString()}</td>
+                        <td className={`px-6 py-4 text-sm text-right font-bold ${item.dueOrders > 0 ? 'text-orange-600' : 'text-gray-300'}`}>
+                            {item.dueOrders > 0 ? item.dueOrders.toLocaleString() : '-'}
+                        </td>
+                        <td className={`px-6 py-4 text-sm text-right font-bold ${item.scheduledOrders > 0 ? 'text-blue-600' : 'text-gray-300'}`}>
+                            {item.scheduledOrders > 0 ? item.scheduledOrders.toLocaleString() : '-'}
+                        </td>
+                        <td className={`px-6 py-4 text-sm text-right font-bold ${item.freeStock < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {item.freeStock.toLocaleString()}
+                        </td>
                         <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td className="px-6 py-4 text-sm text-gray-900 text-right">{item.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     </tr>
                 )) : (
                     <tr>
-                        <td colSpan={4} className="px-6 py-10 text-center text-gray-500">No stock items found. Upload a statement.</td>
+                        <td colSpan={7} className="px-6 py-10 text-center text-gray-500">No stock items found. Upload a statement.</td>
                     </tr>
                 )}
             </tbody>
