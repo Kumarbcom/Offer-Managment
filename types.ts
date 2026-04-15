@@ -97,6 +97,7 @@ export interface Quotation {
   modeOfEnquiry: ModeOfEnquiry;
   status: QuotationStatus;
   comments: string;
+  isGstIncluded?: boolean;
   details: QuotationItem[];
 }
 

@@ -66,6 +66,7 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             modeOfEnquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
+            is_gst_included: item.isGstIncluded,
             details: item.details
         };
     }
@@ -195,6 +196,7 @@ export const mapFromSupabase = (tableName: TableName, item: any) => {
             modeOfEnquiry: item.mode_of_enquiry || item.modeOfEnquiry || '',
             status: item.status || 'Open',
             comments: item.comments || '',
+            isGstIncluded: item.is_gst_included || item.isGstIncluded || false,
             details: item.details || []
         };
     }

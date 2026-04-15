@@ -213,6 +213,120 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
     if (!quotations || !salesPersons) return <div className="text-center p-8 text-black font-bold">Synchronizing database...</div>;
 
+    // Chart initialization logic
+    useEffect(() => {
+        if (!filteredQuotations || filteredQuotations.length === 0) return;
+
+        const charts: any[] = [];
+
+        const destroyCharts = () => {
+            charts.forEach(chart => chart.destroy());
+            charts.length = 0;
+        };
+
+        // 1. Funnel Chart (Status Distribution)
+        if (funnelChartRef.current) {
+            const ctx = funnelChartRef.current.getContext('2d');
+            if (ctx) {
+                const data = QUOTATION_STATUSES.map(status => overallStats[status].count);
+                charts.push(new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: QUOTATION_STATUSES,
+                        datasets: [{
+                            label: 'Quotations',
+                            data: data,
+                            backgroundColor: ['#3b82f6', '#10b981', '#14b8a6', '#f43f5e', '#f59e0b'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } }
+                    }
+                }));
+            }
+        }
+
+        // 2. Value Trend (Line Chart)
+        if (lineChartRef.current) {
+            const ctx = lineChartRef.current.getContext('2d');
+            if (ctx) {
+                const sortedByDate = [...filteredQuotations].sort((a, b) => new Date(a.quotationDate).getTime() - new Date(b.quotationDate).getTime());
+                const dateGroups = sortedByDate.reduce((acc, q) => {
+                    const date = q.quotationDate;
+                    acc[date] = (acc[date] || 0) + calculateTotalAmount(q.details);
+                    return acc;
+                }, {} as Record<string, number>);
+
+                const labels = Object.keys(dateGroups);
+                const values = Object.values(dateGroups);
+
+                charts.push(new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels.map(l => new Date(l).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })),
+                        datasets: [{
+                            label: 'Daily Value',
+                            data: values,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { grid: { display: false }, ticks: { font: { size: 8 }, maxRotation: 45 } }, y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 8 }, callback: (v: any) => formatCurrencyCompact(v) } } }
+                    }
+                }));
+            }
+        }
+
+        // 3. Top 5 Customers
+        if (topCustomersChartRef.current) {
+            const ctx = topCustomersChartRef.current.getContext('2d');
+            if (ctx) {
+                const customerValues = filteredQuotations.reduce((acc, q) => {
+                    if (q.customerId) {
+                        const name = customerMap.get(q.customerId) || `Cust ${q.customerId}`;
+                        acc[name] = (acc[name] || 0) + calculateTotalAmount(q.details);
+                    }
+                    return acc;
+                }, {} as Record<string, number>);
+
+                const top5 = Object.entries(customerValues)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 5);
+
+                charts.push(new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: top5.map(([name]) => name),
+                        datasets: [{
+                            data: top5.map(([, val]) => val),
+                            backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9 } } } },
+                        cutout: '60%'
+                    }
+                }));
+            }
+        }
+
+        return destroyCharts;
+    }, [filteredQuotations, overallStats, customerMap]);
+
     return (
         <div className="space-y-3 p-1 md:p-3">
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-slate-100">

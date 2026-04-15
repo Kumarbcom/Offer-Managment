@@ -60,13 +60,13 @@ const NavButton: React.FC<{ onClick: () => void; disabled?: boolean; children: R
     </button>
 );
 
-const ActionButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, title: string }> = ({ onClick, disabled, children, title }) => (
+const ActionButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode, title: string, className?: string }> = ({ onClick, disabled, children, title, className = "" }) => (
     <button
         type="button"
         onClick={onClick}
         disabled={disabled}
         title={title}
-        className="flex items-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold text-black hover:bg-slate-50 hover:shadow-md transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`flex items-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold text-black hover:bg-slate-50 hover:shadow-md transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
         {children}
     </button>
@@ -129,6 +129,11 @@ const Icons = {
             <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" />
             <path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.133 2.845a.75.75 0 0 1 1.06 0l1.72 1.72 1.72-1.72a.75.75 0 1 1 1.06 1.06l-1.72 1.72 1.72 1.72a.75.75 0 1 1-1.06-1.06L12 15.685l-1.72 1.72a.75.75 0 1 1-1.06-1.06l1.72-1.72-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
         </svg>
+    ),
+    Gst: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-600">
+            <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM9 9a.75.75 0 0 0 0 1.5h1.5a.75.75 0 0 1 0 1.5H9a.75.75 0 0 0 0 1.5h1.5a2.25 2.25 0 0 0 0-4.5H9Zm6 0a.75.75 0 0 0 0 1.5h1.5a.75.75 0 0 1 0 1.5H15a.75.75 0 0 0 0 1.5h1.5a2.25 2.25 0 0 0 0-4.5H15Z" clipRule="evenodd" />
+        </svg>
     )
 };
 
@@ -187,6 +192,38 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Custom filename for printing
+  useEffect(() => {
+    if (previewMode !== 'none' && formData && selectedCustomerObj) {
+        const originalTitle = document.title;
+        
+        const id = formData.id;
+        let seq = id;
+        let formattedId = `SKC-QTN-${id}`;
+        
+        if (id >= 2363) {
+            seq = id - 2362;
+            formattedId = `SKC-QTN-${String(seq).padStart(4, '0')}-2026-27`;
+        }
+        
+        const formatDateForFile = (dateStr: string) => {
+            if (!dateStr) return '';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}.${m}.${y}`;
+        };
+        
+        const formattedDate = formatDateForFile(formData.quotationDate);
+        const customerName = selectedCustomerObj.name;
+        
+        // Format: Quotation No 2 - Sri Parijatha Machinery Works Pvt Ltd_SKC-QTN-0002-2026-27 01.04.2026
+        document.title = `Quotation No ${seq} - ${customerName}_${formattedId} ${formattedDate}`;
+        
+        return () => {
+            document.title = originalTitle;
+        };
+    }
+  }, [previewMode, formData, selectedCustomerObj]);
   
   // Logic to determine if the user can edit this quotation
   const isReadOnly = useMemo(() => {
@@ -254,6 +291,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       modeOfEnquiry: 'Customer Email',
       status: 'Open',
       comments: '',
+      isGstIncluded: false,
       details: [createEmptyQuotationItem()],
     };
   }, [userRole, salesPersons, currentUser]); 
@@ -653,7 +691,24 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Quotation Details");
-      XLSX.writeFile(wb, `Quotation_${formData.id || 'New'}_Details.xlsx`);
+      
+      const id = formData.id;
+      let seq = id;
+      let formattedId = `SKC-QTN-${id}`;
+      if (id >= 2363) {
+          seq = id - 2362;
+          formattedId = `SKC-QTN-${String(seq).padStart(4, '0')}-2026-27`;
+      }
+      const formatDateForFile = (dateStr: string) => {
+          if (!dateStr) return '';
+          const [y, m, d] = dateStr.split('-');
+          return `${d}.${m}.${y}`;
+      };
+      const formattedDate = formatDateForFile(formData.quotationDate);
+      const customerName = selectedCustomerObj?.name || 'Customer';
+      const fileName = `Quotation No ${seq} - ${customerName}_${formattedId} ${formattedDate}.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
   };
 
   const currentQuotationIndex = useMemo(() => editingQuotationId === null ? -1 : quotations.findIndex(q => q.id === editingQuotationId), [editingQuotationId, quotations]);
@@ -767,6 +822,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
                 <div className="h-6 border-l border-slate-300 mx-1"></div>
                 <ActionButton onClick={() => setIsStockModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span>Stock Check</span></ActionButton>
+                <ActionButton 
+                    onClick={() => setFormData(prev => prev ? { ...prev, isGstIncluded: !prev.isGstIncluded } : null)} 
+                    title={formData?.isGstIncluded ? "Remove GST" : "Add GST"}
+                    className={formData?.isGstIncluded ? "bg-green-100 text-green-700 border-green-300" : ""}
+                >
+                    <Icons.Gst /><span>{formData?.isGstIncluded ? "GST Added" : "Add GST"}</span>
+                </ActionButton>
             </div>
             
             {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (

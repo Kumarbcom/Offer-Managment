@@ -54,7 +54,10 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
         return acc;
     }, { totalAmount: 0, totalFreight: 0 });
 
-    const grandTotal = totals.totalAmount + totals.totalFreight;
+    const grossTotal = totals.totalAmount + totals.totalFreight;
+    const gstAmount = quotation.isGstIncluded ? grossTotal * 0.18 : 0;
+    const finalGrandTotal = grossTotal + gstAmount;
+
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
     const getPartNoLink = (partNo: string) => {
@@ -181,28 +184,40 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
 
                 <section className="flex justify-end mt-2">
                     <div className="w-1/2 space-y-1 text-sm">
-                        <div className="flex justify-between p-1">
+                        <div className="flex justify-between p-1 border-b">
                             <span className="font-semibold">Subtotal</span>
                             <span>₹{totals.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                         <div className="flex justify-between p-1">
+                         <div className="flex justify-between p-1 border-b">
                             <span className="font-semibold">Total Air Freight</span>
                             <span>₹{totals.totalFreight.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between p-2 bg-slate-100 rounded-md">
-                            <span className="font-bold">Grand Total</span>
-                            <span className="font-bold text-base">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <div className="flex justify-between p-1 border-b">
+                            <span className="font-bold">Gross Total</span>
+                            <span className="font-bold">₹{grossTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
+                        {quotation.isGstIncluded && (
+                            <>
+                                <div className="flex justify-between p-1 border-b">
+                                    <span className="font-bold">GST 18%</span>
+                                    <span className="font-bold">₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between p-2 bg-slate-100 rounded-md mt-1">
+                                    <span className="font-bold">Grand Total</span>
+                                    <span className="font-bold text-base">₹{finalGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </section>
 
-                <p className="font-semibold my-2 text-sm">Amount in Words: {numberToWords(grandTotal)}</p>
+                <p className="font-semibold my-2 text-sm">Amount in Words: {numberToWords(quotation.isGstIncluded ? finalGrandTotal : grossTotal)}</p>
 
                 <section className="border border-slate-200 p-2 rounded-md mt-2 print-no-break">
                     <h3 className="font-bold text-slate-800 mb-1 text-sm">Terms & Conditions:</h3>
                      <ol className="list-decimal list-inside space-y-0.5 text-slate-700">
                         <li><span className="font-semibold">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
-                        <li><span className="font-semibold">Goods Service Tax:</span> GST 18% Or As Applicable at the Time of Delivery.</li>
+                        <li><span className="font-semibold">Goods Service Tax:</span> {quotation.isGstIncluded ? 'GST 18% however if any changes in % will aplcable at the time of despatch' : 'GST 18% Extra on the above Quoted price however if any changes in % will aplcable at the time of despatch'}</li>
                         <li><span className="font-semibold">Delivery:</span> As Mentioned Above, Subject to Prior Sales.</li>
                         <li><span className="font-semibold">Freight:</span> Freight Extra Applicable.</li>
                         <li><span className="font-semibold">Payment terms:</span> {quotation.paymentTerms}</li>
