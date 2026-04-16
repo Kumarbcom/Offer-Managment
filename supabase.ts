@@ -37,36 +37,36 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
         return {
             id: item.id,
             date: item.date,
-            order_no: item.orderNo,
-            party_name: item.partyName,
-            item_name: item.itemName,
-            material_code: item.materialCode,
-            part_no: item.partNo,
-            ordered_qty: item.orderedQty,
-            balance_qty: item.balanceQty,
+            orderNo: item.orderNo,
+            partyName: item.partyName,
+            itemName: item.itemName,
+            materialCode: item.materialCode,
+            partNo: item.partNo,
+            orderedQty: item.orderedQty,
+            balanceQty: item.balanceQty,
             rate: item.rate,
             discount: item.discount,
             value: item.value,
-            due_on: item.dueOn
+            dueOn: item.dueOn
         };
     }
     if (tableName === 'quotations') {
         return {
             id: item.id,
-            quotation_date: item.quotationDate,
-            enquiry_date: item.enquiryDate,
+            quotationDate: item.quotationDate,
+            enquiryDate: item.enquiryDate,
             customerId: item.customerId,
-            contact_person: item.contactPerson,
-            contact_number: item.contactNumber,
+            contactPerson: item.contactPerson,
+            contactNumber: item.contactNumber,
             otherTerms: item.otherTerms,
             paymentTerms: item.paymentTerms,
             preparedBy: item.preparedBy,
             productsBrand: item.productsBrand,
-            sales_person_id: item.salesPersonId,
+            salesPersonId: item.salesPersonId,
             modeOfEnquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
-            is_gst_included: item.isGstIncluded,
+            isGstIncluded: item.isGstIncluded,
             details: item.details
         };
     }
@@ -85,12 +85,12 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             address: item.address,
             city: item.city,
             pincode: item.pincode,
-            gst_no: item.gstNo,
-            contact_person: item.contactPerson,
-            contact_number: item.contactNumber,
+            gstNo: item.gstNo,
+            contactPerson: item.contactPerson,
+            contactNumber: item.contactNumber,
             email: item.email,
             salesPersonId: item.salesPersonId,
-            discount_structure: item.discountStructure
+            discountStructure: item.discountStructure
         };
     }
     if (tableName === 'products') {
@@ -123,9 +123,9 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'stockStatements') {
         return {
             id: item.id,
-            part_no: item.partNo,
+            partNo: item.partNo,
             description: item.description,
-            stock_qty: item.stockQty,
+            stockQty: item.stockQty,
             uom: item.uom
         };
     }
