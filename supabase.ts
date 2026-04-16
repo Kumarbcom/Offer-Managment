@@ -53,20 +53,20 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'quotations') {
         return {
             id: item.id,
-            quotationDate: item.quotationDate,
-            enquiryDate: item.enquiryDate,
+            quotation_date: item.quotationDate,
+            enquiry_date: item.enquiryDate,
             customerId: item.customerId,
-            contactPerson: item.contactPerson,
-            contactNumber: item.contactNumber,
-            otherTerms: item.otherTerms,
-            paymentTerms: item.paymentTerms,
-            preparedBy: item.preparedBy,
-            productsBrand: item.productsBrand,
-            salesPersonId: item.salesPersonId,
-            modeOfEnquiry: item.modeOfEnquiry,
+            contact_person: item.contactPerson,
+            contact_number: item.contactNumber,
+            other_terms: item.otherTerms,
+            payment_terms: item.paymentTerms,
+            prepared_by: item.preparedBy,
+            products_brand: item.productsBrand,
+            sales_person_id: item.salesPersonId,
+            mode_of_enquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
-            isGstIncluded: item.isGstIncluded,
+            is_gst_included: item.isGstIncluded,
             details: item.details
         };
     }
