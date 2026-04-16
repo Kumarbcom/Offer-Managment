@@ -55,15 +55,15 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             id: item.id,
             quotation_date: item.quotationDate,
             enquiry_date: item.enquiryDate,
-            customerId: item.customerId,
+            customer_id: item.customerId,
             contact_person: item.contactPerson,
             contact_number: item.contactNumber,
-            otherTerms: item.otherTerms,
-            paymentTerms: item.paymentTerms,
-            preparedBy: item.preparedBy,
-            productsBrand: item.productsBrand,
+            other_terms: item.otherTerms,
+            payment_terms: item.paymentTerms,
+            prepared_by: item.preparedBy,
+            products_brand: item.productsBrand,
             sales_person_id: item.salesPersonId,
-            modeOfEnquiry: item.modeOfEnquiry,
+            mode_of_enquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
             is_gst_included: item.isGstIncluded,
@@ -89,16 +89,16 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             contact_person: item.contactPerson,
             contact_number: item.contactNumber,
             email: item.email,
-            salesPersonId: item.salesPersonId,
+            sales_person_id: item.salesPersonId,
             discount_structure: item.discountStructure
         };
     }
     if (tableName === 'products') {
         return {
             id: item.id,
-            partNo: item.partNo,
+            part_no: item.partNo,
             description: item.description,
-            hsnCode: item.hsnCode,
+            hsn_code: item.hsnCode,
             prices: item.prices,
             uom: item.uom,
             plant: item.plant,
@@ -108,15 +108,15 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'deliveryChallans') {
         return {
             id: item.id,
-            challanNo: item.challanNo,
-            challanDate: item.challanDate,
-            quotationId: item.quotationId,
-            customerId: item.customerId,
-            contactPerson: item.contactPerson,
-            contactNumber: item.contactNumber,
+            challan_no: item.challanNo,
+            challan_date: item.challanDate,
+            quotation_id: item.quotationId,
+            customer_id: item.customerId,
+            contact_person: item.contactPerson,
+            contact_number: item.contactNumber,
             details: item.details,
             status: item.status,
-            preparedBy: item.preparedBy,
+            prepared_by: item.preparedBy,
             comments: item.comments
         };
     }

@@ -58,7 +58,30 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                         data = await get(tableName);
                     }
                 }
-                setState(data as T[]);
+                
+                // --- MERGE LOGIC ---
+                // If local storage has items that are NOT in Supabase, we merge them 
+                // to prevent data loss from previous sync failures.
+                const primaryKey = tableName === 'users' ? 'name' : 'id';
+                const supabaseKeys = new Set(data.map((item: any) => (item as any)[primaryKey]));
+                const localOnlyItems = (localData || []).filter(item => {
+                    const key = (item as any)[primaryKey];
+                    return key !== undefined && !supabaseKeys.has(key);
+                });
+
+                if (localOnlyItems.length > 0) {
+                    console.log(`[Supabase Sync] Found ${localOnlyItems.length} local items missing from Supabase for '${tableName}'. Merging to prevent data loss.`);
+                    const mergedData = [...data, ...localOnlyItems] as T[];
+                    setState(mergedData);
+                    
+                    // Proactively sync the merged data back to Supabase
+                    // We use the fetched 'data' as previousState so Supabase 'set' sees the local items as new
+                    set(tableName, data as T[], mergedData).catch(err => {
+                        console.warn(`[Supabase Sync] Failed to push merged local data for '${tableName}':`, err);
+                    });
+                } else {
+                    setState(data as T[]);
+                }
             } catch (e) {
                 console.warn(`Supabase error on loading '${tableName}', falling back to local data.`, e);
                 // Do not set a fatal error. Let the app continue with fallback data.

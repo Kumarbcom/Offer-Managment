@@ -381,6 +381,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 </div>
 
                 <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+                    {/* Company Logo Upload Section */}
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm">
+                        <div className="w-10 h-8 flex items-center justify-center bg-slate-50 rounded border border-dashed border-slate-200 overflow-hidden shrink-0">
+                            {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <span className="text-[8px] text-slate-400 font-bold">No Logo</span>}
+                        </div>
+                        <label className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 cursor-pointer uppercase tracking-tight">
+                            {logoUrl ? 'Change Logo' : 'Upload Logo'}
+                            <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
+                        </label>
+                        {logoUrl && (
+                            <button onClick={() => onLogoUpload(null)} className="text-[10px] text-rose-500 font-bold hover:text-rose-600 ml-1">
+                                ✕
+                            </button>
+                        )}
+                    </div>
+
                     <div className="relative w-full md:w-64">
                         <select aria-label="Filter by Sales Person" value={selectedSalesPersonId} onChange={(e) => setSelectedSalesPersonId(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="block w-full pl-4 pr-10 py-2 text-sm border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg bg-slate-50 text-black font-bold transition-all appearance-none" disabled={currentUser.role === 'Sales Person'}>
                             <option value="all">All Sales Persons</option>
@@ -436,37 +452,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 })}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-                <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
-                    <h3 className="text-xs font-black text-black mb-4 uppercase tracking-wide">Company Logo</h3>
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="w-32 h-20 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
-                            {logoUrl ? (
-                                <img src={logoUrl} alt="Company Logo" className="max-w-full max-h-full object-contain" />
-                            ) : (
-                                <span className="text-[10px] text-slate-400 font-bold">No Logo</span>
-                            )}
-                        </div>
-                        <div className="w-full">
-                            <label className="block w-full text-center px-4 py-2 bg-indigo-50 text-indigo-700 text-xs font-black rounded-lg cursor-pointer hover:bg-indigo-100 transition-colors">
-                                {logoUrl ? 'Change Logo' : 'Upload Logo'}
-                                <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
-                            </label>
-                            {logoUrl && (
-                                <button 
-                                    onClick={() => onLogoUpload(null)}
-                                    className="block w-full mt-2 text-center text-[10px] text-rose-500 font-bold hover:underline"
-                                >
-                                    Remove Logo
-                                </button>
-                            )}
-                        </div>
-                        <p className="text-[9px] text-slate-400 text-center leading-tight">
-                            Recommended: Transparent PNG<br/>Max size: 500KB
-                        </p>
-                    </div>
-                </div>
-
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                 <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 lg:col-span-1">
                     <h3 className="text-xs font-black text-black mb-4 uppercase tracking-wide">Quotation Funnel</h3>
                     <div className="h-48"><canvas ref={funnelChartRef}></canvas></div>
