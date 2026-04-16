@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomersByIds, purgeQuotationsBeforeId } from '../supabase';
+import { getCustomersByIds, purgeQuotationsBeforeId, setSetting } from '../supabase';
 
 // Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
@@ -90,13 +90,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         }
     }, [quotations, customerMap]);
 
-    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (ev) => {
+            reader.onload = async (ev) => {
                 if (ev.target?.result) {
-                    onLogoUpload(ev.target.result as string);
+                    const url = ev.target.result as string;
+                    onLogoUpload(url);
+                    try {
+                        await setSetting('company_logo', url);
+                    } catch (error) {
+                        console.error("Failed to save logo to Supabase:", error);
+                        alert("Failed to save logo to cloud storage. It might be too large.");
+                    }
                 }
             };
             reader.readAsDataURL(file);
@@ -403,7 +410,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
                         </label>
                         {logoUrl && (
-                            <button onClick={() => onLogoUpload(null)} className="text-[10px] text-rose-500 font-bold hover:text-rose-600 ml-1">
+                            <button onClick={async () => {
+                                onLogoUpload(null);
+                                try {
+                                    await setSetting('company_logo', null);
+                                } catch (error) {
+                                    console.error("Failed to remove logo from Supabase:", error);
+                                }
+                            }} className="text-[10px] text-rose-500 font-bold hover:text-rose-600 ml-1">
                                 ✕
                             </button>
                         )}

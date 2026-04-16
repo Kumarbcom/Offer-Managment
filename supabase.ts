@@ -2,7 +2,7 @@
 import { supabase } from './supabaseClient';
 import type { Customer, Product, Quotation } from './types';
 
-type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'users' | 'deliveryChallans' | 'stockStatements' | 'pendingSOs';
+type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'users' | 'deliveryChallans' | 'stockStatements' | 'pendingSOs' | 'settings';
 
 const parseSupabaseError = (error: unknown, context?: string): string => {
   const prefix = context ? `${context}: ` : '';
@@ -25,11 +25,45 @@ export const toSupabaseTableName = (name: TableName): string => {
         case 'products': return 'products';
         case 'quotations': return 'quotations';
         case 'users': return 'users';
-        case 'deliveryChallans': return 'delivery_challans';
+        case 'deliveryChallans': return 'delivery_challans'; 
         case 'stockStatements': return 'stock_statement'; 
         case 'pendingSOs': return 'pending_sales_orders'; 
+        case 'settings': return 'settings';
         default: return (name as string).toLowerCase();
     }
+};
+
+const mapSortBy = (tableName: TableName, sortBy: string): string => {
+    if (tableName === 'customers') {
+        switch (sortBy) {
+            case 'gstNo': return 'gst_no';
+            case 'contactPerson': return 'contact_person';
+            case 'contactNumber': return 'contact_number';
+            case 'salesPersonId': return 'sales_person_id';
+            case 'discountStructure': return 'discount_structure';
+            default: return sortBy;
+        }
+    }
+    if (tableName === 'products') {
+        switch (sortBy) {
+            case 'partNo': return 'part_no';
+            case 'hsnCode': return 'hsn_code';
+            default: return sortBy;
+        }
+    }
+    return sortBy;
+};
+
+const getPrimaryKey = (tableName: TableName): string => {
+    if (tableName === 'users') return 'name';
+    if (tableName === 'settings') return 'key';
+    return 'id';
+};
+
+const formatSearchPattern = (term: string): string => {
+    if (!term) return '%';
+    const clean = term.trim().replace(/\*/g, '%');
+    return clean.includes('%') ? clean : `%${clean}%`;
 };
 
 export const mapToSupabase = (tableName: TableName, item: any) => {
@@ -37,17 +71,17 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
         return {
             id: item.id,
             date: item.date,
-            orderNo: item.orderNo,
-            partyName: item.partyName,
-            itemName: item.itemName,
-            materialCode: item.materialCode,
-            partNo: item.partNo,
-            orderedQty: item.orderedQty,
-            balanceQty: item.balanceQty,
+            order_no: item.orderNo,
+            party_name: item.partyName,
+            item_name: item.itemName,
+            material_code: item.materialCode,
+            part_no: item.partNo,
+            ordered_qty: item.orderedQty,
+            balance_qty: item.balanceQty,
             rate: item.rate,
             discount: item.discount,
             value: item.value,
-            dueOn: item.dueOn
+            due_on: item.dueOn
         };
     }
     if (tableName === 'quotations') {
@@ -55,7 +89,7 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             id: item.id,
             quotation_date: item.quotationDate,
             enquiry_date: item.enquiryDate,
-            customerId: item.customerId,
+            customer_id: item.customerId,
             contact_person: item.contactPerson,
             contact_number: item.contactNumber,
             other_terms: item.otherTerms,
@@ -85,20 +119,20 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             address: item.address,
             city: item.city,
             pincode: item.pincode,
-            gstNo: item.gstNo,
-            contactPerson: item.contactPerson,
-            contactNumber: item.contactNumber,
+            gst_no: item.gstNo,
+            contact_person: item.contactPerson,
+            contact_number: item.contactNumber,
             email: item.email,
-            salesPersonId: item.salesPersonId,
-            discountStructure: item.discountStructure
+            sales_person_id: item.salesPersonId,
+            discount_structure: item.discountStructure
         };
     }
     if (tableName === 'products') {
         return {
             id: item.id,
-            partNo: item.partNo,
+            part_no: item.partNo,
             description: item.description,
-            hsnCode: item.hsnCode,
+            hsn_code: item.hsnCode,
             prices: item.prices,
             uom: item.uom,
             plant: item.plant,
@@ -108,24 +142,24 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'deliveryChallans') {
         return {
             id: item.id,
-            challanNo: item.challanNo,
-            challanDate: item.challanDate,
-            quotationId: item.quotationId,
-            customerId: item.customerId,
-            contactPerson: item.contactPerson,
-            contactNumber: item.contactNumber,
+            challan_no: item.challanNo,
+            challan_date: item.challanDate,
+            quotation_id: item.quotationId,
+            customer_id: item.customerId,
+            contact_person: item.contactPerson,
+            contact_number: item.contactNumber,
             details: item.details,
             status: item.status,
-            preparedBy: item.preparedBy,
+            prepared_by: item.preparedBy,
             comments: item.comments
         };
     }
     if (tableName === 'stockStatements') {
         return {
             id: item.id,
-            partNo: item.partNo,
+            part_no: item.partNo,
             description: item.description,
-            stockQty: item.stockQty,
+            stock_qty: item.stockQty,
             uom: item.uom
         };
     }
@@ -323,7 +357,7 @@ export async function get(tableName: TableName): Promise<any[]> {
 export async function clearTable(tableName: TableName): Promise<void> {
     if (!supabase) throw new Error("Supabase client not initialized");
     const supabaseTableName = toSupabaseTableName(tableName);
-    const primaryKey = tableName === 'users' ? 'name' : 'id';
+    const primaryKey = getPrimaryKey(tableName);
     
     const { data, error: fetchError } = await supabase
         .from(supabaseTableName)
@@ -350,24 +384,24 @@ export async function clearTable(tableName: TableName): Promise<void> {
     }
 }
 
-export async function set<T extends { id?: number | string, name?: string }>(tableName: TableName, previousData: T[] | null, newData: T[]): Promise<void> {
+export async function set<T extends { id?: number | string, name?: string, key?: string }>(tableName: TableName, previousData: T[] | null, newData: T[]): Promise<void> {
     if (!supabase) throw new Error("Supabase client not initialized");
 
     const supabaseTableName = toSupabaseTableName(tableName);
-    const primaryKey = tableName === 'users' ? 'name' : 'id';
+    const primaryKey = getPrimaryKey(tableName);
     const isUuidTable = tableName === 'stockStatements' || tableName === 'pendingSOs';
 
     const previousDataMap = new Map<string | number, T>();
     if (previousData) {
         previousData.forEach(item => {
-            const key = primaryKey === 'name' ? item.name : item.id;
+            const key = primaryKey === 'name' ? item.name : (primaryKey === 'key' ? item.key : item.id);
             if (key !== undefined) previousDataMap.set(key, item);
         });
     }
 
     const newDataMap = new Map<string | number, T>();
     newData.forEach(item => {
-        const key = primaryKey === 'name' ? item.name : item.id;
+        const key = primaryKey === 'name' ? item.name : (primaryKey === 'key' ? item.key : item.id);
         if (key !== undefined) newDataMap.set(key, item);
     });
 
@@ -447,15 +481,17 @@ export async function getCustomersPaginated(options: any) {
     const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
     const offset = startAfterDoc || 0;
 
+    const supabaseSortBy = mapSortBy('customers', sortBy);
+
     let query = supabase
         .from('customers')
         .select('*', { count: 'exact' })
-        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .order(supabaseSortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
-    if (filters.name) query = query.ilike('name', `%${filters.name}%`);
-    if (filters.city) query = query.ilike('city', `%${filters.city}%`);
-    if (filters.salesPersonId) query = query.eq('salesPersonId', filters.salesPersonId);
+    if (filters.name) query = query.ilike('name', formatSearchPattern(filters.name));
+    if (filters.city) query = query.ilike('city', formatSearchPattern(filters.city));
+    if (filters.salesPersonId) query = query.eq('sales_person_id', filters.salesPersonId);
 
     const { data, error, count } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers"));
@@ -466,7 +502,7 @@ export async function getCustomersPaginated(options: any) {
 export async function searchCustomers(term: string) { 
     if (!supabase) throw new Error("Supabase client not initialized");
     let query = supabase.from('customers').select('*').limit(50);
-    if (term) query = query.ilike('name', `%${term}%`);
+    if (term) query = query.ilike('name', formatSearchPattern(term));
     else query = query.order('id', { ascending: false });
     const { data, error } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to search customers"));
@@ -506,30 +542,23 @@ export async function getProductsPaginated(options: any) {
     const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
     const offset = startAfterDoc || 0;
 
+    const supabaseSortBy = mapSortBy('products', sortBy);
+
     let query = supabase
         .from('products')
         .select('*')
-        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .order(supabaseSortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
     if (filters.universal) {
-        const cleanInput = filters.universal.replace(/[*%]/g, '').trim();
-        if (cleanInput.length > 0) {
-            const pattern = `%${cleanInput}%`;
-            query = query.or(`partNo.ilike.${pattern},description.ilike.${pattern}`);
-        }
+        const pattern = formatSearchPattern(filters.universal);
+        query = query.or(`part_no.ilike.${pattern},description.ilike.${pattern}`);
     } else {
         if (filters.partNo) {
-            const cleanPartNo = filters.partNo.replace(/[*%]/g, '').trim();
-            if (cleanPartNo) {
-                query = query.ilike('partNo', `%${cleanPartNo}%`);
-            }
+            query = query.ilike('part_no', formatSearchPattern(filters.partNo));
         }
         if (filters.description) {
-            const cleanDesc = filters.description.replace(/[*%]/g, '').trim();
-            if (cleanDesc) {
-                query = query.ilike('description', `%${cleanDesc}%`);
-            }
+            query = query.ilike('description', formatSearchPattern(filters.description));
         }
     }
 
@@ -545,7 +574,7 @@ export async function fetchAllProductsForExport() {
     let from = 0;
     const limit = 1000;
     while (true) {
-        const { data, error } = await supabase.from('products').select('*').order('partNo', { ascending: true }).range(from, from + limit - 1);
+        const { data, error } = await supabase.from('products').select('*').order('part_no', { ascending: true }).range(from, from + limit - 1);
         if (error) throw new Error(parseSupabaseError(error, "Failed to fetch all products"));
         if (!data || data.length === 0) break;
         const mappedBatch = data.map((item: any) => mapFromSupabase('products', item)) as Product[];
@@ -559,7 +588,7 @@ export async function fetchAllProductsForExport() {
 export async function addProductsBatch(products: any[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const mappedProducts = products.map(p => mapToSupabase('products', p));
-    const { error } = await supabase.from('products').upsert(mappedProducts, { onConflict: 'partNo' });
+    const { error } = await supabase.from('products').upsert(mappedProducts, { onConflict: 'part_no' });
     if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
 }
 
@@ -581,11 +610,8 @@ export async function searchProducts(term: string) {
     if (!supabase) throw new Error("Supabase client not initialized");
     let query = supabase.from('products').select('*').limit(20);
     if (term) {
-        const cleanTerm = term.replace(/[*%]/g, '').trim();
-        if (cleanTerm) {
-            const pattern = `%${cleanTerm}%`;
-            query = query.or(`partNo.ilike.${pattern},description.ilike.${pattern}`);
-        }
+        const pattern = formatSearchPattern(term);
+        query = query.or(`part_no.ilike.${pattern},description.ilike.${pattern}`);
     } else {
         query = query.order('id', { ascending: false });
     }
@@ -606,7 +632,28 @@ export async function getProductsByPartNos(partNos: string[]) {
     if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     const distinctPartNos = [...new Set(partNos)];
-    const { data, error } = await supabase.from('products').select('*').in('partNo', distinctPartNos);
+    const { data, error } = await supabase.from('products').select('*').in('part_no', distinctPartNos);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
     return (data || []).map((item: any) => mapFromSupabase('products', item)) as Product[];
+}
+
+export async function getSetting(key: string): Promise<string | null> {
+    if (!supabase) return null;
+    const { data, error } = await supabase.from('settings').select('value').eq('key', key).single();
+    if (error) {
+        if (error.code === 'PGRST116') return null; // Not found
+        console.error(`Error fetching setting ${key}:`, error);
+        return null;
+    }
+    return data?.value || null;
+}
+
+export async function setSetting(key: string, value: string | null): Promise<void> {
+    if (!supabase) return;
+    if (value === null) {
+        await supabase.from('settings').delete().eq('key', key);
+    } else {
+        const { error } = await supabase.from('settings').upsert({ key, value, updated_at: new Date().toISOString() });
+        if (error) throw new Error(parseSupabaseError(error, `Failed to set setting ${key}`));
+    }
 }

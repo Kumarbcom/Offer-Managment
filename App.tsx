@@ -19,6 +19,7 @@ import { DeliveryChallanForm } from './components/DeliveryChallanForm';
 import { StockManager } from './components/StockManager';
 import { PendingSOManager } from './components/PendingSOManager';
 import { supabase } from './supabaseClient';
+import { getSetting, setSetting } from './supabase';
 
 
 function App() {
@@ -36,13 +37,7 @@ function App() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(() => {
-      try {
-          return localStorage.getItem('company_logo');
-      } catch (e) {
-          return null;
-      }
-  });
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   
   const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
   const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
@@ -99,17 +94,20 @@ function App() {
     }
   };
 
-  const handleLogoUpload = (url: string | null) => {
+  useEffect(() => {
+    // Load logo from Supabase
+    getSetting('company_logo').then(url => {
+        if (url) setLogoUrl(url);
+    });
+  }, []);
+
+  const handleLogoUpload = async (url: string | null) => {
     setLogoUrl(url);
     try {
-        if (url) {
-            localStorage.setItem('company_logo', url);
-        } else {
-            localStorage.removeItem('company_logo');
-        }
+        await setSetting('company_logo', url);
     } catch (e) {
-        console.error("Failed to save logo to local storage:", e);
-        alert("Failed to save logo locally (likely due to size limits). It will be reset on reload.");
+        console.error("Failed to save logo to Supabase:", e);
+        alert("Failed to save logo to cloud. It might be too large.");
     }
   };
 
