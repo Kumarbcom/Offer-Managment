@@ -60,6 +60,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count');
     const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
     const [reportMode, setReportMode] = useState<'count' | 'value'>('value');
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleManualSync = async () => {
+        if (isSyncing) return;
+        setIsSyncing(true);
+        try {
+            // Trigger a refresh of all data which will also trigger the merge/sync logic in useOnlineStorage
+            window.location.reload();
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     useEffect(() => {
         if (quotations) {

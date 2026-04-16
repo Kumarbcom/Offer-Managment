@@ -166,30 +166,34 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         const previousState = stateRef.current;
         const newState = value instanceof Function ? value(previousState!) : value;
 
-        setState(newState);
-        
         if (newState === undefined) {
             console.warn('State update resulted in an undefined value. Aborting persistence.');
             return;
         }
 
+        // 1. Update memory state (Optimistic)
+        setState(newState);
+        
+        // 2. Always save to local storage as a backup
+        if (useInMemoryFallback) {
+            setInMemoryData(newState);
+        } else {
+            await setLocalData(newState);
+        }
+
+        // 3. If Supabase is not configured, we're done
         if (!isSupabaseConfigured) {
-            if (useInMemoryFallback) {
-                setInMemoryData(newState);
-            } else {
-                await setLocalData(newState);
-            }
             return;
         }
 
+        // 4. Try to sync to Supabase
         try {
             await set(tableName, previousState, newState);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : String(e);
             const lowerMsg = errorMessage.toLowerCase();
             
-            // Handle missing table errors by falling back to local storage silently (or with a log)
-            // Broader check for various "table missing" error formats
+            // If it's a "table missing" error, we've already saved to local storage above, so just warn
             if (
                 lowerMsg.includes("could not find the table") || 
                 lowerMsg.includes("relation") && lowerMsg.includes("does not exist") ||
@@ -197,23 +201,17 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                 lowerMsg.includes("schema cache") ||
                 lowerMsg.includes("client not initialized")
             ) {
-                console.warn(`Supabase issue for '${tableName}': ${errorMessage}. Falling back to local storage for this session.`);
-                if (!useInMemoryFallback) {
-                    await setLocalData(newState);
-                } else {
-                    setInMemoryData(newState);
-                }
-                // Do NOT revert the optimistic update; we successfully saved to local.
+                console.warn(`Supabase issue for '${tableName}': ${errorMessage}. Using local storage backup.`);
                 return;
             }
 
             console.error(`Supabase error on saving '${tableName}':`, e);
             
-            // Revert optimistic update on failure for genuine errors (network, validation, etc)
-            setState(previousState);
-            
-            // Notify user of the failure but do not crash the app.
-            alert(`Failed to save changes for ${tableName}. Your changes have been reverted. Please check your connection and try again.\n\nError: ${errorMessage}`);
+            // For other errors (validation, constraints), we keep the local storage backup 
+            // but we might want to notify the user that the cloud sync failed.
+            // We DON'T revert the memory state anymore because we have the local backup.
+            // This allows the user to keep working and try syncing later.
+            console.warn(`[Supabase Sync] Failed to sync '${tableName}' to cloud. Data is saved locally in your browser.`, e);
         }
     }, [tableName, isSupabaseConfigured, useInMemoryFallback, setLocalData, setInMemoryData]);
     

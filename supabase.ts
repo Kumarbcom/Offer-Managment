@@ -55,15 +55,15 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             id: item.id,
             quotation_date: item.quotationDate,
             enquiry_date: item.enquiryDate,
-            customer_id: item.customerId,
+            customerId: item.customerId,
             contact_person: item.contactPerson,
             contact_number: item.contactNumber,
-            other_terms: item.otherTerms,
-            payment_terms: item.paymentTerms,
-            prepared_by: item.preparedBy,
-            products_brand: item.productsBrand,
+            otherTerms: item.otherTerms,
+            paymentTerms: item.paymentTerms,
+            preparedBy: item.preparedBy,
+            productsBrand: item.productsBrand,
             sales_person_id: item.salesPersonId,
-            mode_of_enquiry: item.modeOfEnquiry,
+            modeOfEnquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
             is_gst_included: item.isGstIncluded,
@@ -89,16 +89,16 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             contact_person: item.contactPerson,
             contact_number: item.contactNumber,
             email: item.email,
-            sales_person_id: item.salesPersonId,
+            salesPersonId: item.salesPersonId,
             discount_structure: item.discountStructure
         };
     }
     if (tableName === 'products') {
         return {
             id: item.id,
-            part_no: item.partNo,
+            partNo: item.partNo,
             description: item.description,
-            hsn_code: item.hsnCode,
+            hsnCode: item.hsnCode,
             prices: item.prices,
             uom: item.uom,
             plant: item.plant,
@@ -108,15 +108,15 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'deliveryChallans') {
         return {
             id: item.id,
-            challan_no: item.challanNo,
-            challan_date: item.challanDate,
-            quotation_id: item.quotationId,
-            customer_id: item.customerId,
-            contact_person: item.contactPerson,
-            contact_number: item.contactNumber,
+            challanNo: item.challanNo,
+            challanDate: item.challanDate,
+            quotationId: item.quotationId,
+            customerId: item.customerId,
+            contactPerson: item.contactPerson,
+            contactNumber: item.contactNumber,
             details: item.details,
             status: item.status,
-            prepared_by: item.preparedBy,
+            preparedBy: item.preparedBy,
             comments: item.comments
         };
     }
@@ -416,8 +416,16 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
                 return payload;
             });
 
-            const { error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey });
-            if (error) throw new Error(parseSupabaseError(error, `Failed to upsert batch to ${supabaseTableName}`));
+            console.log(`[Supabase] Upserting ${mappedBatch.length} items to ${supabaseTableName}:`, mappedBatch);
+
+            const { data, error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey }).select();
+            
+            if (error) {
+                console.error(`[Supabase] Upsert error for ${supabaseTableName}:`, error);
+                throw new Error(parseSupabaseError(error, `Failed to upsert batch to ${supabaseTableName}`));
+            }
+            
+            console.log(`[Supabase] Upsert success for ${supabaseTableName}. Data returned:`, data);
         }
     }
 }

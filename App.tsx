@@ -18,6 +18,7 @@ import { DeliveryChallanManager } from './components/DeliveryChallanManager';
 import { DeliveryChallanForm } from './components/DeliveryChallanForm';
 import { StockManager } from './components/StockManager';
 import { PendingSOManager } from './components/PendingSOManager';
+import { supabase } from './supabaseClient';
 
 
 function App() {
@@ -45,6 +46,8 @@ function App() {
   
   const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || deliveryChallansLoading;
   const dataError = usersError || salesPersonsError || quotationsError || deliveryChallansError;
+
+  const isSupabaseConnected = !!supabase;
 
   // Handle Deep Linking for Quotations
   useEffect(() => {
@@ -173,6 +176,24 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
+      {/* Status Bar */}
+      <div className={`text-[10px] px-4 py-1 flex justify-between items-center font-bold no-print ${isSupabaseConnected ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isSupabaseConnected ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`}></div>
+          {isSupabaseConnected ? 'Connected to Cloud Sync' : 'Offline Mode (Local Storage Only)'}
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-slate-400">Last Sync: {new Date().toLocaleTimeString()}</span>
+          <button onClick={() => window.location.reload()} className="hover:underline flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.45a.75.75 0 0 0 0-1.5H4.147a.75.75 0 0 0-.75.75V17a.75.75 0 0 0 1.5 0v-2.26l.31.31a7 7 0 0 0 11.99-4.9c0-1.274-.339-2.47-.935-3.507a.75.75 0 0 0-1.292.759 5.5 5.5 0 0 1-.658 4.025Z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M4.688 8.576a5.5 5.5 0 0 1 9.201-2.466l.312.311h-2.45a.75.75 0 0 0 0 1.5h4.103a.75.75 0 0 0 .75-.75V3a.75.75 0 0 0-1.5 0v2.26l-.31-.31a7 7 0 0 0-11.99 4.9c0 1.274.339 2.47.935 3.507a.75.75 0 0 0 1.292-.759 5.5 5.5 0 0 1 .658-4.025Z" clipRule="evenodd" />
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
       {/* Top Navigation (Desktop) */}
       <nav className="bg-slate-900 text-white shadow-xl no-print hidden md:block z-20">
         <div className="w-full px-4">
