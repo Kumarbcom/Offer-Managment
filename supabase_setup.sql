@@ -63,23 +63,33 @@ CREATE TABLE IF NOT EXISTS quotations (
 DO $$ 
 BEGIN
     -- Products Table Migrations
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='partNo') THEN
+        ALTER TABLE products RENAME COLUMN "partNo" TO part_no;
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='part_no') THEN
         ALTER TABLE products ADD COLUMN part_no TEXT;
     END IF;
     
-    -- Ensure part_no is unique (required for upsert onConflict)
+    -- Ensure part_no or partNo is unique (required for upsert onConflict)
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint 
         WHERE conrelid = 'products'::regclass 
-        AND conname = 'products_part_no_key'
+        AND (conname = 'products_part_no_key' OR conname = 'products_partNo_key')
     ) THEN
-        -- We use a DO block to handle potential duplicates gracefully if needed, 
-        -- but here we just try to add it.
         BEGIN
-            ALTER TABLE products ADD CONSTRAINT products_part_no_key UNIQUE (part_no);
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='part_no') THEN
+                ALTER TABLE products ADD CONSTRAINT products_part_no_key UNIQUE (part_no);
+            ELSE
+                ALTER TABLE products ADD CONSTRAINT "products_partNo_key" UNIQUE ("partNo");
+            END IF;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE 'Could not add unique constraint to part_no, possibly due to duplicates';
         END;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='hsnCode') THEN
+        ALTER TABLE products RENAME COLUMN "hsnCode" TO hsn_code;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='hsn_code') THEN
@@ -87,6 +97,10 @@ BEGIN
     END IF;
 
     -- Customers Table Migrations
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='gstNo') THEN
+        ALTER TABLE customers RENAME COLUMN "gstNo" TO gst_no;
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='gst_no') THEN
         ALTER TABLE customers ADD COLUMN gst_no TEXT;
     END IF;
@@ -257,6 +271,28 @@ CREATE TABLE IF NOT EXISTS pending_sales_orders (
     due_on DATE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Enable pg_trgm for faster searching
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Add GIN indexes for faster ilike searches
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='part_no') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_products_part_no_trgm') THEN
+            CREATE INDEX idx_products_part_no_trgm ON products USING gin (part_no gin_trgm_ops);
+        END IF;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='partNo') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_products_partNo_trgm') THEN
+            CREATE INDEX "idx_products_partNo_trgm" ON products USING gin ("partNo" gin_trgm_ops);
+        END IF;
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_products_description_trgm ON products USING gin (description gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_customers_name_trgm ON customers USING gin (name gin_trgm_ops);
 
 -- Enable Realtime for all tables
 DO $$ 

@@ -37,7 +37,7 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
   const [discount, setDiscount] = useState('0');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   useEffect(() => {
     if (debouncedSearchTerm.length < 2) {

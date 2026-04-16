@@ -46,8 +46,8 @@ const mapSortBy = (tableName: TableName, sortBy: string): string => {
     }
     if (tableName === 'products') {
         switch (sortBy) {
-            case 'partNo': return 'part_no';
-            case 'hsnCode': return 'hsn_code';
+            case 'partNo': return 'partNo';
+            case 'hsnCode': return 'hsnCode';
             default: return sortBy;
         }
     }
@@ -130,9 +130,9 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'products') {
         return {
             id: item.id,
-            part_no: item.partNo,
+            partNo: item.partNo,
             description: item.description,
-            hsn_code: item.hsnCode,
+            hsnCode: item.hsnCode,
             prices: item.prices,
             uom: item.uom,
             plant: item.plant,
@@ -546,16 +546,16 @@ export async function getProductsPaginated(options: any) {
 
     let query = supabase
         .from('products')
-        .select('*')
+        .select('id, partNo, description, hsnCode, prices, uom, plant, weight')
         .order(supabaseSortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
     if (filters.universal) {
         const pattern = formatSearchPattern(filters.universal);
-        query = query.or(`part_no.ilike.${pattern},description.ilike.${pattern}`);
+        query = query.or(`partNo.ilike.${pattern},description.ilike.${pattern}`);
     } else {
         if (filters.partNo) {
-            query = query.ilike('part_no', formatSearchPattern(filters.partNo));
+            query = query.ilike('partNo', formatSearchPattern(filters.partNo));
         }
         if (filters.description) {
             query = query.ilike('description', formatSearchPattern(filters.description));
@@ -574,7 +574,7 @@ export async function fetchAllProductsForExport() {
     let from = 0;
     const limit = 1000;
     while (true) {
-        const { data, error } = await supabase.from('products').select('*').order('part_no', { ascending: true }).range(from, from + limit - 1);
+        const { data, error } = await supabase.from('products').select('*').order('partNo', { ascending: true }).range(from, from + limit - 1);
         if (error) throw new Error(parseSupabaseError(error, "Failed to fetch all products"));
         if (!data || data.length === 0) break;
         const mappedBatch = data.map((item: any) => mapFromSupabase('products', item)) as Product[];
@@ -588,7 +588,7 @@ export async function fetchAllProductsForExport() {
 export async function addProductsBatch(products: any[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const mappedProducts = products.map(p => mapToSupabase('products', p));
-    const { error } = await supabase.from('products').upsert(mappedProducts, { onConflict: 'part_no' });
+    const { error } = await supabase.from('products').upsert(mappedProducts, { onConflict: 'partNo' });
     if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
 }
 
@@ -608,10 +608,10 @@ export async function updateProduct(product: any) {
 
 export async function searchProducts(term: string) { 
     if (!supabase) throw new Error("Supabase client not initialized");
-    let query = supabase.from('products').select('*').limit(20);
+    let query = supabase.from('products').select('id, partNo, description, prices, uom, weight').limit(20);
     if (term) {
         const pattern = formatSearchPattern(term);
-        query = query.or(`part_no.ilike.${pattern},description.ilike.${pattern}`);
+        query = query.or(`partNo.ilike.${pattern},description.ilike.${pattern}`);
     } else {
         query = query.order('id', { ascending: false });
     }
@@ -623,7 +623,7 @@ export async function searchProducts(term: string) {
 export async function getProductsByIds(ids: number[]) { 
     if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
-    const { data, error } = await supabase.from('products').select('*').in('id', ids);
+    const { data, error } = await supabase.from('products').select('id, partNo, description, hsnCode, prices, uom, plant, weight').in('id', ids);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by IDs"));
     return (data || []).map((item: any) => mapFromSupabase('products', item)) as Product[];
 }
@@ -632,7 +632,7 @@ export async function getProductsByPartNos(partNos: string[]) {
     if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     const distinctPartNos = [...new Set(partNos)];
-    const { data, error } = await supabase.from('products').select('*').in('part_no', distinctPartNos);
+    const { data, error } = await supabase.from('products').select('id, partNo, description, hsnCode, prices, uom, plant, weight').in('partNo', distinctPartNos);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
     return (data || []).map((item: any) => mapFromSupabase('products', item)) as Product[];
 }
