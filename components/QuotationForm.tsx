@@ -920,7 +920,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         const amount = unitPrice * (item.moq || 0); 
                         const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0; 
                         const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
-                        const currentProduct = fetchedProducts.get(item.productId);
+                        const currentProduct = fetchedProducts.get(item.productId) || (item.productId > 0 ? { id: item.productId, partNo: item.partNo, description: item.description } as Product : null);
                         const optionsForSelect = [...searchedProducts];
                         if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
                             optionsForSelect.unshift(currentProduct);

@@ -47,7 +47,7 @@ const mapSortBy = (tableName: TableName, sortBy: string): string => {
     if (tableName === 'products') {
         switch (sortBy) {
             case 'partNo': return 'partNo';
-            case 'hsnCode': return 'hsnCode';
+            case 'hsnCode': return 'hsn_code';
             default: return sortBy;
         }
     }
@@ -132,7 +132,7 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             id: item.id,
             partNo: item.partNo,
             description: item.description,
-            hsnCode: item.hsnCode,
+            hsn_code: item.hsnCode,
             prices: item.prices,
             uom: item.uom,
             plant: item.plant,
@@ -231,7 +231,11 @@ export const mapFromSupabase = (tableName: TableName, item: any) => {
             status: item.status || 'Open',
             comments: item.comments || '',
             isGstIncluded: item.is_gst_included || item.isGstIncluded || false,
-            details: item.details || []
+            details: (item.details || []).map((d: any) => ({
+                ...d,
+                partNo: d.partNo ?? d.part_no ?? '',
+                productId: Number(d.productId ?? d.product_id ?? 0)
+            }))
         };
     }
     if (tableName === 'salesPersons') {
@@ -278,7 +282,11 @@ export const mapFromSupabase = (tableName: TableName, item: any) => {
             customerId: item.customer_id || item.customerId,
             contactPerson: item.contact_person || item.contactPerson,
             contactNumber: item.contact_number || item.contactNumber,
-            details: item.details,
+            details: (item.details || []).map((d: any) => ({
+                ...d,
+                partNo: d.partNo ?? d.part_no ?? '',
+                productId: Number(d.productId ?? d.product_id ?? 0)
+            })),
             status: item.status,
             preparedBy: item.prepared_by || item.preparedBy,
             comments: item.comments
@@ -546,7 +554,7 @@ export async function getProductsPaginated(options: any) {
 
     let query = supabase
         .from('products')
-        .select('id, partNo, description, hsnCode, prices, uom, plant, weight')
+        .select('id, partNo, description, hsn_code, prices, uom, plant, weight')
         .order(supabaseSortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
@@ -623,7 +631,7 @@ export async function searchProducts(term: string) {
 export async function getProductsByIds(ids: number[]) { 
     if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
-    const { data, error } = await supabase.from('products').select('id, partNo, description, hsnCode, prices, uom, plant, weight').in('id', ids);
+    const { data, error } = await supabase.from('products').select('id, partNo, description, hsn_code, prices, uom, plant, weight').in('id', ids);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by IDs"));
     return (data || []).map((item: any) => mapFromSupabase('products', item)) as Product[];
 }
@@ -632,7 +640,7 @@ export async function getProductsByPartNos(partNos: string[]) {
     if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     const distinctPartNos = [...new Set(partNos)];
-    const { data, error } = await supabase.from('products').select('id, partNo, description, hsnCode, prices, uom, plant, weight').in('partNo', distinctPartNos);
+    const { data, error } = await supabase.from('products').select('id, partNo, description, hsn_code, prices, uom, plant, weight').in('partNo', distinctPartNos);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
     return (data || []).map((item: any) => mapFromSupabase('products', item)) as Product[];
 }
