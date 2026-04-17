@@ -34,6 +34,23 @@ export const toSupabaseTableName = (name: TableName): string => {
 };
 
 const mapSortBy = (tableName: TableName, sortBy: string): string => {
+    if (tableName === 'customers') {
+        switch (sortBy) {
+            case 'gstNo': return 'gst_no';
+            case 'contactPerson': return 'contact_person';
+            case 'contactNumber': return 'contact_number';
+            case 'salesPersonId': return 'sales_person_id';
+            case 'discountStructure': return 'discount_structure';
+            default: return sortBy;
+        }
+    }
+    if (tableName === 'products') {
+        switch (sortBy) {
+            case 'partNo': return 'partNo';
+            case 'hsnCode': return 'hsnCode';
+            default: return sortBy;
+        }
+    }
     return sortBy;
 };
 
@@ -54,36 +71,36 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
         return {
             id: item.id,
             date: item.date,
-            orderNo: item.orderNo,
-            partyName: item.partyName,
-            itemName: item.itemName,
-            materialCode: item.materialCode,
-            partNo: item.partNo,
-            orderedQty: item.orderedQty,
-            balanceQty: item.balanceQty,
+            order_no: item.orderNo,
+            party_name: item.partyName,
+            item_name: item.itemName,
+            material_code: item.materialCode,
+            part_no: item.partNo,
+            ordered_qty: item.orderedQty,
+            balance_qty: item.balanceQty,
             rate: item.rate,
             discount: item.discount,
             value: item.value,
-            dueOn: item.dueOn
+            due_on: item.dueOn
         };
     }
     if (tableName === 'quotations') {
         return {
             id: item.id,
-            quotationDate: item.quotationDate,
-            enquiryDate: item.enquiryDate,
-            customerId: item.customerId,
-            contactPerson: item.contactPerson,
-            contactNumber: item.contactNumber,
-            otherTerms: item.otherTerms,
-            paymentTerms: item.paymentTerms,
-            preparedBy: item.preparedBy,
-            productsBrand: item.productsBrand,
-            salesPersonId: item.salesPersonId,
-            modeOfEnquiry: item.modeOfEnquiry,
+            quotation_date: item.quotationDate,
+            enquiry_date: item.enquiryDate,
+            customer_id: item.customerId,
+            contact_person: item.contactPerson,
+            contact_number: item.contactNumber,
+            other_terms: item.otherTerms,
+            payment_terms: item.paymentTerms,
+            prepared_by: item.preparedBy,
+            products_brand: item.productsBrand,
+            sales_person_id: item.salesPersonId,
+            mode_of_enquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
-            isGstIncluded: item.isGstIncluded,
+            is_gst_included: item.isGstIncluded,
             details: item.details
         };
     }
@@ -102,12 +119,12 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
             address: item.address,
             city: item.city,
             pincode: item.pincode,
-            gstNo: item.gstNo,
-            contactPerson: item.contactPerson,
-            contactNumber: item.contactNumber,
+            gst_no: item.gstNo,
+            contact_person: item.contactPerson,
+            contact_number: item.contactNumber,
             email: item.email,
-            salesPersonId: item.salesPersonId,
-            discountStructure: item.discountStructure
+            sales_person_id: item.salesPersonId,
+            discount_structure: item.discountStructure
         };
     }
     if (tableName === 'products') {
@@ -125,24 +142,24 @@ export const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'deliveryChallans') {
         return {
             id: item.id,
-            challanNo: item.challanNo,
-            challanDate: item.challanDate,
-            quotationId: item.quotationId,
-            customerId: item.customerId,
-            contactPerson: item.contactPerson,
-            contactNumber: item.contactNumber,
+            challan_no: item.challanNo,
+            challan_date: item.challanDate,
+            quotation_id: item.quotationId,
+            customer_id: item.customerId,
+            contact_person: item.contactPerson,
+            contact_number: item.contactNumber,
             details: item.details,
             status: item.status,
-            preparedBy: item.preparedBy,
+            prepared_by: item.preparedBy,
             comments: item.comments
         };
     }
     if (tableName === 'stockStatements') {
         return {
             id: item.id,
-            partNo: item.partNo,
+            part_no: item.partNo,
             description: item.description,
-            stockQty: item.stockQty,
+            stock_qty: item.stockQty,
             uom: item.uom
         };
     }
@@ -449,7 +466,7 @@ export async function set<T extends { id?: number | string, name?: string, key?:
 
 export async function purgeQuotationsBeforeDate(date: string) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('quotations').delete().or(`quotationDate.lt.${date},quotation_date.lt.${date}`);
+    const { error } = await supabase.from('quotations').delete().or(`quotation_date.lt.${date},quotationDate.lt.${date}`);
     if (error) throw new Error(parseSupabaseError(error, `Failed to purge quotations before ${date}`));
 }
 
@@ -474,7 +491,7 @@ export async function getCustomersPaginated(options: any) {
     
     if (filters.name) query = query.ilike('name', formatSearchPattern(filters.name));
     if (filters.city) query = query.ilike('city', formatSearchPattern(filters.city));
-    if (filters.salesPersonId) query = query.or(`salesPersonId.eq.${filters.salesPersonId},sales_person_id.eq.${filters.salesPersonId}`);
+    if (filters.salesPersonId) query = query.or(`sales_person_id.eq.${filters.salesPersonId},salesPersonId.eq.${filters.salesPersonId}`);
 
     const { data, error, count } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers"));
