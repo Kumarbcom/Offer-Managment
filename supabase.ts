@@ -596,7 +596,7 @@ export async function fetchAllProductsForExport() {
 export async function addProductsBatch(products: any[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const mappedProducts = products.map(p => mapToSupabase('products', p));
-    const { error } = await supabase.from('products').upsert(mappedProducts, { onConflict: 'partNo' });
+    const { error } = await supabase.from('products').upsert(mappedProducts, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
 }
 
