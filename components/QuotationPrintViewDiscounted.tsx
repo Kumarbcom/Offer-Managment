@@ -2,12 +2,13 @@
 import React from 'react';
 import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
-
+import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 interface QuotationPrintViewProps {
     quotation: Quotation;
     customer: Customer;
     salesPerson?: SalesPerson;
     logoUrl: string | null;
+    allQuotations: Quotation[];
 }
 
 const numberToWords = (num: number): string => {
@@ -43,7 +44,7 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
 };
 
 
-export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson, logoUrl }) => {
+export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl }) => {
     const totalAmount = (quotation.details || []).reduce((sum, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         return sum + (unitPrice * item.moq);
@@ -87,7 +88,7 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                         <p><span className="font-semibold">Attn:</span> {quotation.contactPerson} ({quotation.contactNumber})</p>
                     </div>
                     <div className="text-right space-y-0.5 border p-2 rounded-md">
-                        <p><span className="font-semibold">Quotation No:</span> {quotation.id > 0 ? `SKC/QTN/${quotation.id}` : 'DRAFT'}</p>
+                        <p><span className="font-semibold">Quotation No:</span> {quotation.id > 0 ? generateFormattedQuotationNumber(quotation, allQuotations) : 'DRAFT'}</p>
                         <p><span className="font-semibold">Date:</span> {new Date(quotation.quotationDate).toLocaleDateString('en-GB')}</p>
                         <p><span className="font-semibold">Enquiry Date:</span> {new Date(quotation.enquiryDate).toLocaleDateString('en-GB')}</p>
                     </div>

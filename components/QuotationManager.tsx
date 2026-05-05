@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
+import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 
 declare var XLSX: any;
 
@@ -187,7 +188,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         return (q.details || []).map(item => {
             const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
             return {
-                'Quotation ID': q.id, 'Date': new Date(q.quotationDate).toLocaleDateString(), 'Customer': getCustomerName(q.customerId), 'Contact Person': q.contactPerson, 'Contact No': q.contactNumber, 'Sales Person': getSalesPersonName(q.salesPersonId), 'Status': q.status, 'Total Amount': quotationTotal,
+                'Quotation No': generateFormattedQuotationNumber(q, quotations || []), 'Date': new Date(q.quotationDate).toLocaleDateString(), 'Customer': getCustomerName(q.customerId), 'Contact Person': q.contactPerson, 'Contact No': q.contactNumber, 'Sales Person': getSalesPersonName(q.salesPersonId), 'Status': q.status, 'Total Amount': quotationTotal,
                 'Part No': item.partNo, 'Description': item.description, 'MOQ': item.moq, 'REQ': item.req, 'Price Source': item.priceSource, 'Base Price': item.price, 'Discount %': item.discount, 'Unit Price': unitPrice, 'Item Amount': unitPrice * item.moq, 'Stock Status': item.stockStatus,
             };
         });
@@ -204,7 +205,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       
       const message = 
         `*Quotation Details*\n` +
-        `QTN No: ${q.id}\n` +
+        `QTN No: ${generateFormattedQuotationNumber(q, quotations || [])}\n` +
         `Date: ${q.quotationDate}\n` +
         `Customer: ${getCustomerName(q.customerId)}\n` +
         `Contact: ${q.contactPerson} (${q.contactNumber})\n` +
@@ -350,7 +351,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 <div className="flex justify-between items-start mb-2">
                     <div>
                          <div className="text-sm font-bold text-indigo-600 flex items-center gap-2" onClick={() => handleEdit(q.id)}>
-                            #{q.id} <span className="text-xs text-black font-normal">{new Date(q.quotationDate).toLocaleDateString()}</span>
+                            {generateFormattedQuotationNumber(q, quotations || [])} <span className="text-xs text-black font-normal">{new Date(q.quotationDate).toLocaleDateString()}</span>
                          </div>
                          <div className="text-sm font-semibold text-black">{getCustomerName(q.customerId)}</div>
                          <div className="text-xs text-black">{q.contactPerson}</div>
@@ -443,7 +444,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         aria-label="Select all"
                       />
                     </th>
-                    <SortableHeader title="ID" sortKey="id" className="w-12" />
+                    <SortableHeader title="Quotation No" sortKey="id" className="w-24" />
                     <SortableHeader title="Date" sortKey="quotationDate" />
                     <SortableHeader title="Customer" sortKey="customer" />
                     <SortableHeader title="Contact" sortKey="contactPerson" />
@@ -468,7 +469,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                             aria-label={`Select quotation ${q.id}`}
                           />
                         </td>
-                        <td className="px-2 py-1 whitespace-nowrap text-black">{q.id}</td>
+                        <td className="px-2 py-1 whitespace-nowrap text-black font-bold">{generateFormattedQuotationNumber(q, quotations || [])}</td>
                         <td className="px-2 py-1 whitespace-nowrap text-black">{new Date(q.quotationDate).toLocaleDateString()}</td>
                         <td className="px-2 py-1 whitespace-nowrap font-medium text-black max-w-[150px] truncate" title={getCustomerName(q.customerId)}>{getCustomerName(q.customerId)}</td>
                         <td className="px-2 py-1 whitespace-nowrap">

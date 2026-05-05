@@ -14,6 +14,7 @@ import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFre
 import { useDebounce } from '../hooks/useDebounce';
 import { useOnlineStorage } from '../hooks/useOnlineStorage';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds } from '../supabase';
+import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 
 declare var XLSX: any;
 
@@ -652,9 +653,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             </div>
           </div>
           <div id="print-area">
-             {previewMode === 'standard' && <QuotationPrintView quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
-             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
-             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+             {previewMode === 'standard' && <QuotationPrintView quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
           </div>
         </div>
     );
@@ -709,7 +710,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-2 gap-y-1 text-xs">
                 <div className="space-y-1">
-                    <FormField label="Quotation ID"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm">{editingQuotationId ?? (formData.id > 0 ? formData.id : "New")}</div></FormField>
+                    <FormField label="Quotation No"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm text-[11px] truncate" title={formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : "New"}>{formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : "New"}</div></FormField>
                     <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
                     <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>

@@ -2,12 +2,14 @@
 import React from 'react';
 import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
+import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 
 interface QuotationPrintViewProps {
     quotation: Quotation;
     customer: Customer;
     salesPerson?: SalesPerson;
     logoUrl: string | null;
+    allQuotations: Quotation[];
 }
 
 const numberToWords = (num: number): string => {
@@ -42,7 +44,7 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
     'Ranjan': 'Sales Coordinator',
 };
 
-export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, customer, salesPerson, logoUrl }) => {
+export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl }) => {
     const totals = (quotation.details || []).reduce((acc, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         const amount = unitPrice * item.moq;
@@ -93,7 +95,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         <p><span className="font-semibold">Attn:</span> {quotation.contactPerson} ({quotation.contactNumber})</p>
                     </div>
                     <div className="text-right space-y-0.5 border p-2 rounded-md">
-                        <p><span className="font-semibold">Quotation No:</span> {quotation.id > 0 ? `SKC/QTN/${quotation.id}` : 'DRAFT'}</p>
+                        <p><span className="font-semibold">Quotation No:</span> {quotation.id > 0 ? generateFormattedQuotationNumber(quotation, allQuotations) : 'DRAFT'}</p>
                         <p><span className="font-semibold">Date:</span> {new Date(quotation.quotationDate).toLocaleDateString('en-GB')}</p>
                         <p><span className="font-semibold">Enquiry Date:</span> {new Date(quotation.enquiryDate).toLocaleDateString('en-GB')}</p>
                     </div>
