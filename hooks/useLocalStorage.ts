@@ -19,8 +19,9 @@ export const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: R
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
     } catch (error) {
       console.error(error);
+      // Re-throw quota errors so the caller (useOnlineStorage) can handle them gracefully
       if (error instanceof Error && (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
-          console.warn("Storage Limit Reached: Local browser storage is full. Data is being synced to cloud instead.");
+          throw error; // Let the caller decide how to handle this
       }
     }
   }, [key, storedValue]);

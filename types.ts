@@ -9,7 +9,7 @@ export interface User {
   role: UserRole;
 }
 
-export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form' | 'stock' | 'pending-so';
+export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form' | 'pending-so' | 'calendar';
 
 export interface SalesPerson {
   id: number;
@@ -72,7 +72,7 @@ export interface QuotationItem {
   };
 }
 
-export type PaymentTerm = typeof PAYMENT_TERMS[number] | (string & {});
+export type PaymentTerm = typeof PAYMENT_TERMS[number];
 export type PreparedBy = typeof PREPARED_BY_LIST[number];
 export type ProductBrand = typeof PRODUCTS_BRANDS[number];
 export type ModeOfEnquiry = typeof MODES_OF_ENQUIRY[number];
@@ -94,7 +94,6 @@ export interface Quotation {
   status: QuotationStatus;
   comments: string;
   details: QuotationItem[];
-  gstAdded: boolean;
 }
 
 export interface DeliveryChallanItem {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, supabaseConfig } from '../supabaseClient';
-import { toSupabaseTableName, get, set, countRecords, clearTable } from '../supabase';
+import { toSupabaseTableName, get, set, clearTable } from '../supabase';
 import { USERS } from '../auth';
 
 export const StorageManager: React.FC = () => {
