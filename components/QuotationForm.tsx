@@ -176,6 +176,29 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Update document title for printing to set default PDF filename
+  useEffect(() => {
+    if (previewMode !== 'none' && formData && selectedCustomerObj) {
+        try {
+            // Format: Customer Name_SKC-QTN-XXXX-YYYY-YY DD.MM.YYYY
+            const dateStr = formData.quotationDate || new Date().toISOString().split('T')[0];
+            const dateParts = dateStr.split('-');
+            const formattedDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : dateStr;
+            
+            const qtnNo = generateFormattedQuotationNumber(formData, quotations || []).replace(/\//g, '-');
+            const customerName = (selectedCustomerObj.name || 'Customer').trim();
+            
+            const newTitle = `${customerName}_${qtnNo} ${formattedDate}`;
+            document.title = newTitle;
+        } catch (err) {
+            console.error('Error setting print title:', err);
+            document.title = "Quotation_" + (formData.id || 'Draft');
+        }
+    } else {
+        document.title = "Siddhi Kabel Corporation Pvt Ltd";
+    }
+  }, [previewMode, formData, selectedCustomerObj, quotations]);
   
   // Logic to determine if the user can edit this quotation
   const isReadOnly = useMemo(() => {
@@ -648,7 +671,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           <div className="bg-white shadow-md p-2 mb-4 flex justify-between items-center no-print sticky top-0 z-30">
             <h2 className="text-lg font-bold text-black">Preview</h2>
             <div className="flex items-center space-x-2">
-              <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Print</button>
+              <button 
+                onClick={() => {
+                  const dateStr = formData.quotationDate || new Date().toISOString().split('T')[0];
+                  const dateParts = dateStr.split('-');
+                  const formattedDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : dateStr;
+                  const qtnNo = generateFormattedQuotationNumber(formData, quotations || []).replace(/\//g, '-');
+                  const customerName = (selectedCustomerObj?.name || 'Customer').trim();
+                  document.title = `${customerName}_${qtnNo} ${formattedDate}`;
+                  window.print();
+                }} 
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300"
+              >
+                Print
+              </button>
               <button onClick={() => setPreviewMode('none')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Close</button>
             </div>
           </div>
