@@ -189,14 +189,6 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                 return;
             }
 
-            // Handle localStorage quota exceeded
-            if (isQuotaError) {
-                console.error(`Browser localStorage is full for '${tableName}'.`, e);
-                setState(previousState); // revert
-                alert(`Storage Error: Your browser's local storage is full.\n\nThis usually happens because too much data (products, orders, etc.) is being saved locally.\n\nFix: Ensure Supabase is connected — the app will then save to the cloud instead of the browser.\n\nIf Supabase is connected and this still happens, try clearing browser storage: Open DevTools → Application → Local Storage → Clear All.`);
-                return;
-            }
-
             console.error(`Supabase error on saving '${tableName}':`, e);
             
             // Revert optimistic update on failure for genuine errors (network, validation, etc)
