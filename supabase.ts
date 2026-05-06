@@ -59,21 +59,21 @@ const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'quotations') {
         return {
             id: item.id,
-            quotation_date: item.quotationDate,
-            enquiry_date: item.enquiryDate,
-            customer_id: item.customerId,
-            contact_person: item.contactPerson,
-            contact_number: item.contactNumber || item.contactNo,
-            other_terms: item.otherTerms,
-            payment_terms: item.paymentTerms,
-            prepared_by: item.preparedBy,
-            products_brand: item.productsBrand,
-            sales_person_id: item.salesPersonId,
-            mode_of_enquiry: item.modeOfEnquiry,
-            status: item.status,
-            comments: item.comments,
-            details: item.details,
-            gst_added: item.gstAdded
+            quotation_date: item.quotationDate || new Date().toISOString().split('T')[0],
+            enquiry_date: item.enquiryDate || new Date().toISOString().split('T')[0],
+            customer_id: item.customerId || 0,
+            contact_person: item.contactPerson || '',
+            contact_number: item.contactNumber || item.contactNo || '',
+            other_terms: item.otherTerms || '',
+            payment_terms: item.paymentTerms || '',
+            prepared_by: item.preparedBy || 'Kumar',
+            products_brand: item.productsBrand || 'Lapp',
+            sales_person_id: item.salesPersonId || 0,
+            mode_of_enquiry: item.modeOfEnquiry || 'Customer Email',
+            status: item.status || 'Open',
+            comments: item.comments || '',
+            details: item.details || [],
+            gst_added: item.gstAdded || false
         };
     }
     if (tableName === 'customers') {

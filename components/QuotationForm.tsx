@@ -518,11 +518,27 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!formData || !formData.customerId) {
-        alert("Please select a customer."); return;
+    
+    // LOGGING FOR DEBUGGING VANDITA ISSUE
+    console.log("Submitting Quotation:", {
+        id: formData?.id,
+        customerId: formData?.customerId,
+        quotationDate: formData?.quotationDate,
+        salesPersonId: formData?.salesPersonId
+    });
+
+    if (!formData || !formData.customerId || formData.customerId === 0) {
+        alert("Please select a valid customer from the dropdown list before saving."); return;
     }
-    if (!formData.quotationDate || isNaN(new Date(formData.quotationDate).getTime())) {
-        alert("Please enter a valid Quotation Date."); return;
+    const validatedDate = new Date(formData.quotationDate);
+    if (!formData.quotationDate || isNaN(validatedDate.getTime())) {
+        alert(`The Quotation Date ("${formData.quotationDate}") is invalid. Please select a valid date.`); 
+        return;
+    }
+    // Final check for empty details
+    if (!formData.details || formData.details.length === 0 || (formData.details.length === 1 && !formData.details[0].productId)) {
+        alert("Please add at least one product with a valid Part Number.");
+        return;
     }
     try {
       const isNew = editingQuotationId === null || formData.id === 0;
@@ -648,7 +664,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       });
 
       // 4. Combine all into AOA
-      const allRows = [...headerRows, tableHeaders, ...itemRows];
+      const allRows: any[][] = [...headerRows, tableHeaders, ...itemRows];
 
       // 5. Summary Section (Subtotal, GST, Grand Total)
       const startRowIndex = headerRows.length + 1; // 1-indexed row where headers are
