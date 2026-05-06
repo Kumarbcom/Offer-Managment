@@ -1,7 +1,10 @@
 import type { Quotation } from '../types';
 
 export function getFinancialYear(dateStr: string): { startYear: number, endYear: number, fyString: string } {
-    const d = new Date(dateStr);
+    let d = new Date(dateStr);
+    if (isNaN(d.getTime())) {
+        d = new Date(); // Fallback to today if date is invalid
+    }
     const year = d.getFullYear();
     const month = d.getMonth(); // 0-indexed, 3 is April
     

@@ -499,6 +499,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     if (!formData || !formData.customerId) {
         alert("Please select a customer."); return;
     }
+    if (!formData.quotationDate || isNaN(new Date(formData.quotationDate).getTime())) {
+        alert("Please enter a valid Quotation Date."); return;
+    }
     try {
       const isNew = editingQuotationId === null || formData.id === 0;
       

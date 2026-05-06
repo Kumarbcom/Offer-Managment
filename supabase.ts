@@ -72,7 +72,8 @@ const mapToSupabase = (tableName: TableName, item: any) => {
             mode_of_enquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
-            details: item.details
+            details: item.details,
+            gst_added: item.gstAdded
         };
     }
     if (tableName === 'customers') {
@@ -148,7 +149,8 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
             modeOfEnquiry: item.mode_of_enquiry || item.modeOfEnquiry || '',
             status: item.status || 'Open',
             comments: item.comments || '',
-            details: item.details || []
+            details: item.details || [],
+            gstAdded: item.gst_added || item.gstAdded || false
         };
     }
     if (tableName === 'customers') {
