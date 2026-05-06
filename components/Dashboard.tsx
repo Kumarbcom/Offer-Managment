@@ -268,15 +268,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         if (!lineChartRef.current || typeof Chart === 'undefined') return;
 
         const dataByDate = filteredQuotations.reduce((acc, q) => {
-            const date = q.quotationDate;
-            acc[date] = (acc[date] || 0) + calculateTotalAmount(q.details);
+            if (!q.quotationDate) return acc;
+            const d = new Date(q.quotationDate);
+            if (isNaN(d.getTime())) return acc;
+            
+            const dateStr = q.quotationDate; // Keep the original string for sorting if it's YYYY-MM-DD
+            acc[dateStr] = (acc[dateStr] || 0) + calculateTotalAmount(q.details);
             return acc;
         }, {} as Record<string, number>);
 
         const sortedDates = Object.keys(dataByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
         const compactLabels = sortedDates.map(dateStr => {
             const date = new Date(dateStr);
-            return `${date.getDate()}/${date.getMonth() + 1}`;
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = date.toLocaleString('default', { month: 'short' });
+            return `${day}-${month}`;
         });
         const chartData = sortedDates.map(date => dataByDate[date]);
 
@@ -349,18 +355,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         };
 
         const dailyData = filteredQuotations.reduce((acc, q) => {
-            const date = q.quotationDate;
+            if (!q.quotationDate) return acc;
+            const d = new Date(q.quotationDate);
+            if (isNaN(d.getTime())) return acc;
+
+            const dateStr = q.quotationDate;
             const spName = salesPersons.find(sp => sp.id === q.salesPersonId)?.name || 'Unknown';
-            if (!acc[date]) acc[date] = {};
+            if (!acc[dateStr]) acc[dateStr] = {};
             const valueToAdd = barChartMode === 'count' ? 1 : calculateTotalAmount(q.details);
-            acc[date][spName] = (acc[date][spName] || 0) + valueToAdd;
+            acc[dateStr][spName] = (acc[dateStr][spName] || 0) + valueToAdd;
             return acc;
         }, {} as Record<string, Record<string, number>>);
 
         const sortedDates = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
         const compactLabels = sortedDates.map(dateStr => {
             const date = new Date(dateStr);
-            return `${date.getDate()}/${date.getMonth() + 1}`;
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = date.toLocaleString('default', { month: 'short' });
+            return `${day}-${month}`;
         });
 
         const datasets = salesPersons.map(sp => ({
