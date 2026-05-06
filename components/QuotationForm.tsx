@@ -600,42 +600,119 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !formData.customerId) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
   
   const handleExportExcel = () => {
-      if (!formData || !formData.details.length) {
-          alert("No data to export.");
+      if (!formData || !formData.details.length || !selectedCustomerObj) {
+          alert("No data to export. Please select a customer and add items.");
           return;
       }
 
-      const data = formData.details.map((item, index) => {
-          const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+      const wb = XLSX.utils.book_new();
+      
+      // Helper to format currency
+      const fmt = (val: number) => parseFloat((val || 0).toFixed(2));
+
+      // 1. Prepare Header Info (Quotation Identity)
+      const headerRows = [
+          ["QUOTATION", "", "", "", "", "", "", "", "", ""],
+          ["", "", "", "", "", "", "", "", "", ""],
+          ["TO:", selectedCustomerObj.name.toUpperCase(), "", "", "", "QUOTATION NO:", generateFormattedQuotationNumber(formData, quotations)],
+          ["ADDRESS:", selectedCustomerObj.address, "", "", "", "DATE:", formData.quotationDate],
+          ["CITY:", selectedCustomerObj.city, "", "", "", "ENQUIRY DATE:", formData.enquiryDate],
+          ["CONTACT:", formData.contactPerson, "", "", "", "SALES PERSON:", salesPersons.find(s => s.id === formData.salesPersonId)?.name || 'N/A'],
+          ["PHONE:", formData.contactNumber, "", "", "", "MODE:", formData.modeOfEnquiry],
+          ["", "", "", "", "", "", "", "", "", ""],
+      ];
+
+      // 2. Table Column Headers
+      const tableHeaders = [
+          'SL NO', 'PART NO', 'DESCRIPTION', 'MOQ', 'UOM', 'LIST PRICE', 'DISCOUNT %', 'NET PRICE', 'TOTAL AMOUNT', 'STOCK STATUS'
+      ];
+
+      // 3. Item Data Rows
+      const itemRows = formData.details.map((item, index) => {
+          const disc = parseFloat(String(item.discount)) || 0;
+          const unitPrice = item.price * (1 - disc / 100);
           const amount = unitPrice * (item.moq || 0);
           
-          const weightPerMtr = item.airFreightDetails?.weightPerMtr || 0;
-          const airFreightPerUnit = item.airFreight ? (weightPerMtr / 1000 * 150) : 0;
-          const airFreightTotal = airFreightPerUnit * (item.moq || 0);
-
-          return {
-              'Sl No': index + 1,
-              'Part No': item.partNo,
-              'Description': item.description,
-              'MOQ': item.moq,
-              'REQ': item.req,
-              'UOM': item.uom,
-              'List Price': item.price,
-              'Discount %': item.discount,
-              'Net Unit Price': unitPrice,
-              'Total Amount': amount,
-              'Stock Status': item.stockStatus,
-              'Air Freight': item.airFreight ? 'Yes' : 'No',
-              'Air Freight Weight (kg/m)': weightPerMtr,
-              'Air Freight Per Unit': airFreightPerUnit,
-              'Air Freight Amount': airFreightTotal
-          };
+          return [
+              index + 1,
+              item.partNo,
+              item.description,
+              item.moq,
+              item.uom,
+              fmt(item.price),
+              fmt(disc),
+              fmt(unitPrice),
+              fmt(amount),
+              item.stockStatus
+          ];
       });
 
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Quotation Details");
-      XLSX.writeFile(wb, `Quotation_${formData.id || 'New'}_Details.xlsx`);
+      // 4. Combine all into AOA
+      const allRows = [...headerRows, tableHeaders, ...itemRows];
+
+      // 5. Summary Section (Subtotal, GST, Grand Total)
+      const startRowIndex = headerRows.length + 1; // 1-indexed row where headers are
+      const lastDataRow = startRowIndex + itemRows.length;
+      
+      // Subtotal Row
+      allRows.push(["", "", "", "", "", "", "", "SUBTOTAL:", { f: `SUM(I${startRowIndex + 1}:I${lastDataRow})`, t: 'n', z: '#,##0.00' }]);
+      
+      if (formData.gstAdded) {
+          const subtotalCell = `I${lastDataRow + 1}`;
+          allRows.push(["", "", "", "", "", "", "", "GST (18%):", { f: `${subtotalCell}*0.18`, t: 'n', z: '#,##0.00' }]);
+          allRows.push(["", "", "", "", "", "", "", "GRAND TOTAL:", { f: `${subtotalCell}*1.18`, t: 'n', z: '#,##0.00' }]);
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+      // 6. Column Widths
+      ws['!cols'] = [
+          { wch: 8 },   // SL NO
+          { wch: 25 },  // PART NO
+          { wch: 45 },  // DESCRIPTION
+          { wch: 10 },  // MOQ
+          { wch: 8 },   // UOM
+          { wch: 12 },  // LIST PRICE
+          { wch: 12 },  // DISCOUNT %
+          { wch: 12 },  // NET PRICE
+          { wch: 18 },  // TOTAL AMOUNT
+          { wch: 15 }   // STOCK STATUS
+      ];
+
+      // 7. Styling & Number Formatting (Iteration)
+      // Note: Standard XLSX library ignores 's' (style) property. 
+      // But we apply it here in case a styling-compatible version is loaded.
+      const cellStyle = { font: { name: "Cambria", sz: 10 } };
+      const headerStyle = { font: { name: "Cambria", sz: 10, bold: true }, fill: { fgColor: { rgb: "EFEFEF" } }, border: { bottom: { style: "thin" } } };
+
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+              const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+              if (!ws[cellRef]) continue;
+              
+              // Apply Default Font
+              ws[cellRef].s = { ...cellStyle };
+
+              // Highlight Table Headers
+              if (R === headerRows.length) {
+                  ws[cellRef].s = { ...headerStyle };
+              }
+
+              // Apply Number Formatting (Col F, G, H, I are prices/amounts)
+              if ([5, 6, 7, 8].includes(C) && R > headerRows.length) {
+                  ws[cellRef].z = '#,##0.00';
+              }
+              
+              // Style Summary Labels
+              if (C === 7 && R >= lastDataRow) {
+                   ws[cellRef].s = { ...cellStyle, font: { ...cellStyle.font, bold: true } };
+              }
+          }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, "Quotation");
+      XLSX.writeFile(wb, `SKC_QTN_${formData.id || 'New'}_${selectedCustomerObj.name.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
   };
 
   const currentQuotationIndex = useMemo(() => editingQuotationId === null ? -1 : quotations.findIndex(q => q.id === editingQuotationId), [editingQuotationId, quotations]);
