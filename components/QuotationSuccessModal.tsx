@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import type { Quotation, Customer, SalesPerson } from '../types';
 
 interface QuotationSuccessModalProps {
@@ -11,6 +10,7 @@ interface QuotationSuccessModalProps {
   onPrint: (type: 'standard' | 'discounted' | 'withAirFreight') => void;
   onExportExcel: (type: 'standard' | 'discounted' | 'withAirFreight') => void;
 }
+
 export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
   isOpen,
   onClose,
@@ -20,10 +20,11 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
   onPrint,
   onExportExcel,
 }) => {
-  const [outputType, setOutputType] = React.useState<'standard' | 'discounted' | 'withAirFreight'>('standard');
+  const [outputType, setOutputType] = useState<'standard' | 'discounted' | 'withAirFreight'>('standard');
+  
   if (!isOpen || !quotation) return null;
 
-  const calculateTotal = (details: typeof quotation.details) => {
+  const calculateTotal = (details: any[]) => {
     if (!details || !Array.isArray(details)) return 0;
     return details.reduce((sum, item) => {
       const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
@@ -80,39 +81,29 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
           <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
             <p className="text-gray-500 text-xs uppercase mb-1">Customer</p>
             <p className="font-bold text-gray-800 text-sm">{customer?.name || 'Unknown Customer'}</p>
-            <div className="mt-2 flex items-start gap-2">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-               </svg>
-               <div>
-                 <p className="text-xs font-medium text-gray-700">{quotation.contactPerson}</p>
-                 <p className="text-xs text-gray-500">{quotation.contactNumber}</p>
-               </div>
-            </div>
           </div>
 
-          <div className="flex justify-between items-center border-t border-dashed border-gray-200 pt-3">
-            <span className="text-gray-600 font-medium">Total Value</span>
-            <span className="text-xl font-bold text-indigo-600">₹{totalValue.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
-          </div>
-
-          {/* Output Type Selection */}
           <div className="space-y-2">
             <p className="text-gray-500 text-xs uppercase font-bold">Select Output Type:</p>
             <div className="grid grid-cols-3 gap-2">
-                {[
-                    { id: 'standard', label: 'Standard' },
-                    { id: 'discounted', label: 'Discount' },
-                    { id: 'withAirFreight', label: 'Air Freight' }
-                ].map(type => (
-                    <button
-                        key={type.id}
-                        onClick={() => setOutputType(type.id as any)}
-                        className={`py-1.5 px-1 text-[10px] font-bold rounded-md border transition-all ${outputType === type.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                    >
-                        {type.label}
-                    </button>
-                ))}
+              <button
+                onClick={() => setOutputType('standard')}
+                className={`py-1.5 px-1 text-[10px] font-bold rounded-md border transition-all ${outputType === 'standard' ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                Standard
+              </button>
+              <button
+                onClick={() => setOutputType('discounted')}
+                className={`py-1.5 px-1 text-[10px] font-bold rounded-md border transition-all ${outputType === 'discounted' ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                Discount
+              </button>
+              <button
+                onClick={() => setOutputType('withAirFreight')}
+                className={`py-1.5 px-1 text-[10px] font-bold rounded-md border transition-all ${outputType === 'withAirFreight' ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                Air Freight
+              </button>
             </div>
           </div>
 
@@ -148,13 +139,12 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
             Share to Sales Person
           </button>
 
-            <button 
-              onClick={onClose}
-              className="w-full py-2 px-4 text-gray-500 text-sm font-medium hover:text-gray-800 transition-colors"
-            >
-              Close
-            </button>
-          </div>
+          <button 
+            onClick={onClose}
+            className="w-full py-1 px-4 text-gray-500 text-[11px] font-medium hover:text-gray-800 transition-colors"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
