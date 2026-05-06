@@ -79,8 +79,9 @@ const Icons = {
         </svg>
     ),
     PrintStandard: () => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-slate-600">
-            <path fillRule="evenodd" d="M7.875 1.5C6.839 1.5 6 2.34 6 3.375v2.99c-.426.053-.851.11-1.274.174-1.454.218-2.476 1.483-2.476 2.917v6.294a3 3 0 003 3h.27l-.155 1.705A1.875 1.875 0 007.232 22.5h9.536a1.875 1.875 0 001.867-2.045l-.155-1.705h.27a3 3 0 003-3V9.456c0-1.434-1.022-2.7-2.476-2.917A48.816 48.816 0 0018 6.366V3.375c0-1.036-.84-1.875-1.875-1.875h-8.25zM16.5 6.205v-2.83A.375.375 0 0016.125 3h-8.25a.375.375 0 00-.375.375v2.83a49.353 49.353 0 019 0zm-.217 8.295a.75.75 0 10-1.483.22 48.575 48.575 0 01-5.6 0 .75.75 0 00-1.483-.22 50.05 50.05 0 005.6 0v.002a50.05 50.05 0 002.966-.002zM7.363 18.93a.375.375 0 00.374.342h9.526a.375.375 0 00.374-.342l.312-3.435c-3.2.68-6.57.68-9.77 0l.312 3.435z" clipRule="evenodd" />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-slate-700">
+            <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z" clipRule="evenodd" />
+            <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" />
         </svg>
     ),
     PrintDiscount: () => (
@@ -90,7 +91,8 @@ const Icons = {
     ),
     PrintAirFreight: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-sky-500">
-            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+            <path d="M1.5 16.875A2.625 2.625 0 014.125 14.25h15.75a2.625 2.625 0 012.625 2.625v2.25A2.625 2.625 0 0119.875 21.75H4.125A2.625 2.625 0 011.5 19.125v-2.25zM16.5 18a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5z" />
+            <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v5.625a.75.75 0 01-.75.75H1.5a.75.75 0 01-.75-.75V5.25a5.23 5.23 0 011.279-3.434 9.768 9.768 0 0110.942 0zm-3.721 4.684a.75.75 0 00-1.06 0l-2.25 2.25a.75.75 0 101.06 1.06l.97-.97v3.91a.75.75 0 001.5 0V8.81l.97.97a.75.75 0 101.06-1.06l-2.25-2.25z" />
         </svg>
     ),
     AddCustomer: () => (
@@ -753,9 +755,12 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
                 {!isReadOnly && <ActionButton onClick={handleSubmit} title="Save Quotation"><Icons.Save /><span>Save</span></ActionButton>}
                 <div className="h-6 border-l border-slate-300 mx-1"></div>
-                <ActionButton onClick={() => handlePreview('standard')} title="Preview Standard"><Icons.PrintStandard /><span>Preview</span></ActionButton>
-                <ActionButton onClick={() => handlePreview('discounted')} title="Preview with Discount"><Icons.PrintDiscount /><span>Discounted</span></ActionButton>
-                <ActionButton onClick={() => handlePreview('withAirFreight')} title="Preview with Air Freight"><Icons.PrintAirFreight /><span>Air Freight</span></ActionButton>
+                <div className="flex items-center bg-white border border-slate-200 rounded-md p-1 shadow-sm gap-1">
+                    <span className="text-[10px] font-bold text-slate-500 px-1 uppercase border-r border-slate-200 mr-1">Print:</span>
+                    <ActionButton onClick={() => handlePreview('standard')} title="Print Standard"><Icons.PrintStandard /><span>Standard</span></ActionButton>
+                    <ActionButton onClick={() => handlePreview('discounted')} title="Print Discount"><Icons.PrintDiscount /><span>Discount</span></ActionButton>
+                    <ActionButton onClick={() => handlePreview('withAirFreight')} title="Print Airfreight"><Icons.PrintAirFreight /><span>Airfreight</span></ActionButton>
+                </div>
                 <div className="h-6 border-l border-slate-300 mx-1"></div>
                 <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span>Export Excel</span></ActionButton>
                 <div className="h-6 border-l border-slate-300 mx-1"></div>
