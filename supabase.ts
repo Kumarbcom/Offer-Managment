@@ -489,7 +489,26 @@ export async function searchProducts(term: string) {
     }
     const { data, error } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to search products"));
-    return (data || []) as Product[];
+    
+    const results = (data || []) as Product[];
+    
+    // Sort results by price (low to high)
+    // We use the most recent/current price as a reference
+    const now = new Date();
+    results.sort((a, b) => {
+        const getPrice = (p: Product) => {
+            if (!p.prices || p.prices.length === 0) return 0;
+            const active = p.prices.find(pr => {
+                const from = new Date(pr.validFrom);
+                const to = new Date(pr.validTo);
+                return now >= from && now <= to;
+            }) || p.prices[0];
+            return active.lp || active.sp || 0;
+        };
+        return getPrice(a) - getPrice(b);
+    });
+
+    return results;
 }
 
 export async function getProductsByIds(ids: number[]) { 
