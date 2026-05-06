@@ -424,29 +424,16 @@ export async function getProductsPaginated(options: any) {
         .range(offset, offset + pageLimit - 1);
     
     if (filters.universal) {
-        const cleanInput = filters.universal.replace(/[\s,.-]/g, '');
-        if (cleanInput.length > 0) {
-            const fuzzyTerm = cleanInput.split('').join('%');
-            const pattern = `%${fuzzyTerm}%`;
-            query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
-        } else {
-             const pattern = `%${filters.universal}%`;
-             query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
-        }
+        const pattern = `%${filters.universal.replace(/\*/g, '%').replace(/\./g, '_')}%`;
+        query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
     } else {
         if (filters.partNo) {
-            const terms = filters.partNo.split('*').map((term: string) => term.trim()).filter(Boolean);
-            if (terms.length > 0) {
-                const orFilter = terms.map((term: string) => `partNo.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
-                query = query.or(orFilter);
-            }
+            const pattern = `%${filters.partNo.replace(/\*/g, '%').replace(/\./g, '_')}%`;
+            query = query.ilike('partNo', pattern);
         }
         if (filters.description) {
-            const terms = filters.description.split('*').map((term: string) => term.trim()).filter(Boolean);
-            if (terms.length > 0) {
-                const orFilter = terms.map((term: string) => `description.ilike."*${term.replace(/"/g, '""')}*"`).join(',');
-                query = query.or(orFilter);
-            }
+            const pattern = `%${filters.description.replace(/\*/g, '%').replace(/\./g, '_')}%`;
+            query = query.ilike('description', pattern);
         }
     }
 
@@ -495,12 +482,8 @@ export async function searchProducts(term: string) {
     if (!supabase) throw new Error("Supabase client not initialized");
     let query = supabase.from('products').select('*').limit(50);
     if (term) {
-        const terms = term.split('*').map(t => t.trim().replace(/"/g, '""')).filter(Boolean);
-        if (terms.length > 0) {
-            const partNoFilters = terms.map(t => `partNo.ilike."*${t}*"`).join(',');
-            const descriptionFilters = terms.map(t => `description.ilike."*${t}*"`).join(',');
-            query = query.or(`${partNoFilters},${descriptionFilters}`);
-        }
+        const pattern = `%${term.replace(/\*/g, '%').replace(/\./g, '_')}%`;
+        query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
     } else {
         query = query.order('id', { ascending: false });
     }
