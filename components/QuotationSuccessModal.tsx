@@ -32,7 +32,16 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
     }, 0);
   };
 
-  const totalValue = calculateTotal(quotation.details);
+  const totalValue = calculateTotal(quotation?.details || []);
+  
+  const displayDate = () => {
+    try {
+        const d = new Date(quotation.quotationDate);
+        return isNaN(d.getTime()) ? new Date().toLocaleDateString() : d.toLocaleDateString();
+    } catch (e) {
+        return new Date().toLocaleDateString();
+    }
+  };
 
   const handleWhatsAppShare = () => {
     if (!salesPerson || !salesPerson.mobile) return;
@@ -74,7 +83,7 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
             </div>
             <div className="text-right">
               <p className="text-gray-500 text-xs uppercase">Date</p>
-              <p className="font-bold text-gray-800">{new Date(quotation.quotationDate).toLocaleDateString()}</p>
+              <p className="font-bold text-gray-800">{displayDate()}</p>
             </div>
           </div>
 

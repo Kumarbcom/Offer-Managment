@@ -22,6 +22,7 @@ export function getFinancialYear(dateStr: string): { startYear: number, endYear:
 }
 
 export function generateFormattedQuotationNumber(quotation: Quotation, allQuotations: Quotation[]): string {
+    if (!quotation || typeof quotation.id === 'undefined') return 'ERROR';
     if (quotation.id <= 0) return 'DRAFT';
     
     const fyInfo = getFinancialYear(quotation.quotationDate);

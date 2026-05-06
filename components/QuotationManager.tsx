@@ -46,7 +46,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   useEffect(() => {
     if (quotations) {
       const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
-        .filter((id): id is number => id !== null && !customerMap.has(id));
+        .filter((id): id is number => typeof id === 'number' && id > 0 && !customerMap.has(id));
       
       if (quotationFilter?.customerIds) {
           quotationFilter.customerIds.forEach(id => {

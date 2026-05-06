@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import type { Customer, Product } from './types';
+import type { Customer, Product, Quotation } from './types';
 
 type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'users' | 'deliveryChallans' | 'stockStatements' | 'pendingSOs';
 

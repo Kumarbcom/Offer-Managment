@@ -595,10 +595,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           const url = new URL(window.location.href);
           url.searchParams.set('id', String(savedQuotation.id));
           window.history.pushState({}, '', url);
-          setSuccessModalData(savedQuotation);
-      } else {
-          alert("Quotation saved successfully!");
       }
+      
+      setSuccessModalData(savedQuotation);
       
     } catch (error) {
       console.error("Submit Error:", error);
