@@ -120,6 +120,11 @@ const Icons = {
             <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM9.763 9.51a2.25 2.25 0 013.828-1.351.75.75 0 011.06-1.06 3.75 3.75 0 00-6.38 2.252c-.033.307-.052.618-.057.933l-.024 1.399c-.003.158-.003.316.002.473l.024 1.4c.005.315.024.626.057.933a3.75 3.75 0 006.38 2.252.75.75 0 00-1.06-1.06 2.25 2.25 0 01-3.828-1.351l-.025-1.402a9.55 9.55 0 01-.001-.472l.025-1.402z" clipRule="evenodd" /> {/* Stylized generic sheet */}
             <path d="M11.5 9.5a.5.5 0 01.5.5v4a.5.5 0 01-.5.5H9.5a.5.5 0 01-.5-.5v-4a.5.5 0 01.5-.5h2z" />
         </svg>
+    ),
+    Insert: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-blue-600">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clipRule="evenodd" />
+        </svg>
     )
 };
 
@@ -489,6 +494,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     });
   };
   const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
+  const handleInsertItem = (index: number) => {
+    setFormData(prev => {
+        if (!prev) return null;
+        const newDetails = [...prev.details];
+        newDetails.splice(index + 1, 0, createEmptyQuotationItem());
+        return { ...prev, details: newDetails };
+    });
+  };
   const handleSaveCustomer = async (newCustomer: Customer) => { 
     try {
         await upsertCustomer(newCustomer);
@@ -984,9 +997,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             {/* Actions */}
                             {!isReadOnly && (
                                 <td className="border-t border-slate-300 text-center align-middle">
-                                    <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 p-0.5 transition-colors" title="Remove Item">
-                                        <Icons.Trash />
-                                    </button>
+                                    <div className="flex items-center justify-center gap-1">
+                                        <button type="button" onClick={() => handleInsertItem(index)} className="hover:scale-110 transition-transform p-0.5" title="Insert Row Below">
+                                            <Icons.Insert />
+                                        </button>
+                                        <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 hover:scale-110 transition-all p-0.5" title="Remove Item">
+                                            <Icons.Trash />
+                                        </button>
+                                    </div>
                                 </td>
                             )}
                         </tr>
