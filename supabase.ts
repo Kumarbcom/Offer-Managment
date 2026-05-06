@@ -91,16 +91,16 @@ const mapToSupabase = (tableName: TableName, item: any) => {
             address: item.address,
             city: item.city,
             pincode: item.pincode,
-            sales_person_id: item.salesPersonId,
-            discount_structure: item.discountStructure
+            salesPersonId: item.salesPersonId, // DB column is salesPersonId (camelCase)
+            discount_structure: item.discountStructure // DB column is discount_structure (snake_case)
         };
     }
     if (tableName === 'products') {
         return {
             id: item.id,
-            part_no: item.partNo,
+            partNo: item.partNo, // DB column is partNo (camelCase)
             description: item.description,
-            hsn_code: item.hsnCode,
+            hsn_code: item.hsnCode, // DB column is hsn_code (snake_case)
             prices: item.prices,
             uom: item.uom,
             plant: item.plant,
@@ -175,19 +175,19 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
             id: item.id,
             quotationDate,
             enquiryDate,
-            customerId: item.customerId || item.customer_id || null,
-            contactPerson: item.contactPerson || item.contact_person || '',
-            contactNumber: item.contactNumber || item.contact_number || item.contactNo || '',
-            otherTerms: item.otherTerms || item.other_terms || '',
-            paymentTerms: item.paymentTerms || item.payment_terms || '',
-            preparedBy: item.preparedBy || item.prepared_by || '',
-            productsBrand: item.productsBrand || item.products_brand || '',
-            salesPersonId: item.salesPersonId || item.sales_person_id || null,
-            modeOfEnquiry: item.modeOfEnquiry || item.mode_of_enquiry || '',
+            customerId: item.customer_id ?? item.customerId ?? null,
+            contactPerson: item.contact_person ?? item.contactPerson ?? '',
+            contactNumber: item.contact_number ?? item.contactNumber ?? item.contactNo ?? '',
+            otherTerms: item.other_terms ?? item.otherTerms ?? '',
+            paymentTerms: item.payment_terms ?? item.paymentTerms ?? '',
+            preparedBy: item.prepared_by ?? item.preparedBy ?? '',
+            productsBrand: item.products_brand ?? item.productsBrand ?? '',
+            salesPersonId: item.sales_person_id ?? item.salesPersonId ?? null,
+            modeOfEnquiry: item.mode_of_enquiry ?? item.modeOfEnquiry ?? '',
             status: item.status || 'Open',
             comments: item.comments || '',
             details: item.details || [],
-            gstAdded: item.gstAdded || item.gst_added || false
+            gstAdded: item.gst_added ?? item.gstAdded ?? false
         };
     }
     if (tableName === 'customers') {
@@ -197,7 +197,7 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
             address: item.address || '',
             city: item.city || '',
             pincode: item.pincode || '',
-            salesPersonId: item.sales_person_id || item.salesPersonId || null,
+            salesPersonId: item.salesPersonId || item.sales_person_id || null,
             discountStructure: item.discount_structure || item.discountStructure || {
                 singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0
             }
@@ -206,7 +206,7 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'products') {
         return {
             id: item.id,
-            partNo: item.part_no || item.partNo || '',
+            partNo: item.partNo || item.part_no || '',
             description: item.description || '',
             hsnCode: item.hsn_code || item.hsnCode || '',
             prices: item.prices || [],
@@ -461,16 +461,16 @@ export async function getProductsPaginated(options: any) {
     let query = supabase
         .from('products')
         .select('*')
-        .order(sortBy === 'partNo' ? 'part_no' : (sortBy === 'hsnCode' ? 'hsn_code' : sortBy), { ascending: sortOrder === 'asc' })
+        .order(sortBy === 'partNo' ? 'partNo' : (sortBy === 'hsnCode' ? 'hsn_code' : sortBy), { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
     if (filters.universal) {
         const pattern = `%${filters.universal.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`part_no.ilike."${pattern}",description.ilike."${pattern}"`);
+        query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
     } else {
         if (filters.partNo) {
             const pattern = `%${filters.partNo.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-            query = query.ilike('part_no', pattern);
+            query = query.ilike('partNo', pattern);
         }
         if (filters.description) {
             const pattern = `%${filters.description.replace(/\*/g, '%').replace(/\./g, '_')}%`;
@@ -490,7 +490,7 @@ export async function fetchAllProductsForExport() {
     let from = 0;
     const limit = 1000;
     while (true) {
-        const { data, error } = await supabase.from('products').select('*').order('part_no', { ascending: true }).range(from, from + limit - 1);
+        const { data, error } = await supabase.from('products').select('*').order('partNo', { ascending: true }).range(from, from + limit - 1);
         if (error) throw new Error(parseSupabaseError(error, "Failed to fetch all products"));
         if (!data || data.length === 0) break;
         const mapped = data.map(item => mapFromSupabase('products', item));
@@ -556,7 +556,7 @@ export async function searchProducts(term: string) {
     const { data, error } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to search products"));
     
-    const results = (data || []) as Product[];
+    const results = (data || []).map(item => mapFromSupabase('products', item));
     
     // Sort results by price (low to high)
     // We use the most recent/current price as a reference
@@ -589,7 +589,7 @@ export async function getProductsByPartNos(partNos: string[]) {
     if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     const distinctPartNos = [...new Set(partNos)];
-    const { data, error } = await supabase.from('products').select('*').in('partNo', distinctPartNos);
+    const { data, error } = await supabase.from('products').select('*').in('part_no', distinctPartNos);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
-    return (data || []) as Product[];
+    return (data || []).map(item => mapFromSupabase('products', item));
 }

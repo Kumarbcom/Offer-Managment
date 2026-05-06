@@ -165,6 +165,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         return customerIds.size;
     }, [filteredQuotations]);
 
+    const latestQuotationNo = useMemo(() => {
+        if (!filteredQuotations || filteredQuotations.length === 0) return '0000';
+        const maxId = Math.max(...filteredQuotations.map(q => q.id));
+        const latestQ = filteredQuotations.find(q => q.id === maxId);
+        if (!latestQ) return '0000';
+        
+        // Match logic from generateFormattedQuotationNumber
+        const fyInfo = { startYear: 2026, endYear: 2027, fyString: '2026-27' }; // Default FY
+        try {
+            const dateStr = latestQ.quotationDate;
+            const d = new Date(dateStr);
+            const year = d.getFullYear();
+            const month = d.getMonth();
+            let startYear, endYear;
+            if (month >= 3) { startYear = year; endYear = year + 1; }
+            else { startYear = year - 1; endYear = year; }
+            fyInfo.fyString = `${startYear}-${String(endYear).slice(2)}`;
+        } catch(e) {}
+        
+        const offset = fyInfo.fyString === '2026-27' ? 2362 : 0;
+        const seq = latestQ.id - offset;
+        return seq > 0 ? String(seq).padStart(4, '0') : String(filteredQuotations.length).padStart(4, '0');
+    }, [filteredQuotations]);
+
 
     // Statistics Calculations using filtered data
     const overallStats = useMemo(() => {
@@ -284,8 +308,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
         const sortedDates = Object.keys(dataByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
         const compactLabels = sortedDates.map(dateStr => {
-            const date = new Date(dateStr);
-            const day = date.getDate().toString().padStart(2, '0');
+            // Split YYYY-MM-DD to avoid timezone shifts
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const date = new Date(y, m - 1, d);
+            const day = d.toString().padStart(2, '0');
             const month = date.toLocaleString('default', { month: 'short' });
             return `${day}-${month}`;
         });
@@ -374,8 +400,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
         const sortedDates = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
         const compactLabels = sortedDates.map(dateStr => {
-            const date = new Date(dateStr);
-            const day = date.getDate().toString().padStart(2, '0');
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const date = new Date(y, m - 1, d);
+            const day = d.toString().padStart(2, '0');
             const month = date.toLocaleString('default', { month: 'short' });
             return `${day}-${month}`;
         });
@@ -713,9 +740,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         <path fillRule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875ZM12.75 12a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V18a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V12Z" clipRule="evenodd" />
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
-                    <div className="text-xl md:text-2xl font-bold">{overallStats.total.count}</div>
-                    <div className="text-[10px] font-medium opacity-100">{formatCurrencyCompact(overallStats.total.value)}</div>
-                    <div className="text-[9px] font-bold uppercase tracking-wider mt-1 text-center">Total Enquiries</div>
+                    <div className="flex flex-col items-center">
+                        <div className="text-xl md:text-2xl font-bold">{overallStats.total.count} <span className="text-[10px] opacity-70">Total</span></div>
+                        <div className="text-xs font-bold bg-white/20 px-2 rounded mt-0.5">#{latestQuotationNo} <span className="text-[8px] opacity-70 uppercase font-medium">Running</span></div>
+                    </div>
+                    <div className="text-[10px] font-medium opacity-100 mt-1">{formatCurrencyCompact(overallStats.total.value)}</div>
+                    <div className="text-[9px] font-bold uppercase tracking-wider text-center">Total Enquiries</div>
                 </motion.div>
                 {QUOTATION_STATUSES.map((status, i) => {
                     const colors: Record<string, string> = {
