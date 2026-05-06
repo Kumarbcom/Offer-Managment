@@ -234,7 +234,7 @@ export async function get(tableName: TableName): Promise<any[]> {
     if (!supabase) throw new Error("Supabase client not initialized");
     
     const supabaseTableName = toSupabaseTableName(tableName);
-    let query = supabase.from(supabaseTableName).select('*');
+    let query = supabase.from(supabaseTableName).select('*').limit(5000);
 
     if (tableName === 'users') {
         query = query.order('name', { ascending: true });

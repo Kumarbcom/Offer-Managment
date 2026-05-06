@@ -154,6 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             }
 
             const quotationDate = new Date(q.quotationDate);
+            quotationDate.setHours(0, 0, 0, 0);
             return quotationDate >= startDate && quotationDate <= today;
         });
     }, [quotations, selectedSalesPersonId, selectedDateRange, currentUser, salesPersons]);
