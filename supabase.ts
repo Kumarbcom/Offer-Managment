@@ -135,25 +135,39 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
     }
     if (tableName === 'quotations') {
         const rawDate = item.quotation_date || item.quotationDate || '';
-        const isValidDate = rawDate && !rawDate.includes('Invalid') && !isNaN(new Date(rawDate).getTime());
-        const quotationDate = isValidDate ? rawDate.split('T')[0] : new Date().toISOString().split('T')[0];
+        
+        // Robust Date Parsing for cross-browser compatibility
+        const parseDate = (str: string) => {
+            if (!str || str.includes('Invalid')) return new Date();
+            const parts = str.split('T')[0].split('-');
+            if (parts.length === 3) {
+                const [y, m, d] = parts.map(Number);
+                const date = new Date(y, m - 1, d);
+                if (!isNaN(date.getTime())) return date;
+            }
+            const fallback = new Date(str);
+            return isNaN(fallback.getTime()) ? new Date() : fallback;
+        };
+
+        const qDate = parseDate(rawDate);
+        const quotationDate = qDate.toISOString().split('T')[0];
 
         const rawEnquiryDate = item.enquiry_date || item.enquiryDate || '';
-        const isValidEnquiryDate = rawEnquiryDate && !rawEnquiryDate.includes('Invalid') && !isNaN(new Date(rawEnquiryDate).getTime());
-        const enquiryDate = isValidEnquiryDate ? rawEnquiryDate.split('T')[0] : new Date().toISOString().split('T')[0];
+        const eDate = parseDate(rawEnquiryDate);
+        const enquiryDate = eDate.toISOString().split('T')[0];
 
         return {
             id: item.id,
             quotationDate,
             enquiryDate,
-            customerId: item.customer_id === 0 ? null : (item.customer_id || item.customerId || null),
+            customerId: (item.customer_id === 0 || !item.customer_id) ? (item.customerId || null) : item.customer_id,
             contactPerson: item.contact_person || item.contactPerson || '',
             contactNumber: item.contact_number || item.contactNumber || item.contactNo || '',
             otherTerms: item.other_terms || item.otherTerms || '',
             paymentTerms: item.payment_terms || item.paymentTerms || '',
             preparedBy: item.prepared_by || item.preparedBy || '',
             productsBrand: item.products_brand || item.productsBrand || '',
-            salesPersonId: item.sales_person_id === 0 ? null : (item.sales_person_id || item.salesPersonId || null),
+            salesPersonId: (item.sales_person_id === 0 || !item.sales_person_id) ? (item.salesPersonId || null) : item.sales_person_id,
             modeOfEnquiry: item.mode_of_enquiry || item.modeOfEnquiry || '',
             status: item.status || 'Open',
             comments: item.comments || '',

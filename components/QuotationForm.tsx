@@ -170,6 +170,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [rowsToAdd, setRowsToAdd] = useState(1);
 
   // Refs for grid inputs
@@ -350,6 +351,24 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         }));
     }
 
+    // AUTO-REPAIR: If date is missing or invalid, set to today
+    const checkDate = new Date(initialQuotation.quotationDate);
+    if (!initialQuotation.quotationDate || isNaN(checkDate.getTime())) {
+        initialQuotation.quotationDate = new Date().toISOString().split('T')[0];
+    }
+    const checkEnquiryDate = new Date(initialQuotation.enquiryDate);
+    if (!initialQuotation.enquiryDate || isNaN(checkEnquiryDate.getTime())) {
+        initialQuotation.enquiryDate = new Date().toISOString().split('T')[0];
+    }
+
+    // Automatically assign Sales Person if missing for new quotations
+    if (editingQuotationId === null && initialQuotation.salesPersonId === null && userRole === 'Sales Person') {
+        const currentSp = salesPersons.find(sp => sp.name === currentUser.name);
+        if (currentSp) {
+            initialQuotation.salesPersonId = currentSp.id;
+        }
+    }
+
     setFormData(initialQuotation);
 
     if (initialQuotation.details) {
@@ -362,7 +381,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             setFetchedProducts(new Map());
         }
     }
-  }, [editingQuotationId, quotations, createNewQuotation]);
+  }, [editingQuotationId, quotations, createNewQuotation, salesPersons, userRole, currentUser]);
 
   useEffect(() => {
     const customerId = formData?.customerId;
@@ -561,7 +580,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         alert("Please add at least one product with a valid Part Number.");
         return;
     }
-    try {
+
+    // EXTRA SECURITY: Ensure no numeric 0 IDs reach Supabase for Customer/SalesPerson
+    if (formData.customerId === 0 || formData.salesPersonId === 0) {
+        alert("Invalid Customer or Sales Person selection. Please select again from the list.");
+        return;
+    }    try {
+      setIsSubmitting(true);
       const isNew = editingQuotationId === null || formData.id === 0;
       const safeQuotations = quotations || [];
       
@@ -573,11 +598,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       
       const quotationToSave = { ...formData, id: idToSave };
       
-      // DIRECT CLOUD SAVE: This ensures data is definitely saved to Supabase
-      // without relying on complex sync logic in useOnlineStorage.
       const savedQuotation = await upsertQuotation(quotationToSave);
       
-      // Update local state in App.tsx via prop (this keeps other components in sync)
       await setQuotations(prev => {
           const currentQuotations = prev || [];
           if (isNew) {
@@ -586,7 +608,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           return currentQuotations.map(q => q.id === savedQuotation.id ? savedQuotation : q);
       });
 
-      // Update local form state
       setFormData(savedQuotation);
       currentSessionIdRef.current = savedQuotation.id; 
       
@@ -601,7 +622,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       
     } catch (error) {
       console.error("Submit Error:", error);
-      alert(error instanceof Error ? error.message : 'Failed to save quotation. Please try again.');
+      alert(error instanceof Error ? error.message : "Failed to save quotation");
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -900,6 +923,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   
   const totals = useMemo(() => {
       if (!formData || !formData.details) return { moq: 0, req: 0, amount: 0, airFreightAmount: 0, gstAmount: 0, grandTotal: 0 };
+      
+      // Automatically assign Sales Person if missing for new quotations
+      if (editingQuotationId === null && formData.salesPersonId === null && userRole === 'Sales Person') {
+          const currentSp = salesPersons.find(sp => sp.name === currentUser.name);
+          if (currentSp) {
+              setFormData(prev => prev ? { ...prev, salesPersonId: currentSp.id } : null);
+          }
+      }
+
       const baseTotals = formData.details.reduce((acc, item) => {
           const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
           acc.moq += item.moq || 0;
@@ -1000,7 +1032,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         <form onSubmit={handleSubmit} className="p-2">
             <div className="bg-slate-50 p-2 flex flex-wrap items-center gap-3 border border-slate-200 mb-3 rounded-md shadow-sm">
                 {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
-                {!isReadOnly && <ActionButton onClick={handleSubmit} title="Save Quotation"><Icons.Save /><span>Save</span></ActionButton>}
+                {!isReadOnly && (
+                    <ActionButton 
+                        onClick={handleSubmit} 
+                        title={isSubmitting ? "Saving..." : "Save Quotation"} 
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full" />
+                        ) : (
+                            <Icons.Save />
+                        )}
+                        <span>{isSubmitting ? "Saving..." : "Save"}</span>
+                    </ActionButton>
+                )}
                 <div className="h-6 border-l border-slate-300 mx-1"></div>
                 <div className="flex items-center bg-white border border-slate-200 rounded-md p-1 shadow-sm gap-1">
                     <span className="text-[10px] font-bold text-slate-500 px-1 uppercase border-r border-slate-200 mr-1">Print:</span>
