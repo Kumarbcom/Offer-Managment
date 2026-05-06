@@ -160,6 +160,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [rowsToAdd, setRowsToAdd] = useState(1);
 
   // Refs for grid inputs
   const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -480,7 +481,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     });
   }
 
-  const handleAddItem = () => { setFormData(prev => prev ? { ...prev, details: [...prev.details, createEmptyQuotationItem()] } : null); };
+  const handleAddItem = (count: number = 1) => { 
+    setFormData(prev => {
+        if (!prev) return null;
+        const newRows = Array.from({ length: count }, () => createEmptyQuotationItem());
+        return { ...prev, details: [...prev.details, ...newRows] };
+    });
+  };
   const handleRemoveItem = (index: number) => { setFormData(prev => prev && prev.details.length > 1 ? { ...prev, details: prev.details.filter((_, i) => i !== index) } : prev); };
   const handleSaveCustomer = async (newCustomer: Customer) => { 
     try {
@@ -938,7 +945,17 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         title="Toggle Air Freight"
                                     />
                                     {!isReadOnly && item.airFreight ? (
-                                         <input type="number" step="0.001" value={item.airFreightDetails?.weightPerMtr || 0} onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} className="w-full p-0.5 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded text-xs text-black" title="Weight (kg/m) for calculation"/>
+                                         <input 
+                                            type="number" 
+                                            step="0.001" 
+                                            ref={(el) => { inputRefs.current[`${index}-airWeight`] = el; }}
+                                            value={item.airFreightDetails?.weightPerMtr || 0} 
+                                            onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} 
+                                            onKeyDown={(e) => handleGridKeyDown(e, index, 'airWeight')}
+                                            onFocus={(e) => e.target.select()}
+                                            className="w-full p-0.5 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded text-xs text-black" 
+                                            title="Weight (kg/m) for calculation"
+                                        />
                                     ) : (
                                         <span className="text-right flex-grow text-[10px] text-black">{freightPerMtr.toFixed(2)}</span>
                                     )}
@@ -954,8 +971,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             <td className="border-t border-slate-300 align-top">
                                 <input 
                                     type="text" 
+                                    ref={(el) => { inputRefs.current[`${index}-airLeadTime`] = el; }}
                                     value={item.airFreightDetails?.airFreightLeadTime || ''} 
                                     onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} 
+                                    onKeyDown={(e) => handleGridKeyDown(e, index, 'airLeadTime')}
+                                    onFocus={(e) => e.target.select()}
                                     className="w-20 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={!item.airFreight || isReadOnly}
                                 />
@@ -973,7 +993,25 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     );})}</tbody>
                 </table>
             </div>
-             <div className="flex justify-end mt-2 mb-4">{!isReadOnly && <button type="button" onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 text-xs rounded">+ Add Row</button>}</div>
+             <div className="flex justify-end mt-2 mb-4 items-center gap-2">
+                {!isReadOnly && (
+                    <>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Rows:</span>
+                        <input 
+                            type="number" 
+                            min="1" 
+                            max="50"
+                            value={rowsToAdd}
+                            onChange={(e) => setRowsToAdd(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-12 h-7 p-1 text-center border border-slate-300 rounded text-xs text-black"
+                        />
+                        <button type="button" onClick={() => handleAddItem(rowsToAdd)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-7 px-3 text-xs rounded shadow-sm flex items-center gap-1 transition-all">
+                            <Icons.New />
+                            <span>Add Items</span>
+                        </button>
+                    </>
+                )}
+             </div>
         </form>
       </div>
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
