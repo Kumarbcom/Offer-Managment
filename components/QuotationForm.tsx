@@ -13,7 +13,7 @@ import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { useDebounce } from '../hooks/useDebounce';
 import { useOnlineStorage } from '../hooks/useOnlineStorage';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 
 declare var XLSX: any;
@@ -542,7 +542,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
     try {
       const isNew = editingQuotationId === null || formData.id === 0;
-      
       const safeQuotations = quotations || [];
       
       let idToSave = formData.id;
@@ -551,39 +550,38 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           idToSave = maxId + 1;
       }
       
-      let quotationToSave = { ...formData, id: idToSave };
+      const quotationToSave = { ...formData, id: idToSave };
       
+      // DIRECT CLOUD SAVE: This ensures data is definitely saved to Supabase
+      // without relying on complex sync logic in useOnlineStorage.
+      const savedQuotation = await upsertQuotation(quotationToSave);
+      
+      // Update local state in App.tsx via prop (this keeps other components in sync)
       await setQuotations(prev => {
           const currentQuotations = prev || [];
           if (isNew) {
-              const freshMaxId = currentQuotations.length > 0 ? Math.max(...currentQuotations.map(q => q.id)) : 0;
-              if (freshMaxId >= idToSave) {
-                  quotationToSave.id = freshMaxId + 1;
-              }
-              return [...currentQuotations, quotationToSave];
+              return [...currentQuotations, savedQuotation];
           }
-          return currentQuotations.map(q => q.id === idToSave ? quotationToSave : q);
+          return currentQuotations.map(q => q.id === savedQuotation.id ? savedQuotation : q);
       });
 
-      if(isNew) {
-          setFormData(quotationToSave);
-          currentSessionIdRef.current = quotationToSave.id; 
-
-          setEditingQuotationId(quotationToSave.id);
-          
+      // Update local form state
+      setFormData(savedQuotation);
+      currentSessionIdRef.current = savedQuotation.id; 
+      
+      if (isNew) {
+          setEditingQuotationId(savedQuotation.id);
           const url = new URL(window.location.href);
-          if (!url.protocol.startsWith('blob')) {
-            url.searchParams.set('id', String(quotationToSave.id));
-            window.history.pushState({}, '', url);
-          }
-          setSuccessModalData(quotationToSave);
+          url.searchParams.set('id', String(savedQuotation.id));
+          window.history.pushState({}, '', url);
+          setSuccessModalData(savedQuotation);
       } else {
-          alert("Quotation updated successfully!");
+          alert("Quotation saved successfully!");
       }
       
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the quotation.');
-      console.error('Failed to save quotation:', error);
+      console.error("Submit Error:", error);
+      alert(error instanceof Error ? error.message : 'Failed to save quotation. Please try again.');
     }
   };
   

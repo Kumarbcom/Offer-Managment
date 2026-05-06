@@ -136,8 +136,8 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'quotations') {
         return {
             id: item.id,
-            quotationDate: item.quotation_date || item.quotationDate || new Date().toISOString(),
-            enquiryDate: item.enquiry_date || item.enquiryDate || new Date().toISOString(),
+            quotationDate: (item.quotation_date || item.quotationDate || '').includes('Invalid') ? new Date().toISOString().split('T')[0] : (item.quotation_date || item.quotationDate || new Date().toISOString().split('T')[0]),
+            enquiryDate: (item.enquiry_date || item.enquiryDate || '').includes('Invalid') ? new Date().toISOString().split('T')[0] : (item.enquiry_date || item.enquiryDate || new Date().toISOString().split('T')[0]),
             customerId: item.customer_id || item.customerId || null,
             contactPerson: item.contact_person || item.contactPerson || '',
             contactNumber: item.contact_number || item.contactNumber || item.contactNo || '',
@@ -476,6 +476,28 @@ export async function updateProduct(product: any) {
     const { id, ...productData } = product;
     const { error } = await supabase.from('products').update(productData).eq('id', id);
     if (error) throw new Error(parseSupabaseError(error, "Failed to update product"));
+}
+
+export async function upsertQuotation(quotation: Quotation): Promise<Quotation> {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    
+    // 1. Map to snake_case
+    const payload = mapToSupabase('quotations', quotation);
+    
+    // 2. Perform Upsert
+    const { data, error } = await supabase
+        .from('quotations')
+        .upsert(payload)
+        .select()
+        .single();
+        
+    if (error) {
+        console.error("Upsert error details:", error);
+        throw new Error(parseSupabaseError(error, "Failed to save quotation to cloud"));
+    }
+    
+    // 3. Map back to camelCase
+    return mapFromSupabase('quotations', data);
 }
 
 export async function searchProducts(term: string) { 
