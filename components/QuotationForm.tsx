@@ -47,7 +47,13 @@ const createEmptyQuotationItem = (): QuotationItem => ({
   airFreightDetails: { weightPerMtr: 0, airFreightLeadTime: '' },
 });
 
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
+const getTodayDateString = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = (now.getMonth() + 1).toString().padStart(2, '0');
+    const d = now.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
 
 const NavButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode }> = ({ onClick, disabled, children }) => (
     <button type="button" onClick={onClick} disabled={disabled} className="bg-slate-700 hover:bg-slate-600 text-white rounded-md h-6 w-8 flex items-center justify-center font-semibold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -194,7 +200,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     if (previewMode !== 'none' && formData && selectedCustomerObj) {
         try {
             // Format: Customer Name_SKC-QTN-XXXX-YYYY-YY DD.MM.YYYY
-            const dateStr = formData.quotationDate || new Date().toISOString().split('T')[0];
+            const dateStr = formData.quotationDate || getTodayDateString();
             const dateParts = dateStr.split('-');
             const formattedDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : dateStr;
             
@@ -354,11 +360,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     // AUTO-REPAIR: If date is missing or invalid, set to today
     const checkDate = new Date(initialQuotation.quotationDate);
     if (!initialQuotation.quotationDate || isNaN(checkDate.getTime())) {
-        initialQuotation.quotationDate = new Date().toISOString().split('T')[0];
+        initialQuotation.quotationDate = getTodayDateString();
     }
     const checkEnquiryDate = new Date(initialQuotation.enquiryDate);
     if (!initialQuotation.enquiryDate || isNaN(checkEnquiryDate.getTime())) {
-        initialQuotation.enquiryDate = new Date().toISOString().split('T')[0];
+        initialQuotation.enquiryDate = getTodayDateString();
     }
 
     // Automatically assign Sales Person if missing for new quotations
@@ -977,7 +983,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             <div className="flex items-center space-x-2">
               <button 
                 onClick={() => {
-                  const dateStr = formData.quotationDate || new Date().toISOString().split('T')[0];
+                  const dateStr = formData.quotationDate || getTodayDateString();
                   const dateParts = dateStr.split('-');
                   const formattedDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : dateStr;
                   const qtnNo = generateFormattedQuotationNumber(formData, quotations || []).replace(/\//g, '-');

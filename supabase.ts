@@ -57,10 +57,18 @@ const mapToSupabase = (tableName: TableName, item: any) => {
         };
     }
     if (tableName === 'quotations') {
+        const getLocalDate = () => {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = (now.getMonth() + 1).toString().padStart(2, '0');
+            const d = now.getDate().toString().padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+        const today = getLocalDate();
         return {
             id: item.id,
-            quotation_date: (item.quotationDate && item.quotationDate !== '') ? item.quotationDate : new Date().toISOString().split('T')[0],
-            enquiry_date: (item.enquiryDate && item.enquiryDate !== '') ? item.enquiryDate : new Date().toISOString().split('T')[0],
+            quotation_date: (item.quotationDate && item.quotationDate !== '') ? item.quotationDate : today,
+            enquiry_date: (item.enquiryDate && item.enquiryDate !== '') ? item.enquiryDate : today,
             customer_id: item.customerId || 0,
             contact_person: item.contactPerson || '',
             contact_number: item.contactNumber || item.contactNo || '',
