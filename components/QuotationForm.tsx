@@ -367,8 +367,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         initialQuotation.enquiryDate = getTodayDateString();
     }
 
-    // Automatically assign Sales Person if missing for new quotations
-    if (editingQuotationId === null && initialQuotation.salesPersonId === null && userRole === 'Sales Person') {
+    // Automatically assign Sales Person if missing
+    if ((initialQuotation.salesPersonId === null || initialQuotation.salesPersonId === 0) && userRole === 'Sales Person') {
         const currentSp = salesPersons.find(sp => sp.name === currentUser.name);
         if (currentSp) {
             initialQuotation.salesPersonId = currentSp.id;

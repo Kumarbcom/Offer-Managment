@@ -43,17 +43,17 @@ const mapToSupabase = (tableName: TableName, item: any) => {
         return {
             id: item.id,
             date: item.date,
-            order_no: item.orderNo,
-            party_name: item.partyName,
-            item_name: item.itemName,
-            material_code: item.materialCode,
-            part_no: item.partNo,
-            ordered_qty: item.orderedQty,
-            balance_qty: item.balanceQty,
+            orderNo: item.orderNo,
+            partyName: item.partyName,
+            itemName: item.itemName,
+            materialCode: item.materialCode,
+            partNo: item.partNo,
+            orderedQty: item.orderedQty,
+            balanceQty: item.balanceQty,
             rate: item.rate,
             discount: item.discount,
             value: item.value,
-            due_on: item.dueOn
+            dueOn: item.dueOn
         };
     }
     if (tableName === 'quotations') {
@@ -67,21 +67,21 @@ const mapToSupabase = (tableName: TableName, item: any) => {
         const today = getLocalDate();
         return {
             id: item.id,
-            quotation_date: (item.quotationDate && item.quotationDate !== '') ? item.quotationDate : today,
-            enquiry_date: (item.enquiryDate && item.enquiryDate !== '') ? item.enquiryDate : today,
-            customer_id: item.customerId || 0,
-            contact_person: item.contactPerson || '',
-            contact_number: item.contactNumber || item.contactNo || '',
-            other_terms: item.otherTerms || '',
-            payment_terms: item.paymentTerms || '',
-            prepared_by: item.preparedBy || 'Kumar',
-            products_brand: item.productsBrand || 'Lapp',
-            sales_person_id: item.salesPersonId || 0,
-            mode_of_enquiry: item.modeOfEnquiry || 'Customer Email',
+            quotationDate: (item.quotationDate && item.quotationDate !== '') ? item.quotationDate : today,
+            enquiryDate: (item.enquiryDate && item.enquiryDate !== '') ? item.enquiryDate : today,
+            customerId: item.customerId || 0,
+            contactPerson: item.contactPerson || '',
+            contactNumber: item.contactNumber || item.contactNo || '',
+            otherTerms: item.otherTerms || '',
+            paymentTerms: item.paymentTerms || '',
+            preparedBy: item.preparedBy || 'Kumar',
+            productsBrand: item.productsBrand || 'Lapp',
+            salesPersonId: item.salesPersonId || 0,
+            modeOfEnquiry: item.modeOfEnquiry || 'Customer Email',
             status: item.status || 'Open',
             comments: item.comments || '',
             details: item.details || [],
-            gst_added: item.gstAdded || false
+            gstAdded: item.gstAdded || false
         };
     }
     if (tableName === 'customers') {
@@ -91,16 +91,16 @@ const mapToSupabase = (tableName: TableName, item: any) => {
             address: item.address,
             city: item.city,
             pincode: item.pincode,
-            sales_person_id: item.salesPersonId,
-            discount_structure: item.discountStructure
+            salesPersonId: item.salesPersonId,
+            discountStructure: item.discountStructure
         };
     }
     if (tableName === 'products') {
         return {
             id: item.id,
-            part_no: item.partNo,
+            partNo: item.partNo,
             description: item.description,
-            hsn_code: item.hsnCode,
+            hsnCode: item.hsnCode,
             prices: item.prices,
             uom: item.uom,
             plant: item.plant,
@@ -110,12 +110,12 @@ const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'deliveryChallans') {
         return {
             id: item.id,
-            challan_date: item.challanDate,
-            customer_id: item.customerId,
-            quotation_id: item.quotationId,
-            vehicle_no: item.vehicleNo,
-            po_no: item.poNo,
-            po_date: item.poDate,
+            challanDate: item.challanDate,
+            customerId: item.customerId,
+            quotationId: item.quotationId,
+            vehicleNo: item.vehicleNo,
+            poNo: item.poNo,
+            poDate: item.poDate,
             items: item.items
         };
     }
@@ -167,7 +167,7 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
         const qDate = parseDate(rawDate);
         const quotationDate = formatToYYYYMMDD(qDate);
 
-        const rawEnquiryDate = item.enquiry_date || item.enquiryDate || '';
+        const rawEnquiryDate = item.quotationDate || item.quotation_date || item.enquiryDate || item.enquiry_date || '';
         const eDate = parseDate(rawEnquiryDate);
         const enquiryDate = formatToYYYYMMDD(eDate);
 
@@ -175,19 +175,19 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
             id: item.id,
             quotationDate,
             enquiryDate,
-            customerId: (item.customer_id === 0 || !item.customer_id) ? (item.customerId || null) : item.customer_id,
-            contactPerson: item.contact_person || item.contactPerson || '',
-            contactNumber: item.contact_number || item.contactNumber || item.contactNo || '',
-            otherTerms: item.other_terms || item.otherTerms || '',
-            paymentTerms: item.payment_terms || item.paymentTerms || '',
-            preparedBy: item.prepared_by || item.preparedBy || '',
-            productsBrand: item.products_brand || item.productsBrand || '',
-            salesPersonId: (item.sales_person_id === 0 || !item.sales_person_id) ? (item.salesPersonId || null) : item.sales_person_id,
-            modeOfEnquiry: item.mode_of_enquiry || item.modeOfEnquiry || '',
+            customerId: item.customerId || item.customer_id || null,
+            contactPerson: item.contactPerson || item.contact_person || '',
+            contactNumber: item.contactNumber || item.contact_number || item.contactNo || '',
+            otherTerms: item.otherTerms || item.other_terms || '',
+            paymentTerms: item.paymentTerms || item.payment_terms || '',
+            preparedBy: item.preparedBy || item.prepared_by || '',
+            productsBrand: item.productsBrand || item.products_brand || '',
+            salesPersonId: item.salesPersonId || item.sales_person_id || null,
+            modeOfEnquiry: item.modeOfEnquiry || item.mode_of_enquiry || '',
             status: item.status || 'Open',
             comments: item.comments || '',
             details: item.details || [],
-            gstAdded: item.gst_added || item.gstAdded || false
+            gstAdded: item.gstAdded || item.gst_added || false
         };
     }
     if (tableName === 'customers') {
