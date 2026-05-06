@@ -461,16 +461,16 @@ export async function getProductsPaginated(options: any) {
     let query = supabase
         .from('products')
         .select('*')
-        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .order(sortBy === 'partNo' ? 'part_no' : (sortBy === 'hsnCode' ? 'hsn_code' : sortBy), { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
     if (filters.universal) {
         const pattern = `%${filters.universal.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
+        query = query.or(`part_no.ilike."${pattern}",description.ilike."${pattern}"`);
     } else {
         if (filters.partNo) {
             const pattern = `%${filters.partNo.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-            query = query.ilike('partNo', pattern);
+            query = query.ilike('part_no', pattern);
         }
         if (filters.description) {
             const pattern = `%${filters.description.replace(/\*/g, '%').replace(/\./g, '_')}%`;
@@ -480,7 +480,7 @@ export async function getProductsPaginated(options: any) {
 
     const { data, error } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products"));
-    const products = (data || []) as Product[];
+    const products = (data || []).map(p => mapFromSupabase('products', p));
     return { products, lastVisibleDoc: offset + products.length };
 }
 
@@ -490,10 +490,11 @@ export async function fetchAllProductsForExport() {
     let from = 0;
     const limit = 1000;
     while (true) {
-        const { data, error } = await supabase.from('products').select('*').order('partNo', { ascending: true }).range(from, from + limit - 1);
+        const { data, error } = await supabase.from('products').select('*').order('part_no', { ascending: true }).range(from, from + limit - 1);
         if (error) throw new Error(parseSupabaseError(error, "Failed to fetch all products"));
         if (!data || data.length === 0) break;
-        allProducts.push(...(data as Product[]));
+        const mapped = data.map(item => mapFromSupabase('products', item));
+        allProducts.push(...mapped);
         if (data.length < limit) break;
         from += limit;
     }
@@ -502,7 +503,8 @@ export async function fetchAllProductsForExport() {
 
 export async function addProductsBatch(products: any[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('products').upsert(products, { onConflict: 'id' });
+    const payloads = products.map(p => mapToSupabase('products', p));
+    const { error } = await supabase.from('products').upsert(payloads, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
 }
 
@@ -514,7 +516,8 @@ export async function deleteProductsBatch(ids: number[]) {
 
 export async function updateProduct(product: any) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { id, ...productData } = product;
+    const payload = mapToSupabase('products', product);
+    const { id, ...productData } = payload;
     const { error } = await supabase.from('products').update(productData).eq('id', id);
     if (error) throw new Error(parseSupabaseError(error, "Failed to update product"));
 }
@@ -579,7 +582,7 @@ export async function getProductsByIds(ids: number[]) {
     if (!ids || ids.length === 0) return [];
     const { data, error } = await supabase.from('products').select('*').in('id', ids);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by IDs"));
-    return (data || []) as Product[];
+    return (data || []).map(item => mapFromSupabase('products', item));
 }
 
 export async function getProductsByPartNos(partNos: string[]) { 
