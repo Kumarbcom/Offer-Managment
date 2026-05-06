@@ -16,6 +16,8 @@ import { useOnlineStorage } from '../hooks/useOnlineStorage';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 declare var XLSX: any;
 
@@ -614,179 +616,245 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   
   const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !formData.customerId) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
   
-  const handleExportExcel = (exportType: 'standard' | 'discounted' | 'withAirFreight' = 'standard') => {
+  const handleExportExcel = async (exportType: 'standard' | 'discounted' | 'withAirFreight' = 'standard') => {
       if (!formData || !formData.details.length || !selectedCustomerObj) {
           alert("No data to export. Please select a customer and add items.");
           return;
       }
 
       try {
+          const workbook = new ExcelJS.Workbook();
+          const worksheet = workbook.addWorksheet('Quotation');
+
           const qtnNo = generateFormattedQuotationNumber(formData, quotations || []);
           const dateStr = new Date(formData.quotationDate).toLocaleDateString('en-GB');
-          
-          // 1. COMPANY HEADER (Rows 1-5)
-          const headerRows: any[][] = [
-            ["SIDDHI KABEL CORPORATION PVT LTD"],
-            ["# 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085."],
-            ["Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com"],
-            ["GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29"],
-            [],
-            ["QUOTATION"],
-            []
+
+          // 1. FONT & BASE STYLING
+          worksheet.columns = [
+              { key: 'sl', width: 6 },
+              { key: 'part', width: 22 },
+              { key: 'desc', width: 50 },
+              { key: 'moq', width: 10 },
+              { key: 'req', width: 10 },
+              { key: 'uom', width: 8 },
+              { key: 'p1', width: 15 },
+              { key: 'p2', width: 15 },
+              { key: 'p3', width: 15 },
+              { key: 'p4', width: 15 },
+              { key: 'stock', width: 18 }
           ];
 
-          // 2. CUSTOMER & QTN DETAILS (Rows 8-12)
-          const detailsRows: any[][] = [
-            ["BILLED TO:", "", "", "", "", "Quotation No:", qtnNo],
-            [selectedCustomerObj.name, "", "", "", "", "Date:", dateStr],
-            [selectedCustomerObj.address, "", "", "", "", "Enquiry Date:", new Date(formData.enquiryDate).toLocaleDateString('en-GB')],
-            [`${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`, "", "", "", "", "Sales Person:", salesPersons.find(sp => sp.id === formData.salesPersonId)?.name || 'N/A'],
-            [`Attn: ${formData.contactPerson} (${formData.contactNumber})`, "", "", "", "", "", ""],
-            []
-          ];
+          const baseFont = { name: 'Cambria', size: 10 };
+          const titleFont = { name: 'Cambria', size: 14, bold: true };
+          const headerFont = { name: 'Cambria', size: 10, bold: true };
 
-          // 3. TABLE HEADERS
-          let tableHeaders: string[] = [];
-          if (exportType === 'withAirFreight') {
-              tableHeaders = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "Unit Price", "Air Freight", "Total Unit Price", "Total Amount", "Stock Status"];
-          } else if (exportType === 'discounted') {
-              tableHeaders = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "LP", "Disc %", "Net Price", "Total Amount", "Stock Status"];
-          } else {
-              tableHeaders = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "Unit Price", "Total Amount", "Stock Status"];
+          // 2. LOGO
+          if (logoUrl) {
+              try {
+                  let buffer;
+                  let extension: 'png' | 'jpeg' = 'png';
+                  
+                  if (logoUrl.startsWith('data:')) {
+                      const base64Data = logoUrl.split(',')[1];
+                      buffer = Buffer.from(base64Data, 'base64');
+                      extension = logoUrl.includes('image/jpeg') || logoUrl.includes('image/jpg') ? 'jpeg' : 'png';
+                  } else {
+                      const response = await fetch(logoUrl);
+                      buffer = await response.arrayBuffer();
+                  }
+
+                  if (buffer) {
+                      const imageId = workbook.addImage({
+                          buffer: buffer,
+                          extension: extension,
+                      });
+                      worksheet.addImage(imageId, {
+                          tl: { col: 0, row: 0 },
+                          ext: { width: 140, height: 70 }
+                      });
+                      // Push the header text down if logo is present
+                      for(let i=0; i<4; i++) worksheet.addRow([]);
+                  }
+              } catch (e) {
+                  console.error("Logo export error:", e);
+              }
           }
 
-          // 4. DATA ROWS with FORMULAS
-          const itemRows = formData.details.map((item, index) => {
-              const rowNum = headerRows.length + detailsRows.length + 1 + index + 1; // Header + Details + TableHeader + current row (1-indexed)
+          // 3. COMPANY HEADER
+          const headerRowsArr = [
+              ["SIDDHI KABEL CORPORATION PVT LTD"],
+              ["# 3, 1st Main, 1st Block, B S K 3rd Stage, BENGALURU-560085."],
+              ["Tel: 080-26720440 / Mob: 9620000947 | E-Mail: info@siddhikabel.com"],
+              ["GSTIN/UIN: 29AAMCS4385H1ZQ | State Name : Karnataka, Code: 29"],
+              [],
+              ["QUOTATION"],
+              []
+          ];
+
+          headerRowsArr.forEach((r, idx) => {
+              const row = worksheet.addRow(r);
+              row.eachCell(cell => {
+                  cell.font = idx === 0 ? titleFont : baseFont;
+                  cell.alignment = { horizontal: 'center' };
+              });
+              if (idx <= 5) worksheet.mergeCells(row.number, 1, row.number, 11);
+          });
+
+          // 4. CUSTOMER & QUOTATION DETAILS
+          const detailRowsArr = [
+              ["BILLED TO:", "", "", "", "", "", "", "", "Quotation No:", qtnNo],
+              [selectedCustomerObj.name, "", "", "", "", "", "", "", "Date:", dateStr],
+              [selectedCustomerObj.address, "", "", "", "", "", "", "", "Enquiry Date:", new Date(formData.enquiryDate).toLocaleDateString('en-GB')],
+              [`${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`, "", "", "", "", "", "", "", "Sales Person:", salesPersons.find(sp => sp.id === formData.salesPersonId)?.name || 'N/A'],
+              [`Attn: ${formData.contactPerson} (${formData.contactNumber})`, "", "", "", "", "", "", "", "", ""]
+          ];
+
+          detailRowsArr.forEach((r, idx) => {
+              const row = worksheet.addRow(r);
+              row.eachCell((cell, colNumber) => {
+                  cell.font = (idx === 0 && colNumber <= 1) || colNumber >= 9 ? headerFont : baseFont;
+                  if (colNumber >= 9) cell.alignment = { horizontal: 'right' };
+              });
+          });
+          worksheet.addRow([]); // Gap
+
+          // 5. TABLE HEADERS
+          let tableHeadersArr: string[] = [];
+          if (exportType === 'withAirFreight') {
+              tableHeadersArr = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "Unit Price", "Air Freight", "Total Unit Price", "Total Amount", "Stock Status"];
+          } else if (exportType === 'discounted') {
+              tableHeadersArr = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "LP", "Disc %", "Net Price", "Total Amount", "Stock Status"];
+          } else {
+              tableHeadersArr = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "Unit Price", "Total Amount", "Stock Status"];
+          }
+
+          const tableHeaderRow = worksheet.addRow(tableHeadersArr);
+          tableHeaderRow.eachCell(cell => {
+              cell.font = headerFont;
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+              cell.border = { bottom: { style: 'thin' }, top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+              cell.alignment = { horizontal: 'center' };
+          });
+
+          // 6. DATA ROWS
+          const startDataRow = tableHeaderRow.number + 1;
+          formData.details.forEach((item, index) => {
+              const rowNum = startDataRow + index;
+              let rowData: any[] = [];
               
               if (exportType === 'withAirFreight') {
                   const weight = item.airFreightDetails?.weightPerMtr || 0;
                   const freightPerMtr = weight ? (weight / 1000 * 150) : 0;
-                  const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-                  
-                  return [
-                      index + 1,
-                      item.partNo,
-                      item.description,
-                      item.moq,
-                      item.req,
-                      item.uom,
-                      unitPrice, // Unit Price (Column G)
-                      item.airFreight ? freightPerMtr : 0, // Air Freight (Column H)
-                      { f: `G${rowNum}+H${rowNum}`, t: 'n' }, // Total Unit Price (Column I)
-                      { f: `D${rowNum}*I${rowNum}`, t: 'n' }, // Total Amount (Column J)
+                  const up = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+                  rowData = [
+                      index + 1, item.partNo, item.description, item.moq, item.req, item.uom,
+                      up, (item.airFreight ? freightPerMtr : 0),
+                      { formula: `ROUND(G${rowNum}+H${rowNum}, 2)` },
+                      { formula: `ROUND(D${rowNum}*I${rowNum}, 2)` },
                       item.stockStatus
                   ];
               } else if (exportType === 'discounted') {
                   const lp = item.price;
-                  const disc = (parseFloat(String(item.discount)) || 0) / 100;
-                  return [
-                      index + 1,
-                      item.partNo,
-                      item.description,
-                      item.moq,
-                      item.req,
-                      item.uom,
-                      lp, // LP (Column G)
-                      disc, // Disc % (Column H)
-                      { f: `G${rowNum}*(1-H${rowNum})`, t: 'n' }, // Net Price (Column I)
-                      { f: `D${rowNum}*I${rowNum}`, t: 'n' }, // Total Amount (Column J)
+                  const d = (parseFloat(String(item.discount)) || 0) / 100;
+                  rowData = [
+                      index + 1, item.partNo, item.description, item.moq, item.req, item.uom,
+                      lp, d,
+                      { formula: `ROUND(G${rowNum}*(1-H${rowNum}), 2)` },
+                      { formula: `ROUND(D${rowNum}*I${rowNum}, 2)` },
                       item.stockStatus
                   ];
               } else {
-                  const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-                  return [
-                      index + 1,
-                      item.partNo,
-                      item.description,
-                      item.moq,
-                      item.req,
-                      item.uom,
-                      unitPrice, // Unit Price (Column G)
-                      { f: `D${rowNum}*G${rowNum}`, t: 'n' }, // Total Amount (Column H)
+                  const up = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+                  rowData = [
+                      index + 1, item.partNo, item.description, item.moq, item.req, item.uom,
+                      up,
+                      { formula: `ROUND(D${rowNum}*G${rowNum}, 2)` },
                       item.stockStatus
                   ];
               }
+
+              const row = worksheet.addRow(rowData);
+              row.eachCell((cell, colNumber) => {
+                  cell.font = baseFont;
+                  cell.border = { bottom: { style: 'thin' }, top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+                  
+                  // Alignment
+                  if ([1, 4, 5, 6].includes(colNumber)) cell.alignment = { horizontal: 'center' };
+                  if ([7, 8, 9, 10].includes(colNumber)) {
+                      cell.alignment = { horizontal: 'right' };
+                      cell.numFmt = colNumber === 8 && exportType === 'discounted' ? '0.00%' : '0.00';
+                  }
+              });
           });
 
-          // 5. COMBINE ALL
-          const allRows: any[][] = [...headerRows, ...detailsRows, tableHeaders, ...itemRows];
-
-          // 6. SUMMARY SECTION
+          // 7. SUMMARY
+          const lastDataRow = worksheet.lastRow!.number;
           const totalColChar = exportType === 'withAirFreight' || exportType === 'discounted' ? 'J' : 'H';
-          const startDataRow = headerRows.length + detailsRows.length + 2;
-          const endDataRow = startDataRow + itemRows.length - 1;
-          const subtotalRowIdx = allRows.length + 1;
           
-          allRows.push([]);
-          allRows.push(["", "", "", "", "", "", "", "SUBTOTAL:", { f: `SUM(${totalColChar}${startDataRow}:${totalColChar}${endDataRow})`, t: 'n', z: '#,##0.00' }]);
-          
-          let grandTotalCell = `${totalColChar}${subtotalRowIdx}`;
-          
+          worksheet.addRow([]);
+          const subtotalRow = worksheet.addRow(["", "", "", "", "", "", "", "SUBTOTAL:", { formula: `ROUND(SUM(${totalColChar}${startDataRow}:${totalColChar}${lastDataRow}), 2)` }]);
+          subtotalRow.getCell(8).font = headerFont;
+          subtotalRow.getCell(9).numFmt = '#,##0.00';
+          subtotalRow.getCell(9).font = headerFont;
+
           if (formData.gstAdded) {
-              allRows.push(["", "", "", "", "", "", "", "GST 18%:", { f: `${totalColChar}${subtotalRowIdx}*0.18`, t: 'n', z: '#,##0.00' }]);
-              allRows.push(["", "", "", "", "", "", "", "GRAND TOTAL:", { f: `${totalColChar}${subtotalRowIdx}*1.18`, t: 'n', z: '#,##0.00' }]);
-              grandTotalCell = `${totalColChar}${subtotalRowIdx + 2}`;
+              const gstRow = worksheet.addRow(["", "", "", "", "", "", "", "GST 18%:", { formula: `ROUND(${totalColChar}${subtotalRow.number}*0.18, 2)` }]);
+              gstRow.getCell(8).font = headerFont;
+              gstRow.getCell(9).numFmt = '#,##0.00';
+
+              const grandTotalRow = worksheet.addRow(["", "", "", "", "", "", "", "GRAND TOTAL:", { formula: `ROUND(${totalColChar}${subtotalRow.number}*1.18, 2)` }]);
+              grandTotalRow.getCell(8).font = titleFont;
+              grandTotalRow.getCell(9).numFmt = '#,##0.00';
+              grandTotalRow.getCell(9).font = titleFont;
           }
 
-          // 7. FOOTER (Words, Terms, Signature)
-          allRows.push([]);
-          allRows.push(["Amount in Words:", ""]);
+          // 8. FOOTER (Words & Terms)
+          worksheet.addRow([]);
+          const wordsRow = worksheet.addRow(["Amount in Words:", ""]);
+          wordsRow.getCell(1).font = headerFont;
           
-          const finalSubTotal = formData.details.reduce((sum, item) => {
-              const up = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-              const af = item.airFreight ? ((item.airFreightDetails?.weightPerMtr || 0) / 1000 * 150) : 0;
-              return sum + (up + af) * item.moq;
+          const fSub = formData.details.reduce((s, i) => {
+              const up = i.price * (1 - (parseFloat(String(i.discount)) || 0) / 100);
+              const af = i.airFreight ? ((i.airFreightDetails?.weightPerMtr || 0) / 1000 * 150) : 0;
+              return s + (up + af) * i.moq;
           }, 0);
-          const finalGrandTotal = formData.gstAdded ? finalSubTotal * 1.18 : finalSubTotal;
-          allRows[allRows.length - 1][1] = numberToWords(finalGrandTotal);
+          const fGrand = formData.gstAdded ? fSub * 1.18 : fSub;
+          wordsRow.getCell(2).value = numberToWords(fGrand);
+          wordsRow.getCell(2).font = baseFont;
+          worksheet.mergeCells(wordsRow.number, 2, wordsRow.number, 11);
 
-          allRows.push([]);
-          allRows.push(["Terms & Conditions:"]);
-          allRows.push(["1. Prices: Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)"]);
-          allRows.push(["2. Goods Service Tax: " + (formData.gstAdded ? "GST 18% or As applicable" : "GST Extra 18% or As applicable")]);
-          allRows.push(["3. Delivery: Subject to Prior Sales."]);
-          allRows.push(["4. Payment terms: " + formData.paymentTerms]);
-          allRows.push(["5. Validity: Valid for One Week."]);
-          allRows.push(["6. Other terms: " + formData.otherTerms]);
+          worksheet.addRow([]);
+          worksheet.addRow(["Terms & Conditions:"]).getCell(1).font = headerFont;
+          const termsArr = [
+            `1. Prices: Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)`,
+            `2. Goods Service Tax: ${formData.gstAdded ? 'GST 18% or As applicable' : 'GST Extra 18% or As applicable'}`,
+            `3. Delivery: Subject to Prior Sales.`,
+            `4. Payment terms: ${formData.paymentTerms || 'As mentioned'}`,
+            `5. Validity: Valid for One Week.`,
+            `6. Other terms: ${formData.otherTerms || 'None'}`
+          ];
           
-          allRows.push([]);
-          allRows.push([]);
-          allRows.push(["", "", "", "", "", "For SIDDHI KABEL CORPORATION PVT LTD,"]);
-          allRows.push([]);
-          allRows.push([]);
-          allRows.push(["", "", "", "", "", "Authorised Signatory"]);
+          termsArr.forEach(t => {
+              const row = worksheet.addRow([t]);
+              row.getCell(1).font = baseFont;
+              worksheet.mergeCells(row.number, 1, row.number, 11); // Span across all columns
+          });
 
-          const ws = XLSX.utils.aoa_to_sheet(allRows);
+          worksheet.addRow([]);
+          worksheet.addRow([]);
+          const signTitle = worksheet.addRow(["", "", "", "", "", "For SIDDHI KABEL CORPORATION PVT LTD,"]);
+          signTitle.getCell(6).font = headerFont;
+          worksheet.mergeCells(signTitle.number, 6, signTitle.number, 11);
+          
+          worksheet.addRow([]);
+          worksheet.addRow([]);
+          const signBottom = worksheet.addRow(["", "", "", "", "", "Authorised Signatory"]);
+          signBottom.getCell(6).font = headerFont;
+          worksheet.mergeCells(signBottom.number, 6, signBottom.number, 11);
 
-          // Styling and Column Widths
-          const colWidths = [
-              { wch: 6 },  // Sl No
-              { wch: 20 }, // Part No
-              { wch: 45 }, // Description
-              { wch: 8 },  // MOQ
-              { wch: 8 },  // REQ
-              { wch: 6 },  // UOM
-              { wch: 12 }, // G
-              { wch: 12 }, // H
-              { wch: 12 }, // I
-              { wch: 15 }, // J
-              { wch: 15 }  // Stock
-          ];
-          ws['!cols'] = colWidths;
-
-          // Merges
-          ws['!merges'] = [
-              { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Title
-              { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // Address
-              { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }, // Tel
-              { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } }, // GSTIN
-              { s: { r: 5, c: 0 }, e: { r: 5, c: 8 } }, // QUOTATION
-          ];
-
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "Quotation");
-          XLSX.writeFile(wb, `Quotation_${qtnNo.replace(/\//g, '-')}_${exportType}.xlsx`);
+          // Export
+          const buffer = await workbook.xlsx.writeBuffer();
+          saveAs(new Blob([buffer]), `Quotation_${qtnNo.replace(/\//g, '-')}.xlsx`);
 
       } catch (error) {
           console.error("Excel Export Error:", error);
