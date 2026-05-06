@@ -41,8 +41,12 @@ const StatusIcon = ({ status, className }: { status: string, className?: string 
             return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" /><path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.133 2.845a.75.75 0 0 1 1.06 0l1.72 1.72 1.72-1.72a.75.75 0 1 1 1.06 1.06l-1.72 1.72 1.72 1.72a.75.75 0 1 1-1.06-1.06L12 15.685l-1.72 1.72a.75.75 0 1 1-1.06-1.06l1.72-1.72-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>;
         case 'Expired': // Amber - Clock alert
             return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clipRule="evenodd" /></svg>;
+        case 'Under Review': // Indigo - Search icon
+            return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clipRule="evenodd" /></svg>;
+        case 'Need Amendment': // Violet - Pencil icon
+            return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32L19.513 8.199Z" /></svg>;
         default:
-            return null;
+            return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 0 1 .67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 1 1-.671-1.34l.041-.022ZM12 9a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" /></svg>;
     }
 }
 
@@ -443,6 +447,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             'Partial PO Received': '#14b8a6', // Teal 500
             'Expired': '#f59e0b', // Amber 500
             'Lost': '#ef4444', // Red 500
+            'Under Review': '#6366f1', // Indigo 500
+            'Need Amendment': '#a855f7', // Purple 500
         };
         const funnelColors = funnelCounts.map(item => colorMap[item.status]);
 
@@ -716,16 +722,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         'PO received': 'border-green-500 text-green-600',
                         'Partial PO Received': 'border-teal-500 text-teal-600',
                         'Lost': 'border-rose-500 text-rose-600',
-                        'Expired': 'border-amber-500 text-amber-600'
+                        'Expired': 'border-amber-500 text-amber-600',
+                        'Under Review': 'border-indigo-500 text-indigo-600',
+                        'Need Amendment': 'border-purple-500 text-purple-600'
                     };
-                    const iconColor = colors[status].split(' ')[1];
+                    const colorClasses = colors[status] || 'border-slate-400 text-slate-500';
+                    const iconColor = colorClasses.split(' ')[1];
                     return (
                         <motion.div
                             key={status}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 + (i * 0.05) }}
-                            className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colors[status].split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]`}
+                            className={`bg-white p-2 rounded-xl shadow-sm border-l-4 ${colorClasses.split(' ')[0]} flex flex-col justify-center items-center hover:shadow-md transition-shadow min-h-[90px]`}
                         >
                             <StatusIcon status={status} className={`w-7 h-7 mb-1 ${iconColor}`} />
                             <div className="text-lg md:text-xl font-bold text-black">{overallStats[status].count}</div>
