@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
+import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 
 // Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
@@ -222,26 +223,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             'Partial PO Received': { count: 0, value: 0 },
             'Lost': { count: 0, value: 0 },
             'Expired': { count: 0, value: 0 },
+            'Under Review': { count: 0, value: 0 },
+            'Need Amendment': { count: 0, value: 0 },
         };
 
         salesPersonStats.forEach(stat => {
             totals.total.count += stat.total.count;
             totals.total.value += stat.total.value;
             
-            totals['Open'].count += stat['Open'].count;
-            totals['Open'].value += stat['Open'].value;
-
-            totals['PO received'].count += stat['PO received'].count;
-            totals['PO received'].value += stat['PO received'].value;
-
-            totals['Partial PO Received'].count += stat['Partial PO Received'].count;
-            totals['Partial PO Received'].value += stat['Partial PO Received'].value;
-
-            totals['Lost'].count += stat['Lost'].count;
-            totals['Lost'].value += stat['Lost'].value;
-
-            totals['Expired'].count += stat['Expired'].count;
-            totals['Expired'].value += stat['Expired'].value;
+            QUOTATION_STATUSES.forEach(status => {
+                if (totals[status] && stat[status]) {
+                    totals[status].count += stat[status].count;
+                    totals[status].value += stat[status].value;
+                }
+            });
         });
         return totals;
     }, [salesPersonStats]);
@@ -814,49 +809,59 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         <table className="min-w-full divide-y divide-slate-100">
                             <thead className="bg-slate-50">
                                 <tr>
-                                    <th className="px-2 py-2 text-left text-[10px] font-bold text-black uppercase tracking-wider">Name</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Tot</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Opn</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">PO</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Part</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Lst</th>
-                                    <th className="px-2 py-2 text-center text-[10px] font-bold text-black uppercase tracking-wider">Exp</th>
+                                    <th className="px-1 py-2 text-left text-[9px] font-bold text-black uppercase tracking-wider">Name</th>
+                                    <th className="px-1 py-2 text-center text-[9px] font-bold text-black uppercase tracking-wider">Tot</th>
+                                    <th className="px-1 py-2 text-center text-[9px] font-bold text-black uppercase tracking-wider">Opn</th>
+                                    <th className="px-1 py-2 text-center text-[9px] font-bold text-black uppercase tracking-wider">PO</th>
+                                    <th className="px-1 py-2 text-center text-[9px] font-bold text-black uppercase tracking-wider">Prt</th>
+                                    <th className="px-1 py-2 text-center text-[9px] font-bold text-black uppercase tracking-wider">Lst</th>
+                                    <th className="px-1 py-2 text-center text-[9px] font-bold text-black uppercase tracking-wider">Exp</th>
+                                    <th className="px-1 py-2 text-center text-[9px] font-bold text-black uppercase tracking-wider">Rev</th>
+                                    <th className="px-1 py-2 text-center text-[9px] font-bold text-black uppercase tracking-wider">Amd</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-100">
                                 {salesPersonStats.map(stat => (
                                     <tr key={stat.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-2 py-1 whitespace-nowrap text-[10px] font-medium text-black">{stat.name.split(' ')[0]}</td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center bg-slate-50/50">
-                                            <div className="font-bold text-black text-[10px]">{getCellValue(stat.total)}</div>
+                                        <td className="px-1 py-1 whitespace-nowrap text-[9px] font-medium text-black">{stat.name.split(' ')[0]}</td>
+                                        <td className="px-1 py-1 whitespace-nowrap text-center bg-slate-50/50">
+                                            <div className="font-bold text-black text-[9px]">{getCellValue(stat.total)}</div>
                                         </td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Open'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Open'])}</span>
+                                        <td className="px-1 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[9px] font-medium ${stat['Open'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Open'])}</span>
                                         </td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['PO received'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['PO received'])}</span>
+                                        <td className="px-1 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[9px] font-medium ${stat['PO received'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['PO received'])}</span>
                                         </td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Partial PO Received'])}</span>
+                                        <td className="px-1 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[9px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Partial PO Received'])}</span>
                                         </td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Lost'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Lost'])}</span>
+                                        <td className="px-1 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[9px] font-medium ${stat['Lost'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Lost'])}</span>
                                         </td>
-                                        <td className="px-2 py-1 whitespace-nowrap text-center">
-                                            <span className={`text-[10px] font-medium ${stat['Expired'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Expired'])}</span>
+                                        <td className="px-1 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[9px] font-medium ${stat['Expired'].count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Expired'])}</span>
+                                        </td>
+                                        <td className="px-1 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[9px] font-medium ${stat['Under Review']?.count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Under Review'])}</span>
+                                        </td>
+                                        <td className="px-1 py-1 whitespace-nowrap text-center">
+                                            <span className={`text-[9px] font-medium ${stat['Need Amendment']?.count > 0 ? 'text-black' : 'text-slate-300'}`}>{getCellValue(stat['Need Amendment'])}</span>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot className="bg-slate-100 font-bold border-t border-slate-200">
                                 <tr>
-                                    <td className="px-2 py-1 text-[10px] text-black">TOTAL</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals.total)}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Open'])}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['PO received'])}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Partial PO Received'])}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Lost'])}</td>
-                                    <td className="px-2 py-1 text-center text-[10px] text-black">{getCellValue(performanceTotals['Expired'])}</td>
+                                    <td className="px-1 py-1 text-[9px] text-black">TOTAL</td>
+                                    <td className="px-1 py-1 text-center text-[9px] text-black">{getCellValue(performanceTotals.total)}</td>
+                                    <td className="px-1 py-1 text-center text-[9px] text-black">{getCellValue(performanceTotals['Open'])}</td>
+                                    <td className="px-1 py-1 text-center text-[9px] text-black">{getCellValue(performanceTotals['PO received'])}</td>
+                                    <td className="px-1 py-1 text-center text-[9px] text-black">{getCellValue(performanceTotals['Partial PO Received'])}</td>
+                                    <td className="px-1 py-1 text-center text-[9px] text-black">{getCellValue(performanceTotals['Lost'])}</td>
+                                    <td className="px-1 py-1 text-center text-[9px] text-black">{getCellValue(performanceTotals['Expired'])}</td>
+                                    <td className="px-1 py-1 text-center text-[9px] text-black">{getCellValue(performanceTotals['Under Review'])}</td>
+                                    <td className="px-1 py-1 text-center text-[9px] text-black">{getCellValue(performanceTotals['Need Amendment'])}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -890,7 +895,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                 {recentQuotations.map(q => (
                                     <tr key={q.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-2 py-1 whitespace-nowrap">
-                                            <div className="text-[10px] font-bold text-indigo-600">#{q.id}</div>
+                                            <div className="text-[9px] font-bold text-indigo-600 truncate max-w-[100px]" title={generateFormattedQuotationNumber(q, quotations || [])}>
+                                                {generateFormattedQuotationNumber(q, quotations || [])}
+                                            </div>
                                         </td>
                                         <td className="px-2 py-1">
                                             <div className="text-[10px] font-semibold text-black truncate max-w-[80px]" title={q.customerId ? customerMap.get(q.customerId) : ''}>{q.customerId ? customerMap.get(q.customerId) || '...' : 'N/A'}</div>
