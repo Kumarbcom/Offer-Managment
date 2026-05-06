@@ -1282,7 +1282,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
          quotation={successModalData} 
          customer={selectedCustomerObj}
          salesPerson={salesPersons.find(sp => sp.id === successModalData?.salesPersonId) || null}
-         onPrint={() => { setSuccessModalData(null); handlePreview('standard'); }}
+         onPrint={(type) => { setSuccessModalData(null); handlePreview(type); }}
+         onExportExcel={(type) => { handleExportExcel(type); }}
       />
       
       <div className="fixed bottom-0 left-0 w-full bg-slate-800 text-white p-2 shadow-inner z-40 flex items-center justify-between px-6 text-xs font-medium">
