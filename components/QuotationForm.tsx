@@ -314,26 +314,30 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     // and we have local form data, we MUST ignore background updates from 'quotations' prop.
     // This prevents other users' actions (like saving a new quote) from wiping out the current user's draft.
     
-    // Check if we are already in a session
-    if (currentSessionIdRef.current !== undefined) {
-        // If the requested ID (editingQuotationId) matches the current session, 
-        // DO NOT re-initialize from props. Keep local state.
-        if (currentSessionIdRef.current === editingQuotationId && formData !== null) {
-            return;
-        }
+    // Start new session or update existing one
+    const isReturningToCurrentSession = currentSessionIdRef.current === editingQuotationId;
+    
+    // If we already have form data for this specific ID (including null/0 for new), 
+    // and the quotations list has updated, we only want to re-init if the data actually changed 
+    // AND we are not currently the ones who just saved it.
+    if (isReturningToCurrentSession && formData !== null) {
+        // If we are currently editing, don't let background sync overwrite our local changes
+        // unless it's a significant change or we specifically want to reload.
+        return;
+    }
+
+    const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
+    
+    // CRITICAL FIX: If we are looking for a specific ID but it's not in the list yet, 
+    // WAIT. Do not fall back to createNewQuotation() as that wipes out the form state
+    // during the race condition between save and sync.
+    if (editingQuotationId !== null && !quotationToEdit) {
+        // Wait for the quotation to appear in the props list
+        return;
     }
 
     // Start new session
     currentSessionIdRef.current = editingQuotationId;
-
-    const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
-    
-    // If editingQuotationId is set (not New), but we can't find it in the list:
-    // It might be that 'quotations' list hasn't loaded yet. We shouldn't init as New/Empty in that case.
-    if (editingQuotationId !== null && !quotationToEdit && quotations.length === 0) {
-        // Wait for data to load
-        return;
-    }
 
     // Use structured clone or deep copy to avoid mutating state directly if objects are shared
     let initialQuotation = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : createNewQuotation();
@@ -533,11 +537,25 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     if (!formData || !formData.customerId || formData.customerId === 0) {
         alert("Please select a valid customer from the dropdown list before saving."); return;
     }
+    
+    // Sales Person validation
+    if (!formData.salesPersonId) {
+        alert("Please select a Sales Person before saving."); return;
+    }
+
     const validatedDate = new Date(formData.quotationDate);
-    if (!formData.quotationDate || isNaN(validatedDate.getTime())) {
-        alert(`The Quotation Date ("${formData.quotationDate}") is invalid. Please select a valid date.`); 
+    if (!formData.quotationDate || isNaN(validatedDate.getTime()) || formData.quotationDate === '') {
+        alert(`The Quotation Date is invalid. Please select a valid date.`); 
         return;
     }
+    
+    // Enquiry Date validation
+    const validatedEnquiryDate = new Date(formData.enquiryDate);
+    if (!formData.enquiryDate || isNaN(validatedEnquiryDate.getTime()) || formData.enquiryDate === '') {
+        alert(`The Enquiry Date is invalid. Please select a valid date.`); 
+        return;
+    }
+
     // Final check for empty details
     if (!formData.details || formData.details.length === 0 || (formData.details.length === 1 && !formData.details[0].productId)) {
         alert("Please add at least one product with a valid Part Number.");

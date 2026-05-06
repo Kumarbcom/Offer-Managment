@@ -59,8 +59,8 @@ const mapToSupabase = (tableName: TableName, item: any) => {
     if (tableName === 'quotations') {
         return {
             id: item.id,
-            quotation_date: item.quotationDate || new Date().toISOString().split('T')[0],
-            enquiry_date: item.enquiryDate || new Date().toISOString().split('T')[0],
+            quotation_date: (item.quotationDate && item.quotationDate !== '') ? item.quotationDate : new Date().toISOString().split('T')[0],
+            enquiry_date: (item.enquiryDate && item.enquiryDate !== '') ? item.enquiryDate : new Date().toISOString().split('T')[0],
             customer_id: item.customerId || 0,
             contact_person: item.contactPerson || '',
             contact_number: item.contactNumber || item.contactNo || '',
@@ -134,18 +134,26 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
         };
     }
     if (tableName === 'quotations') {
+        const rawDate = item.quotation_date || item.quotationDate || '';
+        const isValidDate = rawDate && !rawDate.includes('Invalid') && !isNaN(new Date(rawDate).getTime());
+        const quotationDate = isValidDate ? rawDate.split('T')[0] : new Date().toISOString().split('T')[0];
+
+        const rawEnquiryDate = item.enquiry_date || item.enquiryDate || '';
+        const isValidEnquiryDate = rawEnquiryDate && !rawEnquiryDate.includes('Invalid') && !isNaN(new Date(rawEnquiryDate).getTime());
+        const enquiryDate = isValidEnquiryDate ? rawEnquiryDate.split('T')[0] : new Date().toISOString().split('T')[0];
+
         return {
             id: item.id,
-            quotationDate: (item.quotation_date || item.quotationDate || '').includes('Invalid') ? new Date().toISOString().split('T')[0] : (item.quotation_date || item.quotationDate || new Date().toISOString().split('T')[0]),
-            enquiryDate: (item.enquiry_date || item.enquiryDate || '').includes('Invalid') ? new Date().toISOString().split('T')[0] : (item.enquiry_date || item.enquiryDate || new Date().toISOString().split('T')[0]),
-            customerId: item.customer_id || item.customerId || null,
+            quotationDate,
+            enquiryDate,
+            customerId: item.customer_id === 0 ? null : (item.customer_id || item.customerId || null),
             contactPerson: item.contact_person || item.contactPerson || '',
             contactNumber: item.contact_number || item.contactNumber || item.contactNo || '',
             otherTerms: item.other_terms || item.otherTerms || '',
             paymentTerms: item.payment_terms || item.paymentTerms || '',
             preparedBy: item.prepared_by || item.preparedBy || '',
             productsBrand: item.products_brand || item.productsBrand || '',
-            salesPersonId: item.sales_person_id || item.salesPersonId || null,
+            salesPersonId: item.sales_person_id === 0 ? null : (item.sales_person_id || item.salesPersonId || null),
             modeOfEnquiry: item.mode_of_enquiry || item.modeOfEnquiry || '',
             status: item.status || 'Open',
             comments: item.comments || '',
