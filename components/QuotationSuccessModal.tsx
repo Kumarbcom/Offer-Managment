@@ -11,7 +11,12 @@ interface QuotationSuccessModalProps {
   onPrint: (type: 'standard' | 'discounted' | 'withAirFreight') => void;
   onExportExcel: (type: 'standard' | 'discounted' | 'withAirFreight') => void;
 }
-
+export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
+  isOpen,
+  onClose,
+  quotation,
+  customer,
+  salesPerson,
   onPrint,
   onExportExcel,
 }) => {
