@@ -400,16 +400,18 @@ export async function getCustomersPaginated(options: any) {
     let query = supabase
         .from('customers')
         .select('*', { count: 'exact' })
-        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .order(sortBy === 'salesPersonId' ? 'sales_person_id' : sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
     if (filters.name) query = query.ilike('name', `%${filters.name}%`);
     if (filters.city) query = query.ilike('city', `%${filters.city}%`);
-    if (filters.salesPersonId) query = query.eq('salesPersonId', filters.salesPersonId);
+    if (filters.salesPersonId) query = query.eq('sales_person_id', filters.salesPersonId);
 
     const { data, error, count } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers"));
-    return { customers: (data || []) as Customer[], count: count || 0 };
+    
+    const mappedCustomers = (data || []).map(item => mapFromSupabase('customers', item));
+    return { customers: mappedCustomers, count: count || 0 };
 }
 
 export async function searchCustomers(term: string) { 
@@ -419,7 +421,7 @@ export async function searchCustomers(term: string) {
     else query = query.order('id', { ascending: false });
     const { data, error } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to search customers"));
-    return (data || []) as Customer[];
+    return (data || []).map(item => mapFromSupabase('customers', item));
 }
 
 export async function getCustomersByIds(ids: number[]) { 
@@ -427,12 +429,13 @@ export async function getCustomersByIds(ids: number[]) {
     if (!ids || ids.length === 0) return [];
     const { data, error } = await supabase.from('customers').select('*').in('id', ids);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers by IDs"));
-    return (data || []) as Customer[];
+    return (data || []).map(item => mapFromSupabase('customers', item));
 }
 
 export async function upsertCustomer(customer: any) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('customers').upsert(customer, { onConflict: 'id' });
+    const payload = mapToSupabase('customers', customer);
+    const { error } = await supabase.from('customers').upsert(payload, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, 'Failed to upsert customer'));
 }
 
@@ -444,7 +447,8 @@ export async function deleteCustomer(id: number) {
 
 export async function addCustomersBatch(customers: any[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.from('customers').upsert(customers, { onConflict: 'id' });
+    const payloads = customers.map(c => mapToSupabase('customers', c));
+    const { error } = await supabase.from('customers').upsert(payloads, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, "Failed to add customers batch"));
 }
 
