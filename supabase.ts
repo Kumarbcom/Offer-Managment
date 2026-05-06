@@ -137,12 +137,19 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
         const rawDate = item.quotation_date || item.quotationDate || '';
         
         // Robust Date Parsing for cross-browser compatibility
+        const formatToYYYYMMDD = (date: Date) => {
+            const y = date.getFullYear();
+            const m = (date.getMonth() + 1).toString().padStart(2, '0');
+            const d = date.getDate().toString().padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
         const parseDate = (str: string) => {
             if (!str || str.includes('Invalid')) return new Date();
             const parts = str.split('T')[0].split('-');
             if (parts.length === 3) {
                 const [y, m, d] = parts.map(Number);
-                const date = new Date(y, m - 1, d);
+                const date = new Date(y, m - 1, d); // Local date
                 if (!isNaN(date.getTime())) return date;
             }
             const fallback = new Date(str);
@@ -150,11 +157,11 @@ const mapFromSupabase = (tableName: TableName, item: any) => {
         };
 
         const qDate = parseDate(rawDate);
-        const quotationDate = qDate.toISOString().split('T')[0];
+        const quotationDate = formatToYYYYMMDD(qDate);
 
         const rawEnquiryDate = item.enquiry_date || item.enquiryDate || '';
         const eDate = parseDate(rawEnquiryDate);
-        const enquiryDate = eDate.toISOString().split('T')[0];
+        const enquiryDate = formatToYYYYMMDD(eDate);
 
         return {
             id: item.id,
