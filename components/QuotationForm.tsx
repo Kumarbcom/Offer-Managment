@@ -393,12 +393,16 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     const customerId = formData?.customerId;
     if (customerId && (!selectedCustomerObj || selectedCustomerObj.id !== customerId)) {
       getCustomersByIds([customerId]).then(customers => {
-        if (customers.length > 0) {
-          setSelectedCustomerObj(customers[0]);
-          setSearchedCustomers(prev => {
-            if (prev.some(c => c.id === customers[0].id)) return prev;
-            return [customers[0], ...prev];
-          });
+        try {
+          if (customers && customers.length > 0) {
+            setSelectedCustomerObj(customers[0]);
+            setSearchedCustomers(prev => {
+              if (prev.some(c => c.id === customers[0].id)) return prev;
+              return [customers[0], ...prev];
+            });
+          }
+        } catch (err) {
+          console.error("QuotationForm: Error processing fetched customer:", err);
         }
       }).catch(error => console.error("QuotationForm: Failed to fetch selected customer:", error));
     } else if (!customerId) {
@@ -1119,19 +1123,27 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <FormField label="Sales Person"><select name="salesPersonId" value={formData.salesPersonId || ''} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}><option value="">Select...</option>{salesPersons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FormField>
                     <FormField label="Enquiry Mode"><select name="modeOfEnquiry" value={formData.modeOfEnquiry} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black" disabled={isReadOnly}>{MODES_OF_ENQUIRY.map(m => <option key={m} value={m}>{m}</option>)}</select></FormField>
                     <FormField label="Status"><select name="status" value={formData.status} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 bg-white rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm disabled:bg-slate-100 text-black">{QUOTATION_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></FormField>
-                    {selectedCustomerObj && selectedCustomerObj.discountStructure && typeof selectedCustomerObj.discountStructure === 'object' && !Array.isArray(selectedCustomerObj.discountStructure) && Object.keys(selectedCustomerObj.discountStructure).length > 0 && (
+                    {selectedCustomerObj && selectedCustomerObj.discountStructure && typeof selectedCustomerObj.discountStructure === 'object' && !Array.isArray(selectedCustomerObj.discountStructure) && (
                         <div className="flex flex-wrap gap-1 mt-1 text-[10px] border border-slate-200 p-1 rounded bg-slate-50 text-black">
-                            {Object.entries(selectedCustomerObj.discountStructure).map(([key, value]) => {
-                                const val = Number(value);
-                                if (!isNaN(val) && val > 0) {
-                                    return (
-                                        <div key={key} className="px-1 bg-slate-200 rounded">
-                                            <span className="font-semibold capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>: {val}%
-                                        </div>
-                                    );
+                            {(() => {
+                                try {
+                                    const entries = Object.entries(selectedCustomerObj.discountStructure);
+                                    if (entries.length === 0) return <span className="text-slate-400">No special discounts</span>;
+                                    return entries.map(([key, value]) => {
+                                        const val = Number(value);
+                                        if (!isNaN(val) && val > 0) {
+                                            return (
+                                                <div key={key} className="px-1 bg-slate-200 rounded">
+                                                    <span className="font-semibold capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>: {val}%
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    });
+                                } catch (e) {
+                                    return <span className="text-rose-500">Error loading discounts</span>;
                                 }
-                                return null;
-                            })}
+                            })()}
                         </div>
                     )}
                 </div>

@@ -28,12 +28,14 @@ const calculateTotalAmount = (details: Quotation['details']): number => {
 }
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
-const statusColors: Record<QuotationStatus, { bg: string, text: string }> = {
+const statusColors: Record<string, { bg: string, text: string }> = {
     'Open': { bg: 'bg-blue-100', text: 'text-blue-700' },
     'PO received': { bg: 'bg-green-100', text: 'text-green-700' },
     'Partial PO Received': { bg: 'bg-teal-100', text: 'text-teal-700' },
     'Expired': { bg: 'bg-yellow-100', text: 'text-yellow-700' },
     'Lost': { bg: 'bg-rose-100', text: 'text-rose-700' },
+    'Under Review': { bg: 'bg-indigo-100', text: 'text-indigo-700' },
+    'Need Amendment': { bg: 'bg-purple-100', text: 'text-purple-700' },
 };
 
 
@@ -173,10 +175,10 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
           city: c.city,
           pincode: c.pincode,
           salesPersonId: c.salesPersonId,
-          singleCoreDiscount: c.discountStructure.singleCore,
-          multiCoreDiscount: c.discountStructure.multiCore,
-          specialCableDiscount: c.discountStructure.specialCable,
-          accessoriesDiscount: c.discountStructure.accessories,
+          singleCoreDiscount: c.discountStructure?.singleCore || 0,
+          multiCoreDiscount: c.discountStructure?.multiCore || 0,
+          specialCableDiscount: c.discountStructure?.specialCable || 0,
+          accessoriesDiscount: c.discountStructure?.accessories || 0,
       }));
       const ws = XLSX.utils.json_to_sheet(dataToExport);
       const wb = XLSX.utils.book_new();
@@ -299,7 +301,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <div
                         key={status}
                         onClick={() => onFilterQuotations({ status: status })}
-                        className={`cursor-pointer ${colors.text} hover:bg-opacity-80 transition-opacity text-sm font-semibold p-1 rounded-md hover:bg-current/10`}
+                        className={`cursor-pointer ${colors?.text || 'text-slate-600'} hover:bg-opacity-80 transition-opacity text-sm font-semibold p-1 rounded-md hover:bg-current/10`}
                         title={`View ${stats.count} '${status}' quotations`}
                     >
                         <span>{status}: </span>
@@ -379,7 +381,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <option value="name">Customer Name</option>
                     <option value="city">City</option>
                     <option value="pincode">Pincode</option>
-                    <option value="salesPersonId">Sales Person</option>
+                    <option value="salesPerson">Sales Person</option>
                 </select>
             </div>
             <div>

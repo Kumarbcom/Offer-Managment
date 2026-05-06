@@ -38,50 +38,40 @@ const isUuid = (id: unknown): boolean => {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 };
 
-const mapToSupabase = (tableName: TableName, item: any) => {
-    if (tableName === 'pendingSOs') {
-        return {
-            id: item.id,
-            date: item.date,
-            order_no: item.orderNo,
-            party_name: item.partyName,
-            item_name: item.itemName,
-            material_code: item.materialCode,
-            part_no: item.partNo,
-            ordered_qty: item.orderedQty,
-            balance_qty: item.balanceQty,
-            rate: item.rate,
-            discount: item.discount,
-            value: item.value,
-            due_on: item.dueOn
-        };
-    }
+const mapToSupabase = (tableName: TableName, item: any): any => {
+    if (!item) return null;
+    
+    // Default pass-through for tables without specific mapping
     if (tableName === 'quotations') {
-        const getLocalDate = () => {
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = (now.getMonth() + 1).toString().padStart(2, '0');
-            const d = now.getDate().toString().padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        };
-        const today = getLocalDate();
         return {
             id: item.id,
-            quotation_date: (item.quotationDate && item.quotationDate !== '') ? item.quotationDate : today,
-            enquiry_date: (item.enquiryDate && item.enquiryDate !== '') ? item.enquiryDate : today,
-            customer_id: item.customerId || 0,
-            contact_person: item.contactPerson || '',
-            contact_number: item.contactNumber || item.contactNo || '',
-            other_terms: item.otherTerms || '',
-            payment_terms: item.paymentTerms || '',
-            prepared_by: item.preparedBy || 'Kumar',
-            products_brand: item.productsBrand || 'Lapp',
-            sales_person_id: item.salesPersonId || 0,
-            mode_of_enquiry: item.modeOfEnquiry || 'Customer Email',
-            status: item.status || 'Open',
-            comments: item.comments || '',
-            details: item.details || [],
-            gst_added: item.gstAdded || false
+            quotation_date: item.quotationDate,
+            quotationDate: item.quotationDate,
+            enquiry_date: item.enquiryDate,
+            enquiryDate: item.enquiryDate,
+            customer_id: item.customerId,
+            customerId: item.customerId,
+            sales_person_id: item.salesPersonId,
+            salesPersonId: item.salesPersonId,
+            contact_person: item.contactPerson,
+            contactPerson: item.contactPerson,
+            contact_number: item.contactNumber,
+            contactNumber: item.contactNumber,
+            other_terms: item.otherTerms,
+            otherTerms: item.otherTerms,
+            payment_terms: item.paymentTerms,
+            paymentTerms: item.paymentTerms,
+            prepared_by: item.preparedBy,
+            preparedBy: item.preparedBy,
+            products_brand: item.productsBrand,
+            productsBrand: item.productsBrand,
+            mode_of_enquiry: item.modeOfEnquiry,
+            modeOfEnquiry: item.modeOfEnquiry,
+            status: item.status,
+            comments: item.comments,
+            details: item.details,
+            gst_added: item.gstAdded,
+            gstAdded: item.gstAdded
         };
     }
     if (tableName === 'customers') {
@@ -91,142 +81,129 @@ const mapToSupabase = (tableName: TableName, item: any) => {
             address: item.address,
             city: item.city,
             pincode: item.pincode,
-            salesPersonId: item.salesPersonId, // DB column is salesPersonId (camelCase)
-            discount_structure: item.discountStructure // DB column is discount_structure (snake_case)
+            sales_person_id: item.salesPersonId,
+            salesPersonId: item.salesPersonId,
+            discount_structure: item.discountStructure,
+            discountStructure: item.discountStructure
         };
     }
     if (tableName === 'products') {
         return {
             id: item.id,
-            partNo: item.partNo, // DB column is partNo (camelCase)
+            part_no: item.partNo,
+            partNo: item.partNo,
             description: item.description,
-            hsn_code: item.hsnCode, // DB column is hsn_code (snake_case)
-            prices: item.prices,
             uom: item.uom,
-            plant: item.plant,
-            weight: item.weight
+            weight: item.weight,
+            prices: item.prices
         };
     }
-    if (tableName === 'deliveryChallans') {
-        return {
-            id: item.id,
-            challan_date: item.challanDate,
-            customer_id: item.customerId,
-            quotation_id: item.quotationId,
-            vehicle_no: item.vehicleNo,
-            po_no: item.poNo,
-            po_date: item.poDate,
-            items: item.items
-        };
-    }
-    // Default pass-through for other tables or if they already match
     return item;
 };
 
-const mapFromSupabase = (tableName: TableName, item: any) => {
-    if (tableName === 'pendingSOs') {
-        return {
-            id: item.id,
-            date: item.date || item.date_col || new Date().toISOString(),
-            orderNo: item.order_no || item.orderNo || '',
-            partyName: item.party_name || item.partyName || '',
-            itemName: item.item_name || item.itemName || '',
-            materialCode: item.material_code || item.materialCode || '',
-            partNo: item.part_no || item.partNo || '',
-            orderedQty: item.ordered_qty || item.orderedQty || 0,
-            balanceQty: item.balance_qty || item.balanceQty || 0,
-            rate: item.rate || 0,
-            discount: item.discount || 0,
-            value: item.value || 0,
-            dueOn: item.due_on || item.dueOn || new Date().toISOString()
-        };
-    }
+const mapFromSupabase = (tableName: TableName, item: any): any => {
+    if (!item) return null;
+    
+    const get = (keys: string[], fallback: any = null) => {
+        for (const key of keys) {
+            if (item[key] !== undefined && item[key] !== null) return item[key];
+        }
+        return fallback;
+    };
+
     if (tableName === 'quotations') {
-        const rawDate = item.quotation_date || item.quotationDate || '';
+        const rawDate = get(['quotation_date', 'quotationDate'], '');
+        const rawEnquiryDate = get(['enquiry_date', 'enquiryDate'], '');
         
-        // Robust Date Parsing for cross-browser compatibility
+        const parseDate = (str: any) => {
+            if (!str || String(str).includes('Invalid')) return new Date();
+            const date = new Date(str);
+            return isNaN(date.getTime()) ? new Date() : date;
+        };
+
         const formatToYYYYMMDD = (date: Date) => {
             const y = date.getFullYear();
-            const m = (date.getMonth() + 1).toString().padStart(2, '0');
-            const d = date.getDate().toString().padStart(2, '0');
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
             return `${y}-${m}-${d}`;
         };
 
-        const parseDate = (str: string) => {
-            if (!str || str.includes('Invalid')) return new Date();
-            const parts = str.split('T')[0].split('-');
-            if (parts.length === 3) {
-                const [y, m, d] = parts.map(Number);
-                const date = new Date(y, m - 1, d); // Local date
-                if (!isNaN(date.getTime())) return date;
-            }
-            const fallback = new Date(str);
-            return isNaN(fallback.getTime()) ? new Date() : fallback;
-        };
-
-        const qDate = parseDate(rawDate);
-        const quotationDate = formatToYYYYMMDD(qDate);
-
-        const rawEnquiryDate = item.quotationDate || item.quotation_date || item.enquiryDate || item.enquiry_date || '';
-        const eDate = parseDate(rawEnquiryDate);
-        const enquiryDate = formatToYYYYMMDD(eDate);
-
         return {
-            id: item.id,
-            quotationDate,
-            enquiryDate,
-            customerId: item.customer_id ?? item.customerId ?? null,
-            contactPerson: item.contact_person ?? item.contactPerson ?? '',
-            contactNumber: item.contact_number ?? item.contactNumber ?? item.contactNo ?? '',
-            otherTerms: item.other_terms ?? item.otherTerms ?? '',
-            paymentTerms: item.payment_terms ?? item.paymentTerms ?? '',
-            preparedBy: item.prepared_by ?? item.preparedBy ?? '',
-            productsBrand: item.products_brand ?? item.productsBrand ?? '',
-            salesPersonId: item.sales_person_id ?? item.salesPersonId ?? null,
-            modeOfEnquiry: item.mode_of_enquiry ?? item.modeOfEnquiry ?? '',
+            id: Number(item.id),
+            quotationDate: formatToYYYYMMDD(parseDate(rawDate)),
+            enquiryDate: formatToYYYYMMDD(parseDate(rawEnquiryDate)),
+            customerId: Number(get(['customer_id', 'customerId'])) || null,
+            contactPerson: get(['contact_person', 'contactPerson'], ''),
+            contactNumber: get(['contact_number', 'contactNumber'], ''),
+            otherTerms: get(['other_terms', 'otherTerms'], ''),
+            paymentTerms: get(['payment_terms', 'paymentTerms'], ''),
+            preparedBy: get(['prepared_by', 'preparedBy'], 'Kumar'),
+            productsBrand: get(['products_brand', 'productsBrand'], 'Lapp'),
+            salesPersonId: Number(get(['sales_person_id', 'salesPersonId'])) || null,
+            modeOfEnquiry: get(['mode_of_enquiry', 'modeOfEnquiry'], 'Customer Email'),
             status: item.status || 'Open',
             comments: item.comments || '',
             details: item.details || [],
-            gstAdded: item.gst_added ?? item.gstAdded ?? false
+            gstAdded: !!(get(['gst_added', 'gstAdded'], false))
         };
     }
+
     if (tableName === 'customers') {
         return {
-            id: item.id,
+            id: Number(item.id),
             name: item.name || '',
             address: item.address || '',
             city: item.city || '',
             pincode: item.pincode || '',
-            salesPersonId: item.salesPersonId || item.sales_person_id || null,
-            discountStructure: item.discount_structure || item.discountStructure || {
+            salesPersonId: Number(get(['sales_person_id', 'salesPersonId'])) || null,
+            discountStructure: get(['discount_structure', 'discountStructure'], {
                 singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0
-            }
+            })
         };
     }
+
     if (tableName === 'products') {
         return {
-            id: item.id,
-            partNo: item.partNo || item.part_no || '',
+            id: Number(item.id),
+            partNo: get(['part_no', 'partNo'], ''),
             description: item.description || '',
-            hsnCode: item.hsn_code || item.hsnCode || '',
-            prices: item.prices || [],
-            uom: item.uom || '',
-            plant: item.plant || '',
-            weight: item.weight || 0
+            uom: item.uom || 'Mtr',
+            weight: Number(item.weight) || 0,
+            prices: item.prices || []
         };
     }
+
+    if (tableName === 'pending_so' || tableName === 'pendingSOs') {
+        return {
+            id: Number(item.id),
+            date: get(['date', 'date_col'], new Date().toISOString()),
+            orderNo: get(['order_no', 'orderNo'], ''),
+            partyName: get(['party_name', 'partyName'], ''),
+            itemName: get(['item_name', 'itemName'], ''),
+            materialCode: get(['material_code', 'materialCode'], ''),
+            partNo: get(['part_no', 'partNo'], ''),
+            orderedQty: Number(get(['ordered_qty', 'orderedQty'], 0)),
+            balanceQty: Number(get(['balance_qty', 'balanceQty'], 0)),
+            rate: Number(item.rate) || 0,
+            discount: Number(item.discount) || 0,
+            value: Number(item.value) || 0,
+            dueOn: get(['due_on', 'dueOn'], new Date().toISOString())
+        };
+    }
+
     if (tableName === 'deliveryChallans') {
         return {
-            id: item.id,
-            challanDate: item.challan_date || item.challanDate || new Date().toISOString(),
-            customerId: item.customer_id || item.customerId || null,
-            quotationId: item.quotation_id || item.quotationId || null,
-            vehicleNo: item.vehicle_no || item.vehicleNo || '',
-            poNo: item.po_no || item.poNo || '',
-            poDate: item.po_date || item.poDate || new Date().toISOString(),
+            id: Number(item.id),
+            challanDate: get(['challan_date', 'challanDate'], new Date().toISOString()),
+            customerId: Number(get(['customer_id', 'customerId'])) || null,
+            quotationId: Number(get(['quotation_id', 'quotationId'])) || null,
+            vehicleNo: get(['vehicle_no', 'vehicleNo'], ''),
+            poNo: get(['po_no', 'poNo'], ''),
+            poDate: get(['po_date', 'poDate'], new Date().toISOString()),
             items: item.items || []
         };
     }
+
     return item;
 };
 
@@ -400,7 +377,7 @@ export async function getCustomersPaginated(options: any) {
     let query = supabase
         .from('customers')
         .select('*', { count: 'exact' })
-        .order(sortBy === 'salesPersonId' ? 'sales_person_id' : sortBy, { ascending: sortOrder === 'asc' })
+        .order(sortBy === 'salesPerson' || sortBy === 'salesPersonId' ? 'sales_person_id' : sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
     if (filters.name) query = query.ilike('name', `%${filters.name}%`);

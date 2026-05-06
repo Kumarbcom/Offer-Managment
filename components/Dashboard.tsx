@@ -741,11 +741,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
                     <div className="flex flex-col items-center">
-                        <div className="text-xl md:text-2xl font-bold">{overallStats.total.count} <span className="text-[10px] opacity-70">Total</span></div>
-                        <div className="text-xs font-bold bg-white/20 px-2 rounded mt-0.5">#{latestQuotationNo} <span className="text-[8px] opacity-70 uppercase font-medium">Running</span></div>
+                        <div className="text-xl md:text-2xl font-bold">{overallStats.total.count} <span className="text-[10px] opacity-70">Enquiries</span></div>
+                        <div className="text-xs font-bold bg-white/20 px-2 rounded mt-0.5" title="Latest Sequence Number in current FY">Latest: #{latestQuotationNo}</div>
                     </div>
                     <div className="text-[10px] font-medium opacity-100 mt-1">{formatCurrencyCompact(overallStats.total.value)}</div>
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-center">Total Enquiries</div>
+                    <div className="text-[9px] font-bold uppercase tracking-wider text-center">Volume & Stats</div>
                 </motion.div>
                 {QUOTATION_STATUSES.map((status, i) => {
                     const colors: Record<string, string> = {
