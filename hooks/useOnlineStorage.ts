@@ -144,7 +144,9 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
 
     const setValue = useCallback(async (value: SetStateAction<T[]>) => {
         const previousState = stateRef.current;
-        const newState = value instanceof Function ? value(previousState!) : value;
+        // Use a safe fallback for the previous state if it hasn't loaded yet
+        const safePrev = previousState || initialData || [];
+        const newState = value instanceof Function ? value(safePrev as T[]) : value;
 
         setState(newState); // optimistic update
         
