@@ -322,6 +322,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         <td className="px-2 py-1 font-bold text-black">{generateFormattedQuotationNumber(q, quotations || [])}</td>
                         <td className="px-2 py-1 text-black">
                             {(() => {
+                                if (!q.quotationDate) return 'N/A';
                                 const parts = q.quotationDate.split('-');
                                 return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : q.quotationDate;
                             })()}

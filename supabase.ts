@@ -159,18 +159,22 @@ const mapFromSupabase = (tableName: TableName, item: any): any => {
             return `${y}-${m}-${d}`;
         };
 
+        const id = Number(item.id);
+        const customerId = Number(get(['customer_id', 'customerId']));
+        const salesPersonId = Number(get(['sales_person_id', 'salesPersonId']));
+
         return {
-            id: Number(item.id),
+            id: isNaN(id) ? 0 : id,
             quotationDate: formatToYYYYMMDD(parseDate(rawDate)),
             enquiryDate: formatToYYYYMMDD(parseDate(rawEnquiryDate)),
-            customerId: Number(get(['customer_id', 'customerId'])) || null,
+            customerId: isNaN(customerId) ? null : (customerId || null),
             contactPerson: get(['contact_person', 'contactPerson'], ''),
             contactNumber: get(['contact_number', 'contactNumber'], ''),
             otherTerms: get(['other_terms', 'otherTerms'], ''),
             paymentTerms: get(['payment_terms', 'paymentTerms'], ''),
             preparedBy: get(['prepared_by', 'preparedBy'], 'Kumar'),
             productsBrand: get(['products_brand', 'productsBrand'], 'Lapp'),
-            salesPersonId: Number(get(['sales_person_id', 'salesPersonId'])) || null,
+            salesPersonId: isNaN(salesPersonId) ? null : (salesPersonId || null),
             modeOfEnquiry: get(['mode_of_enquiry', 'modeOfEnquiry'], 'Customer Email'),
             status: item.status || 'Open',
             comments: item.comments || '',
