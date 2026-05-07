@@ -98,7 +98,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             prices: item.prices
         };
     }
-    if (tableName === 'pendingSOs' || tableName === 'pending_sales_orders') {
+    if (tableName === 'pendingSOs') {
         return {
             id: item.id,
             date: item.date,
@@ -123,7 +123,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             dueOn: item.dueOn
         };
     }
-    if (tableName === 'deliveryChallans' || tableName === 'delivery_challans') {
+    if (tableName === 'deliveryChallans') {
         return {
             id: item.id,
             challan_date: item.challanDate,
@@ -141,7 +141,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             items: item.items
         };
     }
-    if (tableName === 'stockStatements' || tableName === 'stock_statement') {
+    if (tableName === 'stockStatements') {
         return {
             id: item.id,
             description: item.description,
@@ -150,7 +150,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             value: item.value
         };
     }
-    if (tableName === 'salesPersons' || tableName === 'sales_persons') {
+    if (tableName === 'salesPersons') {
         return {
             id: item.id,
             name: item.name,
@@ -233,7 +233,7 @@ const mapFromSupabase = (tableName: TableName, item: any): any => {
         };
     }
 
-    if (tableName === 'pending_so' || tableName === 'pendingSOs') {
+    if (tableName === 'pendingSOs') {
         return {
             id: Number(item.id),
             date: get(['date', 'date_col'], new Date().toISOString()),
