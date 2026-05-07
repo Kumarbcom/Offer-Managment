@@ -46,32 +46,20 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
         return {
             id: item.id,
             quotation_date: item.quotationDate,
-            quotationDate: item.quotationDate,
             enquiry_date: item.enquiryDate,
-            enquiryDate: item.enquiryDate,
             customer_id: item.customerId,
-            customerId: item.customerId,
             sales_person_id: item.salesPersonId,
-            salesPersonId: item.salesPersonId,
             contact_person: item.contactPerson,
-            contactPerson: item.contactPerson,
             contact_number: item.contactNumber,
-            contactNumber: item.contactNumber,
             other_terms: item.otherTerms,
-            otherTerms: item.otherTerms,
             payment_terms: item.paymentTerms,
-            paymentTerms: item.paymentTerms,
             prepared_by: item.preparedBy,
-            preparedBy: item.preparedBy,
             products_brand: item.productsBrand,
-            productsBrand: item.productsBrand,
             mode_of_enquiry: item.modeOfEnquiry,
-            modeOfEnquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
             details: item.details,
-            gst_added: item.gstAdded,
-            gstAdded: item.gstAdded
+            gst_added: item.gstAdded
         };
     }
     if (tableName === 'customers') {
@@ -82,16 +70,13 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             city: item.city,
             pincode: item.pincode,
             sales_person_id: item.salesPersonId,
-            salesPersonId: item.salesPersonId,
-            discount_structure: item.discountStructure,
-            discountStructure: item.discountStructure
+            discount_structure: item.discountStructure
         };
     }
     if (tableName === 'products') {
         return {
             id: item.id,
             part_no: item.partNo,
-            partNo: item.partNo,
             description: item.description,
             uom: item.uom,
             weight: item.weight,
@@ -103,41 +88,27 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             id: item.id,
             date: item.date,
             order_no: item.orderNo,
-            orderNo: item.orderNo,
             party_name: item.partyName,
-            partyName: item.partyName,
             item_name: item.itemName,
-            itemName: item.itemName,
             material_code: item.materialCode,
-            materialCode: item.materialCode,
             part_no: item.partNo,
-            partNo: item.partNo,
             ordered_qty: item.orderedQty,
-            orderedQty: item.orderedQty,
             balance_qty: item.balanceQty,
-            balanceQty: item.balanceQty,
             rate: item.rate,
             discount: item.discount,
             value: item.value,
-            due_on: item.dueOn,
-            dueOn: item.dueOn
+            due_on: item.dueOn
         };
     }
     if (tableName === 'deliveryChallans') {
         return {
             id: item.id,
             challan_date: item.challanDate,
-            challanDate: item.challanDate,
             customer_id: item.customerId,
-            customerId: item.customerId,
             quotation_id: item.quotationId,
-            quotationId: item.quotationId,
             vehicle_no: item.vehicleNo,
-            vehicleNo: item.vehicleNo,
             po_no: item.poNo,
-            poNo: item.poNo,
             po_date: item.poDate,
-            poDate: item.poDate,
             items: item.items
         };
     }
