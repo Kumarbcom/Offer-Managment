@@ -115,6 +115,7 @@ export const MOCK_QUOTATIONS: Quotation[] = [
         airFreightDetails: { weightPerMtr: 0.050, airFreightLeadTime: '' },
       },
     ],
+    gstAdded: true,
   },
   {
     id: 2,
@@ -147,5 +148,6 @@ export const MOCK_QUOTATIONS: Quotation[] = [
         airFreightDetails: { weightPerMtr: 0.080, airFreightLeadTime: '1 Week' },
       },
     ],
+    gstAdded: true,
   },
 ];
