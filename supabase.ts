@@ -76,7 +76,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
     if (tableName === 'products') {
         return {
             id: item.id,
-            part_no: item.partNo,
+            partNo: item.partNo,
             description: item.description,
             uom: item.uom,
             weight: item.weight,
