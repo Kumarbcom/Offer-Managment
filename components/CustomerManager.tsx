@@ -20,7 +20,8 @@ type SortOrderType = 'asc' | 'desc';
 
 const PAGE_LIMIT = 50;
 
-const calculateTotalAmount = (details: Quotation['details']): number => {
+const calculateTotalAmount = (details: Quotation['details'] | undefined): number => {
+    if (!details || !Array.isArray(details)) return 0;
     return details.reduce((total, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         return total + (unitPrice * item.moq);
@@ -427,7 +428,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                                 <div
                                                     key={status}
                                                     onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
-                                                    className={`cursor-pointer hover:underline ${colors.text} text-xs font-semibold`}
+                                                    className={`cursor-pointer hover:underline ${colors?.text || 'text-slate-600'} text-xs font-semibold`}
                                                     title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
                                                 >
                                                     <span>{status}: </span>
