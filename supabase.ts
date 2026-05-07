@@ -98,6 +98,66 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             prices: item.prices
         };
     }
+    if (tableName === 'pendingSOs' || tableName === 'pending_sales_orders') {
+        return {
+            id: item.id,
+            date: item.date,
+            order_no: item.orderNo,
+            orderNo: item.orderNo,
+            party_name: item.partyName,
+            partyName: item.partyName,
+            item_name: item.itemName,
+            itemName: item.itemName,
+            material_code: item.materialCode,
+            materialCode: item.materialCode,
+            part_no: item.partNo,
+            partNo: item.partNo,
+            ordered_qty: item.orderedQty,
+            orderedQty: item.orderedQty,
+            balance_qty: item.balanceQty,
+            balanceQty: item.balanceQty,
+            rate: item.rate,
+            discount: item.discount,
+            value: item.value,
+            due_on: item.dueOn,
+            dueOn: item.dueOn
+        };
+    }
+    if (tableName === 'deliveryChallans' || tableName === 'delivery_challans') {
+        return {
+            id: item.id,
+            challan_date: item.challanDate,
+            challanDate: item.challanDate,
+            customer_id: item.customerId,
+            customerId: item.customerId,
+            quotation_id: item.quotationId,
+            quotationId: item.quotationId,
+            vehicle_no: item.vehicleNo,
+            vehicleNo: item.vehicleNo,
+            po_no: item.poNo,
+            poNo: item.poNo,
+            po_date: item.poDate,
+            poDate: item.poDate,
+            items: item.items
+        };
+    }
+    if (tableName === 'stockStatements' || tableName === 'stock_statement') {
+        return {
+            id: item.id,
+            description: item.description,
+            quantity: item.quantity,
+            rate: item.rate,
+            value: item.value
+        };
+    }
+    if (tableName === 'salesPersons' || tableName === 'sales_persons') {
+        return {
+            id: item.id,
+            name: item.name,
+            email: item.email,
+            mobile: item.mobile
+        };
+    }
     return item;
 };
 
