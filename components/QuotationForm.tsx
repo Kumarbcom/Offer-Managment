@@ -16,8 +16,6 @@ import { useOnlineStorage } from '../hooks/useOnlineStorage';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
-import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
 
 declare var XLSX: any;
 
@@ -178,6 +176,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rowsToAdd, setRowsToAdd] = useState(1);
+  const airFreightRate = formData?.quotationDate && new Date(formData.quotationDate) >= new Date('2026-05-25') ? 180 : 150;
 
   // Refs for grid inputs
   const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -673,6 +672,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }
 
       try {
+          const [{ default: ExcelJS }, { saveAs }] = await Promise.all([
+              import('exceljs'),
+              import('file-saver'),
+          ]);
           const workbook = new ExcelJS.Workbook();
           const worksheet = workbook.addWorksheet('Quotation');
 
@@ -794,7 +797,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               
               if (exportType === 'withAirFreight') {
                   const weight = item.airFreightDetails?.weightPerMtr || 0;
-                  const freightPerMtr = weight ? (weight / 1000 * 150) : 0;
+                  const freightPerMtr = weight ? (weight / 1000 * airFreightRate) : 0;
                   const up = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
                   rowData = [
                       index + 1, item.partNo, item.description, item.moq, item.req, item.uom,
@@ -865,7 +868,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           
           const fSub = formData.details.reduce((s, i) => {
               const up = i.price * (1 - (parseFloat(String(i.discount)) || 0) / 100);
-              const af = i.airFreight ? ((i.airFreightDetails?.weightPerMtr || 0) / 1000 * 150) : 0;
+              const af = i.airFreight ? ((i.airFreightDetails?.weightPerMtr || 0) / 1000 * airFreightRate) : 0;
               return s + (up + af) * i.moq;
           }, 0);
           const fGrand = formData.gstAdded ? fSub * 1.18 : fSub;
@@ -948,7 +951,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           acc.req += item.req || 0;
           acc.amount += unitPrice * item.moq || 0;
           const weight = item.airFreightDetails?.weightPerMtr || 0;
-          acc.airFreightAmount += item.airFreight ? (weight / 1000 * 150) * item.moq : 0;
+          acc.airFreightAmount += item.airFreight ? (weight / 1000 * airFreightRate) * item.moq : 0;
           return acc;
       }, { moq: 0, req: 0, amount: 0, airFreightAmount: 0 });
 
@@ -1159,7 +1162,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <tbody className="bg-white text-xs text-black">{(formData.details || []).map((item, index) => {
                         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); 
                         const amount = unitPrice * (item.moq || 0); 
-                        const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0; 
+                        const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) : 0; 
                         const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
                         const currentProduct = fetchedProducts.get(item.productId);
                         const optionsForSelect = [...searchedProducts];

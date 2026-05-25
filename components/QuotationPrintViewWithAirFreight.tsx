@@ -45,11 +45,13 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
 };
 
 export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl }) => {
+    const airFreightRate = quotation.quotationDate && new Date(quotation.quotationDate) >= new Date('2026-05-25') ? 180 : 150;
+
     const totals = (quotation.details || []).reduce((acc, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         const amount = unitPrice * item.moq;
         // Safety Check: Ensure airFreightDetails exists before accessing
-        const freightAmount = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * 150) * item.moq : 0;
+        const freightAmount = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) * item.moq : 0;
         
         acc.totalAmount += amount;
         acc.totalFreight += freightAmount;
@@ -133,7 +135,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                             const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
                             const amount = unitPrice * item.moq;
                             // Safety Check: Ensure airFreightDetails exists
-                            const freightPerUnit = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * 150) : 0;
+                            const freightPerUnit = (item.airFreight && item.airFreightDetails) ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) : 0;
                             const freightAmount = freightPerUnit * item.moq;
                             const totalWithFreight = amount + freightAmount;
                             const partNoUrl = getPartNoLink(item.partNo);
