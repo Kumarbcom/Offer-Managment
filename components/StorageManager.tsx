@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, supabaseConfig } from '../supabaseClient';
-import { toSupabaseTableName, get, set, clearTable } from '../supabase';
+import { toSupabaseTableName, get, set } from '../supabase';
 import { USERS } from '../auth';
+import { INITIAL_DATA } from '../initialData';
 
 export const StorageManager: React.FC = () => {
     const [usage, setUsage] = useState<{ key: string, size: number }[]>([]);
@@ -132,8 +133,6 @@ export const StorageManager: React.FC = () => {
                             onClick={async () => {
                                 if (!window.confirm("Seed ALL cloud tables with initial data? This will populate your clean database.")) return;
                                 try {
-                                    const { INITIAL_DATA } = await import('../initialData');
-                                    const { set } = await import('../supabase');
                                     const tables = ['users', 'customers', 'products', 'salesPersons'] as const;
                                     
                                     for (const t of tables) {
@@ -273,4 +272,3 @@ export const StorageManager: React.FC = () => {
         </div>
     );
 };
-

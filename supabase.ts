@@ -78,6 +78,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             id: item.id,
             partNo: item.partNo,
             description: item.description,
+            hsn_code: item.hsnCode,
             uom: item.uom,
             weight: item.weight,
             prices: item.prices
@@ -202,6 +203,7 @@ const mapFromSupabase = (tableName: TableName, item: any): any => {
             id: Number(item.id),
             partNo: get(['part_no', 'partNo'], ''),
             description: item.description || '',
+            hsnCode: get(['hsn_code', 'hsnCode'], ''),
             uom: item.uom || 'Mtr',
             weight: Number(item.weight) || 0,
             prices: item.prices || []
@@ -589,7 +591,7 @@ export async function searchProducts(term: string) {
     return results;
 }
 
-export async function getProductsByIds(ids: number[]) { 
+export async function getProductsByIds(ids: number[]): Promise<Product[]> { 
     if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
     const { data, error } = await supabase.from('products').select('*').in('id', ids);

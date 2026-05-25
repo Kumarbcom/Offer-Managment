@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
-import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
+import { generateFormattedQuotationNumber, getFinancialYear } from '../utils/quotationNumber';
 
 // Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
@@ -171,24 +171,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         const latestQ = filteredQuotations.find(q => q.id === maxId);
         if (!latestQ) return '0000';
         
-        // Match logic from generateFormattedQuotationNumber
-        const fyInfo = { startYear: 2026, endYear: 2027, fyString: '2026-27' }; // Default FY
-        try {
-            const dateStr = latestQ.quotationDate;
-            const d = new Date(dateStr);
-            const year = d.getFullYear();
-            const month = d.getMonth();
-            let startYear, endYear;
-            if (month >= 3) { startYear = year; endYear = year + 1; }
-            else { startYear = year - 1; endYear = year; }
-            fyInfo.fyString = `${startYear}-${String(endYear).slice(2)}`;
-        } catch(e) {}
-        
-        const offset = fyInfo.fyString === '2026-27' ? 2362 : 0;
+        const fyInfo = getFinancialYear(latestQ.quotationDate);
+        const offsets: Record<string, number> = { '2026-27': 2362, '2025-26': 0 };
+        const offset = offsets[fyInfo.fyString] || 0;
         const seq = latestQ.id - offset;
         return seq > 0 ? String(seq).padStart(4, '0') : String(filteredQuotations.length).padStart(4, '0');
     }, [filteredQuotations]);
-
 
     // Statistics Calculations using filtered data
     const overallStats = useMemo(() => {
@@ -211,6 +199,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             return acc;
         }, createInitialStats());
     }, [filteredQuotations]);
+
+    const displayedEnquiryCount = useMemo(() => {
+        const latestSequence = Number(latestQuotationNo);
+        const isUnfilteredAllView =
+            selectedDateRange === 'all' &&
+            selectedSalesPersonId === 'all' &&
+            currentUser.role !== 'Sales Person';
+
+        if (isUnfilteredAllView && !Number.isNaN(latestSequence) && latestSequence > overallStats.total.count) {
+            return latestSequence;
+        }
+
+        return overallStats.total.count;
+    }, [latestQuotationNo, overallStats.total.count, selectedDateRange, selectedSalesPersonId, currentUser.role]);
 
 
     const salesPersonStats = useMemo(() => {
@@ -741,7 +743,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
                     <div className="flex flex-col items-center">
-                        <div className="text-xl md:text-2xl font-bold">{overallStats.total.count} <span className="text-[10px] opacity-70">Enquiries</span></div>
+                        <div className="text-xl md:text-2xl font-bold">{displayedEnquiryCount} <span className="text-[10px] opacity-70">Enquiries</span></div>
                         <div className="text-xs font-bold bg-white/20 px-2 rounded mt-0.5" title="Latest Sequence Number in current FY">Latest: #{latestQuotationNo}</div>
                     </div>
                     <div className="text-[10px] font-medium opacity-100 mt-1">{formatCurrencyCompact(overallStats.total.value)}</div>
