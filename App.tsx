@@ -22,6 +22,7 @@ import { PendingSOManager } from './components/PendingSOManager';
 export const App = () => {
   const [users, setUsers, usersLoading, usersError] = useOnlineStorage<User>('users');
   const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
+  const [customers, setCustomers, customersLoading, customersError] = useOnlineStorage<Customer>('customers');
   const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
   const [stockStatements, setStockStatements, stockStatementsLoading, stockStatementsError] = useOnlineStorage<StockItem>('stockStatements');
   const [pendingSOs, setPendingSOs, pendingSOsLoading, pendingSOsError] = useOnlineStorage<PendingSO>('pendingSOs');
@@ -42,8 +43,8 @@ export const App = () => {
     }
   });
 
-  const isLoadingData = usersLoading || salesPersonsLoading || quotationsLoading || pendingSOsLoading;
-  const dataError = usersError || salesPersonsError || quotationsError || pendingSOsError;
+  const isLoadingData = usersLoading || salesPersonsLoading || customersLoading || quotationsLoading || pendingSOsLoading;
+  const dataError = usersError || salesPersonsError || customersError || quotationsError || pendingSOsError;
 
   // Handle Deep Linking for Quotations
   useEffect(() => {
@@ -302,7 +303,7 @@ export const App = () => {
         {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter} currentUser={currentUser} />}
         {view === 'products' && <ProductManager currentUser={currentUser} />}
         {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
-        {view === 'quotations' && <QuotationManager quotations={quotations} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
+        {view === 'quotations' && <QuotationManager quotations={quotations} customers={customers} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
         {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
         {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
         {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}

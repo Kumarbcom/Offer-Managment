@@ -1,14 +1,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
+import type { Quotation, SalesPerson, QuotationStatus, User, Customer } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomersByIds } from '../supabase';
-import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
+import { generateFormattedQuotationNumber, getQuotationSeqNum } from '../utils/quotationNumber';
 
 declare var XLSX: any;
 
 interface QuotationManagerProps {
   quotations: Quotation[] | null;
+  customers: Customer[] | null;
   salesPersons: SalesPerson[] | null;
   setEditingQuotationId: (id: number | null) => void;
   setView: (view: 'quotation-form') => void;
@@ -80,47 +80,27 @@ const getSalesPersonBadgeStyle = (id: number | null, name: string) => {
   return styles[index];
 };
 
-export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, salesPersons, setEditingQuotationId, setView, setQuotations, currentUser, quotationFilter, onBackToCustomers }) => {
+export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, customers, salesPersons, setEditingQuotationId, setView, setQuotations, currentUser, quotationFilter, onBackToCustomers }) => {
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
-  const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+
 
   const userRole = currentUser.role;
 
-  useEffect(() => {
-    if (quotations) {
-      const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
-        .filter((id): id is number => typeof id === 'number' && id > 0 && !customerMap.has(id));
-      if (quotationFilter?.customerIds) {
-        quotationFilter.customerIds.forEach(id => {
-          if (!customerMap.has(id) && !customerIdsToFetch.includes(id)) customerIdsToFetch.push(id);
-        });
-      }
-      if (customerIdsToFetch.length > 0) {
-        setIsLoadingCustomers(true);
-        getCustomersByIds(customerIdsToFetch).then(customers => {
-          setCustomerMap(prevMap => {
-            const newMap = new Map(prevMap);
-            customers.forEach(c => newMap.set(c.id, c.name));
-            return newMap;
-          });
-          setIsLoadingCustomers(false);
-        }).catch(error => {
-          console.error("QuotationManager: Failed to fetch customer names:", error);
-          setIsLoadingCustomers(false);
-        });
-      } else {
-        setIsLoadingCustomers(false);
-      }
+  // Build customer name map synchronously from the prop — no async fetch needed
+  const customerMap = useMemo(() => {
+    const map = new Map<number, string>();
+    if (customers) {
+      customers.forEach(c => map.set(c.id, c.name));
     }
-  }, [quotations, customerMap, quotationFilter]);
+    return map;
+  }, [customers]);
 
   const getCustomerName = (id: number | null): string => {
     if (id === null) return '—';
-    return customerMap.get(id) || 'Loading...';
+    return customerMap.get(id) || '—';
   };
 
   const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || '—';
@@ -159,7 +139,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         }
         if (!universalSearchTerm) return true;
         const term = universalSearchTerm.toLowerCase();
+        const formattedNo = generateFormattedQuotationNumber(q, quotations || []).toLowerCase();
+        const seqNum = getQuotationSeqNum(q, quotations || []).toLowerCase();
         return String(q.id).includes(term)
+          || seqNum.includes(term)
+          || formattedNo.includes(term)
           || getCustomerName(q.customerId).toLowerCase().includes(term)
           || q.contactPerson.toLowerCase().includes(term)
           || getSalesPersonName(q.salesPersonId).toLowerCase().includes(term)
@@ -437,7 +421,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         )}
 
         {/* ── Mobile Cards ── */}
-        <div className="block md:hidden space-y-3">
+        <div className="block md:hidden space-y-2">
           {filteredAndSortedQuotations.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">No quotations found</div>
           ) : filteredAndSortedQuotations.map(q => {
@@ -446,11 +430,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             return (
               <div key={q.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                 <div className={`h-1 w-full ${cfg.dot}`} />
-                <div className="p-4">
+                <div className="p-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <button onClick={() => handleEdit(q.id)} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
-                        {generateFormattedQuotationNumber(q, quotations || [])}
+                        {getQuotationSeqNum(q, quotations || [])}
                       </button>
                       <p className="text-sm font-semibold text-slate-800 mt-0.5">{getCustomerName(q.customerId)}</p>
                       <p className="text-xs text-slate-400 mt-0.5">{formatDate(q.quotationDate)} · {getSalesPersonName(q.salesPersonId)}</p>
@@ -461,9 +445,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                     </div>
                   </div>
                   {q.contactPerson && (
-                    <p className="text-xs text-slate-500 mt-2">📞 {q.contactPerson} {q.contactNumber && `· ${q.contactNumber}`}</p>
+                    <p className="text-xs text-slate-500 mt-1.5">📞 {q.contactPerson} {q.contactNumber && `· ${q.contactNumber}`}</p>
                   )}
-                  <div className="flex justify-end gap-3 border-t border-slate-100 pt-2 mt-3">
+                  <div className="flex justify-end gap-3 border-t border-slate-100 pt-1.5 mt-2">
                     <button onClick={() => handleWhatsAppShare(q)} className="text-emerald-600 text-xs font-medium hover:text-emerald-700">Share</button>
                     <button onClick={() => handleEdit(q.id)} className="text-indigo-600 text-xs font-medium hover:text-indigo-700">Open</button>
                     {userRole === 'Admin' && (
@@ -523,40 +507,40 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       className={`group transition-colors ${isSelected ? 'bg-indigo-50/70' : rowIdx % 2 === 0 ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 hover:bg-slate-50/80'}`}
                     >
                       {/* Checkbox */}
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-1.5">
                         <input type="checkbox" checked={isSelected} onChange={() => handleSelectOne(q.id)}
                           className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                       </td>
 
                       {/* Quotation No */}
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-1.5">
                         <button
                           onClick={() => handleEdit(q.id)}
                           className="font-bold text-indigo-600 hover:text-indigo-800 text-xs transition-colors hover:underline underline-offset-2"
                         >
-                          {generateFormattedQuotationNumber(q, quotations || [])}
+                          {getQuotationSeqNum(q, quotations || [])}
                         </button>
                       </td>
 
                       {/* Date */}
-                      <td className="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap">
+                      <td className="px-3 py-1.5 text-xs text-slate-600 whitespace-nowrap">
                         {formatDate(q.quotationDate)}
                       </td>
 
                       {/* Customer */}
-                      <td className="px-3 py-2.5 min-w-[200px] max-w-[320px]">
+                      <td className="px-3 py-1.5 min-w-[200px] max-w-[320px]">
                         <p className="text-xs font-semibold text-slate-800 truncate" title={getCustomerName(q.customerId)}>
                           {getCustomerName(q.customerId)}
                         </p>
                       </td>
 
                       {/* Status */}
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-1.5">
                         <StatusBadge status={q.status} onChange={s => handleStatusChange(q.id, s)} />
                       </td>
 
                       {/* Contact */}
-                      <td className="px-3 py-2.5 max-w-[130px]">
+                      <td className="px-3 py-1.5 max-w-[130px]">
                         <p className="text-xs font-medium text-slate-700 truncate" title={q.contactPerson || ''}>{q.contactPerson || '—'}</p>
                         {q.contactNumber && (
                           <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
@@ -569,7 +553,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       </td>
 
                       {/* Sales Person */}
-                      <td className="px-3 py-2.5 max-w-[140px]">
+                      <td className="px-3 py-1.5 max-w-[140px]">
                         {(() => {
                           const spName = getSalesPersonName(q.salesPersonId);
                           const spStyle = getSalesPersonBadgeStyle(q.salesPersonId, spName);
@@ -585,14 +569,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       </td>
 
                       {/* Amount */}
-                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                      <td className="px-3 py-1.5 text-right whitespace-nowrap">
                         <span className="text-xs font-bold text-slate-900">
                           ₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </span>
                       </td>
 
                       {/* Comments */}
-                      <td className="px-3 py-2.5 min-w-[120px]">
+                      <td className="px-3 py-1.5 min-w-[120px]">
                         <input
                           type="text"
                           defaultValue={q.comments || ''}
@@ -603,7 +587,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-3 py-1.5 text-right">
                         <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                           {/* WhatsApp */}
                           <button
@@ -650,13 +634,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
               {filteredAndSortedQuotations.length > 0 && (
                 <tfoot>
                   <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
-                    <td colSpan={7} className="px-3 py-2.5 text-xs font-semibold text-slate-300">
+                    <td colSpan={7} className="px-3 py-1.5 text-xs font-semibold text-slate-300">
                       Showing {filteredAndSortedQuotations.length} quotation{filteredAndSortedQuotations.length !== 1 ? 's' : ''}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-sm font-bold text-white whitespace-nowrap">
+                    <td className="px-3 py-1.5 text-right text-sm font-bold text-white whitespace-nowrap">
                       ₹{stats.total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </td>
-                    <td colSpan={2} className="px-3 py-2.5 text-xs text-slate-400 text-right">Grand Total</td>
+                    <td colSpan={2} className="px-3 py-1.5 text-xs text-slate-400 text-right">Grand Total</td>
                   </tr>
                 </tfoot>
               )}
