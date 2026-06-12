@@ -3,25 +3,7 @@ import React from 'react';
 import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
-const LappLogo = () => (
-    <svg viewBox="0 0 110 32" className="h-6 w-auto inline-block object-contain bg-white rounded shadow-sm border border-slate-100 p-0.5" style={{ minWidth: '60px' }}>
-        <rect width="110" height="32" rx="3" fill="#e30613" />
-        <text x="55" y="22" fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fontWeight="900" fontSize="16" fill="#ffffff" textAnchor="middle" letterSpacing="1.5">LAPP</text>
-    </svg>
-);
 
-const EatonLogo = () => (
-    <svg viewBox="0 0 110 32" className="h-6 w-auto inline-block object-contain bg-white rounded shadow-sm border border-slate-100 p-0.5" style={{ minWidth: '70px' }}>
-        <text x="55" y="24" fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fontWeight="900" fontSize="21" fill="#005da4" textAnchor="middle" letterSpacing="0.5">EATON</text>
-    </svg>
-);
-
-const PartexLogo = () => (
-    <svg viewBox="0 0 110 32" className="h-6 w-auto inline-block object-contain bg-white rounded shadow-sm border border-slate-100 p-0.5" style={{ minWidth: '70px' }}>
-        <rect width="110" height="32" rx="3" fill="#facc15" />
-        <text x="55" y="22" fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fontWeight="900" fontSize="15" fill="#0f172a" textAnchor="middle" letterSpacing="1">PARTEX</text>
-    </svg>
-);
 
 interface QuotationPrintViewProps {
     quotation: Quotation;
@@ -253,18 +235,14 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
 
             {/* Running Footer (Repeated at bottom of pages during print) */}
             <footer className="running-footer">
-                {/* Brand Logos (Left Side) */}
-                <div className="flex items-center gap-2.5 shrink-0">
-                    <LappLogo />
-                    <EatonLogo />
-                    <PartexLogo />
-                </div>
+                {/* Left Side Spacer to keep slogan centered */}
+                <div className="w-16 shrink-0"></div>
                 {/* Slogan (Center) */}
-                <div className="text-center font-serif italic font-extrabold text-indigo-700 tracking-wide text-[10.5px]">
+                <div className="text-center font-serif italic font-extrabold text-indigo-700 tracking-wide text-[10.5px] flex-1">
                     "Your Partner in Connectivity. Your Partner in Growth"
                 </div>
                 {/* Page Number (Right Side) */}
-                <div className="text-slate-500 text-[10px] font-bold page-number shrink-0"></div>
+                <div className="text-slate-500 text-[10px] font-bold page-number shrink-0 w-16 text-right"></div>
             </footer>
         </div>
     );
