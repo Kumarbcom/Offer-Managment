@@ -185,6 +185,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                         <li><span className="font-semibold">Payment terms:</span> {quotation.paymentTerms}</li>
                         <li><span className="font-semibold">Validity:</span> This Offer is Valid for One Week From the Date of Offer.</li>
                         <li><span className="font-semibold">Other terms:</span> {quotation.otherTerms}</li>
+                        <li className="text-indigo-600 font-semibold">Please click the Part No for material Spec and datasheet.</li>
                     </ol>
                 </section>
                 

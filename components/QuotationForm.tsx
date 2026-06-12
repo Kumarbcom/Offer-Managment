@@ -65,7 +65,7 @@ const ActionButton: React.FC<{ onClick: () => void; disabled?: boolean; children
         onClick={onClick}
         disabled={disabled}
         title={title}
-        className="flex items-center gap-1.5 bg-white border border-slate-200 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold text-black hover:bg-slate-50 hover:shadow-md transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-1.5 bg-white border border-indigo-100 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold text-indigo-950 hover:bg-indigo-50/40 hover:shadow transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
     >
         {children}
     </button>
@@ -139,7 +139,7 @@ const Icons = {
 
 const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
     <div className={`flex items-stretch h-7 ${className}`}>
-        <label className="w-1/3 bg-slate-200 text-black font-bold text-[10px] uppercase tracking-wide flex items-center justify-center text-center px-1 rounded-l-md border border-r-0 border-slate-300 leading-tight whitespace-normal">
+        <label className="w-1/3 bg-gradient-to-r from-indigo-100/90 to-indigo-50/90 text-indigo-950 font-bold text-[9px] uppercase tracking-wide flex items-center justify-center text-center px-1 rounded-l-md border border-r-0 border-indigo-200 leading-tight whitespace-normal">
             {label}
         </label>
         <div className="w-2/3 h-full relative group text-xs shadow-sm rounded-r-md text-black">{children}</div>
@@ -284,7 +284,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       status: 'Open',
       comments: '',
       details: [createEmptyQuotationItem()],
-      gstAdded: false,
+      gstAdded: true,
     };
   }, [userRole, salesPersons, currentUser]); 
   
@@ -561,11 +561,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   };
   const handleSaveProduct = async (newProduct: Product) => { await addProductsBatch([newProduct]); setIsProductModalOpen(false); };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    
+  const saveQuotation = async (quiet: boolean = false): Promise<Quotation | null> => {
     // LOGGING FOR DEBUGGING VANDITA ISSUE
-    console.log("Submitting Quotation:", {
+    console.log("Saving Quotation:", {
         id: formData?.id,
         customerId: formData?.customerId,
         quotationDate: formData?.quotationDate,
@@ -573,38 +571,40 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     });
 
     if (!formData || !formData.customerId || formData.customerId === 0) {
-        alert("Please select a valid customer from the dropdown list before saving."); return;
+        alert("Please select a valid customer from the dropdown list before saving."); return null;
     }
     
     // Sales Person validation
     if (!formData.salesPersonId) {
-        alert("Please select a Sales Person before saving."); return;
+        alert("Please select a Sales Person before saving."); return null;
     }
 
     const validatedDate = new Date(formData.quotationDate);
     if (!formData.quotationDate || isNaN(validatedDate.getTime()) || formData.quotationDate === '') {
         alert(`The Quotation Date is invalid. Please select a valid date.`); 
-        return;
+        return null;
     }
     
     // Enquiry Date validation
     const validatedEnquiryDate = new Date(formData.enquiryDate);
     if (!formData.enquiryDate || isNaN(validatedEnquiryDate.getTime()) || formData.enquiryDate === '') {
         alert(`The Enquiry Date is invalid. Please select a valid date.`); 
-        return;
+        return null;
     }
 
     // Final check for empty details
     if (!formData.details || formData.details.length === 0 || (formData.details.length === 1 && !formData.details[0].productId)) {
         alert("Please add at least one product with a valid Part Number.");
-        return;
+        return null;
     }
 
     // EXTRA SECURITY: Ensure no numeric 0 IDs reach Supabase for Customer/SalesPerson
     if (formData.customerId === 0 || formData.salesPersonId === 0) {
         alert("Invalid Customer or Sales Person selection. Please select again from the list.");
-        return;
-    }    try {
+        return null;
+    }
+
+    try {
       setIsSubmitting(true);
       const isNew = editingQuotationId === null || formData.id === 0;
       const safeQuotations = quotations || [];
@@ -637,14 +637,22 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           window.history.pushState({}, '', url);
       }
       
-      setSuccessModalData(savedQuotation);
-      
+      if (!quiet) {
+          setSuccessModalData(savedQuotation);
+      }
+      return savedQuotation;
     } catch (error) {
       console.error("Submit Error:", error);
       alert(error instanceof Error ? error.message : "Failed to save quotation");
+      return null;
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    await saveQuotation(false);
   };
   
   const handleNewButtonClick = () => { 
@@ -673,7 +681,16 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     });
   };
   
-  const handlePreview = (type: 'standard' | 'discounted' | 'withAirFreight') => { if (!formData || !formData.customerId) { alert("Please select a customer before previewing."); return; } setPreviewMode(type); };
+  const handlePreview = async (type: 'standard' | 'discounted' | 'withAirFreight') => { 
+    if (!formData || !formData.customerId) { 
+        alert("Please select a customer before previewing."); 
+        return; 
+    } 
+    const saved = await saveQuotation(true); 
+    if (saved) {
+        setPreviewMode(type); 
+    }
+  };
   
   const handleExportExcel = async (exportType: 'standard' | 'discounted' | 'withAirFreight' = 'standard') => {
       if (!formData || !formData.details.length || !selectedCustomerObj) {
@@ -894,7 +911,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             `3. Delivery: Subject to Prior Sales.`,
             `4. Payment terms: ${formData.paymentTerms || 'As mentioned'}`,
             `5. Validity: Valid for One Week.`,
-            `6. Other terms: ${formData.otherTerms || 'None'}`
+            `6. Other terms: ${formData.otherTerms || 'None'}`,
+            `7. Please click the Part No for material Spec and datasheet.`
           ];
           
           termsArr.forEach(t => {
@@ -1039,8 +1057,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   return (
     <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
       <div className="bg-white rounded-lg shadow-lg">
-        <header className="bg-slate-950 text-white px-4 py-3 flex justify-between items-center rounded-t-lg">
-           <h1 className="text-base font-extrabold uppercase tracking-wider">Quotation Details</h1>
+        <header className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white px-4 py-3 flex justify-between items-center rounded-t-lg shadow-sm">
+           <h1 className="text-base font-extrabold uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-100">Quotation Details</h1>
            <div className="flex items-center space-x-1">
                 <NavButton onClick={() => handleNavigation('first')} disabled={currentQuotationIndex <= 0}>|◀</NavButton>
                 <NavButton onClick={() => handleNavigation('prev')} disabled={currentQuotationIndex <= 0}>◀</NavButton>
@@ -1053,7 +1071,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         </header>
         
         <form onSubmit={handleSubmit} className="p-2">
-            <div className="bg-slate-50 p-2 flex flex-wrap items-center gap-3 border border-slate-200 mb-3 rounded-md shadow-sm">
+            <div className="bg-indigo-50/30 p-2 flex flex-wrap items-center gap-3 border border-indigo-100/80 mb-3 rounded-md shadow-sm">
                 {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
                 {!isReadOnly && (
                     <ActionButton 
@@ -1164,7 +1182,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
             <div className="mt-3 overflow-x-auto">
                 <table className="min-w-full border-collapse border border-slate-300 text-[11px]">
-                    <thead className="bg-slate-200 text-black font-semibold">
+                    <thead className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold shadow-sm">
                         <tr className="divide-x divide-slate-300">
                             {gridColumns.map(h => <th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}
                         </tr>
