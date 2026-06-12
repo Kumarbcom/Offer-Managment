@@ -314,6 +314,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }
   }, [searchedProducts.length, isSearchingProducts]);
 
+  // Reset customer object whenever the quotation being edited changes.
+  // This ensures customer/salesPerson data is always re-fetched when opening a quotation.
+  useEffect(() => {
+    setSelectedCustomerObj(null);
+    // Also reset the session lock so the init effect runs fresh for this quotation.
+    currentSessionIdRef.current = undefined;
+  }, [editingQuotationId]);
+
   useEffect(() => {
     // STRICT SESSION LOCK:
     // If we are currently editing a session (editingQuotationId is set, or 0/null for draft),
@@ -326,6 +334,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     // If we already have form data for this specific ID (including null/0 for new), 
     // and the quotations list has updated, we only want to re-init if the data actually changed 
     // AND we are not currently the ones who just saved it.
+    // NOTE: currentSessionIdRef is reset to `undefined` whenever editingQuotationId changes (above effect),
+    // so isReturningToCurrentSession will be FALSE on a fresh open, allowing re-initialization.
     if (isReturningToCurrentSession && formData !== null) {
         // If we are currently editing, don't let background sync overwrite our local changes
         // unless it's a significant change or we specifically want to reload.
