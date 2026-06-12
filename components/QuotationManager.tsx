@@ -445,7 +445,17 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                     </div>
                   </div>
                   {q.contactPerson && (
-                    <p className="text-xs text-slate-500 mt-1.5">📞 {q.contactPerson} {q.contactNumber && `· ${q.contactNumber}`}</p>
+                    <div className="text-xs text-slate-600 mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="font-semibold text-slate-700">{q.contactPerson}</span>
+                      {q.contactNumber && (
+                        <span className="inline-flex items-center gap-0.5 text-indigo-600 font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-[10px]">
+                          <svg className="w-2.5 h-2.5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                          </svg>
+                          {q.contactNumber}
+                        </span>
+                      )}
+                    </div>
                   )}
                   <div className="flex justify-end gap-3 border-t border-slate-100 pt-1.5 mt-2">
                     <button onClick={() => handleWhatsAppShare(q)} className="text-emerald-600 text-xs font-medium hover:text-emerald-700">Share</button>
@@ -480,6 +490,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                   <SortableHeader title="Contact" sortKey="contactPerson" className="w-[130px]" />
                   <SortableHeader title="Amount" sortKey="totalAmount" className="text-right w-[100px]" />
                   <SortableHeader title="Status" sortKey="status" className="w-[130px]" />
+                  <SortableHeader title="Sales Person" sortKey="salesPerson" className="w-[120px]" />
                   <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider min-w-[120px]">Comments</th>
                   <th className="px-3 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[95px]">Actions</th>
                 </tr>
@@ -536,11 +547,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
                       {/* Contact */}
                       <td className="px-3 py-1.5 w-[130px]">
-                        <p className="text-xs font-medium text-slate-700 truncate" title={q.contactPerson || ''}>{q.contactPerson || '—'}</p>
+                        <p className="text-xs font-semibold text-slate-700 truncate" title={q.contactPerson || ''}>{q.contactPerson || '—'}</p>
                         {q.contactNumber && (
-                          <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                            <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 02-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          <p className="text-[10px] text-indigo-600 font-semibold flex items-center gap-1 mt-0.5 whitespace-nowrap">
+                            <svg className="w-2.5 h-2.5 flex-shrink-0 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                             </svg>
                             {q.contactNumber}
                           </p>
@@ -557,6 +568,20 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       {/* Status */}
                       <td className="px-3 py-1.5">
                         <StatusBadge status={q.status} onChange={s => handleStatusChange(q.id, s)} />
+                      </td>
+
+                      {/* Sales Person */}
+                      <td className="px-3 py-1.5 w-[120px]">
+                        {(() => {
+                          const spName = getSalesPersonName(q.salesPersonId);
+                          const spStyle = getSalesPersonBadgeStyle(q.salesPersonId, spName);
+                          return (
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${spStyle.bg}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${spStyle.dot}`} />
+                              {spName}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Comments */}
@@ -624,7 +649,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                     <td className="px-3 py-1.5 text-right text-sm font-bold text-white whitespace-nowrap">
                       ₹{stats.total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </td>
-                    <td colSpan={3} className="px-3 py-1.5 text-xs text-slate-400 text-right">Grand Total</td>
+                    <td colSpan={4} className="px-3 py-1.5 text-xs text-slate-400 text-right">Grand Total</td>
                   </tr>
                 </tfoot>
               )}
