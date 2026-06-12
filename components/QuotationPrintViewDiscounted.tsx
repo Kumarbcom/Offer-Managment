@@ -4,23 +4,15 @@ import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 const LappLogo = () => (
-    <svg viewBox="0 0 80 28" className="h-5 w-auto inline-block">
-        <rect width="80" height="28" rx="3" fill="#F39200" />
-        <text x="40" y="20" fill="#FFFFFF" fontSize="16" fontWeight="900" fontFamily="sans-serif" textAnchor="middle" letterSpacing="0.5">LAPP</text>
-    </svg>
+    <img src="https://www.google.com/s2/favicons?domain=lapp.com&sz=128" alt="LAPP Logo" className="h-6 w-auto object-contain inline-block bg-white p-0.5 rounded shadow-sm border border-slate-100" />
 );
 
 const EatonLogo = () => (
-    <svg viewBox="0 0 80 28" className="h-5 w-auto inline-block">
-        <text x="40" y="20" fill="#005EB8" fontSize="18" fontWeight="800" fontFamily="sans-serif" textAnchor="middle">EATON</text>
-    </svg>
+    <img src="https://www.google.com/s2/favicons?domain=eaton.com&sz=128" alt="EATON Logo" className="h-6 w-auto object-contain inline-block bg-white p-0.5 rounded shadow-sm border border-slate-100" />
 );
 
 const PartexLogo = () => (
-    <svg viewBox="0 0 80 28" className="h-5 w-auto inline-block">
-        <rect width="80" height="28" rx="4" fill="#004B87" />
-        <text x="40" y="19" fill="#FFFFFF" fontSize="13" fontWeight="800" fontFamily="sans-serif" textAnchor="middle" letterSpacing="0.2">PARTEX</text>
-    </svg>
+    <img src="https://www.google.com/s2/favicons?domain=partex.nu&sz=128" alt="PARTEX Logo" className="h-6 w-auto object-contain inline-block bg-white p-0.5 rounded shadow-sm border border-slate-100" />
 );
 
 interface QuotationPrintViewProps {
