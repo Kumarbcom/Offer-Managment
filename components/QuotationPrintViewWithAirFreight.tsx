@@ -5,15 +5,23 @@ import { PREPARED_BY_LIST } from '../constants';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 
 const LappLogo = () => (
-    <img src="https://www.google.com/s2/favicons?domain=lapp.com&sz=128" alt="LAPP Logo" className="h-6 w-auto object-contain inline-block bg-white p-0.5 rounded shadow-sm border border-slate-100" />
+    <svg viewBox="0 0 110 32" className="h-6 w-auto inline-block object-contain bg-white rounded shadow-sm border border-slate-100 p-0.5" style={{ minWidth: '60px' }}>
+        <rect width="110" height="32" rx="3" fill="#e30613" />
+        <text x="55" y="22" fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fontWeight="900" fontSize="16" fill="#ffffff" textAnchor="middle" letterSpacing="1.5">LAPP</text>
+    </svg>
 );
 
 const EatonLogo = () => (
-    <img src="https://www.google.com/s2/favicons?domain=eaton.com&sz=128" alt="EATON Logo" className="h-6 w-auto object-contain inline-block bg-white p-0.5 rounded shadow-sm border border-slate-100" />
+    <svg viewBox="0 0 110 32" className="h-6 w-auto inline-block object-contain bg-white rounded shadow-sm border border-slate-100 p-0.5" style={{ minWidth: '70px' }}>
+        <text x="55" y="24" fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fontWeight="900" fontSize="21" fill="#005da4" textAnchor="middle" letterSpacing="0.5">EATON</text>
+    </svg>
 );
 
 const PartexLogo = () => (
-    <img src="https://www.google.com/s2/favicons?domain=partex.nu&sz=128" alt="PARTEX Logo" className="h-6 w-auto object-contain inline-block bg-white p-0.5 rounded shadow-sm border border-slate-100" />
+    <svg viewBox="0 0 110 32" className="h-6 w-auto inline-block object-contain bg-white rounded shadow-sm border border-slate-100 p-0.5" style={{ minWidth: '70px' }}>
+        <rect width="110" height="32" rx="3" fill="#facc15" />
+        <text x="55" y="22" fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fontWeight="900" fontSize="15" fill="#0f172a" textAnchor="middle" letterSpacing="1">PARTEX</text>
+    </svg>
 );
 
 interface QuotationPrintViewProps {

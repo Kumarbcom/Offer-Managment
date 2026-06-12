@@ -68,7 +68,7 @@
       }
       @page {
         size: A4;
-        margin: 10mm 10mm 10mm 10mm; /* Consistent 10mm margins */
+        margin: 10mm 10mm 20mm 10mm; /* 20mm bottom margin to prevent table content from overlapping running footer */
       }
       body {
         margin: 0 !important;
@@ -84,9 +84,9 @@
       .print-wrapper {
         display: flex;
         flex-direction: column;
-        height: 275mm !important; /* Force exact page height to fit A4 print page boundary */
+        min-height: 265mm; /* Let container grow naturally and enclose signature blocks on print */
         border: 1px solid #94a3b8; /* Elegant slate border */
-        padding: 18px 18px 22mm 18px !important; /* pad bottom to prevent overlap with fixed footer */
+        padding: 18px !important;
         box-sizing: border-box;
         border-radius: 6px;
         background: #ffffff;
@@ -96,9 +96,9 @@
       }
       .running-footer {
         position: fixed;
-        bottom: 2mm; /* Align inside the bottom border of the page wrapper */
-        left: 18px !important; /* Align exactly with the content margin */
-        right: 18px !important; /* Align exactly with the content margin */
+        bottom: -15mm; /* Position cleanly inside the 20mm bottom page margin */
+        left: 18px !important; /* Align exactly with content padding */
+        right: 18px !important; /* Align exactly with content padding */
         height: 12mm;
         display: flex !important;
         align-items: center;
