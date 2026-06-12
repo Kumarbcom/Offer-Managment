@@ -248,29 +248,36 @@ export async function get(tableName: TableName): Promise<any[]> {
     if (!supabase) throw new Error("Supabase client not initialized");
     
     const supabaseTableName = toSupabaseTableName(tableName);
-    let query = supabase.from(supabaseTableName).select('*').limit(5000);
-
-    if (tableName === 'users') {
-        query = query.order('name', { ascending: true });
-    } else {
-        if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
-             query = query.order('id', { ascending: false });
-        }
-    }
-
-    const { data, error } = await query;
+    let allData: any[] = [];
+    let from = 0;
+    const limit = 1000;
     
-    if (error) {
-        console.error(`Error fetching ${tableName} (${supabaseTableName}):`, JSON.stringify(error, null, 2));
-        throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName}`));
+    const isUsers = tableName === 'users';
+    const hasIdOrder = tableName !== 'stockStatements' && tableName !== 'pendingSOs';
+    
+    while (true) {
+        let query = supabase.from(supabaseTableName).select('*').range(from, from + limit - 1);
+        
+        if (isUsers) {
+            query = query.order('name', { ascending: true });
+        } else if (hasIdOrder) {
+            query = query.order('id', { ascending: false });
+        }
+        
+        const { data, error } = await query;
+        if (error) {
+            console.error(`Error fetching ${tableName} (${supabaseTableName}):`, JSON.stringify(error, null, 2));
+            throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName}`));
+        }
+        
+        if (!data || data.length === 0) break;
+        allData = allData.concat(data);
+        if (data.length < limit) break;
+        from += limit;
     }
-
+    
     // Map back from Supabase snake_case to camelCase
-    if (data) {
-        return data.map((item: any) => mapFromSupabase(tableName, item));
-    }
-
-    return data || [];
+    return allData.map((item: any) => mapFromSupabase(tableName, item));
 }
 
 export async function clearTable(tableName: TableName): Promise<void> {

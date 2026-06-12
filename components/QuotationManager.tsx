@@ -59,6 +59,27 @@ const StatusBadge: React.FC<{ status: string; onChange?: (s: QuotationStatus) =>
   );
 };
 
+const getSalesPersonBadgeStyle = (id: number | null, name: string) => {
+  const styles = [
+    { bg: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', avatar: 'from-violet-400 to-indigo-500' },
+    { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', avatar: 'from-emerald-400 to-teal-500' },
+    { bg: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', avatar: 'from-blue-400 to-indigo-500' },
+    { bg: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', avatar: 'from-amber-400 to-orange-500' },
+    { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', avatar: 'from-rose-400 to-pink-500' },
+    { bg: 'bg-teal-50 text-teal-700 border-teal-200', dot: 'bg-teal-500', avatar: 'from-teal-400 to-cyan-500' },
+    { bg: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200', dot: 'bg-fuchsia-500', avatar: 'from-fuchsia-400 to-pink-500' },
+    { bg: 'bg-sky-50 text-sky-700 border-sky-200', dot: 'bg-sky-500', avatar: 'from-sky-400 to-indigo-500' }
+  ];
+  if (!name || name === '—') return { bg: 'bg-slate-50 text-slate-600 border-slate-200', dot: 'bg-slate-400', avatar: 'from-slate-400 to-slate-500' };
+  
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % styles.length;
+  return styles[index];
+};
+
 export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, salesPersons, setEditingQuotationId, setView, setQuotations, currentUser, quotationFilter, onBackToCustomers }) => {
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('id');
@@ -469,15 +490,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
                   </th>
-                  <SortableHeader title="Quotation No" sortKey="id" />
-                  <SortableHeader title="Date" sortKey="quotationDate" />
-                  <SortableHeader title="Customer" sortKey="customer" />
-                  <SortableHeader title="Contact" sortKey="contactPerson" />
-                  <SortableHeader title="Sales Person" sortKey="salesPerson" />
-                  <SortableHeader title="Amount" sortKey="totalAmount" className="text-right" />
-                  <SortableHeader title="Status" sortKey="status" />
-                  <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Comments</th>
-                  <th className="px-3 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                  <SortableHeader title="Quotation No" sortKey="id" className="w-[110px]" />
+                  <SortableHeader title="Date" sortKey="quotationDate" className="w-[90px]" />
+                  <SortableHeader title="Customer" sortKey="customer" className="min-w-[200px] max-w-[320px]" />
+                  <SortableHeader title="Status" sortKey="status" className="w-[125px]" />
+                  <SortableHeader title="Contact" sortKey="contactPerson" className="max-w-[130px]" />
+                  <SortableHeader title="Sales Person" sortKey="salesPerson" className="max-w-[140px]" />
+                  <SortableHeader title="Amount" sortKey="totalAmount" className="text-right w-[100px]" />
+                  <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider min-w-[120px]">Comments</th>
+                  <th className="px-3 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[100px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -523,33 +544,10 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       </td>
 
                       {/* Customer */}
-                      <td className="px-3 py-2.5 max-w-[160px]">
+                      <td className="px-3 py-2.5 min-w-[200px] max-w-[320px]">
                         <p className="text-xs font-semibold text-slate-800 truncate" title={getCustomerName(q.customerId)}>
                           {getCustomerName(q.customerId)}
                         </p>
-                      </td>
-
-                      {/* Contact */}
-                      <td className="px-3 py-2.5">
-                        <p className="text-xs font-medium text-slate-700">{q.contactPerson || '—'}</p>
-                        {q.contactNumber && <p className="text-[10px] text-slate-400">{q.contactNumber}</p>}
-                      </td>
-
-                      {/* Sales Person */}
-                      <td className="px-3 py-2.5">
-                        <span className="inline-flex items-center gap-1 text-xs text-slate-600">
-                          <span className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
-                            {getSalesPersonName(q.salesPersonId).charAt(0).toUpperCase()}
-                          </span>
-                          {getSalesPersonName(q.salesPersonId)}
-                        </span>
-                      </td>
-
-                      {/* Amount */}
-                      <td className="px-3 py-2.5 text-right">
-                        <span className="text-xs font-bold text-slate-900">
-                          ₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                        </span>
                       </td>
 
                       {/* Status */}
@@ -557,8 +555,44 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         <StatusBadge status={q.status} onChange={s => handleStatusChange(q.id, s)} />
                       </td>
 
-                      {/* Comments */}
+                      {/* Contact */}
                       <td className="px-3 py-2.5 max-w-[130px]">
+                        <p className="text-xs font-medium text-slate-700 truncate" title={q.contactPerson || ''}>{q.contactPerson || '—'}</p>
+                        {q.contactNumber && (
+                          <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <svg className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 02-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            {q.contactNumber}
+                          </p>
+                        )}
+                      </td>
+
+                      {/* Sales Person */}
+                      <td className="px-3 py-2.5 max-w-[140px]">
+                        {(() => {
+                          const spName = getSalesPersonName(q.salesPersonId);
+                          const spStyle = getSalesPersonBadgeStyle(q.salesPersonId, spName);
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${spStyle.bg}`} title={spName}>
+                              <span className={`w-4 h-4 rounded-full bg-gradient-to-br ${spStyle.avatar} flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0`}>
+                                {spName.charAt(0).toUpperCase()}
+                              </span>
+                              <span className="truncate max-w-[90px]">{spName}</span>
+                            </span>
+                          );
+                        })()}
+                      </td>
+
+                      {/* Amount */}
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                        <span className="text-xs font-bold text-slate-900">
+                          ₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                        </span>
+                      </td>
+
+                      {/* Comments */}
+                      <td className="px-3 py-2.5 min-w-[120px]">
                         <input
                           type="text"
                           defaultValue={q.comments || ''}
@@ -616,13 +650,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
               {filteredAndSortedQuotations.length > 0 && (
                 <tfoot>
                   <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
-                    <td colSpan={6} className="px-3 py-2.5 text-xs font-semibold text-slate-300">
+                    <td colSpan={7} className="px-3 py-2.5 text-xs font-semibold text-slate-300">
                       Showing {filteredAndSortedQuotations.length} quotation{filteredAndSortedQuotations.length !== 1 ? 's' : ''}
                     </td>
                     <td className="px-3 py-2.5 text-right text-sm font-bold text-white whitespace-nowrap">
                       ₹{stats.total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </td>
-                    <td colSpan={3} className="px-3 py-2.5 text-xs text-slate-400 text-right">Grand Total</td>
+                    <td colSpan={2} className="px-3 py-2.5 text-xs text-slate-400 text-right">Grand Total</td>
                   </tr>
                 </tfoot>
               )}
