@@ -21,7 +21,7 @@ export function getFinancialYear(dateStr: string): { startYear: number, endYear:
     return { startYear, endYear, fyString };
 }
 
-export function generateFormattedQuotationNumber(quotation: Quotation, allQuotations: Quotation[]): string {
+export function getQuotationSeqNum(quotation: Quotation, allQuotations: Quotation[]): string {
     if (!quotation || typeof quotation.id === 'undefined') return 'ERROR';
     if (quotation.id <= 0) return 'DRAFT';
     
@@ -48,9 +48,17 @@ export function generateFormattedQuotationNumber(quotation: Quotation, allQuotat
         
         const index = fyQuotations.findIndex(q => q.id === quotation.id);
         const fallbackSeq = index !== -1 ? index + 1 : 1;
-        return `SKC/QTN/${String(fallbackSeq).padStart(4, '0')}-${fyInfo.fyString}`;
+        return String(fallbackSeq).padStart(4, '0');
     }
     
-    const paddedSeq = String(seqNum).padStart(4, '0');
-    return `SKC/QTN/${paddedSeq}-${fyInfo.fyString}`;
+    return String(seqNum).padStart(4, '0');
+}
+
+export function generateFormattedQuotationNumber(quotation: Quotation, allQuotations: Quotation[]): string {
+    if (!quotation || typeof quotation.id === 'undefined') return 'ERROR';
+    if (quotation.id <= 0) return 'DRAFT';
+    const fyInfo = getFinancialYear(quotation.quotationDate);
+    const seqNumStr = getQuotationSeqNum(quotation, allQuotations);
+    if (seqNumStr === 'ERROR' || seqNumStr === 'DRAFT') return seqNumStr;
+    return `SKC/QTN/${seqNumStr}-${fyInfo.fyString}`;
 }
