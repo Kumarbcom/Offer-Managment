@@ -133,7 +133,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
     return item;
 };
 
-const mapFromSupabase = (tableName: TableName, item: any): any => {
+export const mapFromSupabase = (tableName: TableName, item: any): any => {
     if (!item) return null;
     
     const get = (keys: string[], fallback: any = null) => {

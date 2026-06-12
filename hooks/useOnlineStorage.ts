@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set, toSupabaseTableName } from '../supabase';
+import { get, set, toSupabaseTableName, mapFromSupabase } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
@@ -105,14 +105,14 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                         const currentState = stateRef.current || [];
                         switch (payload.eventType) {
                             case 'INSERT': {
-                                const newRecord = payload.new as T;
+                                const newRecord = mapFromSupabase(tableName, payload.new) as T;
                                 if (!currentState.some(item => (item as any)[primaryKey] === (newRecord as any)[primaryKey])) {
                                     setState(prev => [...(prev || []), newRecord]);
                                 }
                                 break;
                             }
                             case 'UPDATE': {
-                                const updatedRecord = payload.new as T;
+                                const updatedRecord = mapFromSupabase(tableName, payload.new) as T;
                                 setState(prev => (prev || []).map(item =>
                                     (item as any)[primaryKey] === (updatedRecord as any)[primaryKey] ? updatedRecord : item
                                 ));
