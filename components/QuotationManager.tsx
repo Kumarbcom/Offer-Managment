@@ -279,7 +279,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
   };
 
-  if (quotations === null || salesPersons === null || isLoadingCustomers) {
+  if (quotations === null || salesPersons === null) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
