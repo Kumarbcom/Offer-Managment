@@ -69,40 +69,54 @@
       .print-wrapper {
         display: flex;
         flex-direction: column;
-        min-height: 220mm; /* Reduced to pull footer up */
+        min-height: 275mm; /* Set to close to A4 height to push footer to the bottom */
+        border: 1px solid #94a3b8; /* Elegant slate border */
+        padding: 18px !important;
+        box-sizing: border-box;
+        border-radius: 6px;
+        background: #ffffff;
       }
       .print-main-content {
         flex-grow: 1;
       }
       .print-footer {
         margin-top: auto;
-        padding-top: 5px;
+        padding-top: 10px;
         page-break-before: auto !important;
       }
       #print-area h1 {
-        font-size: 12pt !important; /* Reduced for single line */
+        font-size: 14pt !important;
         margin-bottom: 2px !important;
         white-space: nowrap !important;
         overflow: hidden;
       }
       #print-area h2 {
-        font-size: 10pt !important;
-        margin-top: 5px !important;
-        margin-bottom: 5px !important;
+        font-size: 11pt !important;
+        margin-top: 6px !important;
+        margin-bottom: 6px !important;
       }
       #print-area p,
       #print-area ol {
-        line-height: 1.2 !important;
+        line-height: 1.35 !important;
       }
       #print-area table {
-        font-size: 7pt !important;
+        font-size: 7.5pt !important;
+        border-collapse: collapse !important;
+        width: 100% !important;
       }
-      #print-area th,
+      #print-area th {
+        background-color: #0f172a !important; /* Dark Slate Header */
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        padding: 5px 6px !important;
+        border: 1px solid #cbd5e1 !important;
+      }
       #print-area td {
-        padding: 1px 2px !important;
+        padding: 4px 6px !important;
+        border: 1px solid #e2e8f0 !important;
       }
       #print-area .signature-space {
-        height: 25px !important;
+        height: 35px !important;
       }
     }
   </style>
