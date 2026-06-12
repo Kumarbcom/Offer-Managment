@@ -27,6 +27,21 @@
       user-select: text;
     }
 
+    /* Running Footer Screen Preview Styles */
+    .running-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+      margin-top: 20px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+    .page-number::after {
+      content: "Page 1";
+    }
+
     @media print {
       body * {
         visibility: hidden !important;
@@ -53,7 +68,7 @@
       }
       @page {
         size: A4;
-        margin: 5mm;
+        margin: 10mm 10mm 20mm 10mm; /* Larger bottom margin for the fixed running footer */
       }
       body {
         margin: 0 !important;
@@ -69,7 +84,7 @@
       .print-wrapper {
         display: flex;
         flex-direction: column;
-        min-height: 275mm; /* Set to close to A4 height to push footer to the bottom */
+        min-height: 265mm; /* Set close to printable A4 height (297mm - 10mm top - 20mm bottom) */
         border: 1px solid #94a3b8; /* Elegant slate border */
         padding: 18px !important;
         box-sizing: border-box;
@@ -79,10 +94,21 @@
       .print-main-content {
         flex-grow: 1;
       }
-      .print-footer {
-        margin-top: auto;
-        padding-top: 10px;
-        page-break-before: auto !important;
+      .running-footer {
+        position: fixed;
+        bottom: -15mm; /* Positions footer cleanly inside the 20mm bottom margin */
+        left: 0;
+        right: 0;
+        height: 12mm;
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid #cbd5e1;
+        padding-top: 6px;
+        box-sizing: border-box;
+      }
+      .page-number::after {
+        content: "Page " counter(page) !important;
       }
       #print-area h1 {
         font-size: 14pt !important;

@@ -4,6 +4,26 @@ import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 
+const LappLogo = () => (
+    <svg viewBox="0 0 80 28" className="h-5 w-auto inline-block">
+        <rect width="80" height="28" rx="3" fill="#F39200" />
+        <text x="40" y="20" fill="#FFFFFF" fontSize="16" fontWeight="900" fontFamily="sans-serif" textAnchor="middle" letterSpacing="0.5">LAPP</text>
+    </svg>
+);
+
+const EatonLogo = () => (
+    <svg viewBox="0 0 80 28" className="h-5 w-auto inline-block">
+        <text x="40" y="20" fill="#005EB8" fontSize="18" fontWeight="800" fontFamily="sans-serif" textAnchor="middle">EATON</text>
+    </svg>
+);
+
+const PartexLogo = () => (
+    <svg viewBox="0 0 80 28" className="h-5 w-auto inline-block">
+        <rect width="80" height="28" rx="4" fill="#004B87" />
+        <text x="40" y="19" fill="#FFFFFF" fontSize="13" fontWeight="800" fontFamily="sans-serif" textAnchor="middle" letterSpacing="0.2">PARTEX</text>
+    </svg>
+);
+
 interface QuotationPrintViewProps {
     quotation: Quotation;
     customer: Customer;
@@ -214,7 +234,8 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                 </div>
             </div>
 
-            <footer className="mt-4 pt-3 flex justify-between items-end border-t border-slate-200 print-footer">
+            {/* Signature Area (Prints at the end of content) */}
+            <div className="mt-4 pt-3 flex justify-between items-end border-t border-slate-200 print-no-break">
                 <p className="text-slate-400 text-[9px] italic">This is a computer-generated document.</p>
                 <div className="text-center w-64">
                     <p className="font-bold text-slate-900">For Siddhi Kable Corporation Pvt Ltd,</p>
@@ -224,6 +245,22 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                         <p className="text-slate-500 text-[10px]">({preparerDesignation})</p>
                     </div>
                 </div>
+            </div>
+
+            {/* Running Footer (Repeated at bottom of pages during print) */}
+            <footer className="running-footer">
+                {/* Brand Logos (Left Side) */}
+                <div className="flex items-center gap-2.5 shrink-0">
+                    <LappLogo />
+                    <EatonLogo />
+                    <PartexLogo />
+                </div>
+                {/* Slogan (Center) */}
+                <div className="text-center font-serif italic font-extrabold text-indigo-700 tracking-wide text-[10.5px]">
+                    "Your Partner in Connectivity. Your Partner in Growth"
+                </div>
+                {/* Page Number (Right Side) */}
+                <div className="text-slate-500 text-[10px] font-bold page-number shrink-0"></div>
             </footer>
         </div>
     );
