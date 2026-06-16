@@ -229,17 +229,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                 </div>
             </div>
 
-            {/* Running Footer (Repeated at bottom of pages during print) */}
-            <footer className="running-footer">
-                {/* Left Side Spacer to keep slogan centered */}
-                <div className="w-16 shrink-0"></div>
-                {/* Slogan (Center) */}
-                <div className="text-center font-serif italic font-extrabold text-indigo-700 tracking-wide text-[10.5px] flex-1">
-                    "Your Partner in Connectivity. Your Partner in Growth"
-                </div>
-                {/* Page Number (Right Side) */}
-                <div className="text-slate-500 text-[10px] font-bold page-number shrink-0 w-16 text-right"></div>
-            </footer>
+
         </div>
     );
 };

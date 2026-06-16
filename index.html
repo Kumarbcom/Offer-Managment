@@ -27,20 +27,7 @@
       user-select: text;
     }
 
-    /* Running Footer Screen Preview Styles */
-    .running-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 10px;
-      margin-top: 20px;
-      box-sizing: border-box;
-      width: 100%;
-    }
-    .page-number::after {
-      content: "Page 1";
-    }
+
 
     @media print {
       body * {
@@ -68,10 +55,11 @@
       }
       @page {
         size: A4;
-        margin: 10mm 10mm 20mm 10mm; /* 20mm bottom margin to prevent table content from overlapping running footer */
+        margin: 0; /* Remove browser header and footer */
       }
       body {
         margin: 0 !important;
+        padding: 10mm !important; /* Move margin to body to keep content away from edges */
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
@@ -84,7 +72,7 @@
       .print-wrapper {
         display: flex;
         flex-direction: column;
-        min-height: 265mm; /* Let container grow naturally and enclose signature blocks on print */
+        min-height: 275mm; /* Set close to A4 height (297mm - 10mm top - 10mm bottom = 277mm printable height) */
         border: 1px solid #94a3b8; /* Elegant slate border */
         padding: 18px !important;
         box-sizing: border-box;
@@ -94,22 +82,7 @@
       .print-main-content {
         flex-grow: 1;
       }
-      .running-footer {
-        position: fixed;
-        bottom: -15mm; /* Position cleanly inside the 20mm bottom page margin */
-        left: 18px !important; /* Align exactly with content padding */
-        right: 18px !important; /* Align exactly with content padding */
-        height: 12mm;
-        display: flex !important;
-        align-items: center;
-        justify-content: space-between;
-        border-top: 1px solid #cbd5e1;
-        padding-top: 6px;
-        box-sizing: border-box;
-      }
-      .page-number::after {
-        content: "Page " counter(page) !important;
-      }
+
       #print-area h1 {
         font-size: 14pt !important;
         margin-bottom: 2px !important;
