@@ -67,7 +67,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
     return (
         <div className="bg-white p-6 md:p-8 font-[Cambria] text-[11px] text-slate-700 print-wrapper shadow-lg border border-slate-200 rounded-lg max-w-4xl mx-auto my-4">
             <div className="print-main-content">
-                <header className="flex items-center justify-between pb-3 border-b-2 border-slate-400 relative">
+                <header className="flex items-center justify-between pb-3 border-b-[3px] border-slate-900 relative">
                     <div className="w-24 h-14 flex items-center justify-center shrink-0">
                          {logoUrl ? <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-[9px] text-slate-400 border border-dashed border-slate-300 p-1 text-center rounded bg-slate-50">Logo</div>}
                     </div>
@@ -81,11 +81,11 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                 </header>
 
                 <div className="text-center my-3">
-                    <h2 className="text-base font-extrabold text-slate-900 uppercase tracking-widest inline-block">QUOTATION</h2>
+                    <h2 className="text-base font-extrabold text-slate-900 uppercase tracking-widest inline-block underline underline-offset-4">QUOTATION</h2>
                 </div>
 
                 <section className="grid grid-cols-2 gap-6 my-4">
-                    <div className="space-y-1 border-l-4 border-slate-400 bg-slate-50/60 p-3 rounded-r-md shadow-sm">
+                    <div className="space-y-1 border border-slate-300 rounded-md p-3 bg-white">
                         <p className="font-bold text-slate-700 text-[9px] uppercase tracking-wider">BILLED TO:</p>
                         <p className="font-extrabold text-xs text-slate-900 leading-tight">{customer.name}</p>
                         <p className="text-slate-600 leading-normal">{customer.address}</p>
@@ -94,10 +94,10 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                             <span className="font-semibold text-slate-500">Attn:</span> <span className="font-bold text-slate-800">{quotation.contactPerson}</span> ({quotation.contactNumber})
                         </p>
                     </div>
-                    <div className="space-y-1 border-r-4 border-slate-700 bg-slate-50/60 p-3 rounded-l-md text-right shadow-sm flex flex-col justify-between">
+                    <div className="space-y-1 border border-slate-300 rounded-md p-3 bg-white text-right flex flex-col justify-between">
                         <div>
-                            <p className="font-bold text-slate-500 text-[9px] uppercase tracking-wider">Quotation Reference</p>
-                            <p className="font-extrabold text-sm text-slate-700 tracking-tight">{quotation.id > 0 ? generateFormattedQuotationNumber(quotation, allQuotations) : 'DRAFT'}</p>
+                            
+                            <div className="flex justify-end gap-2 text-[10px]"><span className="font-semibold text-slate-600">Quotation No:</span> <span className="font-bold text-slate-900">{quotation.id > 0 ? generateFormattedQuotationNumber(quotation, allQuotations) : 'DRAFT'}</span></div>
                         </div>
                         <div className="text-[10px] text-slate-600 space-y-0.5 mt-2 pt-2 border-t border-slate-200/50">
                             <p><span className="font-semibold text-slate-500">Date:</span> <span className="font-bold text-slate-800">{new Date(quotation.quotationDate).toLocaleDateString('en-GB')}</span></p>
@@ -132,7 +132,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                                 const amount = unitPrice * item.moq;
                                 const partNoUrl = getPartNoLink(item.partNo);
                                 return (
-                                    <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50/50 transition-colors odd:bg-slate-50/20">
+                                    <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50 transition-colors">
                                         <td className="p-2 text-center text-slate-500 font-medium">{index + 1}</td>
                                         <td className="p-2 font-bold text-slate-900">
                                             {partNoUrl ? (
@@ -162,7 +162,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                 </div>
                 
                 <section className="flex justify-end mt-1 mb-2">
-                    <div className="w-80 space-y-1.5 border border-slate-200/80 p-3 rounded-lg bg-slate-50/40 shadow-sm">
+                    <div className="w-80 space-y-1.5 bg-slate-100 rounded-md p-2.5 px-4 font-bold">
                         <div className="flex justify-between text-[10px] text-slate-600">
                             <span className="font-semibold">{quotation.gstAdded ? 'Subtotal' : 'Total Amount'}</span>
                             <span className="font-bold">₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -192,11 +192,11 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                     </div>
                 </section>
 
-                <div className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-md my-1 font-semibold text-slate-700">
-                    Amount in Words: <span className="text-slate-950 font-bold">{numberToWords(grandTotal)}</span>
+                <div className="my-2 text-slate-800 text-[11px] font-semibold">
+                    Amount in Words: <span className="text-slate-900 font-bold">{numberToWords(grandTotal)}</span>
                 </div>
 
-                <section className="border-l-4 border-slate-400 bg-slate-100 p-3.5 rounded-r-lg mt-1 mb-3 print-no-break shadow-sm">
+                <section className="border border-slate-300 rounded-md p-3 mb-3 print-no-break bg-white">
                     <h3 className="font-extrabold text-slate-800 mb-1.5 text-xs tracking-wider uppercase">Terms & Conditions:</h3>
                     <ol className="list-decimal list-inside space-y-1 text-slate-700 leading-relaxed text-[10px]">
                         <li><span className="font-semibold text-slate-900">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
