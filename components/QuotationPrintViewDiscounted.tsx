@@ -81,7 +81,7 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                 </header>
 
                 <div className="text-center my-3">
-                    <h2 className="text-base font-extrabold text-slate-900 uppercase tracking-widest border-b-2 border-slate-300 pb-0.5 inline-block">QUOTATION</h2>
+                    <h2 className="text-base font-extrabold text-slate-900 uppercase tracking-widest inline-block">QUOTATION</h2>
                 </div>
 
                 <section className="grid grid-cols-2 gap-6 my-4">
