@@ -117,13 +117,13 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                             <tr className="divide-x divide-slate-800">
                                 <th className="p-2 font-bold text-center w-10">Sl. No</th>
                                 <th className="p-2 font-bold">Part No</th>
-                                <th className="p-2 font-bold w-1/3">Description</th>
+                                <th className="p-2 font-bold w-auto">Description</th>
                                 <th className="p-2 font-bold text-center w-12">MOQ</th>
                                 <th className="p-2 font-bold text-center w-12">REQ</th>
                                 <th className="p-2 font-bold text-center w-12">UOM</th>
                                 <th className="p-2 font-bold text-right w-24">Unit Price (₹)</th>
                                 <th className="p-2 font-bold text-right w-24">Amount (₹)</th>
-                                <th className="p-2 font-bold text-center w-20">Stock Status</th>
+                                <th className="p-2 font-bold text-center w-28">Stock Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
@@ -134,7 +134,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                                 return (
                                     <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50 transition-colors">
                                         <td className="p-2 text-center text-slate-500 font-medium">{index + 1}</td>
-                                        <td className="p-2 font-bold text-slate-900">
+                                        <td className="p-2 text-slate-700">
                                             {partNoUrl ? (
                                                 <a href={partNoUrl} target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:underline">
                                                     {item.partNo}
@@ -143,14 +143,14 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                                                 item.partNo
                                             )}
                                         </td>
-                                        <td className="p-2 text-slate-700 leading-normal">{item.description}</td>
-                                        <td className="p-2 text-center font-semibold text-slate-800">{item.moq}</td>
-                                        <td className="p-2 text-center text-slate-600">{item.req}</td>
-                                        <td className="p-2 text-center text-slate-600">{item.uom}</td>
-                                        <td className="p-2 text-right font-medium text-slate-800">{unitPrice.toFixed(2)}</td>
-                                        <td className="p-2 text-right font-extrabold text-slate-900">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td className="p-2 text-slate-700">{item.description}</td>
+                                        <td className="p-2 text-center text-slate-700">{item.moq}</td>
+                                        <td className="p-2 text-center text-slate-700">{item.req}</td>
+                                        <td className="p-2 text-center text-slate-700">{item.uom}</td>
+                                        <td className="p-2 text-right text-slate-700">{unitPrice.toFixed(2)}</td>
+                                        <td className="p-2 text-right text-slate-700">{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td className="p-2 text-center">
-                                            <span className="text-[9px] font-extrabold text-slate-700">
+                                            <span className="text-[9px] text-slate-700">
                                                 {item.stockStatus}
                                             </span>
                                         </td>
@@ -192,8 +192,8 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                     </div>
                 </section>
 
-                <div className="my-2 text-slate-800 text-[11px] font-semibold">
-                    Amount in Words: <span className="text-slate-900 font-bold">{numberToWords(grandTotal)}</span>
+                <div className="my-2 text-slate-800 text-[11px] font-bold">
+                    Amount in Words: {numberToWords(grandTotal)}
                 </div>
 
                 <section className="border border-slate-300 rounded-md p-3 mb-3 print-no-break bg-white">
