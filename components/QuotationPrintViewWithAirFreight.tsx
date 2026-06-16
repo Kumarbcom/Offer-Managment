@@ -72,7 +72,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
     };
 
     return (
-        <div className="bg-white p-6 md:p-8 font-[Cambria] text-[11px] text-slate-700 print-wrapper shadow-lg border border-slate-200 rounded-lg max-w-4xl mx-auto my-4">
+        <div className="bg-white p-6 md:p-8 text-[11px] text-slate-700 print-wrapper shadow-lg border border-slate-200 rounded-lg max-w-4xl mx-auto my-4">
             <div className="print-main-content">
                 <header className="flex items-center justify-between pb-3 border-b-[3px] border-slate-900 relative">
                     <div className="w-24 h-14 flex items-center justify-center shrink-0">
