@@ -59,7 +59,7 @@
       }
       body {
         margin: 0 !important;
-        padding: 10mm !important; /* Move margin to body to keep content away from edges */
+        padding: 5mm !important; /* Reduced margin to fit more content */
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
@@ -72,9 +72,9 @@
       .print-wrapper {
         display: flex;
         flex-direction: column;
-        min-height: 275mm; /* Set close to A4 height (297mm - 10mm top - 10mm bottom = 277mm printable height) */
+        min-height: 287mm; /* Adjusted to new A4 height (297mm - 5mm top - 5mm bottom = 287mm) */
         border: 1px solid #94a3b8; /* Elegant slate border */
-        padding: 18px !important;
+        padding: 12px !important; /* Reduced padding inside the border */
         box-sizing: border-box;
         border-radius: 6px;
         background: #ffffff;
