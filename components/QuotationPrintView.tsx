@@ -111,7 +111,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                     <p className="mt-0.5">Please find below our favourable offer for your requirement for <span className="font-bold text-indigo-700">{quotation.productsBrand}</span> Products.</p>
                 </div>
 
-                <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm my-3">
+                <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm mt-3 mb-1">
                     <table className="w-full text-left text-[10px] border-collapse">
                         <thead className="bg-slate-900 text-white uppercase tracking-wider text-[9px]">
                             <tr className="divide-x divide-slate-800">
@@ -161,7 +161,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                     </table>
                 </div>
                 
-                <section className="flex justify-end my-4">
+                <section className="flex justify-end mt-1 mb-2">
                     <div className="w-80 space-y-1.5 border border-slate-200/80 p-3 rounded-lg bg-slate-50/40 shadow-sm">
                         <div className="flex justify-between text-[10px] text-slate-600">
                             <span className="font-semibold">{quotation.gstAdded ? 'Subtotal' : 'Total Amount'}</span>
@@ -192,11 +192,11 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                     </div>
                 </section>
 
-                <div className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-md my-3 font-semibold text-slate-700">
+                <div className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-md my-1 font-semibold text-slate-700">
                     Amount in Words: <span className="text-slate-950 font-bold">{numberToWords(grandTotal)}</span>
                 </div>
 
-                <section className="border-l-4 border-indigo-500 bg-indigo-50/20 p-3.5 rounded-r-lg my-4 print-no-break shadow-sm">
+                <section className="border-l-4 border-indigo-500 bg-indigo-50/20 p-3.5 rounded-r-lg mt-1 mb-3 print-no-break shadow-sm">
                     <h3 className="font-extrabold text-indigo-950 mb-1.5 text-xs tracking-wider uppercase">Terms & Conditions:</h3>
                     <ol className="list-decimal list-inside space-y-1 text-slate-700 leading-relaxed text-[10px]">
                         <li><span className="font-semibold text-slate-900">Prices:</span> Ex Godown, Bangalore. (The Above Mentioned Price Is Net Disounted)</li>
