@@ -120,7 +120,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
 
                 <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm mt-3 mb-1">
                     <table className="w-full text-left text-[10px] border-collapse">
-                        <thead className="bg-slate-900 text-white uppercase tracking-wider text-[9px]">
+                        <thead className="bg-transparent text-slate-800 border-b border-slate-300 uppercase tracking-wider text-[9px]">
                             <tr className="divide-x divide-slate-850">
                                 <th className="p-2 font-bold text-center w-8 align-middle" rowSpan={2}>Sl. No</th>
                                 <th className="p-2 font-bold align-middle" rowSpan={2}>Part No</th>

@@ -113,7 +113,7 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
 
                 <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm mt-3 mb-1">
                     <table className="w-full text-left text-[10px] border-collapse">
-                        <thead className="bg-slate-900 text-white uppercase tracking-wider text-[9px]">
+                        <thead className="bg-transparent text-slate-800 border-b border-slate-300 uppercase tracking-wider text-[9px]">
                             <tr className="divide-x divide-slate-800">
                                 <th className="p-2 font-bold text-center w-10">Sl. No</th>
                                 <th className="p-2 font-bold">Part No</th>
