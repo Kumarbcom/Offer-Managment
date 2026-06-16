@@ -72,7 +72,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
     };
 
     return (
-        <div className="bg-white p-6 md:p-8 font-sans text-[11px] text-slate-800 print-wrapper shadow-lg border border-slate-200 rounded-lg max-w-4xl mx-auto my-4">
+        <div className="bg-white p-6 md:p-8 font-[Cambria] text-[11px] text-slate-700 print-wrapper shadow-lg border border-slate-200 rounded-lg max-w-4xl mx-auto my-4">
             <div className="print-main-content">
                 <header className="flex items-center justify-between pb-3 border-b-2 border-indigo-600 relative">
                     <div className="w-24 h-14 flex items-center justify-center shrink-0">
@@ -120,7 +120,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
 
                 <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm mt-3 mb-1">
                     <table className="w-full text-left text-[10px] border-collapse">
-                        <thead className="bg-transparent text-slate-800 border-b border-slate-300 uppercase tracking-wider text-[9px]">
+                        <thead className="bg-slate-100 text-slate-700 border-b border-slate-300 uppercase tracking-wider text-[9px]">
                             <tr className="divide-x divide-slate-850">
                                 <th className="p-2 font-bold text-center w-8 align-middle" rowSpan={2}>Sl. No</th>
                                 <th className="p-2 font-bold align-middle" rowSpan={2}>Part No</th>
