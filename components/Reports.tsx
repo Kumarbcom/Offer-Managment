@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Quotation, SalesPerson, User } from '../types';
 import { getCustomersByIds } from '../supabase';
+import { ItemWiseReport } from './ItemWiseReport';
 
 interface ReportsProps {
   quotations: Quotation[] | null;
@@ -15,6 +16,7 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
   const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<number | 'all'>('all');
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
+  const [activeTab, setActiveTab] = useState<'sales' | 'item'>('item');
 
   // Initialize selected Sales Person based on logged-in user
   useEffect(() => {
@@ -167,6 +169,32 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
         </div>
       </div>
 
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          onClick={() => setActiveTab('sales')}
+          className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${
+            activeTab === 'sales'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          Sales Report
+        </button>
+        <button
+          onClick={() => setActiveTab('item')}
+          className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${
+            activeTab === 'item'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          Item Wise Report
+        </button>
+      </div>
+
+      {activeTab === 'sales' ? (
+        <>
+
       {/* Action Bar */}
       <div className="flex justify-end mb-4">
           <button
@@ -231,6 +259,10 @@ export const Reports: React.FC<ReportsProps> = ({ quotations, salesPersons, curr
           </tfoot>
         </table>
       </div>
+        </>
+      ) : (
+        <ItemWiseReport quotations={filteredQuotations} customerMap={customerMap} />
+      )}
     </div>
   );
 };

@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Siddhi Material Master Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --accent: #4f8ef7;
+    --accent2: #f76f4f;
+    --green: #3ecf8e;
+    --yellow: #f5c518;
+    --red: #e74c3c;
+    --text: #e8eaf6;
+    --muted: #8890b0;
+    --card-radius: 10px;
+  }
+  *, *::before, *::after {
+    box-sizing: border-box; margin: 0; padding: 0;
+    font-family: 'Cambria', 'Georgia', serif;
+    font-size: 10pt;
+  }
+  body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .top-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 200;
+  }
+  .top-header h1 { font-size: 13pt; font-weight: 700; color: var(--accent); }
+  .top-header .sub { font-size: 8pt; color: var(--muted); margin-top: 2px; }
+  .record-count {
+    font-size: 8pt; color: var(--muted);
+    background: var(--surface2); padding: 4px 12px;
+    border-radius: 20px; border: 1px solid var(--border);
+  }
+
+  /* ── SLICER BAR (TOP) ── */
+  .slicer-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    position: sticky; top: 57px; z-index: 100;
+    display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap;
+  }
+  .slicer-section { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .slicer-label {
+    font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); white-space: nowrap; padding-right: 4px;
+    border-right: 1px solid var(--border); margin-right: 2px;
+  }
+  .slicer-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 4px 10px;
+    border-radius: 5px; cursor: pointer;
+    transition: all 0.13s; white-space: nowrap;
+    font-size: 9pt;
+  }
+  .slicer-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .slicer-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  .slicer-btn .badge {
+    display: inline-block; background: rgba(255,255,255,0.18);
+    border-radius: 8px; padding: 0 5px; font-size: 7.5pt; margin-left: 4px;
+  }
+  .slicer-divider { width: 1px; background: var(--border); height: 28px; align-self: center; }
+  .search-input {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 5px 10px; border-radius: 5px;
+    outline: none; width: 200px;
+    font-size: 9pt;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
+  .reset-btn {
+    background: transparent; border: 1px solid var(--accent2);
+    color: var(--accent2); padding: 4px 12px;
+    border-radius: 5px; cursor: pointer; font-size: 9pt;
+    transition: all 0.13s; white-space: nowrap;
+  }
+  .reset-btn:hover { background: var(--accent2); color: #fff; }
+
+  /* ── CONTENT ── */
+  .content { padding: 20px 24px; }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-radius); padding: 14px 16px;
+  }
+  .kpi-label { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 5px; }
+  .kpi-value { font-size: 14pt; font-weight: 700; }
+  .kpi-value.blue { color: var(--accent); }
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.orange { color: var(--accent2); }
+  .kpi-value.yellow { color: var(--yellow); }
+  .kpi-value.red { color: var(--red); }
+  .kpi-value.purple { color: #a855f7; }
+  .kpi-sub { font-size: 7.5pt; color: var(--muted); margin-top: 3px; }
+
+  /* ── CHARTS ── */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-radius); padding: 16px;
+  }
+  .chart-card h4 { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+  .chart-wrap { position: relative; height: 200px; }
+
+  /* ── TABLE ── */
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-radius); overflow: hidden;
+  }
+  .table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px;
+  }
+  .table-header h4 { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .table-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tbl-input {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 5px 10px; border-radius: 5px; outline: none; width: 180px;
+    font-size: 9pt;
+  }
+  .tbl-input:focus { border-color: var(--accent); }
+  .sort-select {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 5px 10px; border-radius: 5px; outline: none; cursor: pointer;
+    font-size: 9pt;
+  }
+  .page-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 4px 10px; border-radius: 5px; cursor: pointer;
+    font-size: 9pt;
+  }
+  .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .page-info { font-size: 8pt; color: var(--muted); }
+
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    background: var(--surface2); color: var(--muted);
+    padding: 8px 10px; text-align: left; font-weight: 700;
+    text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.05em;
+    cursor: pointer; user-select: none; white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  th:hover { color: var(--accent); }
+  th.sort-asc::after { content: " ↑"; color: var(--accent); }
+  th.sort-desc::after { content: " ↓"; color: var(--accent); }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; font-size: 9pt; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .num { text-align: right; }
+  .desc-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9pt; }
+
+  /* Group badges */
+  .badge-group { display: inline-block; padding: 2px 7px; border-radius: 9px; font-size: 7.5pt; font-weight: 700; }
+  .g-fast { background: rgba(62,207,142,0.12); color: var(--green); border: 1px solid rgba(62,207,142,0.3); }
+  .g-slow { background: rgba(245,197,24,0.12); color: var(--yellow); border: 1px solid rgba(245,197,24,0.3); }
+  .g-non  { background: rgba(231,76,60,0.12);  color: var(--red);    border: 1px solid rgba(231,76,60,0.3);  }
+  .g-low  { background: rgba(79,142,247,0.12); color: var(--accent); border: 1px solid rgba(79,142,247,0.3); }
+  .g-mto  { background: rgba(247,111,79,0.12); color: var(--accent2);border: 1px solid rgba(247,111,79,0.3); }
+
+  /* Aging cells */
+  .ag-cell { text-align: right; }
+  .ag-zero  { color: var(--muted); }
+  .ag-low   { color: var(--yellow); font-weight: 600; }
+  .ag-high  { color: var(--red); font-weight: 700; }
+
+  /* Aging header group */
+  .th-aging-group { background: rgba(231,76,60,0.08); }
+
+  .footer-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2);
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="top-header">
+  <div>
+    <h1>🏭 Siddhi Material Master Dashboard</h1>
+    <div class="sub">Stock Summary · 11 Makes · 5 Groups</div>
+  </div>
+  <div class="record-count" id="recordCount">0 records</div>
+</div>
+
+<!-- SLICER BAR -->
+<div class="slicer-bar">
+  <div class="slicer-section">
+    <span class="slicer-label">Make</span>
+    <div id="makeSlicer" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+  </div>
+  <div class="slicer-divider"></div>
+  <div class="slicer-section">
+    <span class="slicer-label">Group</span>
+    <div id="groupSlicer" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+  </div>
+  <div class="slicer-divider"></div>
+  <input class="search-input" type="text" id="descSearch" placeholder="🔍 Search description..." oninput="applyFilters()">
+  <button class="reset-btn" onclick="resetFilters()">✕ Reset</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total SKUs</div>
+      <div class="kpi-value blue" id="kpiSkus">—</div>
+      <div class="kpi-sub" id="kpiSkusSub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Stock Value (₹)</div>
+      <div class="kpi-value green" id="kpiStock">—</div>
+      <div class="kpi-sub" id="kpiStockSub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Sales Value (₹)</div>
+      <div class="kpi-value orange" id="kpiSales">—</div>
+      <div class="kpi-sub" id="kpiSalesSub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Aging &gt;60 Days Qty</div>
+      <div class="kpi-value yellow" id="kpiAging60">—</div>
+      <div class="kpi-sub" id="kpiAging60Sub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Aging 60–90 Days Qty</div>
+      <div class="kpi-value orange" id="kpiAging6090">—</div>
+      <div class="kpi-sub" id="kpiAging6090Sub"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Aging &gt;90 Days Qty</div>
+      <div class="kpi-value red" id="kpiAging90">—</div>
+      <div class="kpi-sub" id="kpiAging90Sub"></div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h4>Stock Value by Make</h4>
+      <div class="chart-wrap"><canvas id="chartMake"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h4>SKU Count by Group</h4>
+      <div class="chart-wrap"><canvas id="chartGroup"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-card">
+    <div class="table-header">
+      <h4>Detail View</h4>
+      <div class="table-controls">
+        <input class="tbl-input" type="text" id="tableSearch" placeholder="Filter table..." oninput="applyFilters()">
+        <select class="sort-select" id="sortCol" onchange="renderTable()">
+          <option value="Make" selected>Sort: Make</option>
+          <option value="Amount">Stock Value</option>
+          <option value="Sales Value">Sales Value</option>
+          <option value="Qty">Qty</option>
+          <option value=">60 Days">Aging &gt;60d</option>
+          <option value="60 to 90 days">Aging 60–90d</option>
+          <option value="(> 90 days )">Aging &gt;90d</option>
+          <option value="No Customer Purchsed ">Customers</option>
+        </select>
+        <select class="sort-select" id="sortDir" onchange="renderTable()">
+          <option value="asc" selected>↑ Asc</option>
+          <option value="desc">↓ Desc</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="toggleSort('Make')">Make</th>
+            <th onclick="toggleSort('Group')">Group</th>
+            <th onclick="toggleSort('Description')">Description</th>
+            <th class="num" onclick="toggleSort('Qty')">Qty</th>
+            <th class="num" onclick="toggleSort('Unit Price')">Unit Price</th>
+            <th class="num" onclick="toggleSort('Amount')">Stock Value</th>
+            <th class="num" onclick="toggleSort('SalesQty')">Sales Qty</th>
+            <th class="num" onclick="toggleSort('Sales Value')">Sales Value</th>
+            <th class="num th-aging-group" onclick="toggleSort('>60 Days')">&gt;60 Days</th>
+            <th class="num th-aging-group" onclick="toggleSort('60 to 90 days')">60–90 Days</th>
+            <th class="num th-aging-group" onclick="toggleSort('(> 90 days )')">&gt;90 Days</th>
+            <th class="num" onclick="toggleSort('No Customer Purchsed ')">Customers</th>
+            <th class="num" onclick="toggleSort('Avg. Last 15 Months')">Avg L15M</th>
+            <th class="num" onclick="toggleSort('Avg.Last 3 months')">Avg L3M</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="footer-bar">
+      <span class="page-info" id="pageInfo">—</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="page-btn" onclick="changePage(-1)" id="btnPrev">← Prev</button>
+        <button class="page-btn" onclick="changePage(1)" id="btnNext">Next →</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+const ALL_DATA = [
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4510021U (\u00d6LFLEX\u00ae UNIPLUS 1X0.5 BU)", "Qty": -17008.0, "Unit Price": 6.89, "Amount": -117175.94, "SalesQty": 1534500.0, "Sales Value": 10024663.54, ">60 Days": 0, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 148, "Avg. Last 15 Months": 102300, "Avg.Last 3 months": 229000.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520011U (\u00d6LFLEX\u00ae UNIPLUS 1X1.5 BK)", "Qty": -200.0, "Unit Price": 18.41, "Amount": -3681.86, "SalesQty": 528300.0, "Sales Value": 8730723.189999998, ">60 Days": 0, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 137, "Avg. Last 15 Months": 35200, "Avg.Last 3 months": 72200.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520012U (\u00d6LFLEX\u00ae UNIPLUS 1X2.5 BK)", "Qty": 13300.0, "Unit Price": 30.3, "Amount": 402926.43, "SalesQty": 261900.0, "Sales Value": 7452606.739999999, ">60 Days": 13300, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 136, "Avg. Last 15 Months": 17500, "Avg.Last 3 months": 33500.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "11193041 (Olflex\u00ae 110 4G1.5)", "Qty": -384.0, "Unit Price": 80.79, "Amount": -31021.79, "SalesQty": 99464.0, "Sales Value": 8194136.93, ">60 Days": 0, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 112, "Avg. Last 15 Months": 6600, "Avg.Last 3 months": 14000.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "11194041 (\u00d6lflex\u00ae 110 4 G 2.5 Mm\u00b2)", "Qty": 5828.0, "Unit Price": 123.5, "Amount": 719755.14, "SalesQty": 47804.0, "Sales Value": 6707405.360000002, ">60 Days": 5828, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 97, "Avg. Last 15 Months": 3200, "Avg.Last 3 months": 6400.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520002U (\u00d6LFLEX\u00ae UNIPLUS 1X2.5 GNYE)", "Qty": 2700.0, "Unit Price": 29.0, "Amount": 78311.23, "SalesQty": 191900.0, "Sales Value": 5352644.049999999, ">60 Days": 2700, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 95, "Avg. Last 15 Months": 12800, "Avg.Last 3 months": 26600.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520001U (\u00d6LFLEX\u00ae UNIPLUS 1X1.5 GNYE)", "Qty": 10997.0, "Unit Price": 18.73, "Amount": 205989.76, "SalesQty": 221400.0, "Sales Value": 3787819.6799999992, ">60 Days": 10997, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 91, "Avg. Last 15 Months": 14800, "Avg.Last 3 months": 32400.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520041U (\u00d6LFLEX\u00ae UNIPLUS 1X1.5 RD)", "Qty": 6000.0, "Unit Price": 19.14, "Amount": 114839.64, "SalesQty": 94100.0, "Sales Value": 1738137.7799999996, ">60 Days": 6000, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 82, "Avg. Last 15 Months": 6300, "Avg.Last 3 months": 14200.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520022U (\u00d6LFLEX\u00ae UNIPLUS 1X2.5 BU)", "Qty": 11800.0, "Unit Price": 29.69, "Amount": 350303.65, "SalesQty": 97600.0, "Sales Value": 2790619.62, ">60 Days": 5000, "60 to 90 days": 6800, "(> 90 days )": 0, "No Customer Purchsed ": 75, "Avg. Last 15 Months": 6500, "Avg.Last 3 months": 15400.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520014U (\u00d6LFLEX\u00ae UNIPLUS 1X6 BK)", "Qty": 730.0, "Unit Price": 70.1, "Amount": 51169.9, "SalesQty": 150417.0, "Sales Value": 9668162.04, ">60 Days": 730, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 74, "Avg. Last 15 Months": 10000, "Avg.Last 3 months": 22000.0},
+  {"Make": "LAPP", "Group": "Low Transaction Items", "Description": "Freight Charges-Sales", "Qty": 14.0, "Unit Price": 0, "Amount": 0, "SalesQty": 61.0, "Sales Value": 169227.63, ">60 Days": 14, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 30, "Avg. Last 15 Months": 0, "Avg.Last 3 months": 0.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "0028303 (UNITRONIC LiYY 3x0,25)", "Qty": 516.0, "Unit Price": 28.03, "Amount": 14465.13, "SalesQty": 3673.0, "Sales Value": 125829.98, ">60 Days": 516, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 23, "Avg. Last 15 Months": 200, "Avg.Last 3 months": 500.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "0028350 (UNITRONIC LiYY 50x0,25)", "Qty": 2145.0, "Unit Price": 456.07, "Amount": 978277.72, "SalesQty": 60884.0, "Sales Value": 24815086.430000003, ">60 Days": 2145, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 21, "Avg. Last 15 Months": 4100, "Avg.Last 3 months": 9800.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520061U (\u00d6LFLEX\u00ae UNIPLUS 1X1.5 GY)", "Qty": 100.0, "Unit Price": 17.05, "Amount": 1704.61, "SalesQty": 25700.0, "Sales Value": 504018.99, ">60 Days": 100, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 21, "Avg. Last 15 Months": 1700, "Avg.Last 3 months": 4100.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4510111U (\u00d6LFLEX\u00ae UNIPLUS 1X0.5 YE)", "Qty": 1600.0, "Unit Price": 6.84, "Amount": 10938.78, "SalesQty": 22200.0, "Sales Value": 156256.8, ">60 Days": 1600, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 21, "Avg. Last 15 Months": 1500, "Avg.Last 3 months": 1900.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "38007075 (\u00d6LFLEX\u00ae 100 I 3 G 2.50)", "Qty": 124.0, "Unit Price": 114.44, "Amount": 14190.71, "SalesQty": 7499.0, "Sales Value": 776808.0499999998, ">60 Days": 124, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 21, "Avg. Last 15 Months": 500, "Avg.Last 3 months": 800.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "53015040 (SKINTOP ST PG 16 RAL 7001 SGY)", "Qty": 13.0, "Unit Price": 64.05, "Amount": 832.66, "SalesQty": 6886.0, "Sales Value": 387942.9900000001, ">60 Days": 13, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 21, "Avg. Last 15 Months": 500, "Avg.Last 3 months": 1100.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "0028325 (UNITRONIC LiYY 25x0,25)", "Qty": 139.0, "Unit Price": 183.11, "Amount": 25452.41, "SalesQty": 63281.0, "Sales Value": 10336948.760000002, ">60 Days": 139, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 20, "Avg. Last 15 Months": 4200, "Avg.Last 3 months": 10300.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4510091U (\u00d6LFLEX\u00ae UNIPLUS 1X0.5 OG)", "Qty": 1200.0, "Unit Price": 7.5, "Amount": 9005.27, "SalesQty": 48600.0, "Sales Value": 341802.01, ">60 Days": 1200, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 20, "Avg. Last 15 Months": 3200, "Avg.Last 3 months": 7400.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520031U (\u00d6LFLEX\u00ae UNIPLUS 1X1.5 BN)", "Qty": 1000.0, "Unit Price": 17.67, "Amount": 17666.79, "SalesQty": 9900.0, "Sales Value": 172979.30000000002, ">60 Days": 1000, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 20, "Avg. Last 15 Months": 700, "Avg.Last 3 months": 900.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4520051U (\u00d6LFLEX\u00ae UNIPLUS 1X1.5 WH)", "Qty": -600.0, "Unit Price": 15.77, "Amount": -9460.19, "SalesQty": 7400.0, "Sales Value": 147924.64, ">60 Days": 0, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 20, "Avg. Last 15 Months": 500, "Avg.Last 3 months": 1300.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "4521012U (\u00d6LFLEX\u00ae UNIPLUS 1X35 BK)", "Qty": 475.0, "Unit Price": 451.09, "Amount": 214265.58, "SalesQty": 3673.0, "Sales Value": 1633715.9300000002, ">60 Days": 475, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 20, "Avg. Last 15 Months": 200, "Avg.Last 3 months": 600.0},
+  {"Make": "LAPP", "Group": "Low Transaction Items", "Description": "4521001U (OLFLEX UNIPLUS 1X25 GNYE)", "Qty": 48.0, "Unit Price": 328.45, "Amount": 15765.47, "SalesQty": 1865.0, "Sales Value": 642517.23, ">60 Days": 48, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 20, "Avg. Last 15 Months": 100, "Avg.Last 3 months": 400.0},
+  {"Make": "LAPP", "Group": "Fast Runners", "Description": "38007043 (\u00d6LFLEX\u00ae 100 I 3 G 0.75)", "Qty": 5209.0, "Unit Price": 35.63, "Amount": 185585.11, "SalesQty": 49507.0, "Sales Value": 1763583.0699999996, ">60 Days": 5209, "60 to 90 days": 0, "(> 90 days )": 0, "No Customer Purchsed ": 19, "Avg. Last 15 Months": 3300, "Avg.Last 3 months": 8200.0}
+];
+
+let filteredData = [...ALL_DATA];
+let currentPage = 1;
+const pageSize = 50;
+let sortCol = 'Make';
+let sortDir = 'asc';
+let activeFilters = { make: new Set(), group: new Set() };
+let chartMakeInst = null;
+let chartGroupInst = null;
+
+function init() {
+  // Populate slicers
+  const makes = [...new Set(ALL_DATA.map(d => d.Make))].filter(Boolean);
+  const groups = [...new Set(ALL_DATA.map(d => d.Group))].filter(Boolean);
+  
+  const makeContainer = document.getElementById('makeSlicer');
+  makes.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'slicer-btn';
+    btn.innerText = m;
+    btn.onclick = () => toggleFilter('make', m, btn);
+    makeContainer.appendChild(btn);
+  });
+  
+  const groupContainer = document.getElementById('groupSlicer');
+  groups.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'slicer-btn';
+    btn.innerText = g;
+    btn.onclick = () => toggleFilter('group', g, btn);
+    groupContainer.appendChild(btn);
+  });
+
+  applyFilters();
+}
+
+function toggleFilter(type, value, btn) {
+  if (activeFilters[type].has(value)) {
+    activeFilters[type].delete(value);
+    btn.classList.remove('active');
+  } else {
+    activeFilters[type].add(value);
+    btn.classList.add('active');
+  }
+  applyFilters();
+}
+
+function applyFilters() {
+  const search = document.getElementById('descSearch').value.toLowerCase();
+  const tableSearch = document.getElementById('tableSearch').value.toLowerCase();
+  
+  filteredData = ALL_DATA.filter(d => {
+    if (activeFilters.make.size > 0 && !activeFilters.make.has(d.Make)) return false;
+    if (activeFilters.group.size > 0 && !activeFilters.group.has(d.Group)) return false;
+    if (search && (!d.Description || !d.Description.toLowerCase().includes(search))) return false;
+    if (tableSearch && (!d.Description || !d.Description.toLowerCase().includes(tableSearch))) return false;
+    return true;
+  });
+  
+  document.getElementById('recordCount').innerText = `${filteredData.length.toLocaleString()} records`;
+  
+  currentPage = 1;
+  updateKPIs();
+  updateCharts();
+  renderTable();
+}
+
+function resetFilters() {
+  activeFilters.make.clear();
+  activeFilters.group.clear();
+  document.querySelectorAll('.slicer-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('descSearch').value = '';
+  document.getElementById('tableSearch').value = '';
+  applyFilters();
+}
+
+const safeNum = v => {
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  if (typeof v === 'string') {
+    const parsed = parseFloat(v.replace(/[^\d.-]/g, ''));
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
+function updateKPIs() {
+  const formatCur = v => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v || 0);
+  const formatNum = v => new Intl.NumberFormat('en-IN').format(v || 0);
+
+  const skus = filteredData.length;
+  const stockQty = filteredData.reduce((sum, d) => sum + safeNum(d.Qty), 0);
+  const stockValue = filteredData.reduce((sum, d) => sum + safeNum(d.Amount), 0);
+  const salesValue = filteredData.reduce((sum, d) => sum + safeNum(d['Sales Value']), 0);
+
+  let aging60 = 0, aging60Val = 0, aging60Skus = 0;
+  let aging6090 = 0, aging6090Val = 0, aging6090Skus = 0;
+  let aging90 = 0, aging90Val = 0, aging90Skus = 0;
+
+  filteredData.forEach(d => {
+    const qty60 = safeNum(d['>60 Days']);
+    const qty6090 = safeNum(d['60 to 90 days']);
+    const qty90 = safeNum(d['(> 90 days )']);
+    const price = safeNum(d['Unit Price']);
+
+    if (qty60 > 0) {
+      aging60 += qty60;
+      aging60Val += qty60 * price;
+      aging60Skus++;
+    }
+    if (qty6090 > 0) {
+      aging6090 += qty6090;
+      aging6090Val += qty6090 * price;
+      aging6090Skus++;
+    }
+    if (qty90 > 0) {
+      aging90 += qty90;
+      aging90Val += qty90 * price;
+      aging90Skus++;
+    }
+  });
+
+  document.getElementById('kpiSkus').innerText = formatNum(skus);
+  document.getElementById('kpiSkusSub').innerText = `Total Qty: ${formatNum(stockQty)}`;
+  
+  document.getElementById('kpiStock').innerText = formatCur(stockValue);
+  document.getElementById('kpiSales').innerText = formatCur(salesValue);
+  
+  document.getElementById('kpiAging60').innerText = formatNum(aging60);
+  document.getElementById('kpiAging60Sub').innerText = `${formatNum(aging60Skus)} SKUs affected | ${formatCur(aging60Val)}`;
+  
+  document.getElementById('kpiAging6090').innerText = formatNum(aging6090);
+  document.getElementById('kpiAging6090Sub').innerText = `${formatNum(aging6090Skus)} SKUs affected | ${formatCur(aging6090Val)}`;
+  
+  document.getElementById('kpiAging90').innerText = formatNum(aging90);
+  document.getElementById('kpiAging90Sub').innerText = `${formatNum(aging90Skus)} SKUs affected | ${formatCur(aging90Val)}`;
+}
+
+function updateCharts() {
+  const makeMap = {};
+  const groupMap = {};
+  filteredData.forEach(d => {
+    if(d.Make) makeMap[d.Make] = (makeMap[d.Make] || 0) + safeNum(d.Amount);
+    if(d.Group) groupMap[d.Group] = (groupMap[d.Group] || 0) + 1;
+  });
+
+  // Chart Make
+  const makeCtx = document.getElementById('chartMake').getContext('2d');
+  if(chartMakeInst) chartMakeInst.destroy();
+  chartMakeInst = new Chart(makeCtx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(makeMap),
+      datasets: [{
+        label: 'Stock Value',
+        data: Object.values(makeMap),
+        backgroundColor: '#4f8ef7'
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+
+  // Chart Group
+  const groupCtx = document.getElementById('chartGroup').getContext('2d');
+  if(chartGroupInst) chartGroupInst.destroy();
+  chartGroupInst = new Chart(groupCtx, {
+    type: 'pie',
+    data: {
+      labels: Object.keys(groupMap),
+      datasets: [{
+        data: Object.values(groupMap),
+        backgroundColor: ['#4f8ef7', '#3ecf8e', '#f5c518', '#e74c3c', '#a855f7']
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+}
+
+function toggleSort(col) {
+  if (sortCol === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortCol = col;
+    sortDir = 'asc';
+  }
+  document.getElementById('sortCol').value = sortCol;
+  document.getElementById('sortDir').value = sortDir;
+  
+  // update th classes
+  document.querySelectorAll('th').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if(th.innerText.includes(col) || th.innerText.replace(/[^a-zA-Z0-9]/g,'') === col.replace(/[^a-zA-Z0-9]/g,'')) {
+      th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+  });
+
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  
+  // Get sorting selects if needed
+  sortCol = document.getElementById('sortCol').value || sortCol;
+  sortDir = document.getElementById('sortDir').value || sortDir;
+
+  filteredData.sort((a, b) => {
+    let valA = a[sortCol];
+    let valB = b[sortCol];
+    if(typeof valA === 'string') valA = valA.toLowerCase();
+    if(typeof valB === 'string') valB = valB.toLowerCase();
+    
+    if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
+  if(currentPage > totalPages) currentPage = totalPages;
+  
+  const start = (currentPage - 1) * pageSize;
+  const pageData = filteredData.slice(start, start + pageSize);
+  
+  const formatCur = v => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(v || 0);
+  const formatNum = v => new Intl.NumberFormat('en-IN').format(v || 0);
+
+  pageData.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${d.Make || '-'}</td>
+      <td><span class="badge-group ${d.Group === 'Fast Runners' ? 'g-fast' : 'g-low'}">${d.Group || '-'}</span></td>
+      <td class="desc-cell" title="${d.Description}">${d.Description || '-'}</td>
+      <td class="num">${formatNum(safeNum(d.Qty))}</td>
+      <td class="num">${formatCur(safeNum(d['Unit Price']))}</td>
+      <td class="num">${formatCur(safeNum(d.Amount))}</td>
+      <td class="num">${formatNum(safeNum(d.SalesQty))}</td>
+      <td class="num">${formatCur(safeNum(d['Sales Value']))}</td>
+      <td class="num ag-cell ${safeNum(d['>60 Days']) > 0 ? 'ag-high' : 'ag-zero'}">${formatNum(safeNum(d['>60 Days']))}</td>
+      <td class="num ag-cell ${safeNum(d['60 to 90 days']) > 0 ? 'ag-high' : 'ag-zero'}">${formatNum(safeNum(d['60 to 90 days']))}</td>
+      <td class="num ag-cell ${safeNum(d['(> 90 days )']) > 0 ? 'ag-high' : 'ag-zero'}">${formatNum(safeNum(d['(> 90 days )']))}</td>
+      <td class="num">${formatNum(safeNum(d['No Customer Purchsed ']))}</td>
+      <td class="num">${formatNum(safeNum(d['Avg. Last 15 Months']))}</td>
+      <td class="num">${formatNum(safeNum(d['Avg.Last 3 months']))}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  
+  document.getElementById('pageInfo').innerText = `Page ${currentPage} of ${totalPages} (${start + 1}-${Math.min(start + pageSize, filteredData.length)})`;
+  document.getElementById('btnPrev').disabled = currentPage === 1;
+  document.getElementById('btnNext').disabled = currentPage === totalPages;
+}
+
+function changePage(delta) {
+  currentPage += delta;
+  renderTable();
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
