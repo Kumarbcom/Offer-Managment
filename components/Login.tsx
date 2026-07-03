@@ -1,149 +1,162 @@
-import React, { useState } from 'react';
-import type { User } from '../types';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 
-interface LoginProps {
-  onLogin: (user: User) => void;
-  users: User[] | null;
-  isLoading: boolean;
-}
-
-export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
+export default function Login() {
+  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [logoUrl] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem('company_logo');
-    } catch (e) {
-      return null;
-    }
-  });
+  const users = [
+    'Ananthapadmanabha Phandari',
+    'DC Venugopal',
+    'Geetha',
+    'Giridhar',
+    'Gurudatta',
+    'Kumar',
+    'Mohan',
+    'Office',
+    'Purshothama',
+    'Rachana',
+    'Ranjan',
+    'Vandita',
+    'Veeresh',
+  ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!users) {
-        setError('User data is not available. Please try again later.');
-        return;
-    }
-    const user = users.find(u => u.name === username);
-    if (user && user.password === password) {
-      onLogin(user);
-    } else {
-      setError('Invalid username or password');
-    }
+    setIsLoading(true);
+    // Simulate login delay
+    setTimeout(() => {
+      setIsLoading(false);
+      // In a real app, this would authenticate and redirect
+      console.log('Login:', { username, password });
+    }, 1000);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      {/* Background blobs for depth */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-900/20 blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-purple-900/10 blur-[130px] pointer-events-none" />
+    <div className="min-h-screen bg-gradient-to-br from-primary via-background to-accent/20 flex items-center justify-center p-4">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
+      </div>
 
-      {/* Login Card Container */}
-      <div className="max-w-md w-full bg-slate-900/40 backdrop-blur-xl p-8 rounded-2xl border border-slate-800/80 shadow-2xl shadow-slate-950/50 relative z-10">
-        
+      {/* Content */}
+      <div className="relative z-10 w-full max-w-md">
         {/* Logo Section */}
-        <div className="flex flex-col items-center mb-6">
-          {logoUrl ? (
-            <img 
-              src={logoUrl} 
-              alt="Siddhi Kabel Logo" 
-              className="h-16 w-auto object-contain mb-3 drop-shadow-md rounded p-1 bg-white" 
-            />
-          ) : (
-            <svg className="w-16 h-16 mb-3 drop-shadow-lg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="50" cy="50" r="48" fill="url(#bgGrad)" stroke="url(#borderGrad)" strokeWidth="2.5"/>
-              <path d="M30 40C30 30 45 25 55 25C65 25 70 30 70 35C70 45 30 45 30 55C30 65 45 75 55 75C65 75 70 68 70 60" stroke="url(#cableGradBlue)" strokeWidth="7" strokeLinecap="round" fill="none"/>
-              <path d="M30 40C30 30 45 25 55 25C65 25 70 30 70 35C70 45 30 45 30 55C30 65 45 75 55 75C65 75 70 68 70 60" stroke="url(#cableGradAmber)" strokeWidth="3" strokeLinecap="round" fill="none"/>
-              <defs>
-                <linearGradient id="bgGrad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#1e293b"/>
-                  <stop offset="1" stopColor="#0b0f19"/>
-                </linearGradient>
-                <linearGradient id="borderGrad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#4f46e5"/>
-                  <stop offset="1" stopColor="#ec4899"/>
-                </linearGradient>
-                <linearGradient id="cableGradBlue" x1="30" y1="25" x2="70" y2="75" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#3b82f6"/>
-                  <stop offset="1" stopColor="#6366f1"/>
-                </linearGradient>
-                <linearGradient id="cableGradAmber" x1="30" y1="25" x2="70" y2="75" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#f59e0b"/>
-                  <stop offset="1" stopColor="#ef4444"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          )}
-          
-          <h1 className="text-lg font-black tracking-tight text-white uppercase text-center">
-            Siddhi Kabel
-          </h1>
-          <h2 className="text-[10px] font-bold tracking-[0.25em] text-indigo-400 uppercase text-center mt-0.5">
-            Corporation Pvt Ltd
-          </h2>
-          <p className="text-[11px] text-slate-400 mt-2 font-medium">
-            Offer Management Portal
-          </p>
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg mb-4">
+            <span className="text-2xl font-bold text-white">SK</span>
+          </div>
+          <h1 className="text-3xl font-bold text-foreground">Siddhi Kabel</h1>
+          <p className="text-muted-foreground mt-2">Offer Management Portal</p>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label htmlFor="username" className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
-              Username
-            </label>
-            <select
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="mt-1.5 block w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all cursor-pointer"
-            >
-              <option value="" className="bg-slate-950 text-slate-400">Select User</option>
-              {users?.map(u => <option key={u.name} value={u.name} className="bg-slate-950 text-slate-200">{u.name}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="password" a-label="true" className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1.5 block w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && (
-            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs px-3 py-2 rounded-lg text-center font-medium">
-              {error}
+        {/* Login Card */}
+        <Card className="p-8 border border-border shadow-2xl backdrop-blur-sm bg-card/95">
+          <form onSubmit={handleLogin} className="space-y-6">
+            {/* Username Field */}
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Username
+              </label>
+              <select
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                required
+              >
+                <option value="">Select User</option>
+                {users.map((user) => (
+                  <option key={user} value={user}>
+                    {user}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
 
-          <div className="pt-2">
-            <button
+            {/* Password Field */}
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded border-border" />
+                <span className="text-muted-foreground">Remember me</span>
+              </label>
+              <a href="#" className="text-primary hover:underline font-medium">
+                Forgot password?
+              </a>
+            </div>
+
+            {/* Sign In Button */}
+            <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-950 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+              disabled={isLoading || !username || !password}
+              className="w-full bg-gradient-to-r from-primary to-accent hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
-        </form>
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  Sign In
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              )}
+            </Button>
+          </form>
 
-        <p className="text-[9px] text-center text-slate-500 mt-8 font-medium tracking-wide">
-          &copy; 2026 Siddhi Kabel Corporation Pvt Ltd. All rights reserved.
+          {/* Divider */}
+          <div className="my-6 flex items-center gap-4">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {/* Demo Info */}
+          <div className="p-4 rounded-lg bg-muted/50 border border-border">
+            <p className="text-xs text-muted-foreground mb-2">
+              <strong>Demo Credentials:</strong>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Username: Kumar | Password: 545454
+            </p>
+          </div>
+        </Card>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          © 2026 Siddhi Kabel Corporation Pvt Ltd. All rights reserved.
         </p>
       </div>
     </div>
   );
-};
+}
