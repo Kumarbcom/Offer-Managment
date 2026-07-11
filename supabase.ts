@@ -43,8 +43,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
     
     // Default pass-through for tables without specific mapping
     if (tableName === 'quotations') {
-        return {
-            id: item.id,
+        const payload: any = {
             quotation_date: item.quotationDate,
             enquiry_date: item.enquiryDate,
             customer_id: item.customerId,
@@ -61,6 +60,10 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             details: item.details,
             gst_added: item.gstAdded
         };
+        if (item.id && item.id !== 0) {
+            payload.id = item.id;
+        }
+        return payload;
     }
     if (tableName === 'customers') {
         return {

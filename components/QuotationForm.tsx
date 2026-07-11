@@ -609,13 +609,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       const isNew = editingQuotationId === null || formData.id === 0;
       const safeQuotations = quotations || [];
       
-      let idToSave = formData.id;
+      let quotationToSave = { ...formData };
       if (isNew) {
-          const maxId = safeQuotations.length > 0 ? Math.max(...safeQuotations.map(q => q.id)) : 0;
-          idToSave = maxId + 1;
+          quotationToSave.id = 0; // DB will auto-generate it
       }
-      
-      const quotationToSave = { ...formData, id: idToSave };
       
       const savedQuotation = await upsertQuotation(quotationToSave);
       
