@@ -270,8 +270,8 @@
       <h4>Detail View</h4>
       <div class="table-controls">
         <input class="tbl-input" type="text" id="tableSearch" placeholder="Filter table..." oninput="applyFilters()">
-        <select class="sort-select" id="sortCol" onchange="renderTable()">
-          <option value="Make" selected>Sort: Make</option>
+        <select class="sort-select" id="sortCol" onchange="renderTable()" defaultValue="Make">
+          <option value="Make">Sort: Make</option>
           <option value="Amount">Stock Value</option>
           <option value="Sales Value">Sales Value</option>
           <option value="Qty">Qty</option>
@@ -280,8 +280,8 @@
           <option value="(> 90 days )">Aging &gt;90d</option>
           <option value="No Customer Purchsed ">Customers</option>
         </select>
-        <select class="sort-select" id="sortDir" onchange="renderTable()">
-          <option value="asc" selected>↑ Asc</option>
+        <select class="sort-select" id="sortDir" onchange="renderTable()" defaultValue="asc">
+          <option value="asc">↑ Asc</option>
           <option value="desc">↓ Desc</option>
         </select>
       </div>

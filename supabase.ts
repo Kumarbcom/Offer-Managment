@@ -490,11 +490,11 @@ export async function getProductsPaginated(options: any) {
     
     if (filters.universal) {
         const pattern = `%${filters.universal.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
+        query = query.or(`part_no.ilike."${pattern}",description.ilike."${pattern}",cross_section.ilike."${pattern}"`);
     } else {
         if (filters.partNo) {
             const pattern = `%${filters.partNo.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-            query = query.ilike('partNo', pattern);
+            query = query.ilike('part_no', pattern);
         }
         if (filters.description) {
             const pattern = `%${filters.description.replace(/\*/g, '%').replace(/\./g, '_')}%`;
@@ -573,7 +573,7 @@ export async function searchProducts(term: string) {
     let query = supabase.from('products').select('*').limit(50);
     if (term) {
         const pattern = `%${term.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
+        query = query.or(`part_no.ilike."${pattern}",description.ilike."${pattern}",cross_section.ilike."${pattern}"`);
     } else {
         query = query.order('id', { ascending: false });
     }
