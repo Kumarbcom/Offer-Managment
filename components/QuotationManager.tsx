@@ -82,7 +82,7 @@ const getSalesPersonBadgeStyle = (id: number | null, name: string) => {
 
 export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, customers, salesPersons, setEditingQuotationId, setView, setQuotations, currentUser, quotationFilter, onBackToCustomers }) => {
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<SortByType>('id');
+  const [sortBy, setSortBy] = useState<SortByType>('quotationDate');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
 
@@ -160,6 +160,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
           case 'salesPerson': comparison = getSalesPersonName(a.salesPersonId).localeCompare(getSalesPersonName(b.salesPersonId)); break;
           case 'totalAmount': comparison = calculateTotalAmount(a.details) - calculateTotalAmount(b.details); break;
           case 'status': comparison = a.status.localeCompare(b.status); break;
+        }
+        if (comparison === 0 && sortBy !== 'id') {
+          return b.id - a.id; // Stable sort fallback to newest IDs first
         }
         return sortOrder === 'asc' ? comparison : -comparison;
       });
