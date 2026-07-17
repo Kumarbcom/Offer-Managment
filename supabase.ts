@@ -549,23 +549,68 @@ export async function updateProduct(product: any) {
 export async function upsertQuotation(quotation: Quotation): Promise<Quotation> {
     if (!supabase) throw new Error("Supabase client not initialized");
     
-    // 1. Map to snake_case
-    const payload = mapToSupabase('quotations', quotation);
+    // Check if it's a new quotation (ID is 0)
+    const isNew = !quotation.id || quotation.id === 0;
     
-    // 2. Perform Upsert
-    const { data, error } = await supabase
-        .from('quotations')
-        .upsert(payload)
-        .select()
-        .single();
+    if (isNew) {
+        // Safe Insert Loop to ensure we grab the absolute highest ID without overlapping
+        let attempts = 0;
+        const maxAttempts = 5;
         
-    if (error) {
-        console.error("Upsert error details:", error);
-        throw new Error(parseSupabaseError(error, "Failed to save quotation to cloud"));
+        while (attempts < maxAttempts) {
+            attempts++;
+            
+            // 1. Find current Max ID in DB
+            const { data: maxData, error: maxError } = await supabase
+                .from('quotations')
+                .select('id')
+                .order('id', { ascending: false })
+                .limit(1);
+                
+            if (maxError) throw new Error(parseSupabaseError(maxError, "Failed to fetch max ID"));
+            
+            const currentMaxId = maxData && maxData.length > 0 ? maxData[0].id : 0;
+            const nextId = currentMaxId + 1;
+            
+            // 2. Try to strictly INSERT with this new ID
+            const payload = mapToSupabase('quotations', { ...quotation, id: nextId });
+            
+            const { data, error } = await supabase
+                .from('quotations')
+                .insert(payload)
+                .select()
+                .single();
+                
+            if (error) {
+                // If it's a unique constraint violation (duplicate key), another user just grabbed this ID. Loop and retry!
+                if (error.code === '23505' || String(error.message).toLowerCase().includes('duplicate')) {
+                    console.warn(`Collision on ID ${nextId}, retrying... (Attempt ${attempts} of ${maxAttempts})`);
+                    continue;
+                }
+                throw new Error(parseSupabaseError(error, "Failed to save new quotation to cloud"));
+            }
+            
+            return mapFromSupabase('quotations', data);
+        }
+        throw new Error("Failed to generate a unique quotation number after multiple attempts due to high server traffic. Please try again.");
+    } else {
+        // It's an update of an existing quotation
+        const payload = mapToSupabase('quotations', quotation);
+        
+        const { data, error } = await supabase
+            .from('quotations')
+            .update(payload)
+            .eq('id', payload.id)
+            .select()
+            .single();
+            
+        if (error) {
+            console.error("Update error details:", error);
+            throw new Error(parseSupabaseError(error, "Failed to update quotation in cloud"));
+        }
+        
+        return mapFromSupabase('quotations', data);
     }
-    
-    // 3. Map back to camelCase
-    return mapFromSupabase('quotations', data);
 }
 
 export async function searchProducts(term: string) { 
