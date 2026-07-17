@@ -105,9 +105,12 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     setIsOpen(true);
   }
 
-  const optionsToDisplay = isAsync ? options : options.filter(option =>
-    String(option[displayKey]).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const optionsToDisplay = isAsync ? options : options.filter(option => {
+    const searchLower = searchTerm.toLowerCase();
+    if (String(option[displayKey]).toLowerCase().includes(searchLower)) return true;
+    if (option.description && String(option.description).toLowerCase().includes(searchLower)) return true;
+    return false;
+  });
 
   return (
     <div className="relative w-full h-full" ref={wrapperRef}>

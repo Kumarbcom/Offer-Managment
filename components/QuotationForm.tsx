@@ -13,7 +13,7 @@ import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { useDebounce } from '../hooks/useDebounce';
 import { useOnlineStorage } from '../hooks/useOnlineStorage';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, fetchAllProductsForExport } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
 
@@ -157,10 +157,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
   const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
   
-  const [productSearchTerm, setProductSearchTerm] = useState('');
-  const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
-  const debouncedProductSearchTerm = useDebounce(productSearchTerm, 300);
   const [fetchedProducts, setFetchedProducts] = useState<Map<number, Product>>(new Map());
 
   // Data hooks for Stock Check
@@ -301,18 +299,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   }, [searchedCustomers.length, isSearchingCustomers]);
 
-  const handleProductOpen = useCallback(() => {
-      if (searchedProducts.length === 0 && !isSearchingProducts) {
-          setIsSearchingProducts(true);
-          searchProducts('').then(results => {
-              setSearchedProducts(results);
-              setIsSearchingProducts(false);
-          }).catch(err => {
-              console.error(err);
-              setIsSearchingProducts(false);
-          });
-      }
-  }, [searchedProducts.length, isSearchingProducts]);
+  // Products are fetched on mount now
 
   // Reset customer object whenever the quotation being edited changes.
   // This ensures customer/salesPerson data is always re-fetched when opening a quotation.
@@ -449,14 +436,19 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [formData?.quotationDate, fetchedProducts, getPriceForDate, formData?.details]);
 
   useEffect(() => {
-    const performSearch = async () => {
-      setIsSearchingProducts(true);
-      const results = await searchProducts(debouncedProductSearchTerm);
-      setSearchedProducts(results);
-      setIsSearchingProducts(false);
-    };
-    performSearch();
-  }, [debouncedProductSearchTerm]);
+    let mounted = true;
+    setIsSearchingProducts(true);
+    fetchAllProductsForExport().then(results => {
+        if (mounted) {
+            setAllProducts(results);
+            setIsSearchingProducts(false);
+        }
+    }).catch(err => {
+        console.error("Failed to load products:", err);
+        if (mounted) setIsSearchingProducts(false);
+    });
+    return () => { mounted = false; };
+  }, []);
   
   useEffect(() => {
     const performSearch = async () => {
@@ -520,7 +512,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     setFormData(prevFormData => {
         if (!prevFormData) return null;
         const numericProductId = Number(productId);
-        const product = searchedProducts.find(p => p.id === numericProductId);
+        const product = allProducts.find(p => p.id === numericProductId);
         if (product) {
             setFetchedProducts(prev => new Map(prev).set(product.id, product));
             const priceEntry = getPriceForDate(product, prevFormData.quotationDate);
@@ -1190,7 +1182,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) : 0; 
                         const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
                         const currentProduct = fetchedProducts.get(item.productId);
-                        const optionsForSelect = [...searchedProducts];
+                        const optionsForSelect = [...allProducts];
                         if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
                             optionsForSelect.unshift(currentProduct);
                         }
@@ -1202,7 +1194,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             {/* Part No */}
                             <td className="border-t border-slate-300 w-40 align-top">
                                 <div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
-                                    <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
+                                    <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." isLoading={isSearchingProducts} />
                                 </div>
                             </td>
                             
