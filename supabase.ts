@@ -490,11 +490,11 @@ export async function getProductsPaginated(options: any) {
     
     if (filters.universal) {
         const pattern = `%${filters.universal.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`part_no.ilike."${pattern}",description.ilike."${pattern}",cross_section.ilike."${pattern}"`);
+        query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
     } else {
         if (filters.partNo) {
             const pattern = `%${filters.partNo.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-            query = query.ilike('part_no', pattern);
+            query = query.ilike('partNo', pattern);
         }
         if (filters.description) {
             const pattern = `%${filters.description.replace(/\*/g, '%').replace(/\./g, '_')}%`;
@@ -617,22 +617,15 @@ export async function searchProducts(term: string) {
     if (!supabase) throw new Error("Supabase client not initialized");
     let query = supabase.from('products').select('*').limit(50);
     if (term) {
-        // Safe query syntax matching searchCustomers (no double quotes)
+        // Use partNo (camelCase) as requested by Supabase schema
         const pattern = `%${term.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`part_no.ilike.${pattern},description.ilike.${pattern},cross_section.ilike.${pattern}`);
+        query = query.or(`partNo.ilike.${pattern},description.ilike.${pattern}`);
     } else {
         query = query.order('id', { ascending: false });
     }
     
     const { data, error } = await query;
     if (error) {
-        // If 'cross_section' column doesn't exist, fallback to searching just part_no and description
-        if (error.message.includes('cross_section')) {
-            const fallbackPattern = `%${term.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-            const { data: fallbackData, error: fallbackError } = await supabase.from('products').select('*').limit(50).or(`part_no.ilike.${fallbackPattern},description.ilike.${fallbackPattern}`);
-            if (fallbackError) throw new Error(parseSupabaseError(fallbackError, "Failed to search products"));
-            return (fallbackData || []).map(item => mapFromSupabase('products', item));
-        }
         throw new Error(parseSupabaseError(error, "Failed to search products"));
     }
     
@@ -669,7 +662,7 @@ export async function getProductsByPartNos(partNos: string[]) {
     if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     const distinctPartNos = [...new Set(partNos)];
-    const { data, error } = await supabase.from('products').select('*').in('part_no', distinctPartNos);
+    const { data, error } = await supabase.from('products').select('*').in('partNo', distinctPartNos);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
     return (data || []).map(item => mapFromSupabase('products', item));
 }
