@@ -617,13 +617,24 @@ export async function searchProducts(term: string) {
     if (!supabase) throw new Error("Supabase client not initialized");
     let query = supabase.from('products').select('*').limit(50);
     if (term) {
+        // Safe query syntax matching searchCustomers (no double quotes)
         const pattern = `%${term.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`part_no.ilike."${pattern}",description.ilike."${pattern}",cross_section.ilike."${pattern}"`);
+        query = query.or(`part_no.ilike.${pattern},description.ilike.${pattern},cross_section.ilike.${pattern}`);
     } else {
         query = query.order('id', { ascending: false });
     }
+    
     const { data, error } = await query;
-    if (error) throw new Error(parseSupabaseError(error, "Failed to search products"));
+    if (error) {
+        // If 'cross_section' column doesn't exist, fallback to searching just part_no and description
+        if (error.message.includes('cross_section')) {
+            const fallbackPattern = `%${term.replace(/\*/g, '%').replace(/\./g, '_')}%`;
+            const { data: fallbackData, error: fallbackError } = await supabase.from('products').select('*').limit(50).or(`part_no.ilike.${fallbackPattern},description.ilike.${fallbackPattern}`);
+            if (fallbackError) throw new Error(parseSupabaseError(fallbackError, "Failed to search products"));
+            return (fallbackData || []).map(item => mapFromSupabase('products', item));
+        }
+        throw new Error(parseSupabaseError(error, "Failed to search products"));
+    }
     
     const results = (data || []).map(item => mapFromSupabase('products', item));
     
