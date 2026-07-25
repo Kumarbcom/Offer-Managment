@@ -20,11 +20,12 @@ export async function matchProducts(
 
   for (const req of extractedRequirements) {
     let matchedProduct: Product | null = null;
+    const actualPartNo = req.partNo || (req as any).PartNo || (req as any)['Part No'] || (req as any)['part no'];
 
     // 1. Try Exact Match on PartNo first via DB search
-    if (req.partNo) {
-      const searchResults = await searchFn(req.partNo);
-      const exactMatch = searchResults.find(p => p.partNo === req.partNo);
+    if (actualPartNo) {
+      const searchResults = await searchFn(actualPartNo);
+      const exactMatch = searchResults.find(p => p.partNo === actualPartNo || p.partNo.includes(actualPartNo));
       if (exactMatch) {
         matchedProduct = exactMatch;
       }
@@ -32,7 +33,7 @@ export async function matchProducts(
 
     // 2. Fallback to Fuzzy Search via DB search
     if (!matchedProduct) {
-      const searchTerm = req.partNo ? `${req.partNo} ${req.description}` : req.description;
+      const searchTerm = actualPartNo ? `${actualPartNo} ${req.description}` : req.description;
       const dbResults = await searchFn(req.description); // Search DB using description to get candidates
       
       const fuseOptions = {
@@ -50,7 +51,7 @@ export async function matchProducts(
     }
 
     results.push({
-      extractedPartNo: req.partNo,
+      extractedPartNo: actualPartNo,
       originalDescription: req.description,
       matchedProduct,
       requestedQuantity: req.quantity

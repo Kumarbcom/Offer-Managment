@@ -33,7 +33,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
           price: (product.prices && product.prices.length > 0) ? (product.prices[0].lp || product.prices[0].sp || 0) : 0,
           discount: 0,
           priceSource: (product.prices && product.prices.length > 0 && product.prices[0].lp > 0) ? 'LP' : 'SP',
-          stockStatus: 'N/A'
+          stockStatus: 'Ex-Stock'
         } as Partial<QuotationItem>;
       } else {
         // Unrecognized item
@@ -46,7 +46,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
           price: 0,
           discount: 0,
           priceSource: 'LP',
-          stockStatus: ''
+          stockStatus: 'Ex-Stock'
         } as Partial<QuotationItem>;
       }
     });
