@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
-import { Edit, Trash2 } from 'lucide-react';
 import { ProductAddModal } from './ProductAddModal';
 import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, fetchAllProductsForExport } from '../supabase';
 
@@ -79,8 +78,12 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
                 )}
             </td>
             <td className="px-4 py-3 border-b border-slate-100 text-right space-x-4">
-                <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-slate-600 transition-colors" title="Edit"><Edit size={16} /></button>
-                <button onClick={() => onDelete(product.id)} className="text-rose-400 hover:text-rose-600 transition-colors" title="Delete"><Trash2 size={16} /></button>
+                <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-slate-600 transition-colors" title="Edit">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </button>
+                <button onClick={() => onDelete(product.id)} className="text-rose-400 hover:text-rose-600 transition-colors" title="Delete">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>
             </td>
         </tr>
     );
