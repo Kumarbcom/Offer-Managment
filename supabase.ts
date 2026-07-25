@@ -623,9 +623,10 @@ export async function searchProducts(term: string) {
         const words = sanitizedTerm.split(/\s+/).filter(w => w.length > 0);
         
         if (words.length > 0) {
-            const descConditions = words.map(w => `description.ilike.%${w}%`).join(',');
+            const escapeQuote = (val: string) => val.replace(/"/g, '');
+            const descConditions = words.map(w => `description.ilike."%${escapeQuote(w)}%"`).join(',');
             // Match if partNo matches the full term, OR if description matches ALL words
-            query = query.or(`partNo.ilike.%${sanitizedTerm}%,and(${descConditions})`);
+            query = query.or(`partNo.ilike."%${escapeQuote(sanitizedTerm)}%",and(${descConditions})`);
         }
     } else {
         query = query.order('id', { ascending: false });
@@ -655,6 +656,25 @@ export async function searchProducts(term: string) {
     });
 
     return results;
+}
+
+export async function bulkFetchProducts(partNos: string[]) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    if (partNos.length === 0) return [];
+    
+    // Convert to uppercase/lowercase if needed, but ilike or in is best.
+    const cleanNos = partNos.map(p => p.trim());
+    
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .in('partNo', cleanNos);
+      
+    if (error) {
+        throw new Error(parseSupabaseError(error, "Failed to bulk fetch products"));
+    }
+    
+    return (data || []).map(item => mapFromSupabase('products', item));
 }
 
 export async function getProductsByIds(ids: number[]): Promise<Product[]> { 
