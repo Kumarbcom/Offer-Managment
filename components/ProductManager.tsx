@@ -651,23 +651,41 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto -mx-4 shadow-sm border border-slate-200 rounded-lg bg-white mt-4">
+        <div className="hidden md:block overflow-x-auto shadow-lg border border-slate-200 rounded-xl bg-white mt-4 mx-1">
                 <style>{`
                     .nice-table {
                         font-family: Cambria, Georgia, serif;
+                        border-collapse: separate;
+                        border-spacing: 0;
                     }
                     .nice-table th, .nice-table td, .nice-table input, .nice-table button {
                         font-size: 10px !important;
                     }
                     .nice-table th {
-                        background-color: #f8fafc;
-                        border-bottom: 2px solid #e2e8f0;
+                        background-color: #f1f5f9;
+                        color: #334155;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                        border-bottom: 2px solid #cbd5e1;
+                        padding: 12px 16px;
                     }
-                    .nice-table tr:hover {
-                        background-color: #f1f5f9 !important;
+                    .nice-table td {
+                        padding: 10px 16px;
+                        border-bottom: 1px solid #e2e8f0;
+                        color: #1e293b;
+                    }
+                    .nice-table tr:last-child td {
+                        border-bottom: none;
+                    }
+                    .nice-table tr {
+                        transition: all 0.15s ease-in-out;
+                    }
+                    .nice-table tr:hover td {
+                        background-color: #eef2ff !important;
                     }
                 `}</style>
-            <table className="min-w-full divide-y divide-slate-200 nice-table">
+            <table className="min-w-full nice-table">
             <thead className="bg-slate-50">
                 <tr>
                     <th className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
