@@ -429,7 +429,9 @@ export async function getCustomersPaginated(options: any) {
     
     if (filters.name) query = query.ilike('name', `%${filters.name}%`);
     if (filters.city) query = query.ilike('city', `%${filters.city}%`);
-    if (filters.salesPersonId) query = query.eq('sales_person_id', filters.salesPersonId);
+    if (filters.salesPersonId !== undefined && filters.salesPersonId !== null) {
+        query = query.eq('sales_person_id', filters.salesPersonId);
+    }
 
     const { data, error, count } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers"));

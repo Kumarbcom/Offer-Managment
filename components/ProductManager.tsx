@@ -651,41 +651,76 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto shadow-lg border border-slate-200 rounded-xl bg-white mt-4 mx-1">
+        <div className="hidden md:block overflow-x-auto shadow-2xl shadow-indigo-200/40 border border-slate-100 rounded-2xl bg-white mt-6 mx-1">
                 <style>{`
-                    .nice-table {
+                    .ultra-table {
                         font-family: Cambria, Georgia, serif;
                         border-collapse: separate;
                         border-spacing: 0;
+                        width: 100%;
                     }
-                    .nice-table th, .nice-table td, .nice-table input, .nice-table button {
-                        font-size: 10px !important;
+                    .ultra-table th, .ultra-table td, .ultra-table input, .ultra-table button {
+                        font-size: 11px !important;
                     }
-                    .nice-table th {
-                        background-color: #f1f5f9;
-                        color: #334155;
+                    .ultra-table th {
+                        background: linear-gradient(to right, #f8fafc, #f1f5f9);
+                        color: #475569;
                         font-weight: 700;
                         text-transform: uppercase;
-                        letter-spacing: 0.05em;
-                        border-bottom: 2px solid #cbd5e1;
-                        padding: 12px 16px;
+                        letter-spacing: 0.08em;
+                        padding: 16px 20px;
+                        border-bottom: 2px solid #e2e8f0;
+                        position: relative;
                     }
-                    .nice-table td {
-                        padding: 10px 16px;
-                        border-bottom: 1px solid #e2e8f0;
+                    .ultra-table th::after {
+                        content: '';
+                        position: absolute;
+                        bottom: -2px;
+                        left: 0;
+                        width: 100%;
+                        height: 2px;
+                        background: linear-gradient(to right, transparent, #818cf8, transparent);
+                        opacity: 0.3;
+                    }
+                    .ultra-table td {
+                        padding: 14px 20px;
+                        border-bottom: 1px solid #f1f5f9;
                         color: #1e293b;
+                        vertical-align: middle;
                     }
-                    .nice-table tr:last-child td {
+                    .ultra-table tr {
+                        background-color: #ffffff;
+                        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                    .ultra-table tr:hover {
+                        background-color: #f8fafc;
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+                        z-index: 10;
+                        position: relative;
+                    }
+                    .ultra-table tr:last-child td {
                         border-bottom: none;
                     }
-                    .nice-table tr {
-                        transition: all 0.15s ease-in-out;
+                    .status-badge {
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 4px 8px;
+                        border-radius: 9999px;
+                        font-size: 10px;
+                        font-weight: 700;
+                        letter-spacing: 0.05em;
+                        background: #f1f5f9;
+                        border: 1px solid #e2e8f0;
+                        box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+                        transition: all 0.2s;
                     }
-                    .nice-table tr:hover td {
-                        background-color: #eef2ff !important;
+                    .status-badge:hover {
+                        transform: scale(1.05);
+                        box-shadow: 0 4px 6px rgb(0 0 0 / 0.05);
                     }
                 `}</style>
-            <table className="min-w-full nice-table">
+            <table className="min-w-full ultra-table">
             <thead className="bg-slate-50">
                 <tr>
                     <th className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
