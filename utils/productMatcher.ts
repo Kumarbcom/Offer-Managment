@@ -11,47 +11,51 @@ export interface MatchResult {
 /**
  * Uses exact matching for partNo first, then falls back to fuzzy searching descriptions.
  */
-export function matchProducts(
+export async function matchProducts(
   extractedRequirements: { partNo?: string; description: string; quantity?: number }[],
-  allProducts: Product[]
-): MatchResult[] {
+  searchFn: (term: string) => Promise<Product[]>
+): Promise<MatchResult[]> {
   
-  // Setup Fuse.js for fuzzy searching the product list if partNo fails
-  const fuseOptions = {
-    threshold: 0.4,
-    keys: [
-      { name: 'partNo', weight: 1.0 },
-      { name: 'description', weight: 1.5 }
-    ]
-  };
+  const results: MatchResult[] = [];
 
-  const fuse = new Fuse(allProducts, fuseOptions);
-
-  return extractedRequirements.map(req => {
+  for (const req of extractedRequirements) {
     let matchedProduct: Product | null = null;
 
-    // 1. Try Exact Match on PartNo first
+    // 1. Try Exact Match on PartNo first via DB search
     if (req.partNo) {
-      const exactMatch = allProducts.find(p => p.partNo === req.partNo);
+      const searchResults = await searchFn(req.partNo);
+      const exactMatch = searchResults.find(p => p.partNo === req.partNo);
       if (exactMatch) {
         matchedProduct = exactMatch;
       }
     }
 
-    // 2. Fallback to Fuzzy Search
+    // 2. Fallback to Fuzzy Search via DB search
     if (!matchedProduct) {
       const searchTerm = req.partNo ? `${req.partNo} ${req.description}` : req.description;
+      const dbResults = await searchFn(req.description); // Search DB using description to get candidates
+      
+      const fuseOptions = {
+        threshold: 0.4,
+        keys: [
+          { name: 'partNo', weight: 1.0 },
+          { name: 'description', weight: 1.5 }
+        ]
+      };
+      const fuse = new Fuse(dbResults, fuseOptions);
       const searchResults = fuse.search(searchTerm);
       if (searchResults.length > 0) {
         matchedProduct = searchResults[0].item;
       }
     }
 
-    return {
+    results.push({
       extractedPartNo: req.partNo,
       originalDescription: req.description,
       matchedProduct,
       requestedQuantity: req.quantity
-    };
-  });
+    });
+  }
+
+  return results;
 }

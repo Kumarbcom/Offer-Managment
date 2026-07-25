@@ -1,16 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { extractRequirementsFromText, extractRequirementsFromImage } from '../utils/aiService';
 import { matchProducts } from '../utils/productMatcher';
+import { searchProducts } from '../supabase';
 import type { Product, QuotationItem } from '../types';
 
 interface AIAssistantPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  allProducts: Product[];
   onItemsExtracted: (items: Partial<QuotationItem>[]) => void;
 }
 
-export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onClose, allProducts, onItemsExtracted }) => {
+export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onClose, onItemsExtracted }) => {
   const [textInput, setTextInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +18,8 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
-  const processExtractedData = (extractedReqs: any[]) => {
-    const matched = matchProducts(extractedReqs, allProducts);
+  const processExtractedData = async (extractedReqs: any[]) => {
+    const matched = await matchProducts(extractedReqs, searchProducts);
     
     const newItems = matched.map(match => {
       if (match.matchedProduct) {
@@ -61,7 +61,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
     setError(null);
     try {
       const results = await extractRequirementsFromText(textInput);
-      processExtractedData(results);
+      await processExtractedData(results);
     } catch (err: any) {
       setError(err.message || 'Failed to process text.');
     } finally {
@@ -76,7 +76,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
     setError(null);
     try {
       const results = await extractRequirementsFromImage(file);
-      processExtractedData(results);
+      await processExtractedData(results);
     } catch (err: any) {
       setError(err.message || 'Failed to process image.');
     } finally {
