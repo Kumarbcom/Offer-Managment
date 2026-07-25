@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
+import { Edit, Trash2 } from 'lucide-react';
 import { ProductAddModal } from './ProductAddModal';
 import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, fetchAllProductsForExport } from '../supabase';
 
@@ -54,21 +55,32 @@ const getEffectivePriceValue = (product: Product): number => {
 // Memoized ProductRow component to prevent unnecessary re-renders
 const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; }) => {
     const currentPrice = getCurrentPrice(product);
+    const lp = currentPrice?.lp || 0;
+    const sp = currentPrice?.sp || 0;
+    
     return (
-        <tr className={`${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/70'} text-sm`}>
-            <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/></td>
-            <td className="px-3 py-2 whitespace-nowrap text-black">{product.id}</td>
-            <td className="px-3 py-2 whitespace-nowrap font-medium text-black">{product.partNo}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-black max-w-xs truncate">{product.description}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-black">{product.hsnCode}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{currentPrice ? currentPrice.lp.toFixed(2) : 'N/A'}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{currentPrice ? currentPrice.sp.toFixed(2) : 'N/A'}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-black">{product.uom}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-black">{product.plant}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-black text-right">{product.weight}</td>
-            <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                <button onClick={() => onEdit(product)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
-                <button onClick={() => onDelete(product.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+        <tr className="hover:bg-slate-50 transition-colors">
+            <td className="px-4 py-3 border-b border-slate-100">
+                <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/>
+            </td>
+            <td className="px-4 py-3 border-b border-slate-100 text-slate-500">{product.id}</td>
+            <td className="px-4 py-3 border-b border-slate-100 text-blue-600 font-medium">{product.partNo}</td>
+            <td className="px-4 py-3 border-b border-slate-100 text-slate-800 max-w-xs truncate">{product.description}</td>
+            <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{product.hsnCode}</td>
+            <td className="px-4 py-3 border-b border-slate-100 text-slate-900 font-semibold text-right">{lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</td>
+            <td className="px-4 py-3 border-b border-slate-100 text-slate-600 text-right">{sp > 0 ? `₹${sp.toFixed(2)}` : '—'}</td>
+            <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{product.uom}</td>
+            <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{product.plant}</td>
+            <td className="px-4 py-3 border-b border-slate-100 text-right">
+                {product.weight > 0 ? (
+                    <span className="text-slate-900 font-medium">{product.weight} {product.weight > 0 && product.weight < 100 ? 'g' : ''}</span>
+                ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100/70 text-amber-800">missing</span>
+                )}
+            </td>
+            <td className="px-4 py-3 border-b border-slate-100 text-right space-x-4">
+                <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-slate-600 transition-colors" title="Edit"><Edit size={16} /></button>
+                <button onClick={() => onDelete(product.id)} className="text-rose-400 hover:text-rose-600 transition-colors" title="Delete"><Trash2 size={16} /></button>
             </td>
         </tr>
     );
@@ -651,85 +663,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto shadow-2xl shadow-indigo-200/40 border border-slate-100 rounded-2xl bg-white mt-6 mx-1">
-                <style>{`
-                    .ultra-table {
-                        font-family: Cambria, Georgia, serif;
-                        border-collapse: separate;
-                        border-spacing: 0;
-                        width: 100%;
-                    }
-                    .ultra-table th, .ultra-table td, .ultra-table input, .ultra-table button {
-                        font-size: 11px !important;
-                    }
-                    .ultra-table th {
-                        background: linear-gradient(to right, #f8fafc, #f1f5f9);
-                        color: #475569;
-                        font-weight: 700;
-                        text-transform: uppercase;
-                        letter-spacing: 0.08em;
-                        padding: 16px 20px;
-                        border-bottom: 2px solid #e2e8f0;
-                        position: relative;
-                    }
-                    .ultra-table th::after {
-                        content: '';
-                        position: absolute;
-                        bottom: -2px;
-                        left: 0;
-                        width: 100%;
-                        height: 2px;
-                        background: linear-gradient(to right, transparent, #818cf8, transparent);
-                        opacity: 0.3;
-                    }
-                    .ultra-table td {
-                        padding: 14px 20px;
-                        border-bottom: 1px solid #f1f5f9;
-                        color: #1e293b;
-                        vertical-align: middle;
-                    }
-                    .ultra-table tr {
-                        background-color: #ffffff;
-                        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    }
-                    .ultra-table tr:hover {
-                        background-color: #f8fafc;
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-                        z-index: 10;
-                        position: relative;
-                    }
-                    .ultra-table tr:last-child td {
-                        border-bottom: none;
-                    }
-                    .status-badge {
-                        display: inline-flex;
-                        align-items: center;
-                        padding: 4px 8px;
-                        border-radius: 9999px;
-                        font-size: 10px;
-                        font-weight: 700;
-                        letter-spacing: 0.05em;
-                        background: #f1f5f9;
-                        border: 1px solid #e2e8f0;
-                        box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
-                        transition: all 0.2s;
-                    }
-                    .status-badge:hover {
-                        transform: scale(1.05);
-                        box-shadow: 0 4px 6px rgb(0 0 0 / 0.05);
-                    }
-                `}</style>
-            <table className="min-w-full ultra-table">
-            <thead className="bg-slate-50">
+        <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-lg bg-white mt-4 mx-1">
+            <table className="min-w-full text-sm">
+            <thead className="bg-white border-b border-slate-200">
                 <tr>
-                    <th className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
-                    {['ID', 'Part No', 'Description', 'HSN Code', 'Current LP', 'Current SP', 'UOM', 'Plant', 'Weight', 'Actions'].map(header => (
-                    <th key={header} scope="col" className={`px-3 py-2 text-left text-xs font-semibold text-black uppercase tracking-wider ${['Current LP', 'Current SP', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
+                    <th className="px-4 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
+                    {['ID', 'Part No', 'Description', 'HSN Code', 'List price', 'Selling price', 'UOM', 'Plant', 'Weight', 'Actions'].map(header => (
+                    <th key={header} scope="col" className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 capitalize tracking-wide ${['List price', 'Selling price', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
                     ))}
                 </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
+            <tbody className="bg-white">
                 {displayedProducts.map(product => (
                     <ProductRow
                         key={product.id}

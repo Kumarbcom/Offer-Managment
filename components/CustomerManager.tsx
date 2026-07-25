@@ -5,6 +5,7 @@ import { CustomerAddModal } from './CustomerAddModal';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersPaginated, upsertCustomer, deleteCustomer, addCustomersBatch } from '../supabase';
 import { useDebounce } from '../hooks/useDebounce';
+import { Edit, Trash2 } from 'lucide-react';
 
 declare var XLSX: any;
 
@@ -397,97 +398,27 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
             <p className="text-black text-center py-8">Loading customers...</p>
         ) : displayedCustomers.length > 0 ? (
             <>
-                <div className="overflow-x-auto shadow-2xl shadow-indigo-200/40 border border-slate-100 rounded-2xl bg-white mt-6 mx-1">
-                    <style>{`
-                        .ultra-table {
-                            font-family: Cambria, Georgia, serif;
-                            border-collapse: separate;
-                            border-spacing: 0;
-                            width: 100%;
-                        }
-                        .ultra-table th, .ultra-table td, .ultra-table input, .ultra-table button {
-                            font-size: 11px !important;
-                        }
-                        .ultra-table th {
-                            background: linear-gradient(to right, #f8fafc, #f1f5f9);
-                            color: #475569;
-                            font-weight: 700;
-                            text-transform: uppercase;
-                            letter-spacing: 0.08em;
-                            padding: 16px 20px;
-                            border-bottom: 2px solid #e2e8f0;
-                            position: relative;
-                        }
-                        .ultra-table th::after {
-                            content: '';
-                            position: absolute;
-                            bottom: -2px;
-                            left: 0;
-                            width: 100%;
-                            height: 2px;
-                            background: linear-gradient(to right, transparent, #818cf8, transparent);
-                            opacity: 0.3;
-                        }
-                        .ultra-table td {
-                            padding: 14px 20px;
-                            border-bottom: 1px solid #f1f5f9;
-                            color: #1e293b;
-                            vertical-align: middle;
-                        }
-                        .ultra-table tr {
-                            background-color: #ffffff;
-                            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                        }
-                        .ultra-table tr:hover {
-                            background-color: #f8fafc;
-                            transform: translateY(-1px);
-                            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-                            z-index: 10;
-                            position: relative;
-                        }
-                        .ultra-table tr:last-child td {
-                            border-bottom: none;
-                        }
-                        
-                        /* Status Badges */
-                        .status-badge {
-                            display: inline-flex;
-                            align-items: center;
-                            padding: 4px 8px;
-                            border-radius: 9999px;
-                            font-size: 10px;
-                            font-weight: 700;
-                            letter-spacing: 0.05em;
-                            background: #f1f5f9;
-                            border: 1px solid #e2e8f0;
-                            box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
-                            transition: all 0.2s;
-                        }
-                        .status-badge:hover {
-                            transform: scale(1.05);
-                            box-shadow: 0 4px 6px rgb(0 0 0 / 0.05);
-                        }
-                    `}</style>
-                    <table className="ultra-table">
-                    <thead className="bg-slate-50">
+                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white mt-4 mx-1">
+                    <table className="min-w-full text-sm">
+                    <thead className="bg-white border-b border-slate-200">
                         <tr>
                           {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
-                            <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-black uppercase tracking-wider">
+                            <th key={header} scope="col" className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 capitalize tracking-wide ${header === 'Actions' ? 'text-right' : ''}`}>
                               {header}
                             </th>
                           ))}
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-slate-200">
+                    <tbody className="bg-white">
                         {displayedCustomers.map(customer => (
-                            <tr key={customer.id} className="hover:bg-slate-50/70">
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.id}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-black">{customer.name}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black max-w-xs truncate">{customer.address}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.city}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.pincode}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{getSalesPersonName(customer.salesPersonId)}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">
+                            <tr key={customer.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-4 py-3 border-b border-slate-100 text-slate-500">{customer.id}</td>
+                                <td className="px-4 py-3 border-b border-slate-100 text-slate-900 font-medium">{customer.name}</td>
+                                <td className="px-4 py-3 border-b border-slate-100 text-slate-800 max-w-xs truncate">{customer.address}</td>
+                                <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{customer.city}</td>
+                                <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{customer.pincode}</td>
+                                <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
+                                <td className="px-4 py-3 border-b border-slate-100 text-slate-600">
                                     <div className="flex flex-col items-start gap-1">
                                         {QUOTATION_STATUSES.map(status => {
                                             const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
@@ -510,9 +441,9 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                         })}
                                     </div>
                                 </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                    <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
-                                    <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+                                <td className="px-4 py-3 border-b border-slate-100 text-right space-x-4">
+                                    <button onClick={() => handleEdit(customer)} className="text-slate-400 hover:text-slate-600 transition-colors" title="Edit"><Edit size={16} /></button>
+                                    <button onClick={() => handleDelete(customer.id)} className="text-rose-400 hover:text-rose-600 transition-colors" title="Delete"><Trash2 size={16} /></button>
                                 </td>
                             </tr>
                         ))}
