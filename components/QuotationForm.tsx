@@ -226,8 +226,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   
   // Logic to determine if the user can edit this quotation
   const isReadOnly = useMemo(() => {
-      // Sales Person on Mobile can ONLY view
-      if (userRole === 'Sales Person' && isMobile) return true;
+      // Sales Persons can use mobile to create new quotes, but checking ownership for existing.
+      // We removed the blanket isMobile restriction so they can use the AI tool on mobile.
       
       if (userRole === 'Admin') return false;
       if (userRole === 'Sales Person') {
@@ -1082,7 +1082,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         <form onSubmit={handleSubmit} className="p-2">
             <div className="bg-indigo-50/30 p-2 flex flex-wrap items-center gap-3 border border-indigo-100/80 mb-3 rounded-md shadow-sm">
                 {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
-                {(!isReadOnly && (editingQuotationId === null || formData?.id === 0)) && <ActionButton onClick={() => setIsAIPanelOpen(true)} title="AI Assistant" className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"><Icons.Sparkles /><span>AI Assist</span></ActionButton>}
+                {((!isReadOnly || userRole === 'Sales Person') && (editingQuotationId === null || formData?.id === 0)) && <ActionButton onClick={() => setIsAIPanelOpen(true)} title="AI Assistant" className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"><Icons.Sparkles /><span>AI Assist</span></ActionButton>}
                 {!isReadOnly && (
                     <ActionButton 
                         onClick={handleSubmit} 
