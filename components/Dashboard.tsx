@@ -328,13 +328,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 datasets: [{
                     label: 'Quotation Value',
                     data: chartData,
-                    borderColor: '#6366f1', // Indigo 500
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    borderColor: '#ef4444', // Red 500
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     tension: 0.4,
                     fill: true,
                     pointRadius: 6,
                     pointHoverRadius: 8,
-                    pointBackgroundColor: '#4f46e5',
+                    pointBackgroundColor: '#dc2626',
                     pointBorderColor: '#fff',
                     pointBorderWidth: 2
                 }]
@@ -648,17 +648,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             <motion.div
                 initial={{ opacity: 0, y: -16 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 rounded-2xl px-5 py-4 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl px-6 py-5 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-slate-700"
             >
-                <div className="flex items-center gap-3">
-                    <div className="bg-indigo-500/20 border border-indigo-400/30 p-2.5 rounded-xl">
-                        <svg className="w-5 h-5 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-4">
+                    <div className="bg-red-500/20 border border-red-400/30 p-3 rounded-2xl">
+                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-tight leading-none">Dashboard</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Quotation analytics &amp; overview</p>
+                        <h2 className="text-xl font-bold text-white tracking-tight leading-none">Dashboard</h2>
+                        <p className="text-sm text-slate-400 mt-1">Quotation analytics &amp; overview</p>
                     </div>
                 </div>
 

@@ -58,30 +58,30 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
     const sp = currentPrice?.sp || 0;
     
     return (
-        <tr className="hover:bg-slate-50 transition-colors">
-            <td className="px-4 py-3 border-b border-slate-100">
-                <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/>
+        <tr className="bg-white hover:bg-slate-50 transition-all duration-200 border-b-8 border-transparent shadow-sm rounded-xl">
+            <td className="px-4 py-3 first:rounded-l-xl border-y border-l border-slate-100">
+                <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/>
             </td>
-            <td className="px-4 py-3 border-b border-slate-100 text-slate-500">{product.id}</td>
-            <td className="px-4 py-3 border-b border-slate-100 text-blue-600 font-medium">{product.partNo}</td>
-            <td className="px-4 py-3 border-b border-slate-100 text-slate-800 max-w-xs truncate">{product.description}</td>
-            <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{product.hsnCode}</td>
-            <td className="px-4 py-3 border-b border-slate-100 text-slate-900 font-semibold text-right">{lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</td>
-            <td className="px-4 py-3 border-b border-slate-100 text-slate-600 text-right">{sp > 0 ? `₹${sp.toFixed(2)}` : '—'}</td>
-            <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{product.uom}</td>
-            <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{product.plant}</td>
-            <td className="px-4 py-3 border-b border-slate-100 text-right">
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.id}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-bold">{product.partNo}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-600 max-w-xs truncate text-sm">{product.description}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.hsnCode}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-semibold text-right">{lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-right">{sp > 0 ? `₹${sp.toFixed(2)}` : '—'}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.uom}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.plant}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-right">
                 {product.weight > 0 ? (
-                    <span className="text-slate-900 font-medium">{product.weight} {product.weight > 0 && product.weight < 100 ? 'g' : ''}</span>
+                    <span className="text-slate-700 font-medium text-sm">{product.weight} {product.weight > 0 && product.weight < 100 ? 'g' : ''}</span>
                 ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100/70 text-amber-800">missing</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-amber-100 text-amber-700">missing</span>
                 )}
             </td>
-            <td className="px-4 py-3 border-b border-slate-100 text-right space-x-4">
-                <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-slate-600 transition-colors" title="Edit">
+            <td className="px-4 py-3 last:rounded-r-xl border-y border-r border-slate-100 text-right space-x-3">
+                <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 hover:bg-indigo-50 p-1.5 rounded-lg" title="Edit">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                 </button>
-                <button onClick={() => onDelete(product.id)} className="text-rose-400 hover:text-rose-600 transition-colors" title="Delete">
+                <button onClick={() => onDelete(product.id)} className="text-slate-400 hover:text-red-600 transition-colors bg-slate-50 hover:bg-red-50 p-1.5 rounded-lg" title="Delete">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                 </button>
             </td>
@@ -666,17 +666,6 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-lg bg-white mt-4 mx-1">
-            <table className="min-w-full text-sm">
-            <thead className="bg-white border-b border-slate-200">
-                <tr>
-                    <th className="px-4 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
-                    {['ID', 'Part No', 'Description', 'HSN Code', 'List price', 'Selling price', 'UOM', 'Plant', 'Weight', 'Actions'].map(header => (
-                    <th key={header} scope="col" className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 capitalize tracking-wide ${['List price', 'Selling price', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody className="bg-white">
                 {displayedProducts.map(product => (
                     <ProductRow
                         key={product.id}
