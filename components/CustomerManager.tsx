@@ -401,7 +401,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <table className="min-w-full text-sm text-left">
                     <thead className="bg-white border-b border-slate-200">
                         <tr>
-                          {['Customer', 'Address', 'City / pincode', 'Sales person', 'Quotations', 'Actions'].map(header => (
+                          {['Customer', 'Address', 'Sales person', 'Quotations', 'Actions'].map(header => (
                             <th key={header} scope="col" className={`px-4 py-4 text-xs font-bold text-slate-500 ${header === 'Actions' ? 'text-right' : ''}`}>
                               {header}
                             </th>
@@ -424,10 +424,19 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-4 py-3 text-slate-600 max-w-[200px] whitespace-normal">{customer.address}</td>
-                                <td className="px-4 py-3">
-                                    <div className="font-semibold text-slate-900">{customer.city}</div>
-                                    <div className="text-xs text-slate-400 mt-0.5">{customer.pincode}</div>
+                                <td className="px-4 py-3 max-w-[250px]">
+                                    <div className="bg-slate-50 border border-slate-200 rounded-md p-2">
+                                        <div className="text-slate-600 whitespace-pre-wrap leading-tight mb-1 text-[13px]">{customer.address}</div>
+                                        <div className="flex items-center gap-1.5 text-xs">
+                                            <span className="font-semibold text-slate-900">{customer.city}</span>
+                                            {customer.pincode && (
+                                                <>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className="text-slate-500 font-medium">{customer.pincode}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
                                 </td>
                                 <td className="px-4 py-3 text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
                                 <td className="px-4 py-3 text-slate-600">
