@@ -15,7 +15,7 @@ export async function extractRequirementsFromText(text: string): Promise<Extract
   const prompt = `
 You are a quotation assistant for a cable manufacturing company.
 Extract the required products and their quantities from the following text.
-For each item, extract the 'partNo' (if present, usually a 7-digit number like 1119104), the 'description' (e.g. OELFLEX CLASSIC 110), and the 'quantity'.
+For each item, extract the 'partNo' (this is usually a 7-digit number like 1119104, but can also be an alphanumeric code like 4510013U100), the 'description' (e.g. OELFLEX CLASSIC 110), and the 'quantity'.
 If no quantity is specified, omit it. Do NOT make up items. Only extract exactly what is in the text.
 Return ONLY a valid JSON array of objects.
 Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100}]
@@ -64,7 +64,7 @@ export async function extractRequirementsFromImage(imageFile: File): Promise<Ext
   const prompt = `
 You are a quotation assistant for a cable manufacturing company.
 Extract the required products and their quantities from the provided image.
-For each item, extract the 'partNo' (if present, usually a 7-digit number like 1119104), the 'description', and the 'quantity'.
+For each item, extract the 'partNo' (this is usually a 7-digit number like 1119104, but can also be an alphanumeric code like 4510013U100), the 'description', and the 'quantity'.
 If no quantity is specified, omit it. Do NOT make up items. Only extract exactly what is in the image.
 Return ONLY a valid JSON array of objects.
 Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100}]

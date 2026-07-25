@@ -24,8 +24,9 @@ export async function matchProducts(
 
     // 1. Try Exact Match on PartNo first via DB search
     if (actualPartNo) {
+      const cleanActual = actualPartNo.toString().trim().toLowerCase();
       const searchResults = await searchFn(actualPartNo);
-      const exactMatch = searchResults.find(p => p.partNo === actualPartNo);
+      const exactMatch = searchResults.find(p => p.partNo.trim().toLowerCase() === cleanActual);
       if (exactMatch) {
         matchedProduct = exactMatch;
       }
