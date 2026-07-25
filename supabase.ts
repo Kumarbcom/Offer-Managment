@@ -427,9 +427,9 @@ export async function getCustomersPaginated(options: any) {
         .order(sortBy === 'salesPerson' || sortBy === 'salesPersonId' ? 'sales_person_id' : sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
-    if (filters.name) query = query.ilike('name', `%${filters.name}%`);
-    if (filters.city) query = query.ilike('city', `%${filters.city}%`);
-    if (filters.salesPersonId !== undefined && filters.salesPersonId !== null) {
+    if (filters?.name) query = query.ilike('name', `%${filters.name}%`);
+    if (filters?.city) query = query.ilike('city', `%${filters.city}%`);
+    if (filters?.salesPersonId !== undefined && filters?.salesPersonId !== null) {
         query = query.eq('sales_person_id', filters.salesPersonId);
     }
 
