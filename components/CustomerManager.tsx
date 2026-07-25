@@ -398,7 +398,15 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
         ) : displayedCustomers.length > 0 ? (
             <>
                 <div className="overflow-x-auto -mx-4">
-                    <table className="min-w-full divide-y divide-slate-200">
+                    <style>{`
+                        .nice-table {
+                            font-family: Cambria, Georgia, serif;
+                        }
+                        .nice-table th, .nice-table td, .nice-table input, .nice-table button {
+                            font-size: 10px !important;
+                        }
+                    `}</style>
+                    <table className="min-w-full divide-y divide-slate-200 nice-table shadow-sm rounded-lg overflow-hidden">
                     <thead className="bg-slate-50">
                         <tr>
                           {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
