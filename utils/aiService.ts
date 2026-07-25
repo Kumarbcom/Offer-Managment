@@ -15,8 +15,9 @@ export async function extractRequirementsFromText(text: string): Promise<Extract
   const prompt = `
 You are a quotation assistant for a cable manufacturing company.
 Extract the required products and their quantities from the following text.
-For each item, extract the 'partNo' (this is usually a 7-digit number like 1119104, but can also be an alphanumeric code like 4510013U100), the 'description' (e.g. OELFLEX CLASSIC 110), and the 'quantity'.
-If 'description' or 'quantity' is missing, leave them blank or omit them, but you MUST extract the 'partNo' for EVERY item in the list. Do NOT make up items. Only extract exactly what is in the text.
+For each item/row in the text, extract the 'partNo' (an alphanumeric code, could be 7 digits or more), the 'description' (e.g. OELFLEX CLASSIC 110), and the 'quantity'.
+CRITICAL: The text might be a column of just part numbers, or just descriptions. It is perfectly okay if 'partNo', 'description', or 'quantity' are missing for an item. Just leave them blank. 
+However, you MUST extract an object for EVERY single row/item you see in the text. Do NOT skip any rows. Do NOT make up items.
 Return ONLY a valid JSON array of objects.
 Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100}]
 
@@ -64,8 +65,9 @@ export async function extractRequirementsFromImage(imageFile: File): Promise<Ext
   const prompt = `
 You are a quotation assistant for a cable manufacturing company.
 Extract the required products and their quantities from the provided image.
-For each item, extract the 'partNo' (this is usually a 7-digit number like 1119104, but can also be an alphanumeric code like 4510013U100), the 'description', and the 'quantity'.
-If 'description' or 'quantity' is missing, leave them blank or omit them, but you MUST extract the 'partNo' for EVERY item in the list. Do NOT make up items. Only extract exactly what is in the image.
+For each item/row in the image, extract the 'partNo' (an alphanumeric code, could be 7 digits or more), the 'description', and the 'quantity'.
+CRITICAL: The image might be a column of just part numbers, or just descriptions. It is perfectly okay if 'partNo', 'description', or 'quantity' are missing for an item. Just leave them blank. 
+However, you MUST extract an object for EVERY single row/item you see in the image. Do NOT skip any rows. Do NOT make up items.
 Return ONLY a valid JSON array of objects.
 Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100}]
   `;
