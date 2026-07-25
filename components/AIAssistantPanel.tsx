@@ -27,6 +27,17 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
       if (match.matchedProduct) {
         const product = match.matchedProduct;
         matchedProductsList.push(product);
+        
+        const now = new Date();
+        const activePrice = product.prices?.find(p => {
+          const from = new Date(p.validFrom);
+          const to = new Date(p.validTo);
+          return now >= from && now <= to;
+        }) || product.prices?.[0] || { lp: 0, sp: 0 };
+        
+        const finalPrice = activePrice.lp > 0 ? activePrice.lp : (activePrice.sp || 0);
+        const finalPriceSource = activePrice.lp > 0 ? 'LP' : 'SP';
+
         return {
           productId: product.id,
           partNo: product.partNo,
@@ -34,9 +45,9 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
           uom: product.uom || 'Mtr',
           moq: product.moq || 1,
           req: match.requestedQuantity || 1,
-          price: (product.prices && product.prices.length > 0) ? (product.prices[0].lp || product.prices[0].sp || 0) : 0,
+          price: finalPrice,
           discount: 0,
-          priceSource: (product.prices && product.prices.length > 0 && product.prices[0].lp > 0) ? 'LP' : 'SP',
+          priceSource: finalPriceSource,
           stockStatus: 'Ex-Stock'
         } as Partial<QuotationItem>;
       } else {
