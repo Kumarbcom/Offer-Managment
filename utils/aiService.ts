@@ -35,6 +35,9 @@ ${text}
   } catch (error: any) {
     console.error("Failed to extract requirements from text", error);
     const msg = error.message || String(error);
+    if (msg.includes('429') || msg.includes('quota')) {
+      throw new Error('Google AI Free Tier Limit Reached! Please wait 60 seconds and try again, or upgrade your API key to a paid tier.');
+    }
     throw new Error(`Failed to analyze: ${msg}`);
   }
 }
@@ -82,6 +85,9 @@ Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,7
   } catch (error: any) {
     console.error("Failed to extract requirements from image", error);
     const msg = error.message || String(error);
+    if (msg.includes('429') || msg.includes('quota')) {
+      throw new Error('Google AI Free Tier Limit Reached! Please wait 60 seconds and try again, or upgrade your API key to a paid tier.');
+    }
     throw new Error(`Failed to analyze: ${msg}`);
   }
 }
