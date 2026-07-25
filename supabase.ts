@@ -618,8 +618,15 @@ export async function searchProducts(term: string) {
     let query = supabase.from('products').select('*').limit(50);
     if (term) {
         // Use partNo (camelCase) as requested by Supabase schema
-        const pattern = `%${term.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`partNo.ilike.${pattern},description.ilike.${pattern}`);
+        // For description, split by spaces and match all words (AND logic)
+        const sanitizedTerm = term.replace(/\*/g, '%').replace(/\./g, '_');
+        const words = sanitizedTerm.split(/\s+/).filter(w => w.length > 0);
+        
+        if (words.length > 0) {
+            const descConditions = words.map(w => `description.ilike.%${w}%`).join(',');
+            // Match if partNo matches the full term, OR if description matches ALL words
+            query = query.or(`partNo.ilike.%${sanitizedTerm}%,and(${descConditions})`);
+        }
     } else {
         query = query.order('id', { ascending: false });
     }
