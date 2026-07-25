@@ -280,19 +280,16 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
   return (
     <div className="space-y-6">
       <div className="bg-slate-50 p-2 rounded-lg shadow-sm border border-slate-200">
-        <h3 className="text-base font-semibold text-black mb-1">
-            Overall Quotation Summary
-        </h3>
-        <div className="flex flex-wrap gap-2 items-center">
+        <h3 className="text-sm font-semibold text-slate-500 mb-3">Overall quotation summary</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <div
                 onClick={() => onFilterQuotations({ })}
-                className="cursor-pointer text-blue-700 hover:text-blue-900 transition-colors text-sm font-semibold p-1 rounded-md hover:bg-blue-100/50"
+                className="cursor-pointer bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
                 title={`View all ${allQuotationStats.total.count} quotations`}
             >
-                <span>Total Enquiries: </span>
-                <span className="font-bold">{allQuotationStats.total.count}</span>
-                <span className="text-slate-400 mx-1">|</span>
-                <span className="font-bold">{formatCurrency(allQuotationStats.total.value)}</span>
+                <div className="text-slate-500 text-sm mb-1">Total enquiries</div>
+                <div className="text-2xl font-bold text-slate-900">{allQuotationStats.total.count.toLocaleString()}</div>
+                <div className="text-xs text-slate-500 mt-1">{formatCurrency(allQuotationStats.total.value)}</div>
             </div>
             {QUOTATION_STATUSES.map(status => {
                 const stats = allQuotationStats.byStatus[status];
@@ -302,94 +299,96 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <div
                         key={status}
                         onClick={() => onFilterQuotations({ status: status })}
-                        className={`cursor-pointer ${colors?.text || 'text-slate-600'} hover:bg-opacity-80 transition-opacity text-sm font-semibold p-1 rounded-md hover:bg-current/10`}
+                        className={`cursor-pointer ${colors?.bg || 'bg-slate-50'} p-4 rounded-xl border border-slate-100/50 shadow-sm hover:shadow-md transition-shadow`}
                         title={`View ${stats.count} '${status}' quotations`}
                     >
-                        <span>{status}: </span>
-                        <span className="font-bold">{stats.count}</span>
-                        <span className="text-slate-400 mx-1">|</span>
-                        <span className="font-bold">{formatCurrency(stats.value)}</span>
+                        <div className={`${colors?.text || 'text-slate-600'} text-sm mb-1`}>{status}</div>
+                        <div className={`text-2xl font-bold ${colors?.text || 'text-slate-900'}`}>{stats.count.toLocaleString()}</div>
+                        <div className={`text-xs ${colors?.text || 'text-slate-500'} mt-1`}>{formatCurrency(stats.value)}</div>
                     </div>
                 )
             })}
         </div>
-      </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-         <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-black">Customers ({totalCount})</h2>
-            <div className="flex flex-wrap gap-2 text-sm">
+      <div className="bg-white p-4 rounded-lg border border-slate-200">
+         <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-slate-900">Customers <span className="text-slate-500 font-normal">({totalCount.toLocaleString()})</span></h2>
+            <div className="flex flex-wrap gap-3 text-sm">
                 <button
                     onClick={handleExport}
                     disabled={isUploading}
-                    className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 border border-slate-200 rounded-lg transition duration-300 disabled:opacity-50"
                 >
-                    Export Visible
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    Export
                 </button>
                 <button
                     onClick={handleDownloadTemplate}
                     disabled={isUploading}
-                    className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 border border-slate-200 rounded-lg transition duration-300 disabled:opacity-50"
                 >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                     Template
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
                 <button
                     onClick={handleUploadClick}
                     disabled={isUploading}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 border border-slate-200 rounded-lg transition duration-300 disabled:opacity-50"
                 >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
                     {isUploading ? 'Uploading...' : 'Upload'}
                 </button>
                 <button
                     onClick={handleAddNew}
                     disabled={isUploading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-[#d97736] hover:bg-[#c2652a] text-white font-semibold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50 shadow-sm"
                 >
-                    Add New
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                    Add new
                 </button>
             </div>
          </div>
          {isUploading && ( <div className="my-2 p-2 text-center text-sm font-semibold text-indigo-700 bg-indigo-100 rounded-md" role="status">{uploadProgress}</div> )}
          
-         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2 mb-4 pb-3 border-b border-slate-200">
-            <div>
-                <label htmlFor="searchTerm" className="block text-xs font-medium text-black">Search by Name</label>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. ABC Corp" />
+         <div className="flex flex-wrap gap-3 mb-6">
+            <div className="relative flex-1 min-w-[200px]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
+                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-300 focus:ring-0 text-sm text-slate-700" placeholder="Search by name, e.g. ABC" />
             </div>
-            <div>
-                <label htmlFor="searchCity" className="block text-xs font-medium text-black">Search by City</label>
-                <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. Bangalore" />
+            <div className="relative flex-1 min-w-[200px]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-300 focus:ring-0 text-sm text-slate-700" placeholder="Search by city" />
             </div>
-            <div>
-                <label htmlFor="salesPersonFilter" className="block text-xs font-medium text-black">Filter by Sales Person</label>
+            <div className="flex-1 min-w-[150px]">
                 <select 
                     id="salesPersonFilter" 
                     value={selectedSalesPersonId} 
                     onChange={e => setSelectedSalesPersonId(e.target.value === 'all' ? 'all' : Number(e.target.value))} 
-                    className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-black"
+                    className="block w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-300 focus:ring-0 text-sm bg-white text-slate-700"
                 >
-                    <option value="all">All Sales Persons</option>
+                    <option value="all">All sales persons</option>
                     {salesPersons?.map(sp => (
                         <option key={sp.id} value={sp.id}>{sp.name}</option>
                     ))}
                 </select>
             </div>
-            <div>
-                <label htmlFor="sortBy" className="block text-xs font-medium text-black">Sort By</label>
-                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-black">
-                    <option value="id">ID</option>
-                    <option value="name">Customer Name</option>
-                    <option value="city">City</option>
-                    <option value="pincode">Pincode</option>
-                    <option value="salesPerson">Sales Person</option>
+            <div className="flex-1 min-w-[150px]">
+                <select id="sortBy" value={sortBy} onChange={e => {
+                    const val = e.target.value;
+                    const isDesc = val.endsWith('_desc');
+                    setSortOrder(isDesc ? 'desc' : 'asc');
+                    setSortBy(val.replace('_desc', '') as SortByType);
+                }} className="block w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-300 focus:ring-0 text-sm bg-white text-slate-700">
+                    <option value="id">Sort: ID, ascen</option>
+                    <option value="id_desc">Sort: ID, descen</option>
+                    <option value="name">Sort: Name, ascen</option>
+                    <option value="name_desc">Sort: Name, descen</option>
                 </select>
-            </div>
-            <div>
-                <label className="block text-xs font-medium text-black">Order</label>
-                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-black font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
-                    {sortOrder === 'asc' ? 'Ascending ▲' : 'Descending ▼'}
-                </button>
             </div>
          </div>
 
@@ -397,28 +396,41 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
             <p className="text-black text-center py-8">Loading customers...</p>
         ) : displayedCustomers.length > 0 ? (
             <>
-                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white mt-4 mx-1">
-                    <table className="min-w-full text-sm">
+                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white mt-2">
+                    <table className="min-w-full text-sm text-left">
                     <thead className="bg-white border-b border-slate-200">
                         <tr>
-                          {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
-                            <th key={header} scope="col" className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 capitalize tracking-wide ${header === 'Actions' ? 'text-right' : ''}`}>
+                          {['Customer', 'Address', 'City / pincode', 'Sales person', 'Quotations', 'Actions'].map(header => (
+                            <th key={header} scope="col" className={`px-4 py-4 text-xs font-bold text-slate-500 ${header === 'Actions' ? 'text-right' : ''}`}>
                               {header}
                             </th>
                           ))}
                         </tr>
                     </thead>
-                    <tbody className="bg-white">
-                        {displayedCustomers.map(customer => (
-                            <tr key={customer.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-4 py-3 border-b border-slate-100 text-slate-500">{customer.id}</td>
-                                <td className="px-4 py-3 border-b border-slate-100 text-slate-900 font-medium">{customer.name}</td>
-                                <td className="px-4 py-3 border-b border-slate-100 text-slate-800 max-w-xs truncate">{customer.address}</td>
-                                <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{customer.city}</td>
-                                <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{customer.pincode}</td>
-                                <td className="px-4 py-3 border-b border-slate-100 text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
-                                <td className="px-4 py-3 border-b border-slate-100 text-slate-600">
-                                    <div className="flex flex-col items-start gap-1">
+                    <tbody className="bg-white divide-y divide-slate-100">
+                        {displayedCustomers.map(customer => {
+                            const initials = customer.name.substring(0, 2).toUpperCase();
+                            return (
+                            <tr key={customer.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-4 py-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-[#fde9df] text-[#b35728] flex items-center justify-center font-bold text-sm shrink-0">
+                                            {initials}
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-blue-700">{customer.name}</div>
+                                            <div className="text-xs text-slate-400 mt-0.5">ID {customer.id}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3 text-slate-600 max-w-[200px] whitespace-normal">{customer.address}</td>
+                                <td className="px-4 py-3">
+                                    <div className="font-semibold text-slate-900">{customer.city}</div>
+                                    <div className="text-xs text-slate-400 mt-0.5">{customer.pincode}</div>
+                                </td>
+                                <td className="px-4 py-3 text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
+                                <td className="px-4 py-3 text-slate-600">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         {QUOTATION_STATUSES.map(status => {
                                             const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
                                             if (relevantQuotes.length === 0) return null;
@@ -428,13 +440,12 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                                 <div
                                                     key={status}
                                                     onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
-                                                    className={`cursor-pointer hover:underline ${colors?.text || 'text-slate-600'} text-xs font-semibold`}
+                                                    className={`cursor-pointer flex items-center gap-1 ${colors?.bg || 'bg-slate-100'} ${colors?.text || 'text-slate-600'} rounded-full px-3 py-1 text-xs font-semibold hover:opacity-80 transition-opacity`}
                                                     title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
                                                 >
-                                                    <span>{status}: </span>
-                                                    <span className="font-bold">{relevantQuotes.length}</span>
-                                                    <span className="text-slate-400 mx-1">|</span>
-                                                    <span className="font-bold">{formatCurrency(totalValue)}</span>
+                                                    <span>{status}: {relevantQuotes.length}</span>
+                                                    <span>·</span>
+                                                    <span>{formatCurrency(totalValue)}</span>
                                                 </div>
                                             )
                                         })}
@@ -449,7 +460,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                     </button>
                                 </td>
                             </tr>
-                        ))}
+                            )
+                        })}
                     </tbody>
                     </table>
                 </div>
