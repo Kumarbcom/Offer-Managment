@@ -7,7 +7,7 @@ import type { Product, QuotationItem } from '../types';
 interface AIAssistantPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onItemsExtracted: (items: Partial<QuotationItem>[]) => void;
+  onItemsExtracted: (items: Partial<QuotationItem>[], matchedProducts: Product[]) => void;
 }
 
 export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onClose, onItemsExtracted }) => {
@@ -21,10 +21,14 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
   const processExtractedData = async (extractedReqs: any[]) => {
     const matched = await matchProducts(extractedReqs, searchProducts);
     
+    const matchedProductsList: Product[] = [];
+
     const newItems = matched.map(match => {
       if (match.matchedProduct) {
         const product = match.matchedProduct;
+        matchedProductsList.push(product);
         return {
+          productId: product.id,
           partNo: product.partNo,
           description: product.description,
           uom: product.uom || 'Mtr',
@@ -51,7 +55,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
       }
     });
 
-    onItemsExtracted(newItems);
+    onItemsExtracted(newItems, matchedProductsList);
     onClose();
   };
 

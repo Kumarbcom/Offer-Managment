@@ -1392,8 +1392,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       <AIAssistantPanel 
         isOpen={isAIPanelOpen} 
         onClose={() => setIsAIPanelOpen(false)}
-        allProducts={Array.from(fetchedProducts.values())}
-        onItemsExtracted={(items) => {
+        onItemsExtracted={(items, matchedProducts) => {
+          if (matchedProducts && matchedProducts.length > 0) {
+            setFetchedProducts(prev => {
+              const next = new Map(prev);
+              matchedProducts.forEach(p => next.set(p.id, p));
+              return next;
+            });
+          }
           setFormData(prev => {
             if (!prev) return prev;
             const currentDetails = [...prev.details];
