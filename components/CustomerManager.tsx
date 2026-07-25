@@ -309,6 +309,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                 )
             })}
         </div>
+      </div>
 
       <div className="bg-white p-4 rounded-lg border border-slate-200">
          <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
