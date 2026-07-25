@@ -279,17 +279,17 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-50 p-2 rounded-lg shadow-sm border border-slate-200">
-        <h3 className="text-sm font-semibold text-slate-500 mb-3">Overall quotation summary</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="bg-slate-50 p-2 rounded-lg border border-slate-200">
+        <h3 className="text-sm font-semibold text-slate-500 mb-2">Overall quotation summary</h3>
+        <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-thin">
             <div
                 onClick={() => onFilterQuotations({ })}
-                className="cursor-pointer bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
+                className="cursor-pointer bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm hover:shadow-md transition-shadow min-w-[140px] flex-shrink-0"
                 title={`View all ${allQuotationStats.total.count} quotations`}
             >
-                <div className="text-slate-500 text-sm mb-1">Total enquiries</div>
-                <div className="text-2xl font-bold text-slate-900">{allQuotationStats.total.count.toLocaleString()}</div>
-                <div className="text-xs text-slate-500 mt-1">{formatCurrency(allQuotationStats.total.value)}</div>
+                <div className="text-slate-500 text-[11px] font-medium mb-0.5">Total enquiries</div>
+                <div className="text-lg font-bold text-slate-900 leading-tight">{allQuotationStats.total.count.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-500">{formatCurrency(allQuotationStats.total.value)}</div>
             </div>
             {QUOTATION_STATUSES.map(status => {
                 const stats = allQuotationStats.byStatus[status];
@@ -299,12 +299,12 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <div
                         key={status}
                         onClick={() => onFilterQuotations({ status: status })}
-                        className={`cursor-pointer ${colors?.bg || 'bg-slate-50'} p-4 rounded-xl border border-slate-100/50 shadow-sm hover:shadow-md transition-shadow`}
+                        className={`cursor-pointer ${colors?.bg || 'bg-slate-50'} px-3 py-2 rounded-lg border border-slate-100/50 shadow-sm hover:shadow-md transition-shadow min-w-[140px] flex-shrink-0`}
                         title={`View ${stats.count} '${status}' quotations`}
                     >
-                        <div className={`${colors?.text || 'text-slate-600'} text-sm mb-1`}>{status}</div>
-                        <div className={`text-2xl font-bold ${colors?.text || 'text-slate-900'}`}>{stats.count.toLocaleString()}</div>
-                        <div className={`text-xs ${colors?.text || 'text-slate-500'} mt-1`}>{formatCurrency(stats.value)}</div>
+                        <div className={`${colors?.text || 'text-slate-600'} text-[11px] font-medium mb-0.5 whitespace-nowrap`}>{status}</div>
+                        <div className={`text-lg font-bold ${colors?.text || 'text-slate-900'} leading-tight`}>{stats.count.toLocaleString()}</div>
+                        <div className={`text-[10px] ${colors?.text || 'text-slate-500'}`}>{formatCurrency(stats.value)}</div>
                     </div>
                 )
             })}
