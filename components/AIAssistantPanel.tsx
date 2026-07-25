@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { extractRequirementsFromText, extractRequirementsFromImage } from './aiService';
-import { matchProducts } from './productMatcher';
+import { extractRequirementsFromText, extractRequirementsFromImage } from '../utils/aiService';
+import { matchProducts } from '../utils/productMatcher';
 import type { Product, QuotationItem } from '../types';
 
 interface AIAssistantPanelProps {
