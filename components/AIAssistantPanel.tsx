@@ -38,7 +38,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
       } else {
         // Unrecognized item
         return {
-          partNo: '',
+          partNo: match.extractedPartNo || '',
           description: match.originalDescription,
           uom: 'Mtr',
           moq: 1,

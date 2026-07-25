@@ -2,6 +2,7 @@ import Fuse from 'fuse.js';
 import type { Product } from '../types';
 
 export interface MatchResult {
+  extractedPartNo: string | undefined;
   originalDescription: string;
   matchedProduct: Product | null;
   requestedQuantity: number | undefined;
@@ -47,6 +48,7 @@ export function matchProducts(
     }
 
     return {
+      extractedPartNo: req.partNo,
       originalDescription: req.description,
       matchedProduct,
       requestedQuantity: req.quantity

@@ -1396,9 +1396,17 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         onItemsExtracted={(items) => {
           setFormData(prev => {
             if (!prev) return prev;
+            const currentDetails = [...prev.details];
+            // If the only row is a completely blank default row, replace it
+            if (currentDetails.length === 1 && !currentDetails[0].partNo && !currentDetails[0].description) {
+              return {
+                ...prev,
+                details: items as any
+              };
+            }
             return {
               ...prev,
-              details: [...prev.details, ...items as any]
+              details: [...currentDetails, ...items as any]
             };
           });
         }}
