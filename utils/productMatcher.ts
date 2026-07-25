@@ -16,9 +16,7 @@ export async function matchProducts(
   searchFn: (term: string) => Promise<Product[]>
 ): Promise<MatchResult[]> {
   
-  const results: MatchResult[] = [];
-
-  for (const req of extractedRequirements) {
+  const matchPromises = extractedRequirements.map(async (req) => {
     let matchedProduct: Product | null = null;
     const actualPartNo = req.partNo || (req as any).PartNo || (req as any)['Part No'] || (req as any)['part no'];
 
@@ -51,13 +49,13 @@ export async function matchProducts(
       }
     }
 
-    results.push({
+    return {
       extractedPartNo: actualPartNo,
       originalDescription: req.description,
       matchedProduct,
       requestedQuantity: req.quantity
-    });
-  }
+    } as MatchResult;
+  });
 
-  return results;
+  return await Promise.all(matchPromises);
 }
