@@ -29,9 +29,10 @@ ${text}
     // Clean up potential markdown formatting
     const cleanedText = textResp.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanedText) as ExtractedRequirement[];
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to extract requirements from text", error);
-    throw new Error("Failed to analyze the text. Please ensure your Gemini API key is valid.");
+    const msg = error.message || String(error);
+    throw new Error(`Failed to analyze: ${msg}`);
   }
 }
 
@@ -73,8 +74,9 @@ Example output: [{"description": "LIYY 2X0.5", "quantity": 100}, {"description":
     const textResp = response.text();
     const cleanedText = textResp.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanedText) as ExtractedRequirement[];
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to extract requirements from image", error);
-    throw new Error("Failed to analyze the image. Please ensure your Gemini API key is valid.");
+    const msg = error.message || String(error);
+    throw new Error(`Failed to analyze: ${msg}`);
   }
 }
