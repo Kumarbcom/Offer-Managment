@@ -6,17 +6,19 @@ const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || 'PLA
 const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
 export interface ExtractedRequirement {
+  partNo?: string;
   description: string;
   quantity?: number;
 }
 
 export async function extractRequirementsFromText(text: string): Promise<ExtractedRequirement[]> {
   const prompt = `
-You are a quotation assistant for a cable manufacturing/supply company.
-Extract the required cable products and their quantities from the following text.
-If no quantity is specified, omit the quantity field for that item.
-Return ONLY a valid JSON array of objects, with each object having a 'description' (string) and an optional 'quantity' (number).
-Example output: [{"description": "LIYY 2X0.5", "quantity": 100}, {"description": "Oelflex Classic 110 3G1.5"}]
+You are a quotation assistant for a cable manufacturing company.
+Extract the required products and their quantities from the following text.
+For each item, extract the 'partNo' (if present, usually a 7-digit number like 1119104), the 'description' (e.g. OELFLEX CLASSIC 110), and the 'quantity'.
+If no quantity is specified, omit it. Do NOT make up items. Only extract exactly what is in the text.
+Return ONLY a valid JSON array of objects.
+Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100}]
 
 Text to extract from:
 ${text}
@@ -60,11 +62,12 @@ async function fileToGenerativePart(file: File): Promise<{ inlineData: { data: s
 
 export async function extractRequirementsFromImage(imageFile: File): Promise<ExtractedRequirement[]> {
   const prompt = `
-You are a quotation assistant for a cable manufacturing/supply company.
-Extract the required cable products and their quantities from the provided image (which might be a table, email screenshot, or RFQ).
-If no quantity is specified for an item, omit the quantity field for that item.
-Return ONLY a valid JSON array of objects, with each object having a 'description' (string) and an optional 'quantity' (number).
-Example output: [{"description": "LIYY 2X0.5", "quantity": 100}, {"description": "Oelflex Classic 110 3G1.5"}]
+You are a quotation assistant for a cable manufacturing company.
+Extract the required products and their quantities from the provided image.
+For each item, extract the 'partNo' (if present, usually a 7-digit number like 1119104), the 'description', and the 'quantity'.
+If no quantity is specified, omit it. Do NOT make up items. Only extract exactly what is in the image.
+Return ONLY a valid JSON array of objects.
+Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100}]
   `;
 
   try {

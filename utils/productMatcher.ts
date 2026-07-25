@@ -8,29 +8,18 @@ export interface MatchResult {
 }
 
 /**
- * Uses fuzzy searching to map AI-extracted requirements to actual products in the database.
+ * Uses exact matching for partNo first, then falls back to fuzzy searching descriptions.
  */
 export function matchProducts(
-  extractedRequirements: { description: string; quantity?: number }[],
+  extractedRequirements: { partNo?: string; description: string; quantity?: number }[],
   allProducts: Product[]
 ): MatchResult[] {
-  // Setup Fuse.js for fuzzy searching the product list
+  
+  // Setup Fuse.js for fuzzy searching the product list if partNo fails
   const fuseOptions = {
-    // isCaseSensitive: false,
-    // includeScore: true,
-    // shouldSort: true,
-    // includeMatches: false,
-    // findAllMatches: false,
-    // minMatchCharLength: 2,
-    // location: 0,
-    threshold: 0.4, // Lower threshold = stricter match
-    // distance: 100,
-    // useExtendedSearch: false,
-    // ignoreLocation: false,
-    // ignoreFieldNorm: false,
-    // fieldNormWeight: 1,
+    threshold: 0.4,
     keys: [
-      { name: 'partNo', weight: 0.7 },
+      { name: 'partNo', weight: 1.0 },
       { name: 'description', weight: 1.5 }
     ]
   };
@@ -38,13 +27,23 @@ export function matchProducts(
   const fuse = new Fuse(allProducts, fuseOptions);
 
   return extractedRequirements.map(req => {
-    // Try to find a match
-    const searchResults = fuse.search(req.description);
-    
-    // If we have a decent match, use it
     let matchedProduct: Product | null = null;
-    if (searchResults.length > 0) {
-      matchedProduct = searchResults[0].item;
+
+    // 1. Try Exact Match on PartNo first
+    if (req.partNo) {
+      const exactMatch = allProducts.find(p => p.partNo === req.partNo);
+      if (exactMatch) {
+        matchedProduct = exactMatch;
+      }
+    }
+
+    // 2. Fallback to Fuzzy Search
+    if (!matchedProduct) {
+      const searchTerm = req.partNo ? `${req.partNo} ${req.description}` : req.description;
+      const searchResults = fuse.search(searchTerm);
+      if (searchResults.length > 0) {
+        matchedProduct = searchResults[0].item;
+      }
     }
 
     return {
