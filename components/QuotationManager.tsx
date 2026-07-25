@@ -233,10 +233,12 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
       // Format Header Row
       const headerRow = worksheet.getRow(1);
-      headerRow.font = { name: 'Cambria', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }; // Indigo-600
-      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
       headerRow.height = 25;
+      headerRow.eachCell((cell) => {
+          cell.font = { name: 'Cambria', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
 
       // Populate Data
       let rowCount = 2;
