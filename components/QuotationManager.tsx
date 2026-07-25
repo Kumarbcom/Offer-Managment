@@ -197,27 +197,104 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       alert(error instanceof Error ? error.message : 'Failed to update status.');
     }
   };
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!filteredAndSortedQuotations || filteredAndSortedQuotations.length === 0) { alert("No data to export."); return; }
-    const dataToExport = filteredAndSortedQuotations.flatMap(q => {
-      const quotationTotal = calculateTotalAmount(q.details);
-      return (q.details || []).map(item => {
-        const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-        return {
-          'Quotation No': generateFormattedQuotationNumber(q, quotations || []), 'Date': q.quotationDate,
-          'Customer': getCustomerName(q.customerId), 'Contact Person': q.contactPerson,
-          'Contact No': q.contactNumber, 'Sales Person': getSalesPersonName(q.salesPersonId),
-          'Status': q.status, 'Total Amount': quotationTotal, 'Part No': item.partNo,
-          'Description': item.description, 'MOQ': item.moq, 'REQ': item.req,
-          'Price Source': item.priceSource, 'Base Price': item.price, 'Discount %': item.discount,
-          'Unit Price': unitPrice, 'Item Amount': unitPrice * item.moq, 'Stock Status': item.stockStatus,
-        };
+
+    try {
+      const [{ default: ExcelJS }, { saveAs }] = await Promise.all([
+          import('exceljs'),
+          import('file-saver'),
+      ]);
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Quotations Report');
+
+      // Define columns
+      worksheet.columns = [
+        { header: 'Quotation No', key: 'qtnNo', width: 20 },
+        { header: 'Date', key: 'date', width: 12 },
+        { header: 'Customer Name', key: 'customer', width: 30 },
+        { header: 'Part No', key: 'partNo', width: 20 },
+        { header: 'MOQ', key: 'moq', width: 10 },
+        { header: 'REQ', key: 'req', width: 10 },
+        { header: 'Price Source', key: 'priceSource', width: 12 },
+        { header: 'LP/SP', key: 'lpsp', width: 12 },
+        { header: 'Discount (%)', key: 'discount', width: 12 },
+        { header: 'Unit Price', key: 'unitPrice', width: 15 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: 'Stock Status', key: 'stockStatus', width: 15 },
+        { header: 'Air Freight per Unit', key: 'airFreightUnit', width: 20 },
+        { header: 'Air Freight Amount', key: 'airFreightAmount', width: 20 },
+        { header: 'Air Lead Time', key: 'airLeadTime', width: 15 },
+        { header: 'Sales Person', key: 'salesPerson', width: 20 },
+        { header: 'Created By', key: 'createdBy', width: 15 },
+        { header: 'Status', key: 'status', width: 15 },
+      ];
+
+      // Format Header Row
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { name: 'Cambria', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }; // Indigo-600
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      headerRow.height = 25;
+
+      // Populate Data
+      let rowCount = 2;
+      filteredAndSortedQuotations.forEach(q => {
+        const qDateObj = new Date(q.quotationDate);
+        const airFreightRate = !isNaN(qDateObj.getTime()) && qDateObj >= new Date('2026-05-25') ? 180 : 150;
+        
+        (q.details || []).forEach(item => {
+          const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+          const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) : 0; 
+          const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0;
+
+          const row = worksheet.addRow({
+            qtnNo: generateFormattedQuotationNumber(q, quotations || []),
+            date: q.quotationDate,
+            customer: getCustomerName(q.customerId),
+            partNo: item.partNo || '',
+            moq: item.moq,
+            req: item.req,
+            priceSource: item.priceSource || '',
+            lpsp: item.price || 0,
+            discount: item.discount || 0,
+            unitPrice: unitPrice,
+            amount: unitPrice * (item.moq || 0),
+            stockStatus: item.stockStatus || '',
+            airFreightUnit: item.airFreight ? freightPerMtr : 0,
+            airFreightAmount: freightTotal,
+            airLeadTime: item.airFreightDetails?.airFreightLeadTime || '',
+            salesPerson: getSalesPersonName(q.salesPersonId),
+            createdBy: q.preparedBy || '',
+            status: q.status
+          });
+
+          // Style Data Rows
+          row.font = { name: 'Cambria', size: 10 };
+          row.alignment = { vertical: 'middle' };
+          
+          // Number formatting
+          row.getCell('lpsp').numFmt = '#,##0.00';
+          row.getCell('discount').numFmt = '0.00"%"';
+          row.getCell('unitPrice').numFmt = '#,##0.00';
+          row.getCell('amount').numFmt = '#,##0.00';
+          row.getCell('airFreightUnit').numFmt = '#,##0.00';
+          row.getCell('airFreightAmount').numFmt = '#,##0.00';
+
+          rowCount++;
+        });
       });
-    });
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Quotations");
-    XLSX.writeFile(wb, "Quotations_Export.xlsx");
+
+      // Generate & Save File
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Quotations_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    } catch (err) {
+      console.error("Export Error:", err);
+      alert("Failed to export Excel file. Please try again.");
+    }
   };
   const handleWhatsAppShare = (q: Quotation) => {
     const totalValue = calculateTotalAmount(q.details);
