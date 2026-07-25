@@ -666,6 +666,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         </div>
 
         {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto bg-transparent mt-4 mx-1">
+            <table className="min-w-full text-sm border-separate" style={{ borderSpacing: '0 0.5rem' }}>
+            <thead>
+                <tr>
+                    <th className="px-4 py-2 font-bold text-slate-400 uppercase tracking-wider text-[10px]"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
+                    {['ID', 'Part No', 'Description', 'HSN Code', 'List price', 'Selling price', 'UOM', 'Plant', 'Weight', 'Actions'].map(header => (
+                    <th key={header} scope="col" className={`px-4 py-2 text-left font-bold text-slate-400 uppercase tracking-wider text-[10px] ${['List price', 'Selling price', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
+                    ))}
+                </tr>
+            </thead>
+            <tbody>
                 {displayedProducts.map(product => (
                     <ProductRow
                         key={product.id}
