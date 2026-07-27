@@ -16,6 +16,8 @@ interface QuotationManagerProps {
   currentUser: User;
   quotationFilter: { customerIds?: number[], status?: QuotationStatus } | null;
   onBackToCustomers?: () => void;
+  globalSearch?: string;
+  onClearGlobalSearch?: () => void;
 }
 
 type SortByType = 'id' | 'quotationDate' | 'customer' | 'contactPerson' | 'salesPerson' | 'totalAmount' | 'status';
@@ -80,12 +82,22 @@ const getSalesPersonBadgeStyle = (id: number | null, name: string) => {
   return styles[index];
 };
 
-export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, customers, salesPersons, setEditingQuotationId, setView, setQuotations, currentUser, quotationFilter, onBackToCustomers }) => {
+export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, customers, salesPersons, setEditingQuotationId, setView, setQuotations, currentUser, quotationFilter, onBackToCustomers, globalSearch, onClearGlobalSearch }) => {
   const [universalSearchTerm, setUniversalSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortByType>('quotationDate');
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
 
+  const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (globalSearch) {
+      setUniversalSearchTerm(globalSearch);
+      if (onClearGlobalSearch) {
+        onClearGlobalSearch();
+      }
+    }
+  }, [globalSearch, onClearGlobalSearch]);
 
   const userRole = currentUser.role;
 

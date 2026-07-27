@@ -35,6 +35,8 @@ export const App = () => {
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
   const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [globalSearchInput, setGlobalSearchInput] = useState('');
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
 
   const [logoUrl, setLogoUrl] = useState<string | null>(() => {
     try {
@@ -300,7 +302,16 @@ export const App = () => {
                </div>
                <input 
                  type="text" 
-                 placeholder="Search anything here..." 
+                 placeholder="Search quotations (Press Enter)..." 
+                 value={globalSearchInput}
+                 onChange={(e) => setGlobalSearchInput(e.target.value)}
+                 onKeyDown={(e) => {
+                   if (e.key === 'Enter' && globalSearchInput.trim() !== '') {
+                     setGlobalSearchQuery(globalSearchInput);
+                     handleSetView('quotations');
+                     setGlobalSearchInput('');
+                   }
+                 }}
                  className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-full leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-red-500 focus:border-red-500 sm:text-sm transition-colors" 
                />
              </div>
@@ -353,7 +364,19 @@ export const App = () => {
           {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter} currentUser={currentUser} />}
           {view === 'products' && <ProductManager currentUser={currentUser} />}
           {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
-          {view === 'quotations' && <QuotationManager quotations={quotations} customers={customers} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
+          {view === 'quotations' && <QuotationManager 
+            quotations={quotations} 
+            customers={customers}
+            salesPersons={salesPersons} 
+            setEditingQuotationId={setEditingQuotationId} 
+            setView={handleSetView} 
+            setQuotations={setQuotations} 
+            currentUser={currentUser} 
+            quotationFilter={quotationFilter} 
+            onBackToCustomers={quotationFilter ? () => { setQuotationFilter(null); handleSetView('customers'); } : undefined}
+            globalSearch={globalSearchQuery}
+            onClearGlobalSearch={() => setGlobalSearchQuery('')}
+          />}
           {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
           {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
           {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
