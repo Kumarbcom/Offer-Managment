@@ -280,7 +280,7 @@ export const App = () => {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Top Header */}
-        <header className="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 transition-all">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 transition-all">
           
           {/* Left: Mobile Menu Toggle & Search */}
           <div className="flex items-center gap-4 flex-1">
@@ -348,7 +348,7 @@ export const App = () => {
         </header>
 
         {/* Scrollable Main Content */}
-        <main className={`flex-1 overflow-y-auto relative ${view === 'quotation-form' ? 'p-0 bg-white' : 'p-4 md:p-6 pb-24 md:pb-6'}`}>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 relative">
           {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
           {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter} currentUser={currentUser} />}
           {view === 'products' && <ProductManager currentUser={currentUser} />}
