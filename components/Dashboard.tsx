@@ -980,18 +980,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             </div>
 
             {/* ── Charts Row 2 ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Top Selling Categories (Top Customers) */}
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-                    className="bg-white rounded-3xl shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 p-6 flex flex-col h-full">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base font-bold text-slate-800">Top Customers</h3>
-                    </div>
-                    <div className="flex-grow h-40">
-                        <canvas ref={topCustomersChartRef} />
-                    </div>
-                </motion.div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* Sales Statistics (Daily Bar) */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.45 }}
