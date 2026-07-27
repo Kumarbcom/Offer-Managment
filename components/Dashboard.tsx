@@ -691,7 +691,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
                     <div>
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Enquiries</div>
-                        <div className="text-3xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
+                        <div className="text-2xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
                         <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
                             Increased by 12%
@@ -707,7 +707,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
                     <div>
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Customers</div>
-                        <div className="text-3xl font-extrabold text-slate-800">{uniqueCustomerCount}</div>
+                        <div className="text-2xl font-extrabold text-slate-800">{uniqueCustomerCount}</div>
                         <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
                             Increased by 8.3%
@@ -723,7 +723,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
                     <div>
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Revenue</div>
-                        <div className="text-3xl font-extrabold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
+                        <div className="text-2xl font-extrabold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
                         <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
                             Increased by 1.5%
@@ -739,7 +739,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
                     <div>
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Sales (PO)</div>
-                        <div className="text-3xl font-extrabold text-slate-800">{overallStats['PO received'].count + overallStats['Partial PO Received'].count}</div>
+                        <div className="text-2xl font-extrabold text-slate-800">{overallStats['PO received'].count + overallStats['Partial PO Received'].count}</div>
                         <div className="text-xs font-medium text-rose-500 mt-2 flex items-center gap-1">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
                             Decreased by 0.1%
@@ -757,11 +757,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 {/* Sales Overview Line Chart */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
                     className="col-span-1 lg:col-span-7 bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-slate-800">Sales Overview</h3>
-                        <button className="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Sort by <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-slate-800">Sales Overview</h3>
+                        <button className="text-[10px] font-semibold text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">Sort by <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
                     </div>
-                    <div className="flex-grow min-h-[300px]">
+                    <div className="flex-grow h-48 lg:h-56">
                         <canvas ref={lineChartRef} />
                     </div>
                 </motion.div>
@@ -771,24 +771,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.35 }}
                         className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex-1 flex flex-col">
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-lg font-bold text-slate-800">Order Statistics</h3>
-                            <button className="text-slate-400 hover:text-slate-600"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg></button>
+                            <h3 className="text-base font-bold text-slate-800">Order Statistics</h3>
+                            <button className="text-slate-400 hover:text-slate-600"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg></button>
                         </div>
-                        <div className="flex justify-between items-start mb-6">
+                        <div className="flex justify-between items-start mb-4">
                             <div>
-                                <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Orders</div>
-                                <div className="text-2xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
-                            </div>
-                            <div className="text-emerald-500 text-xs font-bold bg-emerald-50 px-2 py-1 rounded-md">+5.7%</div>
-                        </div>
-                        <div className="relative flex-grow min-h-[160px] flex items-center justify-center">
-                            <canvas ref={statusPieChartRef} />
-                            <div className="absolute inset-0 flex flex-col items-center justify-center mt-6 pointer-events-none">
-                                <div className="text-sm font-bold text-slate-400 uppercase">Total</div>
+                                <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Total Orders</div>
                                 <div className="text-xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
                             </div>
+                            <div className="text-emerald-500 text-[10px] font-bold bg-emerald-50 px-2 py-1 rounded-md">+5.7%</div>
                         </div>
-                        <button className="w-full mt-4 text-sm font-bold text-indigo-600 border border-indigo-100 bg-indigo-50/50 py-2.5 rounded-xl hover:bg-indigo-50 transition-colors">
+                        <div className="relative flex-grow h-36 flex items-center justify-center">
+                            <canvas ref={statusPieChartRef} />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center mt-4 pointer-events-none">
+                                <div className="text-xs font-bold text-slate-400 uppercase">Total</div>
+                                <div className="text-lg font-extrabold text-slate-800">{displayedEnquiryCount}</div>
+                            </div>
+                        </div>
+                        <button className="w-full mt-3 text-xs font-bold text-indigo-600 border border-indigo-100 bg-indigo-50/50 py-2 rounded-xl hover:bg-indigo-50 transition-colors">
                             Complete Statistics &rarr;
                         </button>
                     </motion.div>
@@ -801,11 +801,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 {/* Top Selling Categories (Top Customers) */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
                     className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-slate-800">Top Customers</h3>
-                        <button className="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Sort by <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-slate-800">Top Customers</h3>
                     </div>
-                    <div className="flex-grow">
+                    <div className="flex-grow h-40">
                         <canvas ref={topCustomersChartRef} />
                     </div>
                 </motion.div>
@@ -813,17 +812,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 {/* Sales Statistics (Daily Bar) */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.45 }}
                     className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-slate-800">Sales Statistics</h3>
-                        <button className="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Sort by <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
-                    </div>
-                    <div className="flex justify-between items-end mb-4">
-                        <div>
-                            <div className="text-xs text-slate-400 font-semibold mb-1">Total Sales</div>
-                            <div className="text-xl font-bold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-slate-800">Sales Statistics</h3>
+                        <div className="inline-flex bg-slate-50 p-0.5 rounded-lg border border-slate-100">
+                            <button onClick={() => setBarChartMode('count')} className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Cnt</button>
+                            <button onClick={() => setBarChartMode('value')} className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
                         </div>
                     </div>
-                    <div className="flex-grow min-h-[200px]">
+                    <div className="flex justify-between items-end mb-2">
+                        <div>
+                            <div className="text-[10px] text-slate-400 font-semibold mb-0.5">Total Sales</div>
+                            <div className="text-lg font-bold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
+                        </div>
+                    </div>
+                    <div className="flex-grow h-40">
                         <canvas ref={barChartRef} />
                     </div>
                 </motion.div>
@@ -831,11 +833,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 {/* Overall Statistics (Funnel) */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
                     className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-slate-800">Funnel Stats</h3>
-                        <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700">View All</button>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-slate-800">Funnel Stats</h3>
                     </div>
-                    <div className="flex-grow flex items-center justify-center min-h-[200px]">
+                    <div className="flex-grow h-40 flex items-center justify-center">
                         <canvas ref={funnelChartRef} />
                     </div>
                 </motion.div>
@@ -847,9 +848,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 {/* Recent Orders (Latest Quotations) */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
                     className="col-span-1 lg:col-span-3 bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-slate-800">Recent Quotations</h3>
-                        <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-4 py-2 rounded-xl">View All</button>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-slate-800">Recent Quotations</h3>
+                        <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
+                            <button onClick={() => setQuotationSortType('latest')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${quotationSortType === 'latest' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Latest</button>
+                            <button onClick={() => setQuotationSortType('highestValue')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${quotationSortType === 'highestValue' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>High Value</button>
+                        </div>
                     </div>
                     
                     <div className="overflow-x-auto">
