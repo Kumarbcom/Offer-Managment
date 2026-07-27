@@ -1063,9 +1063,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const gridColumns = ['SL No', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount%', 'Unit Price', 'Amount', 'Stock Status', 'Air per Unit', 'Air Freight Amt', 'Air Lead Time'];
   if (!isReadOnly) gridColumns.push('');
   return (
-    <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
-      <div className="bg-white rounded-lg shadow-lg">
-        <header className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white px-3 py-2 flex flex-col md:flex-row justify-between items-center rounded-t-lg shadow-sm gap-2">
+    <div className="bg-white min-h-screen font-sans pb-14">
+      <div className="bg-white">
+        <header className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white px-3 py-2 flex flex-col md:flex-row justify-between items-center shadow-sm gap-2">
            <div className="flex items-center gap-3 w-full md:w-auto">
                <h1 className="text-sm font-extrabold uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-100 shrink-0 hidden lg:block">Quotation</h1>
                <div className="flex items-center space-x-1 bg-white/10 p-1 rounded-md">
