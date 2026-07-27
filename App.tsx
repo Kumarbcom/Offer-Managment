@@ -119,6 +119,9 @@ export const App = () => {
 
   const handleSetView = (newView: View | 'calendar') => {
     setView(newView);
+    if (newView === 'quotation-form') {
+      setIsSidebarExpanded(false);
+    }
     // Clear deep link parameter when navigating away manually
     if (newView === 'quotations') {
       const url = new URL(window.location.href);

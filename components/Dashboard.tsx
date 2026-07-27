@@ -56,7 +56,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const barChartRef = useRef<HTMLCanvasElement>(null);
     const funnelChartRef = useRef<HTMLCanvasElement>(null);
     const statusPieChartRef = useRef<HTMLCanvasElement>(null);
-    const topCustomersChartRef = useRef<HTMLCanvasElement>(null);
+    const customerRadialChartRef = useRef<HTMLCanvasElement>(null);
 
     const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<number | 'all'>('all');
     const [selectedDateRange, setSelectedDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
@@ -336,82 +336,122 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
     // --- Charts Effects ---
 
-    // 1. Line Chart (Vibrant Gradient)
+    // 1. Line Chart (Monthly Area Chart)
     useEffect(() => {
         if (!lineChartRef.current || typeof Chart === 'undefined') return;
 
-        const dataByDate = filteredQuotations.reduce((acc, q) => {
-            if (!q.quotationDate) return acc;
-            const d = new Date(q.quotationDate);
-            if (isNaN(d.getTime())) return acc;
-            
-            const dateStr = q.quotationDate; // Keep the original string for sorting if it's YYYY-MM-DD
-            acc[dateStr] = (acc[dateStr] || 0) + calculateTotalAmount(q.details);
-            return acc;
-        }, {} as Record<string, number>);
+        const currentYear = new Date().getFullYear();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        const dataByMonth = {
+            won: new Array(12).fill(0),
+            lost: new Array(12).fill(0),
+            open: new Array(12).fill(0),
+        };
 
-        const sortedDates = Object.keys(dataByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-        const compactLabels = sortedDates.map(dateStr => {
-            // Split YYYY-MM-DD to avoid timezone shifts
-            const [y, m, d] = dateStr.split('-').map(Number);
-            const date = new Date(y, m - 1, d);
-            const day = d.toString().padStart(2, '0');
-            const month = date.toLocaleString('default', { month: 'short' });
-            return `${day}-${month}`;
+        filteredQuotations.forEach(q => {
+            if (!q.quotationDate) return;
+            const d = new Date(q.quotationDate);
+            if (isNaN(d.getTime())) return;
+            if (d.getFullYear() !== currentYear) return;
+
+            const monthIndex = d.getMonth();
+            const amount = calculateTotalAmount(q.details);
+
+            if (q.status === 'PO received' || q.status === 'Partial PO Received') {
+                dataByMonth.won[monthIndex] += amount;
+            } else if (q.status === 'Lost' || q.status === 'Expired') {
+                dataByMonth.lost[monthIndex] += amount;
+            } else {
+                dataByMonth.open[monthIndex] += amount;
+            }
         });
-        const chartData = sortedDates.map(date => dataByDate[date]);
 
         const ctx = lineChartRef.current.getContext('2d');
+        if (!ctx) return;
+        
+        const gradientWon = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientWon.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
+        gradientWon.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+        
+        const gradientLost = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientLost.addColorStop(0, 'rgba(244, 63, 94, 0.5)');
+        gradientLost.addColorStop(1, 'rgba(244, 63, 94, 0.0)');
+        
+        const gradientOpen = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientOpen.addColorStop(0, 'rgba(168, 162, 158, 0.3)');
+        gradientOpen.addColorStop(1, 'rgba(168, 162, 158, 0.0)');
+
         const chartInstance = new Chart(ctx, {
             type: 'line',
             plugins: [typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : {}],
             data: {
-                labels: compactLabels,
-                datasets: [{
-                    label: 'Quotation Value',
-                    data: chartData,
-                    borderColor: '#ef4444', // Red 500
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    pointBackgroundColor: '#dc2626',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
-                }]
+                labels: monthNames,
+                datasets: [
+                    {
+                        label: 'Won (PO)',
+                        data: dataByMonth.won,
+                        borderColor: '#6366f1',
+                        backgroundColor: gradientWon,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Lost',
+                        data: dataByMonth.lost,
+                        borderColor: '#f43f5e',
+                        backgroundColor: gradientLost,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Open / Pending',
+                        data: dataByMonth.open,
+                        borderColor: '#a8a29e',
+                        backgroundColor: gradientOpen,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        borderWidth: 2
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { top: 25, right: 15, left: 5 } },
+                layout: { padding: { top: 10, right: 15, left: 5 } },
                 plugins: {
-                    legend: { display: false },
-                    datalabels: {
-                        align: 'top',
-                        anchor: 'end',
-                        color: '#4338ca', // Indigo 800
-                        font: { size: 11, weight: 'bold' },
-                        formatter: (value: number) => formatCurrencyCompact(value),
-                        offset: 4
-                    },
+                    legend: { display: true, position: 'top', align: 'center', labels: { usePointStyle: true, boxWidth: 8, font: { family: "'Inter', sans-serif", weight: '600' } } },
+                    datalabels: { display: false },
                     tooltip: {
+                        mode: 'index',
+                        intersect: false,
                         backgroundColor: '#1e293b',
-                        titleColor: '#fff',
-                        bodyColor: '#fff',
-                        callbacks: { label: (c: any) => `Value: ${formatCurrency(c.parsed.y)}` }
+                        callbacks: { label: (c: any) => `${c.dataset.label}: ${formatCurrency(c.parsed.y)}` }
                     }
                 },
                 scales: {
                     x: {
-                        ticks: { color: '#334155', font: { size: 11, weight: 'bold' } },
+                        ticks: { color: '#64748b', font: { size: 11 } },
                         grid: { display: false }
                     },
                     y: {
-                        ticks: { color: '#64748b', font: { size: 10 }, callback: (val: number) => formatCurrencyCompact(val) },
+                        ticks: { color: '#94a3b8', font: { size: 10 }, callback: (val: number) => formatCurrencyCompact(val) },
                         border: { display: false },
-                        grid: { color: '#f1f5f9' }
+                        grid: { color: '#f1f5f9', borderDash: [5, 5] }
                     }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
                 }
             }
         });
@@ -609,48 +649,130 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         if (!topCustomersChartRef.current || typeof Chart === 'undefined') return;
 
         const customerValues = new Map<string, number>();
+    // 5. Customer Radial Chart (Repeated vs One Time vs New)
+    useEffect(() => {
+        if (!customerRadialChartRef.current || typeof Chart === 'undefined') return;
+
+        const customerStats = new Map<number, { count: number, firstDate: Date }>();
         filteredQuotations.forEach(q => {
-            const customerName = q.customerId ? customerMap.get(q.customerId) || 'Unknown' : 'Unknown';
-            customerValues.set(customerName, (customerValues.get(customerName) || 0) + calculateTotalAmount(q.details));
+            if (q.customerId) {
+                const date = new Date(q.quotationDate || Date.now());
+                if (!customerStats.has(q.customerId)) {
+                    customerStats.set(q.customerId, { count: 1, firstDate: date });
+                } else {
+                    const stats = customerStats.get(q.customerId)!;
+                    stats.count++;
+                    if (date < stats.firstDate) stats.firstDate = date;
+                }
+            }
         });
 
-        const sortedCustomers = [...customerValues.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-        const ctx = topCustomersChartRef.current.getContext('2d');
+        let newCustomers = 0;
+        let oneTimeCustomers = 0;
+        let repeatedCustomers = 0;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        customerStats.forEach(stats => {
+            if (stats.firstDate >= thirtyDaysAgo) {
+                newCustomers++;
+            } else if (stats.count > 1) {
+                repeatedCustomers++;
+            } else {
+                oneTimeCustomers++;
+            }
+        });
+
+        const totalCustomers = newCustomers + oneTimeCustomers + repeatedCustomers;
+        
+        // Expose to window for the custom legend to read
+        (window as any)._customerRadialStats = {
+            total: totalCustomers,
+            repeated: repeatedCustomers,
+            oneTime: oneTimeCustomers,
+            newCust: newCustomers
+        };
+
+        const ctx = customerRadialChartRef.current.getContext('2d');
+        if (!ctx) return;
+
+        // Custom plugin to draw the "Total" text in the center
+        const centerTextPlugin = {
+            id: 'centerText',
+            beforeDraw: (chart: any) => {
+                const { width, height, ctx } = chart;
+                ctx.restore();
+                const fontSizeTitle = (height / 160).toFixed(2);
+                const fontSizeVal = (height / 100).toFixed(2);
+                
+                ctx.font = `600 ${fontSizeTitle}em Inter, sans-serif`;
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#1e293b';
+                
+                const textTitle = 'Total';
+                const textXTitle = Math.round((width - ctx.measureText(textTitle).width) / 2);
+                const textYTitle = height / 2 - 10;
+                ctx.fillText(textTitle, textXTitle, textYTitle);
+
+                ctx.font = `800 ${fontSizeVal}em Inter, sans-serif`;
+                const textVal = totalCustomers.toString();
+                const textXVal = Math.round((width - ctx.measureText(textVal).width) / 2);
+                const textYVal = height / 2 + 15;
+                ctx.fillText(textVal, textXVal, textYVal);
+                ctx.save();
+            }
+        };
+
         const chartInstance = new Chart(ctx, {
-            type: 'bar',
-            plugins: [typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : {}],
+            type: 'doughnut',
+            plugins: [centerTextPlugin],
             data: {
-                labels: sortedCustomers.map(c => c[0]),
-                datasets: [{
-                    label: 'Total Value',
-                    data: sortedCustomers.map(c => c[1]),
-                    backgroundColor: '#d946ef', // Fuchsia 500
-                    borderRadius: 4,
-                    barThickness: 20
-                }]
+                labels: ['Repeated Customer', 'One Time Customer', 'New Customer'],
+                datasets: [
+                    {
+                        data: [repeatedCustomers, totalCustomers - repeatedCustomers],
+                        backgroundColor: ['#6366f1', '#f8fafc'], // Indigo
+                        borderWidth: 0,
+                        borderRadius: 15,
+                        cutout: '85%'
+                    },
+                    {
+                        data: [oneTimeCustomers, totalCustomers - oneTimeCustomers],
+                        backgroundColor: ['#f472b6', '#f8fafc'], // Pink
+                        borderWidth: 0,
+                        borderRadius: 15,
+                        cutout: '80%'
+                    },
+                    {
+                        data: [newCustomers, totalCustomers - newCustomers],
+                        backgroundColor: ['#fbcfe8', '#f8fafc'], // Light Pink
+                        borderWidth: 0,
+                        borderRadius: 15,
+                        cutout: '75%'
+                    }
+                ]
             },
             options: {
-                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { right: 45 } },
+                layout: { padding: 10 },
                 plugins: {
                     legend: { display: false },
-                    datalabels: {
-                        anchor: 'end',
-                        align: 'right',
-                        formatter: (value: number) => formatCurrencyCompact(value),
-                        color: '#a21caf', // Fuchsia 700
-                        font: { weight: 'bold', size: 11 },
-                        offset: 4
-                    },
-                    tooltip: { backgroundColor: '#1e293b' }
-                },
-                scales: { x: { display: false }, y: { grid: { display: false }, ticks: { color: '#334155', font: { size: 11, weight: '600' }, autoSkip: false } } }
+                    tooltip: {
+                        filter: (item: any) => item.dataIndex === 0, // Only show tooltip for the actual data part, not the empty track
+                        callbacks: {
+                            label: (context: any) => {
+                                const datasetIndex = context.datasetIndex;
+                                const labels = ['Repeated', 'One Time', 'New'];
+                                return `${labels[datasetIndex]}: ${context.raw}`;
+                            }
+                        }
+                    }
+                }
             }
         });
         return () => chartInstance.destroy();
-    }, [filteredQuotations, customerMap]);
+    }, [filteredQuotations, customers]);
 
 
     const dateRanges: { key: 'all' | 'week' | 'month' | 'year'; label: string }[] = [
