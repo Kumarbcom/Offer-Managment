@@ -644,11 +644,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         return () => chartInstance.destroy();
     }, [overallStats, orderStatusMode]);
 
-    // 5. Top Customers (Vibrant Bar)
-    useEffect(() => {
-        if (!topCustomersChartRef.current || typeof Chart === 'undefined') return;
-
-        const customerValues = new Map<string, number>();
     // 5. Customer Radial Chart (Repeated vs One Time vs New)
     useEffect(() => {
         if (!customerRadialChartRef.current || typeof Chart === 'undefined') return;
