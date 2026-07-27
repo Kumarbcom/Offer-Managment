@@ -198,8 +198,8 @@ export const App = () => {
       <aside className={`bg-white border-r border-slate-200 flex-col hidden md:flex z-20 shrink-0 transition-all duration-300 ${isSidebarExpanded ? 'w-64' : 'w-20'}`}>
         <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0 overflow-hidden">
           <div className="flex items-center gap-2">
-            {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain shrink-0" /> : <div className="h-8 w-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold shrink-0">S</div>}
-            {isSidebarExpanded && <span className="font-bold text-slate-800 tracking-tight text-lg whitespace-nowrap">Siddhi Kabel</span>}
+            {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-full object-cover shrink-0 shadow-sm border border-slate-200" /> : <div className="h-8 w-8 bg-red-600 rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-sm">S</div>}
+            {isSidebarExpanded && <span className="font-bold text-slate-800 tracking-tight text-sm whitespace-normal leading-tight">Siddhi Kabel Corporation Pvt Ltd</span>}
           </div>
         </div>
         
@@ -265,7 +265,7 @@ export const App = () => {
              
              {/* Mobile Logo */}
              <div className="md:hidden flex items-center gap-2">
-               {logoUrl ? <img src={logoUrl} alt="Logo" className="h-6 w-auto" /> : <div className="h-6 w-6 bg-red-600 rounded flex items-center justify-center text-white text-xs font-bold">S</div>}
+               {logoUrl ? <img src={logoUrl} alt="Logo" className="h-6 w-6 rounded-full object-cover shadow-sm border border-slate-200" /> : <div className="h-6 w-6 bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">S</div>}
              </div>
           </div>
 
