@@ -130,6 +130,7 @@ const Icons = {
         </svg>
     ),
     Trash: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>,
+    Edit: () => <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>,
     Excel: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-green-600">
             <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM9.763 9.51a2.25 2.25 0 013.828-1.351.75.75 0 011.06-1.06 3.75 3.75 0 00-6.38 2.252c-.033.307-.052.618-.057.933l-.024 1.399c-.003.158-.003.316.002.473l.024 1.4c.005.315.024.626.057.933a3.75 3.75 0 006.38 2.252.75.75 0 00-1.06-1.06 2.25 2.25 0 01-3.828-1.351l-.025-1.402a9.55 9.55 0 01-.001-.472l.025-1.402z" clipRule="evenodd" /> {/* Stylized generic sheet */}
@@ -158,6 +159,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [formData, setFormData] = useState<Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
   const [isStockCheckModalOpen, setIsStockCheckModalOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
@@ -192,6 +194,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // This ensures that if we are drafting (editingQuotationId is null), we don't get reset by background updates.
   // Session ID will equal editingQuotationId (which can be null).
   const currentSessionIdRef = useRef<number | null | undefined>(undefined);
+  const prevDateRef = useRef<string | undefined>(undefined);
 
   const userRole = currentUser.role;
 
@@ -436,6 +439,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   useEffect(() => {
     if (!formData || !formData.details?.length || fetchedProducts.size === 0) return;
+    
+    // Only auto-update prices if the quotation date actually changes
+    if (prevDateRef.current === formData.quotationDate) return;
+    prevDateRef.current = formData.quotationDate;
+
     let wasUpdated = false;
     const newDetails = formData.details.map(item => {
         if (item.productId > 0) {
@@ -453,7 +461,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         return item;
     });
     if (wasUpdated) setFormData(prev => prev ? { ...prev, details: newDetails } : null);
-  }, [formData?.quotationDate, fetchedProducts, getPriceForDate, formData?.details]);
+  }, [formData?.quotationDate, fetchedProducts, getPriceForDate]);
 
   useEffect(() => {
     const performSearch = async () => {
@@ -571,7 +579,31 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         alert(error instanceof Error ? error.message : 'Failed to save customer');
     }
   };
-  const handleSaveProduct = async (newProduct: Product) => { await addProductsBatch([newProduct]); setIsProductModalOpen(false); };
+  const handleSaveProduct = async (newProduct: Product) => { 
+      if (productToEdit) {
+          await updateProduct(newProduct);
+          setFetchedProducts(prev => new Map(prev).set(newProduct.id, newProduct));
+          
+          setFormData(prev => {
+              if (!prev || !prev.details) return prev;
+              const priceEntry = getPriceForDate(newProduct, prev.quotationDate);
+              const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
+              const priceSource = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
+              
+              const newDetails = prev.details.map(item => {
+                  if (item.productId === newProduct.id) {
+                      return { ...item, price: newPrice, priceSource, uom: newProduct.uom, description: newProduct.description, partNo: newProduct.partNo };
+                  }
+                  return item;
+              });
+              return { ...prev, details: newDetails };
+          });
+      } else {
+          await addProductsBatch([newProduct]); 
+      }
+      setIsProductModalOpen(false); 
+      setProductToEdit(null);
+  };
 
   const saveQuotation = async (quiet: boolean = false): Promise<Quotation | null> => {
     // LOGGING FOR DEBUGGING VANDITA ISSUE
@@ -1360,10 +1392,21 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             {/* Actions */}
                             {!isReadOnly && (
                                 <td className="border-t border-slate-300 text-center align-middle">
-                                    <div className="flex items-center justify-center gap-1">
-                                        <button type="button" onClick={() => handleInsertItem(index)} className="hover:scale-110 transition-transform p-0.5" title="Insert Row Below">
+                                    <div className="flex items-center justify-center">
+                                        <button type="button" onClick={() => handleInsertItem(index)} className="text-blue-500 hover:text-blue-700 hover:scale-110 transition-all p-0.5" title="Insert Below">
                                             <Icons.Insert />
                                         </button>
+                                        {item.productId > 0 && (
+                                            <button type="button" onClick={() => {
+                                                const p = fetchedProducts.get(item.productId);
+                                                if (p) {
+                                                    setProductToEdit(p);
+                                                    setIsProductModalOpen(true);
+                                                }
+                                            }} className="text-emerald-500 hover:text-emerald-700 hover:scale-110 transition-all p-0.5" title="Edit Product">
+                                                <Icons.Edit />
+                                            </button>
+                                        )}
                                         <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-500 hover:text-rose-700 hover:scale-110 transition-all p-0.5" title="Remove Item">
                                             <Icons.Trash />
                                         </button>
@@ -1426,7 +1469,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       />
 
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
-      <ProductAddModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} onSave={handleSaveProduct} />
+      <ProductAddModal isOpen={isProductModalOpen} onClose={() => { setIsProductModalOpen(false); setProductToEdit(null); }} onSave={handleSaveProduct} productToEdit={productToEdit} />
       <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
       <StockCheckModal 
         isOpen={isStockCheckModalOpen}

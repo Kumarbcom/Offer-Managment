@@ -1,0 +1,94 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+
+export const MonthlyTargets: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+    return (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col w-full max-w-md mx-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-8">
+                <h2 className="text-lg font-semibold text-slate-800">Monthly Targets</h2>
+                <div className="flex items-center gap-2">
+                    <button className="px-3 py-1 bg-slate-50 text-slate-600 text-sm font-medium rounded-md hover:bg-slate-100 transition-colors">
+                        View All
+                    </button>
+                    {onClose && (
+                        <button onClick={onClose} className="p-1 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition-colors flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Radial Chart */}
+            <div className="relative flex justify-center items-center py-4 mb-6">
+                <svg width="240" height="240" viewBox="0 0 240 240" className="transform -rotate-90">
+                    {/* Background circles */}
+                    <circle cx="120" cy="120" r="100" fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                    <circle cx="120" cy="120" r="80" fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                    <circle cx="120" cy="120" r="60" fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                    
+                    {/* Foreground circles */}
+                    <circle cx="120" cy="120" r="100" fill="none" stroke="#5462ff" strokeWidth="12" strokeDasharray="628" strokeDashoffset="220" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    <circle cx="120" cy="120" r="80" fill="none" stroke="#e77fb3" strokeWidth="12" strokeDasharray="502" strokeDashoffset="120" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    <circle cx="120" cy="120" r="60" fill="none" stroke="#f3a4d6" strokeWidth="12" strokeDasharray="377" strokeDashoffset="240" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                </svg>
+
+                {/* Center text */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-sm font-semibold text-slate-800">Total</span>
+                    <span className="text-xl font-medium text-slate-600">249</span>
+                </div>
+            </div>
+
+            {/* Bottom Stats */}
+            <div className="bg-slate-50/80 rounded-xl p-4 flex justify-between items-center mt-auto">
+                {/* New Projects */}
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-2 h-2 rounded-full bg-[#5462ff]"></div>
+                        <span className="text-[13px] text-slate-600 font-medium">New Projects</span>
+                    </div>
+                    <span className="text-[17px] font-semibold text-slate-800 mb-1">4,896</span>
+                    <div className="flex items-center gap-1 text-[#22c55e] text-xs font-semibold">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                        </svg>
+                        3.5%
+                    </div>
+                </div>
+
+                {/* Completed */}
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-2 h-2 rounded-full bg-[#e77fb3]"></div>
+                        <span className="text-[13px] text-slate-600 font-medium">Completed</span>
+                    </div>
+                    <span className="text-[17px] font-semibold text-slate-800 mb-1">2,475</span>
+                    <div className="flex items-center gap-1 text-[#ef4444] text-xs font-semibold">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                        1.5%
+                    </div>
+                </div>
+
+                {/* Pending */}
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-2 h-2 rounded-full bg-[#f3a4d6]"></div>
+                        <span className="text-[13px] text-slate-600 font-medium">Pending</span>
+                    </div>
+                    <span className="text-[17px] font-semibold text-slate-800 mb-1">456</span>
+                    <div className="flex items-center gap-1 text-[#22c55e] text-xs font-semibold">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                        </svg>
+                        0.1%
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
