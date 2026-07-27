@@ -88,8 +88,6 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
 
-  const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
-
   useEffect(() => {
     if (globalSearch) {
       setUniversalSearchTerm(globalSearch);
