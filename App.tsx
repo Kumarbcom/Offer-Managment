@@ -175,150 +175,151 @@ export const App = () => {
     return <Login onLogin={handleLogin} users={users} isLoading={usersLoading} />;
   }
 
-  const BottomNavItem = ({ active, label, icon, onClick }: { active: boolean, label: string, icon: React.ReactNode, onClick: () => void }) => (
+  const SidebarItem = ({ active, label, icon, onClick }: { active: boolean, label: string, icon: React.ReactNode, onClick: () => void }) => (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${active ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-all ${
+        active 
+        ? 'bg-gradient-to-r from-red-500/10 to-red-500/5 text-red-600 font-bold border-l-4 border-red-500' 
+        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent font-medium'
+      }`}
     >
       {icon}
-      <span className="text-[10px] font-medium">{label}</span>
+      <span>{label}</span>
     </button>
   );
 
-  // Updated styling for header buttons with shadow and better active state
-  const headerBtnClass = (isActive: boolean) =>
-    `flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all duration-300 transform ${isActive
-      ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/40 scale-105 ring-1 ring-indigo-400/50'
-      : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-    }`;
-
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
-      {/* Top Navigation (Desktop) */}
-      <nav className="bg-slate-900 text-white shadow-xl no-print hidden md:block z-20">
-        <div className="w-full px-4">
-          <div className="flex justify-between h-12 items-center">
-            <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-1">
-              <div className="flex items-center gap-2 mr-4 shrink-0 border-r border-slate-700 pr-4">
-                {logoUrl && <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain bg-white rounded p-0.5" />}
-                <span className="font-bold text-sm tracking-wide whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-200">Siddhi Kable Corporation Pvt Ltd</span>
-              </div>
-              <button onClick={() => handleSetView('dashboard')} className={headerBtnClass(view === 'dashboard')}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
-                Dashboard
-              </button>
-              {/* Moved Quotations here */}
-              <button onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} className={headerBtnClass(view === 'quotations' || view === 'quotation-form')}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>
-                Quotations
-              </button>
-              <button onClick={() => handleSetView('customers')} className={headerBtnClass(view === 'customers')}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg>
-                Customers
-              </button>
-              <button onClick={() => handleSetView('products')} className={headerBtnClass(view === 'products')}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 01-.293.707l-4 4C.817 14.761 2.165 17.5 4.25 17.5h11.5c2.085 0 3.433-2.739 1.543-4.621l-4-4a1 1 0 01-.293-.707V4.414L13.707 3.707A1 1 0 0013 2H7zm2 6.172V4h2v4.172a3 3 0 00.879 2.12l1.027 1.028a4 4 0 00-2.171.102l-.47.156a4 4 0 01-2.53 0l-.47-.156a4 4 0 00-2.172-.102l1.027-1.028A3 3 0 009 8.172z" clipRule="evenodd" /></svg>
-                Products
-              </button>
-              <button onClick={() => handleSetView('calendar')} className={headerBtnClass(view === 'calendar')}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>
-                Calendar
-              </button>
-              {(currentUser.role === 'Admin' || currentUser.role === 'Sales Person' || currentUser.role === 'Management') && (
-                <button onClick={() => handleSetView('reports')} className={headerBtnClass(view === 'reports')}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" /><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" /></svg>
-                  Reports
-                </button>
-              )}
-              {(currentUser.role === 'Admin' || currentUser.role === 'SCM') && (
-                <>
-                  <button onClick={() => handleSetView('pending-so')} className={headerBtnClass(view === 'pending-so')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000-2H6a6 6 0 100 12H4a2 2 0 01-2-2v-4a2 2 0 012-2zm9-1a1 1 0 110 2 1 1 0 010-2zm-6 4a1 1 0 11-2 0 1 1 0 012 0zm6 0a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" /></svg>
-                    Pending SO
-                  </button>
-                </>
-              )}
-              {currentUser.role === 'Admin' && (
-                <>
-                  <button onClick={() => handleSetView('sales-persons')} className={headerBtnClass(view === 'sales-persons')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>
-                    Sales
-                  </button>
-                  <button onClick={() => handleSetView('users')} className={headerBtnClass(view === 'users')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" /></svg>
-                    Users
-                  </button>
-                </>
-              )}
-              <button onClick={() => handleSetView('user-manual')} className={headerBtnClass(view === 'user-manual')}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
-                Help
-              </button>
-              <button 
-                onClick={() => setIsStorageModalOpen(true)} 
-                className={headerBtnClass(isStorageModalOpen)}
-                title="Storage Settings"
-              >
-                <div className={`w-2 h-2 rounded-full mr-1 ${dataError ? 'bg-red-500 shadow-[0_0_5px_red]' : isLoadingData ? 'bg-amber-400 animate-pulse' : 'bg-green-400 shadow-[0_0_5px_green]'}`} title={dataError ? 'Sync Error' : isLoadingData ? 'Syncing...' : 'Connected to Cloud'} />
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" /></svg>
-                Storage
-              </button>
-
-            </div>
-            <div className="flex items-center space-x-4 ml-4 shrink-0">
-              <div className="flex flex-col items-end">
-                <span className="text-xs text-slate-400 font-medium">Logged in as</span>
-                <span className="text-xs font-bold text-white">{currentUser.name}</span>
-              </div>
-              <button onClick={() => setIsPasswordModalOpen(true)} className="text-slate-400 hover:text-white transition-colors p-1 rounded-full hover:bg-slate-800" title="Change Password">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-              </button>
-              <button onClick={handleLogout} className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg transform hover:scale-105">Logout</button>
-            </div>
+    <div className="flex h-screen bg-[#f8f9fc] overflow-hidden">
+      
+      {/* Left Sidebar (Desktop) */}
+      <aside className="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex z-20 shrink-0">
+        <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-2">
+            {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" /> : <div className="h-8 w-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold">S</div>}
+            <span className="font-bold text-slate-800 tracking-tight text-lg">Siddhi Kabel</span>
           </div>
         </div>
-      </nav>
+        
+        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2 no-scrollbar">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-4">Menu</div>
+          
+          <SidebarItem active={view === 'dashboard'} label="Dashboard" onClick={() => handleSetView('dashboard')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>} />
+          <SidebarItem active={view === 'quotations' || view === 'quotation-form'} label="Quotations" onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>} />
+          <SidebarItem active={view === 'customers'} label="Customers" onClick={() => handleSetView('customers')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>} />
+          <SidebarItem active={view === 'products'} label="Products" onClick={() => handleSetView('products')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>} />
+          <SidebarItem active={view === 'calendar'} label="Calendar" onClick={() => handleSetView('calendar')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>} />
+          
+          {(currentUser.role === 'Admin' || currentUser.role === 'Sales Person' || currentUser.role === 'Management') && (
+            <SidebarItem active={view === 'reports'} label="Reports" onClick={() => handleSetView('reports')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} />
+          )}
 
-      {/* Mobile Header */}
-      <div className="bg-slate-900 text-white p-3 flex justify-between items-center md:hidden shadow-md no-print z-10 sticky top-0">
-        <div className="flex items-center gap-2">
-          {logoUrl && <img src={logoUrl} alt="Logo" className="h-6 w-auto bg-white rounded p-0.5" />}
-          <span className="font-bold text-lg truncate max-w-[200px]">Siddhi Kabel Corp.</span>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-8 mb-2 px-4">Admin</div>
+          
+          {(currentUser.role === 'Admin' || currentUser.role === 'SCM') && (
+            <SidebarItem active={view === 'pending-so'} label="Pending SO" onClick={() => handleSetView('pending-so')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
+          )}
+          {currentUser.role === 'Admin' && (
+            <>
+              <SidebarItem active={view === 'sales-persons'} label="Sales Staff" onClick={() => handleSetView('sales-persons')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} />
+              <SidebarItem active={view === 'users'} label="Users" onClick={() => handleSetView('users')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>} />
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => handleSetView('user-manual')} className="text-slate-300 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          </button>
-          <span className="text-xs text-slate-300 truncate max-w-[80px]">{currentUser.name}</span>
-          <button onClick={handleLogout} className="text-rose-400 hover:text-rose-200">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-          </button>
+        
+        <div className="p-4 border-t border-slate-100">
+           <SidebarItem active={view === 'user-manual'} label="Help & Docs" onClick={() => handleSetView('user-manual')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
         </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        
+        {/* Top Header */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 z-10">
+          
+          {/* Left: Mobile Menu Toggle & Search */}
+          <div className="flex items-center gap-4 flex-1">
+             <div className="relative max-w-md w-full hidden md:block">
+               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                 <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+               </div>
+               <input 
+                 type="text" 
+                 placeholder="Search anything here..." 
+                 className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-full leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-red-500 focus:border-red-500 sm:text-sm transition-colors" 
+               />
+             </div>
+             
+             {/* Mobile Logo */}
+             <div className="md:hidden flex items-center gap-2">
+               {logoUrl ? <img src={logoUrl} alt="Logo" className="h-6 w-auto" /> : <div className="h-6 w-6 bg-red-600 rounded flex items-center justify-center text-white text-xs font-bold">S</div>}
+             </div>
+          </div>
+
+          {/* Right: Actions & Profile */}
+          <div className="flex items-center gap-4 shrink-0">
+            <button className="text-slate-400 hover:text-slate-600 hidden md:block">
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            </button>
+            <button className="text-slate-400 hover:text-slate-600 relative hidden md:block">
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+               <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+            </button>
+            <button onClick={() => setIsStorageModalOpen(true)} className="text-slate-400 hover:text-slate-600 relative" title="Storage Status">
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10l8 4m8-4V7l-8-4m0 10L4 7m8 4v10M4 7v10l8 4" /></svg>
+               <span className={`absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white ${dataError ? 'bg-red-500' : isLoadingData ? 'bg-amber-400' : 'bg-green-500'}`}></span>
+            </button>
+            
+            <div className="h-6 w-px bg-slate-200 hidden md:block mx-1"></div>
+
+            <div className="flex items-center gap-3">
+               <div className="hidden md:block text-right">
+                 <div className="text-sm font-bold text-slate-800 leading-none">{currentUser.name}</div>
+                 <div className="text-[10px] text-slate-500 uppercase tracking-wider">{currentUser.role}</div>
+               </div>
+               <button onClick={handleLogout} className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200 hover:bg-red-100 hover:text-red-700 hover:border-red-200 transition-colors" title="Logout">
+                 {currentUser.name.substring(0, 1)}
+               </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Scrollable Main Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 relative">
+          {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
+          {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter} currentUser={currentUser} />}
+          {view === 'products' && <ProductManager currentUser={currentUser} />}
+          {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
+          {view === 'quotations' && <QuotationManager quotations={quotations} customers={customers} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
+          {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
+          {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
+          {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
+          {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
+          {view === 'user-manual' && <UserManual />}
+          {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
+        </main>
+
       </div>
 
-      <main className="flex-grow w-full mx-auto p-2 mb-16 md:mb-0">
-        {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
-        {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter} currentUser={currentUser} />}
-        {view === 'products' && <ProductManager currentUser={currentUser} />}
-        {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}
-        {view === 'quotations' && <QuotationManager quotations={quotations} customers={customers} salesPersons={salesPersons} setEditingQuotationId={setEditingQuotationId} setView={handleSetView} setQuotations={setQuotations} currentUser={currentUser} quotationFilter={quotationFilter} onBackToCustomers={() => { setQuotationFilter(null); setView('customers'); }} />}
-        {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
-        {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
-        {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} />}
-        {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
-        {view === 'user-manual' && <UserManual />}
-        {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
-      </main>
-
       {/* Mobile Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-2px_5px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-1 md:hidden z-50 no-print">
-        <BottomNavItem active={view === 'dashboard'} label="Home" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>} onClick={() => handleSetView('dashboard')} />
-        <BottomNavItem active={view === 'quotations' || view === 'quotation-form'} label="Quote" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>} onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} />
-        <BottomNavItem active={view === 'calendar'} label="Calendar" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>} onClick={() => handleSetView('calendar')} />
-        <BottomNavItem active={isStorageModalOpen} label="Storage" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10l8 4m8-4V7l-8-4m0 10L4 7m8 4v10M4 7v10l8 4" /></svg>} onClick={() => setIsStorageModalOpen(true)} />
-        <BottomNavItem active={false} label="Back" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>} onClick={() => handleSetView('dashboard')} />
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-1 md:hidden z-50 pb-safe no-print">
+        <button onClick={() => handleSetView('dashboard')} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${view === 'dashboard' ? 'text-red-600' : 'text-slate-400'}`}>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+          <span className="text-[10px] font-medium">Home</span>
+        </button>
+        <button onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${view === 'quotations' || view === 'quotation-form' ? 'text-red-600' : 'text-slate-400'}`}>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>
+          <span className="text-[10px] font-medium">Quote</span>
+        </button>
+        <button onClick={() => handleSetView('customers')} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${view === 'customers' ? 'text-red-600' : 'text-slate-400'}`}>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+          <span className="text-[10px] font-medium">Clients</span>
+        </button>
+        <button onClick={() => handleSetView('products')} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${view === 'products' ? 'text-red-600' : 'text-slate-400'}`}>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+          <span className="text-[10px] font-medium">Products</span>
+        </button>
       </div>
 
       <PasswordChangeModal
@@ -330,16 +331,16 @@ export const App = () => {
 
       {/* Storage Management Modal */}
       {isStorageModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100"
           >
-            <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
-              <h2 className="text-lg font-bold">Storage Management</h2>
-              <button onClick={() => setIsStorageModalOpen(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            <div className="bg-white border-b border-slate-100 p-4 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-800">Storage Management</h2>
+              <button onClick={() => setIsStorageModalOpen(false)} className="text-slate-400 hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div className="p-6">
@@ -347,7 +348,7 @@ export const App = () => {
                <div className="mt-6 flex justify-end">
                    <button 
                     onClick={() => setIsStorageModalOpen(false)}
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                    className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-sm"
                    >
                        Done
                    </button>

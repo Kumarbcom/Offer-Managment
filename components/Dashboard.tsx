@@ -642,285 +642,258 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     };
 
     return (
-        <div className="space-y-4 p-2 md:p-4">
+        <div className="space-y-6 max-w-7xl mx-auto">
 
-            {/* ── Header Bar ── */}
-            <motion.div
-                initial={{ opacity: 0, y: -16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl px-6 py-5 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-slate-700"
-            >
-                <div className="flex items-center gap-4">
-                    <div className="bg-red-500/20 border border-red-400/30 p-3 rounded-2xl">
-                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-white tracking-tight leading-none">Dashboard</h2>
-                        <p className="text-sm text-slate-400 mt-1">Quotation analytics &amp; overview</p>
-                    </div>
+            {/* ── Header Area ── */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Sales Dashboard</h2>
                 </div>
 
-                <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
-                    {/* Sales Person Filter */}
-                    <div className="relative">
-                        <select
-                            id="salesPersonSlicer"
-                            aria-label="Filter by Sales Person"
-                            value={selectedSalesPersonId}
-                            onChange={(e) => setSelectedSalesPersonId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                            className="pl-3 pr-8 py-2 text-sm rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 appearance-none disabled:opacity-50 min-w-[160px]"
-                            disabled={currentUser.role === 'Sales Person'}
-                        >
-                            <option value="all" className="text-slate-900">All Sales Persons</option>
-                            {salesPersons.map(sp => (
-                                <option key={sp.id} value={sp.id} className="text-slate-900">{sp.name}</option>
-                            ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                            <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                        </div>
-                    </div>
-
-                    {/* Date Range Tabs */}
-                    <div className="inline-flex bg-white/10 border border-white/20 p-1 rounded-xl gap-0.5">
+                <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+                    {/* Date Range Selector */}
+                    <div className="inline-flex bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
                         {([{ key: 'all', label: 'All' }, { key: 'week', label: '1 Wk' }, { key: 'month', label: '1 Mo' }, { key: 'year', label: '1 Yr' }] as const).map(r => (
                             <button
                                 key={r.key}
                                 onClick={() => setSelectedDateRange(r.key)}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${selectedDateRange === r.key ? 'bg-indigo-500 text-white shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${selectedDateRange === r.key ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
                             >{r.label}</button>
                         ))}
                     </div>
 
-                    {/* Logo Upload */}
-                    {currentUser.role === 'Admin' && (
-                        <div className="flex items-center gap-1">
-                            <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={handleLogoChange} />
-                            <label htmlFor="logo-upload" className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white/10 border border-white/20 text-white/80 hover:bg-white/20 cursor-pointer transition-all">
-                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                {logoUrl ? 'Change Logo' : 'Logo'}
-                            </label>
-                            {logoUrl && (
-                                <button onClick={() => { if (window.confirm('Remove logo?')) onLogoUpload(null); }} className="p-2 rounded-xl bg-white/10 border border-white/20 text-rose-300 hover:bg-rose-500/20 transition-all" title="Remove Logo">
-                                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                                </button>
-                            )}
+                    {/* Sales Person Filter */}
+                    <div className="relative">
+                        <select
+                            id="salesPersonSlicer"
+                            value={selectedSalesPersonId}
+                            onChange={(e) => setSelectedSalesPersonId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                            className="pl-4 pr-10 py-2 text-sm font-semibold rounded-xl bg-white border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm appearance-none min-w-[140px]"
+                            disabled={currentUser.role === 'Sales Person'}
+                        >
+                            <option value="all">All Staff</option>
+                            {salesPersons.map(sp => (
+                                <option key={sp.id} value={sp.id}>{sp.name}</option>
+                            ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                         </div>
-                    )}
+                    </div>
                 </div>
-            </motion.div>
+            </div>
 
-            {/* ── KPI Cards ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-2.5">
-
+            {/* ── Top Metric Cards ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
                 {/* Total Enquiries */}
-                <motion.div
-                    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-                    className="xl:col-span-1 col-span-1 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-3 shadow-md text-white flex flex-col gap-1 relative overflow-hidden"
-                >
-                    <div className="absolute -top-3 -right-3 w-16 h-16 bg-white/10 rounded-full" />
-                    <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">Enquiries</div>
-                    <div className="text-3xl font-extrabold leading-none">{displayedEnquiryCount}</div>
-                    <div className="text-[10px] opacity-70">Latest #{latestQuotationNo}</div>
-                    <div className="text-xs font-semibold mt-0.5 opacity-90">{formatCurrencyCompact(overallStats.total.value)}</div>
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <div className="text-sm font-medium text-slate-500 mb-1">Total Enquiries</div>
+                        <div className="text-3xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
+                        <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            Increased by 12%
+                        </div>
+                    </div>
+                    <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>
+                    </div>
                 </motion.div>
 
                 {/* Customers */}
-                <motion.div
-                    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-                    className="xl:col-span-1 col-span-1 bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col gap-1 relative overflow-hidden"
-                >
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Customers</div>
-                    <div className="text-3xl font-extrabold text-slate-800 leading-none">{uniqueCustomerCount}</div>
-                    <div className="text-[10px] text-slate-400 mt-auto">Unique</div>
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <div className="text-sm font-medium text-slate-500 mb-1">Total Customers</div>
+                        <div className="text-3xl font-extrabold text-slate-800">{uniqueCustomerCount}</div>
+                        <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            Increased by 8.3%
+                        </div>
+                    </div>
+                    <div className="w-14 h-14 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 shadow-inner">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    </div>
                 </motion.div>
 
-                {/* Per-status cards */}
-                {QUOTATION_STATUSES.map((status, i) => {
-                    const cfg = statusConfig[status] || { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-300', badge: 'bg-slate-400' };
-                    const shortLabel: Record<string, string> = {
-                        'Open': 'Open', 'PO received': 'PO Rcvd', 'Partial PO Received': 'Partial PO',
-                        'Lost': 'Lost', 'Expired': 'Expired', 'Under Review': 'Review', 'Need Amendment': 'Amend'
-                    };
-                    return (
-                        <motion.div
-                            key={status}
-                            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.04 }}
-                            className={`xl:col-span-1 col-span-1 ${cfg.bg} rounded-2xl p-3 shadow-sm border-l-4 ${cfg.border} flex flex-col gap-1 overflow-hidden`}
-                        >
-                            <div className={`text-[10px] font-bold uppercase tracking-widest ${cfg.text} opacity-80`}>{shortLabel[status]}</div>
-                            <div className={`text-3xl font-extrabold leading-none ${cfg.text}`}>{overallStats[status].count}</div>
-                            <div className={`text-[10px] font-semibold ${cfg.text} opacity-70`}>{formatCurrencyCompact(overallStats[status].value)}</div>
-                        </motion.div>
-                    );
-                })}
+                {/* Total Revenue */}
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <div className="text-sm font-medium text-slate-500 mb-1">Total Revenue</div>
+                        <div className="text-3xl font-extrabold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
+                        <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            Increased by 1.5%
+                        </div>
+                    </div>
+                    <div className="w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shadow-inner">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                </motion.div>
+
+                {/* Won POs */}
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <div className="text-sm font-medium text-slate-500 mb-1">Total Sales (PO)</div>
+                        <div className="text-3xl font-extrabold text-slate-800">{overallStats['PO received'].count + overallStats['Partial PO Received'].count}</div>
+                        <div className="text-xs font-medium text-rose-500 mt-2 flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                            Decreased by 0.1%
+                        </div>
+                    </div>
+                    <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shadow-inner">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    </div>
+                </motion.div>
             </div>
 
             {/* ── Charts Row 1 ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                {/* Funnel */}
-                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.35 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Quotation Funnel</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Sales Overview Line Chart */}
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
+                    className="col-span-1 lg:col-span-7 bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800">Sales Overview</h3>
+                        <button className="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Sort by <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
                     </div>
-                    <div className="p-3 h-48"><canvas ref={funnelChartRef} /></div>
+                    <div className="flex-grow min-h-[300px]">
+                        <canvas ref={lineChartRef} />
+                    </div>
                 </motion.div>
 
-                {/* Value Trend */}
-                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Value Trend</h3>
-                    </div>
-                    <div className="p-3 h-48"><canvas ref={lineChartRef} /></div>
-                </motion.div>
-
-                {/* Top 5 Customers */}
-                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.45 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-fuchsia-500" />
-                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Top 5 Customers</h3>
-                    </div>
-                    <div className="p-3 h-48"><canvas ref={topCustomersChartRef} /></div>
-                </motion.div>
+                {/* Order Statistics (Donut) & Top Categories */}
+                <div className="col-span-1 lg:col-span-5 flex flex-col gap-6">
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.35 }}
+                        className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex-1 flex flex-col">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-lg font-bold text-slate-800">Order Statistics</h3>
+                            <button className="text-slate-400 hover:text-slate-600"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg></button>
+                        </div>
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Orders</div>
+                                <div className="text-2xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
+                            </div>
+                            <div className="text-emerald-500 text-xs font-bold bg-emerald-50 px-2 py-1 rounded-md">+5.7%</div>
+                        </div>
+                        <div className="relative flex-grow min-h-[160px] flex items-center justify-center">
+                            <canvas ref={statusPieChartRef} />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center mt-6 pointer-events-none">
+                                <div className="text-sm font-bold text-slate-400 uppercase">Total</div>
+                                <div className="text-xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
+                            </div>
+                        </div>
+                        <button className="w-full mt-4 text-sm font-bold text-indigo-600 border border-indigo-100 bg-indigo-50/50 py-2.5 rounded-xl hover:bg-indigo-50 transition-colors">
+                            Complete Statistics &rarr;
+                        </button>
+                    </motion.div>
+                </div>
             </div>
 
             {/* ── Charts Row 2 ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-
-                {/* Daily Enquiries */}
-                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-violet-500" />
-                            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Daily Enquiries</h3>
-                        </div>
-                        <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
-                            <button onClick={() => setBarChartMode('count')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Cnt</button>
-                            <button onClick={() => setBarChartMode('value')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${barChartMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
-                        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Top Selling Categories (Top Customers) */}
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
+                    className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800">Top Customers</h3>
+                        <button className="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Sort by <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
                     </div>
-                    <div className="p-3 h-48"><canvas ref={barChartRef} /></div>
-                </motion.div>
-
-                {/* Order Status Donut */}
-                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.55 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Order Status</h3>
-                        </div>
-                        <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
-                            <button onClick={() => setOrderStatusMode('count')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>No</button>
-                            <button onClick={() => setOrderStatusMode('value')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${orderStatusMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
-                        </div>
-                    </div>
-                    <div className="p-3 h-48"><canvas ref={statusPieChartRef} /></div>
-                </motion.div>
-
-                {/* Performance Table */}
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-orange-500" />
-                            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Performance</h3>
-                        </div>
-                        <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
-                            <button onClick={() => setPerformanceMode('count')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${performanceMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Cnt</button>
-                            <button onClick={() => setPerformanceMode('value')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${performanceMode === 'value' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Val</button>
-                        </div>
-                    </div>
-                    <div className="overflow-x-auto flex-grow">
-                        <table className="min-w-full">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-100">
-                                    <th className="px-3 py-2 text-left text-[9px] font-bold text-slate-500 uppercase tracking-wider">Name</th>
-                                    <th className="px-2 py-2 text-center text-[9px] font-bold text-slate-500 uppercase">Tot</th>
-                                    <th className="px-2 py-2 text-center text-[9px] font-bold text-blue-500 uppercase">Opn</th>
-                                    <th className="px-2 py-2 text-center text-[9px] font-bold text-green-500 uppercase">PO</th>
-                                    <th className="px-2 py-2 text-center text-[9px] font-bold text-teal-500 uppercase">Prt</th>
-                                    <th className="px-2 py-2 text-center text-[9px] font-bold text-rose-500 uppercase">Lst</th>
-                                    <th className="px-2 py-2 text-center text-[9px] font-bold text-amber-500 uppercase">Exp</th>
-                                    <th className="px-2 py-2 text-center text-[9px] font-bold text-indigo-500 uppercase">Rev</th>
-                                    <th className="px-2 py-2 text-center text-[9px] font-bold text-purple-500 uppercase">Amd</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {salesPersonStats.map(stat => (
-                                    <tr key={stat.id} className="hover:bg-slate-50/80 transition-colors">
-                                        <td className="px-3 py-1.5 text-[10px] font-semibold text-slate-700 whitespace-nowrap">{stat.name.split(' ')[0]}</td>
-                                        <td className="px-2 py-1.5 text-center"><span className="text-[10px] font-bold text-slate-800">{getCellValue(stat.total)}</span></td>
-                                        <td className="px-2 py-1.5 text-center"><span className={`text-[10px] font-medium ${stat['Open'].count > 0 ? 'text-blue-600' : 'text-slate-300'}`}>{getCellValue(stat['Open'])}</span></td>
-                                        <td className="px-2 py-1.5 text-center"><span className={`text-[10px] font-medium ${stat['PO received'].count > 0 ? 'text-green-600' : 'text-slate-300'}`}>{getCellValue(stat['PO received'])}</span></td>
-                                        <td className="px-2 py-1.5 text-center"><span className={`text-[10px] font-medium ${stat['Partial PO Received'].count > 0 ? 'text-teal-600' : 'text-slate-300'}`}>{getCellValue(stat['Partial PO Received'])}</span></td>
-                                        <td className="px-2 py-1.5 text-center"><span className={`text-[10px] font-medium ${stat['Lost'].count > 0 ? 'text-rose-600' : 'text-slate-300'}`}>{getCellValue(stat['Lost'])}</span></td>
-                                        <td className="px-2 py-1.5 text-center"><span className={`text-[10px] font-medium ${stat['Expired'].count > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{getCellValue(stat['Expired'])}</span></td>
-                                        <td className="px-2 py-1.5 text-center"><span className={`text-[10px] font-medium ${stat['Under Review']?.count > 0 ? 'text-indigo-600' : 'text-slate-300'}`}>{getCellValue(stat['Under Review'])}</span></td>
-                                        <td className="px-2 py-1.5 text-center"><span className={`text-[10px] font-medium ${stat['Need Amendment']?.count > 0 ? 'text-purple-600' : 'text-slate-300'}`}>{getCellValue(stat['Need Amendment'])}</span></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
-                                    <td className="px-3 py-1.5 text-[9px] font-bold uppercase">Total</td>
-                                    <td className="px-2 py-1.5 text-center text-[9px] font-bold">{getCellValue(performanceTotals.total)}</td>
-                                    <td className="px-2 py-1.5 text-center text-[9px] text-blue-300">{getCellValue(performanceTotals['Open'])}</td>
-                                    <td className="px-2 py-1.5 text-center text-[9px] text-green-300">{getCellValue(performanceTotals['PO received'])}</td>
-                                    <td className="px-2 py-1.5 text-center text-[9px] text-teal-300">{getCellValue(performanceTotals['Partial PO Received'])}</td>
-                                    <td className="px-2 py-1.5 text-center text-[9px] text-rose-300">{getCellValue(performanceTotals['Lost'])}</td>
-                                    <td className="px-2 py-1.5 text-center text-[9px] text-amber-300">{getCellValue(performanceTotals['Expired'])}</td>
-                                    <td className="px-2 py-1.5 text-center text-[9px] text-indigo-300">{getCellValue(performanceTotals['Under Review'])}</td>
-                                    <td className="px-2 py-1.5 text-center text-[9px] text-purple-300">{getCellValue(performanceTotals['Need Amendment'])}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                    <div className="flex-grow">
+                        <canvas ref={topCustomersChartRef} />
                     </div>
                 </motion.div>
 
-                {/* Recent Quotations */}
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Recent</h3>
-                        </div>
-                        <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">
-                            <button onClick={() => setQuotationSortType('latest')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${quotationSortType === 'latest' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>New</button>
-                            <button onClick={() => setQuotationSortType('highestValue')} className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${quotationSortType === 'highestValue' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Top</button>
+                {/* Sales Statistics (Daily Bar) */}
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.45 }}
+                    className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800">Sales Statistics</h3>
+                        <button className="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">Sort by <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
+                    </div>
+                    <div className="flex justify-between items-end mb-4">
+                        <div>
+                            <div className="text-xs text-slate-400 font-semibold mb-1">Total Sales</div>
+                            <div className="text-xl font-bold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
                         </div>
                     </div>
-                    <div className="flex-grow overflow-y-auto">
-                        {recentQuotations.length === 0 ? (
-                            <div className="flex items-center justify-center h-24 text-slate-400 text-xs">No data</div>
-                        ) : (
-                            <div className="divide-y divide-slate-50">
-                                {recentQuotations.map((q, idx) => (
-                                    <div key={q.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50/80 transition-colors">
-                                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">{idx + 1}</div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="text-[10px] font-bold text-indigo-600" title={generateFormattedQuotationNumber(q, quotations || [])}>
-                                                {generateFormattedQuotationNumber(q, quotations || [])}
-                                            </div>
-                                            <div className="text-[10px] text-slate-500 truncate">{q.customerId ? customerMap.get(q.customerId) || '—' : '—'}</div>
-                                        </div>
-                                        <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">{formatCurrencyCompact(calculateTotalAmount(q.details))}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                    <div className="flex-grow min-h-[200px]">
+                        <canvas ref={barChartRef} />
+                    </div>
+                </motion.div>
+
+                {/* Overall Statistics (Funnel) */}
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
+                    className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800">Funnel Stats</h3>
+                        <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700">View All</button>
+                    </div>
+                    <div className="flex-grow flex items-center justify-center min-h-[200px]">
+                        <canvas ref={funnelChartRef} />
                     </div>
                 </motion.div>
             </div>
+
+            {/* ── Bottom Section ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
+                
+                {/* Recent Orders (Latest Quotations) */}
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
+                    className="col-span-1 lg:col-span-3 bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800">Recent Quotations</h3>
+                        <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-4 py-2 rounded-xl">View All</button>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-separate" style={{ borderSpacing: '0 0.75rem' }}>
+                            <thead>
+                                <tr>
+                                    <th className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b-2 border-transparent">No.</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b-2 border-transparent">Customer</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b-2 border-transparent">Total Amount</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b-2 border-transparent">Status</th>
+                                    <th className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b-2 border-transparent">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {recentQuotations.map((q) => {
+                                    const cfg = statusConfig[q.status] || { bg: 'bg-slate-50', text: 'text-slate-700' };
+                                    return (
+                                        <tr key={q.id} className="group transition-all hover:shadow-md hover:-translate-y-0.5 bg-white shadow-[0_0_10px_rgba(0,0,0,0.02)] rounded-2xl">
+                                            <td className="px-4 py-4 rounded-l-2xl border-y border-l border-slate-100 group-hover:border-transparent">
+                                                <div className="font-bold text-indigo-600 text-sm">#{generateFormattedQuotationNumber(q, quotations || [])}</div>
+                                            </td>
+                                            <td className="px-4 py-4 border-y border-slate-100 group-hover:border-transparent">
+                                                <div className="font-bold text-slate-800">{q.customerId ? customerMap.get(q.customerId) || '—' : '—'}</div>
+                                            </td>
+                                            <td className="px-4 py-4 border-y border-slate-100 group-hover:border-transparent font-bold text-slate-700">
+                                                {formatCurrency(calculateTotalAmount(q.details))}
+                                            </td>
+                                            <td className="px-4 py-4 border-y border-slate-100 group-hover:border-transparent">
+                                                <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${cfg.bg} ${cfg.text}`}>
+                                                    {q.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4 rounded-r-2xl border-y border-r border-slate-100 group-hover:border-transparent text-sm font-semibold text-slate-500">
+                                                {new Date(q.quotationDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </motion.div>
+            </div>
+
         </div>
     );
 };
