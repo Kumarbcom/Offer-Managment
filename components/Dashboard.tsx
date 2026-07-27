@@ -730,7 +730,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 
                 {/* Total Enquiries */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex items-center justify-between">
                     <div>
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Enquiries</div>
                         <div className="text-2xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
@@ -746,7 +746,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
                 {/* Customers */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-start justify-between">
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex items-start justify-between">
                     <div className="flex-1 w-full mr-2">
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Customers</div>
                         <div className="text-2xl font-extrabold text-slate-800">{customerStats.total}</div>
@@ -773,7 +773,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
                 {/* Total Revenue */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex items-center justify-between">
                     <div>
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Revenue</div>
                         <div className="text-2xl font-extrabold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
@@ -789,7 +789,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
                 {/* Won POs */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex items-center justify-between">
                     <div>
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Sales (PO)</div>
                         <div className="text-2xl font-extrabold text-slate-800">{overallStats['PO received'].count + overallStats['Partial PO Received'].count}</div>
@@ -809,7 +809,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 
                 {/* Sales Overview Line Chart */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
-                    className="col-span-1 lg:col-span-7 bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col">
+                    className="col-span-1 lg:col-span-7 bg-white rounded-3xl shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 p-6 flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base font-bold text-slate-800">Sales Overview</h3>
                         <button className="text-[10px] font-semibold text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">Sort by <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></button>
@@ -822,7 +822,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 {/* Order Statistics (Donut) & Top Categories */}
                 <div className="col-span-1 lg:col-span-5 flex flex-col gap-6">
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.35 }}
-                        className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex-1 flex flex-col">
+                        className="bg-white rounded-3xl shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 p-6 flex-1 flex flex-col">
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-base font-bold text-slate-800">Order Statistics</h3>
                             <button className="text-slate-400 hover:text-slate-600"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg></button>
@@ -853,7 +853,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 
                 {/* Top Selling Categories (Top Customers) */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-                    className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
+                    className="bg-white rounded-3xl shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 p-6 flex flex-col h-full">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base font-bold text-slate-800">Top Customers</h3>
                     </div>
@@ -864,7 +864,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
                 {/* Sales Statistics (Daily Bar) */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.45 }}
-                    className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
+                    className="bg-white rounded-3xl shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 p-6 flex flex-col h-full">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base font-bold text-slate-800">Sales Statistics</h3>
                         <div className="inline-flex bg-slate-50 p-0.5 rounded-lg border border-slate-100">
@@ -885,7 +885,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
                 {/* Overall Statistics (Funnel) */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}
-                    className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-full">
+                    className="bg-white rounded-3xl shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 p-6 flex flex-col h-full">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base font-bold text-slate-800">Funnel Stats</h3>
                     </div>
@@ -900,7 +900,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 
                 {/* Recent Orders (Latest Quotations) */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-                    className="col-span-1 lg:col-span-3 bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+                    className="col-span-1 lg:col-span-3 bg-white rounded-3xl shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 p-6">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-base font-bold text-slate-800">Recent Quotations</h3>
                         <div className="inline-flex bg-slate-100 p-0.5 rounded-lg">

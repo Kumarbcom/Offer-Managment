@@ -210,7 +210,7 @@ export const App = () => {
       
       {/* Left Sidebar (Desktop) */}
       <motion.aside 
-        animate={{ width: isSidebarExpanded ? 256 : 80 }}
+        animate={{ width: isSidebarExpanded ? 256 : 64 }}
         transition={{ type: "spring", bounce: 0, duration: 0.3 }}
         className="bg-white border-r border-slate-200 flex-col hidden md:flex z-20 shrink-0 overflow-x-hidden"
       >
