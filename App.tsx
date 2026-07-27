@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem, PendingSO } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { SalesPersonManager } from './components/SalesPersonManager';
@@ -180,14 +180,28 @@ export const App = () => {
     <button
       onClick={onClick}
       title={!isSidebarExpanded ? label : undefined}
-      className={`flex items-center gap-2.5 py-2 mx-2 text-sm rounded-xl text-left transition-all ${
+      className={`flex items-center py-2 mx-2 text-sm rounded-xl text-left transition-colors overflow-hidden ${
         active 
         ? 'bg-gradient-to-r from-red-500/10 to-red-500/5 text-red-600 font-bold border-l-4 border-red-500' 
         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent font-medium'
       } ${isSidebarExpanded ? 'px-4' : 'px-0 justify-center'}`}
     >
-      <div className={!isSidebarExpanded ? 'mx-auto' : ''}>{icon}</div>
-      {isSidebarExpanded && <span className="truncate">{label}</span>}
+      <div className={`shrink-0 flex items-center justify-center transition-all ${isSidebarExpanded ? 'mr-3' : 'mx-auto'}`}>
+        {icon}
+      </div>
+      <AnimatePresence initial={false}>
+        {isSidebarExpanded && (
+          <motion.span 
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: 'auto' }}
+            exit={{ opacity: 0, width: 0 }}
+            transition={{ duration: 0.2 }}
+            className="truncate block whitespace-nowrap"
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </button>
   );
 
@@ -195,16 +209,38 @@ export const App = () => {
     <div className="flex h-screen bg-[#f8f9fc] overflow-hidden">
       
       {/* Left Sidebar (Desktop) */}
-      <aside className={`bg-white border-r border-slate-200 flex-col hidden md:flex z-20 shrink-0 transition-all duration-300 ${isSidebarExpanded ? 'w-64' : 'w-20'}`}>
-        <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0 overflow-hidden">
-          <div className="flex items-center gap-2">
+      <motion.aside 
+        animate={{ width: isSidebarExpanded ? 256 : 80 }}
+        transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+        className="bg-white border-r border-slate-200 flex-col hidden md:flex z-20 shrink-0 overflow-x-hidden"
+      >
+        <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0 overflow-hidden min-w-[256px]">
+          <div className="flex items-center gap-3">
             {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-full object-cover shrink-0 shadow-sm border border-slate-200" /> : <div className="h-8 w-8 bg-red-600 rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-sm">S</div>}
-            {isSidebarExpanded && <span className="font-bold text-slate-800 tracking-tight text-sm whitespace-normal leading-tight">Siddhi Kabel Corporation Pvt Ltd</span>}
+            <AnimatePresence initial={false}>
+              {isSidebarExpanded && (
+                <motion.span 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="font-bold text-slate-800 tracking-tight text-sm whitespace-normal leading-tight"
+                >
+                  Siddhi Kabel Corporation Pvt Ltd
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto py-4 space-y-1 no-scrollbar overflow-x-hidden">
-          <div className={`text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 ${isSidebarExpanded ? 'px-6' : 'text-center px-2 text-[10px]'}`}>Menu</div>
+        <div className="flex-1 overflow-y-auto py-4 space-y-1 no-scrollbar overflow-x-hidden w-full">
+          <div className="h-6 flex items-center mb-1">
+             {isSidebarExpanded ? (
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs font-bold text-slate-400 uppercase tracking-wider px-6">Menu</motion.div>
+             ) : (
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-full">•••</motion.div>
+             )}
+          </div>
           
           <SidebarItem active={view === 'dashboard'} label="Dashboard" onClick={() => handleSetView('dashboard')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>} />
           <SidebarItem active={view === 'quotations' || view === 'quotation-form'} label="Quotations" onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>} />
@@ -216,7 +252,13 @@ export const App = () => {
             <SidebarItem active={view === 'reports'} label="Reports" onClick={() => handleSetView('reports')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} />
           )}
 
-          <div className={`text-xs font-bold text-slate-400 uppercase tracking-wider mt-6 mb-1 ${isSidebarExpanded ? 'px-6' : 'text-center px-2 text-[10px]'}`}>Admin</div>
+          <div className="h-6 flex items-center mt-6 mb-1">
+             {isSidebarExpanded ? (
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs font-bold text-slate-400 uppercase tracking-wider px-6">Admin</motion.div>
+             ) : (
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center w-full">•••</motion.div>
+             )}
+          </div>
           
           {(currentUser.role === 'Admin' || currentUser.role === 'SCM') && (
             <SidebarItem active={view === 'pending-so'} label="Pending SO" onClick={() => handleSetView('pending-so')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
