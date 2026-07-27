@@ -34,6 +34,7 @@ export const App = () => {
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
   const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   const [logoUrl, setLogoUrl] = useState<string | null>(() => {
     try {
@@ -178,14 +179,15 @@ export const App = () => {
   const SidebarItem = ({ active, label, icon, onClick }: { active: boolean, label: string, icon: React.ReactNode, onClick: () => void }) => (
     <button
       onClick={onClick}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-all ${
+      title={!isSidebarExpanded ? label : undefined}
+      className={`flex items-center gap-3 py-3 mx-2 rounded-xl text-left transition-all ${
         active 
         ? 'bg-gradient-to-r from-red-500/10 to-red-500/5 text-red-600 font-bold border-l-4 border-red-500' 
         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent font-medium'
-      }`}
+      } ${isSidebarExpanded ? 'px-4' : 'px-0 justify-center'}`}
     >
-      {icon}
-      <span>{label}</span>
+      <div className={!isSidebarExpanded ? 'mx-auto' : ''}>{icon}</div>
+      {isSidebarExpanded && <span className="truncate">{label}</span>}
     </button>
   );
 
@@ -193,16 +195,16 @@ export const App = () => {
     <div className="flex h-screen bg-[#f8f9fc] overflow-hidden">
       
       {/* Left Sidebar (Desktop) */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex z-20 shrink-0">
-        <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0">
+      <aside className={`bg-white border-r border-slate-200 flex-col hidden md:flex z-20 shrink-0 transition-all duration-300 ${isSidebarExpanded ? 'w-64' : 'w-20'}`}>
+        <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0 overflow-hidden">
           <div className="flex items-center gap-2">
-            {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" /> : <div className="h-8 w-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold">S</div>}
-            <span className="font-bold text-slate-800 tracking-tight text-lg">Siddhi Kabel</span>
+            {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain shrink-0" /> : <div className="h-8 w-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold shrink-0">S</div>}
+            {isSidebarExpanded && <span className="font-bold text-slate-800 tracking-tight text-lg whitespace-nowrap">Siddhi Kabel</span>}
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2 no-scrollbar">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-4">Menu</div>
+        <div className="flex-1 overflow-y-auto py-6 space-y-2 no-scrollbar overflow-x-hidden">
+          <div className={`text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ${isSidebarExpanded ? 'px-6' : 'text-center px-2 text-[10px]'}`}>Menu</div>
           
           <SidebarItem active={view === 'dashboard'} label="Dashboard" onClick={() => handleSetView('dashboard')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>} />
           <SidebarItem active={view === 'quotations' || view === 'quotation-form'} label="Quotations" onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>} />
@@ -214,7 +216,7 @@ export const App = () => {
             <SidebarItem active={view === 'reports'} label="Reports" onClick={() => handleSetView('reports')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} />
           )}
 
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-8 mb-2 px-4">Admin</div>
+          <div className={`text-xs font-bold text-slate-400 uppercase tracking-wider mt-8 mb-2 ${isSidebarExpanded ? 'px-6' : 'text-center px-2 text-[10px]'}`}>Admin</div>
           
           {(currentUser.role === 'Admin' || currentUser.role === 'SCM') && (
             <SidebarItem active={view === 'pending-so'} label="Pending SO" onClick={() => handleSetView('pending-so')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
@@ -236,10 +238,20 @@ export const App = () => {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 z-10">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 transition-all">
           
           {/* Left: Mobile Menu Toggle & Search */}
           <div className="flex items-center gap-4 flex-1">
+             <button 
+               onClick={() => setIsSidebarExpanded(!isSidebarExpanded)} 
+               className="hidden md:flex text-slate-400 hover:bg-slate-100 p-2 rounded-xl transition-colors shrink-0"
+               title="Toggle Sidebar"
+             >
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+               </svg>
+             </button>
+             
              <div className="relative max-w-md w-full hidden md:block">
                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                  <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
