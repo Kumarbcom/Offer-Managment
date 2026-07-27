@@ -159,11 +159,53 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         });
     }, [quotations, selectedSalesPersonId, selectedDateRange, currentUser, salesPersons]);
 
-    const uniqueCustomerCount = useMemo(() => {
-        if (!filteredQuotations) return 0;
-        const customerIds = new Set(filteredQuotations.map(q => q.customerId).filter(id => id !== null));
-        return customerIds.size;
-    }, [filteredQuotations]);
+    const customerStats = useMemo(() => {
+        if (!filteredQuotations) return { total: 0, repeated: 0, oneTime: 0, newCust: 0 };
+        
+        const customerQuoteCount = new Map<number, number>();
+        const customerFirstQuoteDate = new Map<number, Date>();
+
+        quotations?.forEach(q => {
+            if (q.customerId) {
+                customerQuoteCount.set(q.customerId, (customerQuoteCount.get(q.customerId) || 0) + 1);
+                
+                const qDate = new Date(q.quotationDate);
+                if (!customerFirstQuoteDate.has(q.customerId) || qDate < customerFirstQuoteDate.get(q.customerId)!) {
+                    customerFirstQuoteDate.set(q.customerId, qDate);
+                }
+            }
+        });
+
+        const activeCustomerIds = new Set(filteredQuotations.map(q => q.customerId).filter(id => id !== null) as number[]);
+        
+        let repeated = 0;
+        let oneTime = 0;
+        let newCust = 0;
+        
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        activeCustomerIds.forEach(customerId => {
+            const count = customerQuoteCount.get(customerId) || 0;
+            if (count > 1) {
+                repeated++;
+            } else if (count === 1) {
+                oneTime++;
+            }
+            
+            const firstDate = customerFirstQuoteDate.get(customerId);
+            if (firstDate && firstDate >= thirtyDaysAgo) {
+                newCust++;
+            }
+        });
+
+        return {
+            total: activeCustomerIds.size,
+            repeated,
+            oneTime,
+            newCust
+        };
+    }, [filteredQuotations, quotations]);
 
     const latestQuotationNo = useMemo(() => {
         if (!filteredQuotations || filteredQuotations.length === 0) return '0000';
@@ -703,17 +745,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 </motion.div>
 
                 {/* Customers */}
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
-                    <div>
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-start justify-between">
+                    <div className="flex-1 w-full mr-2">
                         <div className="text-sm font-medium text-slate-500 mb-1">Total Customers</div>
-                        <div className="text-2xl font-extrabold text-slate-800">{uniqueCustomerCount}</div>
-                        <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                            Increased by 8.3%
+                        <div className="text-2xl font-extrabold text-slate-800">{customerStats.total}</div>
+                        
+                        <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-slate-100 w-full">
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-500 font-medium">Repeated</span>
+                                <span className="font-bold text-slate-700 bg-slate-50 px-1.5 rounded">{customerStats.repeated}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-500 font-medium">1 Time</span>
+                                <span className="font-bold text-slate-700 bg-slate-50 px-1.5 rounded">{customerStats.oneTime}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-emerald-600 font-medium">New (30d)</span>
+                                <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 rounded">{customerStats.newCust}</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="w-14 h-14 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 shadow-inner">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm border border-indigo-100/50">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                     </div>
                 </motion.div>
