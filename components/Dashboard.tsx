@@ -730,76 +730,90 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 
                 {/* Total Enquiries */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex items-center justify-between">
-                    <div>
-                        <div className="text-sm font-medium text-slate-500 mb-1">Total Enquiries</div>
-                        <div className="text-2xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
-                        <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                            Increased by 12%
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full">
+                    <div className="flex items-start justify-between w-full">
+                        <div>
+                            <div className="text-sm font-medium text-slate-500 mb-1">Total Enquiries</div>
+                            <div className="text-2xl font-extrabold text-slate-800">{displayedEnquiryCount}</div>
+                        </div>
+                        <div className="w-14 h-14 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>
                         </div>
                     </div>
-                    <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>
+                    <div className="mt-4 pt-4 border-t border-slate-100 w-full flex-grow flex flex-col justify-end">
+                        <div className="text-xs font-medium text-emerald-600 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            Increased by 12%
+                        </div>
                     </div>
                 </motion.div>
 
                 {/* Customers */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
-                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex items-start justify-between">
-                    <div className="flex-1 w-full mr-2">
-                        <div className="text-sm font-medium text-slate-500 mb-1">Total Customers</div>
-                        <div className="text-2xl font-extrabold text-slate-800">{customerStats.total}</div>
-                        
-                        <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-slate-100 w-full">
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="text-slate-500 font-medium">Repeated</span>
-                                <span className="font-bold text-slate-700 bg-slate-50 px-1.5 rounded">{customerStats.repeated}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="text-slate-500 font-medium">1 Time</span>
-                                <span className="font-bold text-slate-700 bg-slate-50 px-1.5 rounded">{customerStats.oneTime}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="text-emerald-600 font-medium">New (30d)</span>
-                                <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 rounded">{customerStats.newCust}</span>
-                            </div>
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full">
+                    <div className="flex items-start justify-between w-full">
+                        <div>
+                            <div className="text-sm font-medium text-slate-500 mb-1">Total Customers</div>
+                            <div className="text-2xl font-extrabold text-slate-800">{customerStats.total}</div>
+                        </div>
+                        <div className="w-14 h-14 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         </div>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm border border-indigo-100/50">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    
+                    <div className="flex flex-col gap-1.5 mt-4 pt-4 border-t border-slate-100 w-full flex-grow justify-end">
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500 font-medium">Repeated</span>
+                            <span className="font-bold text-slate-700 bg-slate-50 px-1.5 rounded">{customerStats.repeated}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500 font-medium">1 Time</span>
+                            <span className="font-bold text-slate-700 bg-slate-50 px-1.5 rounded">{customerStats.oneTime}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-emerald-600 font-medium">New (30d)</span>
+                            <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 rounded border border-emerald-100">{customerStats.newCust}</span>
+                        </div>
                     </div>
                 </motion.div>
 
                 {/* Total Revenue */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex items-center justify-between">
-                    <div>
-                        <div className="text-sm font-medium text-slate-500 mb-1">Total Revenue</div>
-                        <div className="text-2xl font-extrabold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
-                        <div className="text-xs font-medium text-emerald-500 mt-2 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                            Increased by 1.5%
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full">
+                    <div className="flex items-start justify-between w-full">
+                        <div>
+                            <div className="text-sm font-medium text-slate-500 mb-1">Total Revenue</div>
+                            <div className="text-2xl font-extrabold text-slate-800">{formatCurrencyCompact(overallStats.total.value)}</div>
+                        </div>
+                        <div className="w-14 h-14 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shadow-sm shrink-0">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
                     </div>
-                    <div className="w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shadow-inner">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div className="mt-4 pt-4 border-t border-slate-100 w-full flex-grow flex flex-col justify-end">
+                        <div className="text-xs font-medium text-emerald-600 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            Increased by 1.5%
+                        </div>
                     </div>
                 </motion.div>
 
                 {/* Won POs */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex items-center justify-between">
-                    <div>
-                        <div className="text-sm font-medium text-slate-500 mb-1">Total Sales (PO)</div>
-                        <div className="text-2xl font-extrabold text-slate-800">{overallStats['PO received'].count + overallStats['Partial PO Received'].count}</div>
-                        <div className="text-xs font-medium text-rose-500 mt-2 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-                            Decreased by 0.1%
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full">
+                    <div className="flex items-start justify-between w-full">
+                        <div>
+                            <div className="text-sm font-medium text-slate-500 mb-1">Total Sales (PO)</div>
+                            <div className="text-2xl font-extrabold text-slate-800">{overallStats['PO received'].count + overallStats['Partial PO Received'].count}</div>
+                        </div>
+                        <div className="w-14 h-14 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 shadow-sm shrink-0">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                         </div>
                     </div>
-                    <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shadow-inner">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <div className="mt-4 pt-4 border-t border-slate-100 w-full flex-grow flex flex-col justify-end">
+                        <div className="text-xs font-medium text-rose-600 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                            Decreased by 0.1%
+                        </div>
                     </div>
                 </motion.div>
             </div>
