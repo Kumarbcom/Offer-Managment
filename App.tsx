@@ -313,6 +313,14 @@ export const App = () => {
 
           {/* Right: Actions & Profile */}
           <div className="flex items-center gap-4 shrink-0">
+            <button 
+              onClick={() => { setEditingQuotationId(null); handleSetView('quotation-form'); }}
+              className="hidden md:flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              New Quotation
+            </button>
+
             <button className="text-slate-400 hover:text-slate-600 hidden md:block">
                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             </button>

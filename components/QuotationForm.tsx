@@ -1071,8 +1071,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
            <div className="flex items-center space-x-1">
                 <NavButton onClick={() => handleNavigation('first')} disabled={currentQuotationIndex <= 0}>|◀</NavButton>
                 <NavButton onClick={() => handleNavigation('prev')} disabled={currentQuotationIndex <= 0}>◀</NavButton>
-                <button onClick={() => setView('quotations')} className="bg-blue-600 hover:bg-blue-500 text-white rounded-md h-6 px-3 flex items-center justify-center font-bold text-xs" title="Back to Quotations List">
-                    Back
+                <button onClick={() => setView('quotations')} className="bg-red-500 hover:bg-red-600 text-white rounded-md h-6 px-3 flex items-center justify-center font-bold text-xs shadow-sm ml-2 mr-2" title="Close and return to Quotations">
+                    Close
                 </button>
                 <NavButton onClick={() => handleNavigation('next')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
                 <NavButton onClick={() => handleNavigation('last')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
