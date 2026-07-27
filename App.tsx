@@ -180,7 +180,7 @@ export const App = () => {
     <button
       onClick={onClick}
       title={!isSidebarExpanded ? label : undefined}
-      className={`flex items-center gap-3 py-3 mx-2 rounded-xl text-left transition-all ${
+      className={`flex items-center gap-2.5 py-2 mx-2 text-sm rounded-xl text-left transition-all ${
         active 
         ? 'bg-gradient-to-r from-red-500/10 to-red-500/5 text-red-600 font-bold border-l-4 border-red-500' 
         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent font-medium'
@@ -203,8 +203,8 @@ export const App = () => {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto py-6 space-y-2 no-scrollbar overflow-x-hidden">
-          <div className={`text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ${isSidebarExpanded ? 'px-6' : 'text-center px-2 text-[10px]'}`}>Menu</div>
+        <div className="flex-1 overflow-y-auto py-4 space-y-1 no-scrollbar overflow-x-hidden">
+          <div className={`text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 ${isSidebarExpanded ? 'px-6' : 'text-center px-2 text-[10px]'}`}>Menu</div>
           
           <SidebarItem active={view === 'dashboard'} label="Dashboard" onClick={() => handleSetView('dashboard')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>} />
           <SidebarItem active={view === 'quotations' || view === 'quotation-form'} label="Quotations" onClick={() => { setQuotationFilter(null); handleSetView('quotations'); }} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>} />
@@ -216,7 +216,7 @@ export const App = () => {
             <SidebarItem active={view === 'reports'} label="Reports" onClick={() => handleSetView('reports')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} />
           )}
 
-          <div className={`text-xs font-bold text-slate-400 uppercase tracking-wider mt-8 mb-2 ${isSidebarExpanded ? 'px-6' : 'text-center px-2 text-[10px]'}`}>Admin</div>
+          <div className={`text-xs font-bold text-slate-400 uppercase tracking-wider mt-6 mb-1 ${isSidebarExpanded ? 'px-6' : 'text-center px-2 text-[10px]'}`}>Admin</div>
           
           {(currentUser.role === 'Admin' || currentUser.role === 'SCM') && (
             <SidebarItem active={view === 'pending-so'} label="Pending SO" onClick={() => handleSetView('pending-so')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
