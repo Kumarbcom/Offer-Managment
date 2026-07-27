@@ -1062,25 +1062,21 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // Define Grid Columns based on user request
   const gridColumns = ['SL No', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount%', 'Unit Price', 'Amount', 'Stock Status', 'Air per Unit', 'Air Freight Amt', 'Air Lead Time'];
   if (!isReadOnly) gridColumns.push('');
-
   return (
     <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
       <div className="bg-white rounded-lg shadow-lg">
-        <header className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white px-4 py-3 flex justify-between items-center rounded-t-lg shadow-sm">
-           <h1 className="text-base font-extrabold uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-100">Quotation Details</h1>
-           <div className="flex items-center space-x-1">
-                <NavButton onClick={() => handleNavigation('first')} disabled={currentQuotationIndex <= 0}>|◀</NavButton>
-                <NavButton onClick={() => handleNavigation('prev')} disabled={currentQuotationIndex <= 0}>◀</NavButton>
-                <button onClick={() => setView('quotations')} className="bg-red-500 hover:bg-red-600 text-white rounded-md h-6 px-3 flex items-center justify-center font-bold text-xs shadow-sm ml-2 mr-2" title="Close and return to Quotations">
-                    Close
-                </button>
-                <NavButton onClick={() => handleNavigation('next')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
-                <NavButton onClick={() => handleNavigation('last')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
-            </div>
-        </header>
-        
-        <form onSubmit={handleSubmit} className="p-2">
-            <div className="bg-indigo-50/30 p-2 flex flex-wrap items-center gap-3 border border-indigo-100/80 mb-3 rounded-md shadow-sm">
+        <header className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white px-3 py-2 flex flex-col md:flex-row justify-between items-center rounded-t-lg shadow-sm gap-2">
+           <div className="flex items-center gap-3 w-full md:w-auto">
+               <h1 className="text-sm font-extrabold uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-100 shrink-0 hidden lg:block">Quotation</h1>
+               <div className="flex items-center space-x-1 bg-white/10 p-1 rounded-md">
+                   <NavButton onClick={() => handleNavigation('first')} disabled={currentQuotationIndex <= 0}>|◀</NavButton>
+                   <NavButton onClick={() => handleNavigation('prev')} disabled={currentQuotationIndex <= 0}>◀</NavButton>
+                   <NavButton onClick={() => handleNavigation('next')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
+                   <NavButton onClick={() => handleNavigation('last')} disabled={currentQuotationIndex < 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
+               </div>
+           </div>
+           
+           <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-end">
                 {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
                 {((!isReadOnly || userRole === 'Sales Person') && (editingQuotationId === null || formData?.id === 0)) && <ActionButton onClick={() => setIsAIPanelOpen(true)} title="AI Assistant" className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"><Icons.Sparkles /><span>AI Assist</span></ActionButton>}
                 {!isReadOnly && (
@@ -1090,48 +1086,44 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         disabled={isSubmitting}
                     >
                         {isSubmitting ? (
-                            <div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full" />
+                            <div className="animate-spin h-3 w-3 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full" />
                         ) : (
                             <Icons.Save />
                         )}
                         <span>{isSubmitting ? "Saving..." : "Save"}</span>
                     </ActionButton>
                 )}
-                <div className="h-6 border-l border-slate-300 mx-1"></div>
-                <div className="flex items-center bg-white border border-slate-200 rounded-md p-1 shadow-sm gap-1">
-                    <span className="text-[10px] font-bold text-slate-500 px-1 uppercase border-r border-slate-200 mr-1">Print:</span>
-                    <ActionButton onClick={() => handlePreview('standard')} title="Print Standard"><Icons.PrintStandard /><span>Standard</span></ActionButton>
-                    <ActionButton onClick={() => handlePreview('discounted')} title="Print Discount"><Icons.PrintDiscount /><span>Discount</span></ActionButton>
-                    <ActionButton onClick={() => handlePreview('withAirFreight')} title="Print Airfreight"><Icons.PrintAirFreight /><span>Airfreight</span></ActionButton>
+                
+                <div className="flex items-center bg-white/10 rounded-md p-0.5 gap-1 shadow-inner">
+                    <ActionButton onClick={() => handlePreview('standard')} title="Print Standard" className="px-1.5"><Icons.PrintStandard /><span className="hidden xl:inline">Std</span></ActionButton>
+                    <ActionButton onClick={() => handlePreview('discounted')} title="Print Discount" className="px-1.5"><Icons.PrintDiscount /><span className="hidden xl:inline">Disc</span></ActionButton>
+                    <ActionButton onClick={() => handlePreview('withAirFreight')} title="Print Airfreight" className="px-1.5"><Icons.PrintAirFreight /><span className="hidden xl:inline">Air</span></ActionButton>
                 </div>
-                <div className="h-6 border-l border-slate-300 mx-1"></div>
-                <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span>Export Excel</span></ActionButton>
-                <div className="h-6 border-l border-slate-300 mx-1"></div>
-                <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span>Check Stock</span></ActionButton>
-                <div className="h-6 border-l border-slate-300 mx-1"></div>
-                {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span>Customer</span></ActionButton>}
-                {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span>Product</span></ActionButton>}
-                {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span>Search</span></ActionButton>}
-                <div className="h-6 border-l border-slate-300 mx-1"></div>
+                
+                <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span className="hidden xl:inline">Excel</span></ActionButton>
+                <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span className="hidden xl:inline">Stock</span></ActionButton>
+                
+                {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span className="hidden xl:inline">Cust</span></ActionButton>}
+                {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span className="hidden xl:inline">Prod</span></ActionButton>}
+                {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span className="hidden xl:inline">Search</span></ActionButton>}
+                
                 <button
                     type="button"
                     onClick={() => setFormData(prev => prev ? { ...prev, gstAdded: !prev.gstAdded } : null)}
-                    className={`flex items-center gap-1.5 border border-slate-200 shadow-sm rounded-md px-2.5 py-1.5 text-xs font-bold transition-all transform active:scale-95 ${formData.gstAdded ? 'bg-green-600 text-white border-green-700' : 'bg-white text-black hover:bg-slate-50'}`}
+                    className={`flex items-center gap-1 border shadow-sm rounded-md px-2 py-1.5 text-xs font-bold transition-all transform active:scale-95 ${formData.gstAdded ? 'bg-green-500 text-white border-green-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
                     title="Toggle GST Added Option"
                 >
-                    {formData.gstAdded ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                        </svg>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-600">
-                            <path d="M12 7.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
-                            <path fillRule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v14.25c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 19.125V4.875zM11.25 15a3 3 0 116 0 3 3 0 01-6 0zM3.75 15a3 3 0 116 0 3 3 0 01-6 0z" clipRule="evenodd" />
-                        </svg>
-                    )}
-                    <span>GST Added</span>
+                    {formData.gstAdded && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+                    GST Added
                 </button>
-            </div>
+
+                <button onClick={() => setView('quotations')} className="bg-red-500 hover:bg-red-600 text-white border border-red-600 rounded-md h-7 px-3 flex items-center justify-center font-bold text-xs shadow-sm ml-1" title="Close and return to Quotations">
+                    Close
+                </button>
+           </div>
+        </header>
+
+        <form onSubmit={handleSubmit} className="p-2">
             
             {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs text-yellow-700">
