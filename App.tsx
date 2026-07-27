@@ -210,11 +210,11 @@ export const App = () => {
       
       {/* Left Sidebar (Desktop) */}
       <motion.aside 
-        animate={{ width: isSidebarExpanded ? 256 : 64 }}
+        animate={{ width: isSidebarExpanded ? 200 : 64 }}
         transition={{ type: "spring", bounce: 0, duration: 0.3 }}
         className="bg-white border-r border-slate-200 flex-col hidden md:flex z-20 shrink-0 overflow-x-hidden"
       >
-        <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0 overflow-hidden min-w-[256px]">
+        <div className="h-16 flex items-center px-4 md:px-5 border-b border-slate-100 shrink-0 overflow-hidden min-w-[200px]">
           <div className="flex items-center gap-3">
             {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 w-8 rounded-full object-cover shrink-0 shadow-sm border border-slate-200" /> : <div className="h-8 w-8 bg-red-600 rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-sm">S</div>}
             <AnimatePresence initial={false}>
