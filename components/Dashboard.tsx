@@ -5,6 +5,7 @@ import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
 import { generateFormattedQuotationNumber, getFinancialYear } from '../utils/quotationNumber';
+import { MonthlyTargets } from './MonthlyTargets';
 
 // Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
@@ -979,8 +980,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 </div>
             </div>
 
-            {/* ── Charts Row 2 ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ✨ Charts Row 2 ✨ */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Sales Statistics (Daily Bar) */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.45 }}
@@ -1012,6 +1013,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     <div className="flex-grow h-40 flex items-center justify-center">
                         <canvas ref={funnelChartRef} />
                     </div>
+                </motion.div>
+
+                {/* Monthly Targets */}
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.55 }}
+                    className="flex flex-col h-full">
+                    <MonthlyTargets />
                 </motion.div>
             </div>
 
