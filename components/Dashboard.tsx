@@ -1018,7 +1018,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 {/* Monthly Targets */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.55 }}
                     className="flex flex-col h-full">
-                    <MonthlyTargets />
+                    <MonthlyTargets stats={customerStats} />
                 </motion.div>
             </div>
 

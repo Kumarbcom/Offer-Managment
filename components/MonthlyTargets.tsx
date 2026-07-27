@@ -1,16 +1,32 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-export const MonthlyTargets: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+export interface CustomerStats {
+    total: number;
+    repeated: number;
+    oneTime: number;
+    newCust: number;
+}
+
+export const MonthlyTargets: React.FC<{ onClose?: () => void, stats?: CustomerStats }> = ({ onClose, stats }) => {
+    const { total = 0, repeated = 0, oneTime = 0, newCust = 0 } = stats || {};
+
+    const repeatedPct = total > 0 ? (repeated / total) * 100 : 0;
+    const oneTimePct = total > 0 ? (oneTime / total) * 100 : 0;
+    const newPct = total > 0 ? (newCust / total) * 100 : 0;
+
+    const off1 = 628 - (628 * (repeatedPct / 100));
+    const off2 = 502 - (502 * (oneTimePct / 100));
+    const off3 = 377 - (377 * (newPct / 100));
+
+    const formatPct = (val: number) => val > 0 ? `${val.toFixed(0)}%` : '';
+
     return (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col w-full max-w-md mx-auto">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col w-full max-w-md mx-auto h-full">
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-lg font-semibold text-slate-800">Customer Distribution</h2>
                 <div className="flex items-center gap-2">
-                    <button className="px-3 py-1 bg-slate-50 text-slate-600 text-sm font-medium rounded-md hover:bg-slate-100 transition-colors">
-                        View All
-                    </button>
                     {onClose && (
                         <button onClick={onClose} className="p-1 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition-colors flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -30,70 +46,49 @@ export const MonthlyTargets: React.FC<{ onClose?: () => void }> = ({ onClose }) 
                     <circle cx="120" cy="120" r="60" fill="none" stroke="#f1f5f9" strokeWidth="12" />
                     
                     {/* Foreground circles */}
-                    <circle cx="120" cy="120" r="100" fill="none" stroke="#5462ff" strokeWidth="12" strokeDasharray="628" strokeDashoffset="220" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-                    <circle cx="120" cy="120" r="80" fill="none" stroke="#e77fb3" strokeWidth="12" strokeDasharray="502" strokeDashoffset="120" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-                    <circle cx="120" cy="120" r="60" fill="none" stroke="#f3a4d6" strokeWidth="12" strokeDasharray="377" strokeDashoffset="240" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    <circle cx="120" cy="120" r="100" fill="none" stroke="#5462ff" strokeWidth="12" strokeDasharray="628" strokeDashoffset={off1} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    <circle cx="120" cy="120" r="80" fill="none" stroke="#e77fb3" strokeWidth="12" strokeDasharray="502" strokeDashoffset={off2} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    <circle cx="120" cy="120" r="60" fill="none" stroke="#f3a4d6" strokeWidth="12" strokeDasharray="377" strokeDashoffset={off3} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
                     
                     {/* Data Labels (un-rotate by 90deg) */}
                     <g transform="rotate(90 120 120)">
-                        <text x="120" y="15" fill="#5462ff" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">65%</text>
-                        <text x="120" y="35" fill="#e77fb3" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">76%</text>
-                        <text x="120" y="55" fill="#f3a4d6" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">36%</text>
+                        <text x="120" y="15" fill="#5462ff" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">{formatPct(repeatedPct)}</text>
+                        <text x="120" y="35" fill="#e77fb3" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">{formatPct(oneTimePct)}</text>
+                        <text x="120" y="55" fill="#f3a4d6" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">{formatPct(newPct)}</text>
                     </g>
                 </svg>
 
                 {/* Center text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-sm font-semibold text-slate-800">Customers</span>
-                    <span className="text-xl font-medium text-slate-600">7,827</span>
+                    <span className="text-xl font-medium text-slate-600">{total}</span>
                 </div>
             </div>
 
             {/* Bottom Stats */}
             <div className="bg-slate-50/80 rounded-xl p-4 flex justify-between items-center mt-auto">
-                {/* New Projects */}
                 <div className="flex flex-col items-center">
                     <div className="flex items-center gap-1.5 mb-1">
                         <div className="w-2 h-2 rounded-full bg-[#5462ff]"></div>
                         <span className="text-[13px] text-slate-600 font-medium text-center">Repeated<br/>Customer</span>
                     </div>
-                    <span className="text-[17px] font-semibold text-slate-800 mb-1">4,896</span>
-                    <div className="flex items-center gap-1 text-[#22c55e] text-xs font-semibold">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                        </svg>
-                        3.5%
-                    </div>
+                    <span className="text-[17px] font-semibold text-slate-800">{repeated}</span>
                 </div>
 
-                {/* Completed */}
                 <div className="flex flex-col items-center">
                     <div className="flex items-center gap-1.5 mb-1">
                         <div className="w-2 h-2 rounded-full bg-[#e77fb3]"></div>
                         <span className="text-[13px] text-slate-600 font-medium text-center">One Time<br/>Customer</span>
                     </div>
-                    <span className="text-[17px] font-semibold text-slate-800 mb-1">2,475</span>
-                    <div className="flex items-center gap-1 text-[#ef4444] text-xs font-semibold">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                        1.5%
-                    </div>
+                    <span className="text-[17px] font-semibold text-slate-800">{oneTime}</span>
                 </div>
 
-                {/* Pending */}
                 <div className="flex flex-col items-center">
                     <div className="flex items-center gap-1.5 mb-1">
                         <div className="w-2 h-2 rounded-full bg-[#f3a4d6]"></div>
                         <span className="text-[13px] text-slate-600 font-medium text-center">New<br/>Customer</span>
                     </div>
-                    <span className="text-[17px] font-semibold text-slate-800 mb-1">456</span>
-                    <div className="flex items-center gap-1 text-[#22c55e] text-xs font-semibold">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                        </svg>
-                        0.1%
-                    </div>
+                    <span className="text-[17px] font-semibold text-slate-800">{newCust}</span>
                 </div>
             </div>
         </div>
