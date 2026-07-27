@@ -6,7 +6,7 @@ export const MonthlyTargets: React.FC<{ onClose?: () => void }> = ({ onClose }) 
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col w-full max-w-md mx-auto">
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
-                <h2 className="text-lg font-semibold text-slate-800">Monthly Targets</h2>
+                <h2 className="text-lg font-semibold text-slate-800">Customer Distribution</h2>
                 <div className="flex items-center gap-2">
                     <button className="px-3 py-1 bg-slate-50 text-slate-600 text-sm font-medium rounded-md hover:bg-slate-100 transition-colors">
                         View All
@@ -33,12 +33,19 @@ export const MonthlyTargets: React.FC<{ onClose?: () => void }> = ({ onClose }) 
                     <circle cx="120" cy="120" r="100" fill="none" stroke="#5462ff" strokeWidth="12" strokeDasharray="628" strokeDashoffset="220" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
                     <circle cx="120" cy="120" r="80" fill="none" stroke="#e77fb3" strokeWidth="12" strokeDasharray="502" strokeDashoffset="120" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
                     <circle cx="120" cy="120" r="60" fill="none" stroke="#f3a4d6" strokeWidth="12" strokeDasharray="377" strokeDashoffset="240" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                    
+                    {/* Data Labels (un-rotate by 90deg) */}
+                    <g transform="rotate(90 120 120)">
+                        <text x="120" y="15" fill="#5462ff" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">65%</text>
+                        <text x="120" y="35" fill="#e77fb3" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">76%</text>
+                        <text x="120" y="55" fill="#f3a4d6" fontSize="12" fontWeight="bold" dominantBaseline="middle" textAnchor="middle">36%</text>
+                    </g>
                 </svg>
 
                 {/* Center text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-sm font-semibold text-slate-800">Total</span>
-                    <span className="text-xl font-medium text-slate-600">249</span>
+                    <span className="text-sm font-semibold text-slate-800">Customers</span>
+                    <span className="text-xl font-medium text-slate-600">7,827</span>
                 </div>
             </div>
 
@@ -48,7 +55,7 @@ export const MonthlyTargets: React.FC<{ onClose?: () => void }> = ({ onClose }) 
                 <div className="flex flex-col items-center">
                     <div className="flex items-center gap-1.5 mb-1">
                         <div className="w-2 h-2 rounded-full bg-[#5462ff]"></div>
-                        <span className="text-[13px] text-slate-600 font-medium">New Projects</span>
+                        <span className="text-[13px] text-slate-600 font-medium text-center">Repeated<br/>Customer</span>
                     </div>
                     <span className="text-[17px] font-semibold text-slate-800 mb-1">4,896</span>
                     <div className="flex items-center gap-1 text-[#22c55e] text-xs font-semibold">
@@ -63,7 +70,7 @@ export const MonthlyTargets: React.FC<{ onClose?: () => void }> = ({ onClose }) 
                 <div className="flex flex-col items-center">
                     <div className="flex items-center gap-1.5 mb-1">
                         <div className="w-2 h-2 rounded-full bg-[#e77fb3]"></div>
-                        <span className="text-[13px] text-slate-600 font-medium">Completed</span>
+                        <span className="text-[13px] text-slate-600 font-medium text-center">One Time<br/>Customer</span>
                     </div>
                     <span className="text-[17px] font-semibold text-slate-800 mb-1">2,475</span>
                     <div className="flex items-center gap-1 text-[#ef4444] text-xs font-semibold">
@@ -78,7 +85,7 @@ export const MonthlyTargets: React.FC<{ onClose?: () => void }> = ({ onClose }) 
                 <div className="flex flex-col items-center">
                     <div className="flex items-center gap-1.5 mb-1">
                         <div className="w-2 h-2 rounded-full bg-[#f3a4d6]"></div>
-                        <span className="text-[13px] text-slate-600 font-medium">Pending</span>
+                        <span className="text-[13px] text-slate-600 font-medium text-center">New<br/>Customer</span>
                     </div>
                     <span className="text-[17px] font-semibold text-slate-800 mb-1">456</span>
                     <div className="flex items-center gap-1 text-[#22c55e] text-xs font-semibold">

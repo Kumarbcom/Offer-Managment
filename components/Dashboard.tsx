@@ -470,31 +470,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             'Veeresh': '#10b981', // Emerald
         };
 
-        const dailyData = filteredQuotations.reduce((acc, q) => {
+        const monthlyData = filteredQuotations.reduce((acc, q) => {
             if (!q.quotationDate) return acc;
             const d = new Date(q.quotationDate);
             if (isNaN(d.getTime())) return acc;
 
-            const dateStr = q.quotationDate;
+            const monthStr = q.quotationDate.substring(0, 7); // YYYY-MM
             const spName = salesPersons.find(sp => sp.id === q.salesPersonId)?.name || 'Unknown';
-            if (!acc[dateStr]) acc[dateStr] = {};
+            if (!acc[monthStr]) acc[monthStr] = {};
             const valueToAdd = barChartMode === 'count' ? 1 : calculateTotalAmount(q.details);
-            acc[dateStr][spName] = (acc[dateStr][spName] || 0) + valueToAdd;
+            acc[monthStr][spName] = (acc[monthStr][spName] || 0) + valueToAdd;
             return acc;
         }, {} as Record<string, Record<string, number>>);
 
-        const sortedDates = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-        const compactLabels = sortedDates.map(dateStr => {
-            const [y, m, d] = dateStr.split('-').map(Number);
-            const date = new Date(y, m - 1, d);
-            const day = d.toString().padStart(2, '0');
+        const sortedMonths = Object.keys(monthlyData).sort((a, b) => new Date(`${a}-01`).getTime() - new Date(`${b}-01`).getTime());
+        const compactLabels = sortedMonths.map(monthStr => {
+            const [y, m] = monthStr.split('-').map(Number);
+            const date = new Date(y, m - 1, 1);
             const month = date.toLocaleString('default', { month: 'short' });
-            return `${day}-${month}`;
+            const year = y.toString().substring(2);
+            return `${month}-${year}`;
         });
 
         const datasets = salesPersons.map(sp => ({
             label: sp.name,
-            data: sortedDates.map(date => dailyData[date][sp.name] || 0),
+            data: sortedMonths.map(month => monthlyData[month][sp.name] || 0),
             backgroundColor: vibrantColors[sp.name] || '#cbd5e1',
             borderRadius: 4,
             barPercentage: 0.7
