@@ -767,7 +767,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             }
         });
         return () => chartInstance.destroy();
-    }, [filteredQuotations, customers]);
+    }, [filteredQuotations]);
 
 
     const dateRanges: { key: 'all' | 'week' | 'month' | 'year'; label: string }[] = [
