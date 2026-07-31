@@ -153,6 +153,21 @@ const FormField: React.FC<{ label: string; children: React.ReactNode; className?
     </div>
 );
 
+const isDiscountExceeded = (item: QuotationItem): boolean => {
+    const disc = parseFloat(String(item.discount)) || 0;
+    const desc = item.description?.toLowerCase() || '';
+    const partNo = item.partNo || '';
+
+    if (item.priceSource === 'SP' && disc >= 0) return true;
+    if (desc.includes('classic 110') && disc > 50) return true;
+    if (desc.includes('uniplus') && disc > 45) return true;
+    if (desc.includes('100 i') && disc > 40) return true;
+    if ((partNo.startsWith('5') || partNo.startsWith('6')) && disc > 40) return true;
+    if (desc.includes('control 110') && disc > 40) return true;
+
+    return false;
+};
+
 export const QuotationForm: React.FC<QuotationFormProps> = ({
   salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl
 }) => {
@@ -1172,6 +1187,12 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
         <form onSubmit={handleSubmit} className="p-2">
             
+            {(formData?.details || []).some(isDiscountExceeded) && (
+                <div className="bg-red-100 border-l-4 border-red-500 p-2 mb-2 text-xs text-red-700">
+                    <p className="font-bold">Discount more than approved limit Pls cross check before sending</p>
+                </div>
+            )}
+            
             {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs text-yellow-700">
                     <p className="font-bold">View Only Mode</p>
@@ -1241,6 +1262,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         const amount = unitPrice * (item.moq || 0); 
                         const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) : 0; 
                         const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
+                        const limitExceeded = isDiscountExceeded(item);
                         const currentProduct = fetchedProducts.get(item.productId);
                         const optionsForSelect = [...searchedProducts];
                         if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
@@ -1312,7 +1334,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     onChange={e => handleItemChange(index, 'discount', e.target.value)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
                                     onFocus={(e) => e.target.select()}
-                                    className="w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
+                                    className={`w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs ${limitExceeded ? 'bg-red-500 text-white print:bg-transparent print:text-black font-bold' : 'text-black'}`}
                                     disabled={isReadOnly}
                                 />
                             </td>
