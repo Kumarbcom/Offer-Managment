@@ -88,7 +88,10 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
             const row = normalizeKeys(rawRow); // Normalize keys: 'Name of Item' -> 'nameofitem'
             
             const orderNo = row['order'] || row['orderno'] || row['orderno.'] || '';
-            if (!orderNo) return null;
+            const itemNameStr = String(row['description'] || row['nameofitem'] || row['itemname'] || row['materialdescription'] || '').trim();
+            const descLower = itemNameStr.toLowerCase();
+            
+            if (!orderNo || descLower.includes('cutting charge') || descLower.includes('not in range')) return null;
             
             return {
                 id: generateUUID(),

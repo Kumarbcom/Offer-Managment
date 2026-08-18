@@ -45,8 +45,9 @@ export const StockManager: React.FC<StockManagerProps> = ({ stockStatements, set
         const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
         const newItems: StockItem[] = json.map((row): StockItem | null => {
-            const desc = row['Description'] || row['description'] || '';
-            if (!desc) return null;
+            const descStr = String(row['Description'] || row['description'] || '').trim();
+            const descLower = descStr.toLowerCase();
+            if (!descStr || descLower.includes('cutting charge') || descLower.includes('not in range')) return null;
             return {
                 id: generateUUID(),
                 description: String(desc),

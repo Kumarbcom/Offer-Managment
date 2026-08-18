@@ -283,6 +283,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
               
               // Identify rows with price updates
               const rowsWithUpdates = json.filter(row => {
+                  const desc = String(row['Description'] || '').toLowerCase();
+                  if (desc.includes('cutting charge') || desc.includes('not in range')) {
+                      return false;
+                  }
                   const newLP = parseFloat(row['New LP']);
                   const newSP = parseFloat(row['New SP']);
                   return (!isNaN(newLP) && newLP > 0) || (!isNaN(newSP) && newSP > 0);
@@ -392,6 +396,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         const productsByPartNo: Record<string, any[]> = {};
         json.forEach(row => {
           const partNo = String(row['PartNo'] || '').trim();
+          const desc = String(row['Description'] || '').toLowerCase();
+          
+          if (desc.includes('cutting charge') || desc.includes('not in range')) {
+            return; // Skip this product
+          }
+
           if (partNo) {
             if (!productsByPartNo[partNo]) productsByPartNo[partNo] = [];
             productsByPartNo[partNo].push(row);

@@ -158,7 +158,10 @@ const isDiscountExceeded = (item: QuotationItem): boolean => {
     const desc = item.description?.toLowerCase() || '';
     const partNo = item.partNo || '';
 
+    if (desc.includes('cutting charge') || desc.includes('not in range')) return false;
+
     if (item.priceSource === 'SP' && disc >= 0) return true;
+    
     if (desc.includes('classic 110') && disc > 50) return true;
     if (desc.includes('uniplus') && disc > 45) return true;
     if (desc.includes('100 i') && disc > 40) return true;
