@@ -40,9 +40,9 @@ export const App = () => {
 
   const [logoUrl, setLogoUrl] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('company_logo') || 'https://siddhikabel.com/images/logo.png';
+      return localStorage.getItem('company_logo') || 'https://siddhikabel.com/images/favicon.png';
     } catch (e) {
-      return 'https://siddhikabel.com/images/logo.png';
+      return 'https://siddhikabel.com/images/favicon.png';
     }
   });
 

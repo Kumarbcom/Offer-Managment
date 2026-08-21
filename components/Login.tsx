@@ -35,9 +35,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
           
           <div className="text-center space-y-4">
             <img 
-              src="https://siddhikabel.com/images/logo.png" 
-              alt="Siddhi Kabel Corporation Pvt Ltd" 
-              className="h-16 mx-auto mb-8"
+              src="https://siddhikabel.com/images/favicon.png" 
+              alt="Siddhi Kabel Logo" 
+              className="h-16 mx-auto mb-4"
             />
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Welcome back</h2>
             <p className="text-slate-500 text-sm">Please enter your details to access your account.</p>
