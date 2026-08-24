@@ -61,7 +61,9 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
     }, { totalAmount: 0, totalFreight: 0 });
 
     const gstAmount = quotation.gstAdded ? (totals.totalAmount + totals.totalFreight) * 0.18 : 0;
-    const grandTotal = totals.totalAmount + totals.totalFreight + gstAmount;
+    const exactTotal = totals.totalAmount + totals.totalFreight + gstAmount;
+    const grandTotal = Math.round(exactTotal);
+    const roundOff = grandTotal - exactTotal;
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
     const getPartNoLink = (partNo: string) => {
@@ -197,6 +199,12 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                             <div className="flex justify-between text-[10px] text-slate-600">
                                 <span className="font-semibold">GST 18%</span>
                                 <span className="font-bold">₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+                        {roundOff !== 0 && (
+                            <div className="flex justify-between text-[10px] text-slate-600">
+                                <span className="font-semibold">Round Off</span>
+                                <span className="font-bold">{roundOff > 0 ? '+' : ''}{roundOff.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                         )}
                         <div className="h-px bg-slate-200 my-1"></div>

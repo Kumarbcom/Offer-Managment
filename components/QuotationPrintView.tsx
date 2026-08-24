@@ -53,7 +53,9 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
     }, 0);
 
     const gstAmount = quotation.gstAdded ? subTotal * 0.18 : 0;
-    const grandTotal = subTotal + gstAmount;
+    const exactTotal = subTotal + gstAmount;
+    const grandTotal = Math.round(exactTotal);
+    const roundOff = grandTotal - exactTotal;
 
     const preparerDesignation = PREPARER_DESIGNATIONS[quotation.preparedBy] || 'Authorised Signatory';
 
@@ -173,6 +175,12 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                                     <span className="font-semibold">GST 18%</span>
                                     <span className="font-bold">₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
+                                {roundOff !== 0 && (
+                                    <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+                                        <span className="font-semibold">Round Off</span>
+                                        <span className="font-bold">{roundOff > 0 ? '+' : ''}{roundOff.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                )}
                                 <div className="h-px bg-slate-200 my-1"></div>
                                 <div className="flex justify-between text-slate-900">
                                     <span className="font-bold text-xs">Grand Total</span>
@@ -182,10 +190,16 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                         )}
                         {!quotation.gstAdded && (
                             <>
+                                {roundOff !== 0 && (
+                                    <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+                                        <span className="font-semibold">Round Off</span>
+                                        <span className="font-bold">{roundOff > 0 ? '+' : ''}{roundOff.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                )}
                                 <div className="h-px bg-slate-200 my-1"></div>
                                 <div className="flex justify-between text-slate-900">
                                     <span className="font-bold text-xs">Total Amount</span>
-                                    <span className="font-black text-sm text-slate-700">₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="font-black text-sm text-slate-700">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             </>
                         )}

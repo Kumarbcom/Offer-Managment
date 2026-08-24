@@ -1075,9 +1075,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }, { moq: 0, req: 0, amount: 0, airFreightAmount: 0 });
 
       const gstAmount = formData.gstAdded ? (baseTotals.amount + baseTotals.airFreightAmount) * 0.18 : 0;
-      const grandTotal = baseTotals.amount + baseTotals.airFreightAmount + gstAmount;
+      const exactTotal = baseTotals.amount + baseTotals.airFreightAmount + gstAmount;
+      const grandTotal = Math.round(exactTotal);
+      const roundOff = grandTotal - exactTotal;
 
-      return { ...baseTotals, gstAmount, grandTotal };
+      return { ...baseTotals, gstAmount, grandTotal, roundOff };
   }, [formData]);
 
   const selectedSalesPerson = useMemo(() => salesPersons.find(sp => sp.id === formData?.salesPersonId), [salesPersons, formData?.salesPersonId]);
@@ -1547,6 +1549,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               <div>Amount: <span className="font-bold text-green-400 ml-1">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
               <div>Air Freight: <span className="font-bold text-blue-400 ml-1">{totals.airFreightAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
               {formData.gstAdded && <div>GST (18%): <span className="font-bold text-teal-400 ml-1">{totals.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>}
+              {totals.roundOff !== 0 && <div>Round Off: <span className="font-bold text-orange-400 ml-1">{totals.roundOff > 0 ? '+' : ''}{totals.roundOff.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>}
               <div className="border-l border-slate-600 pl-4">Grand Total: <span className="font-bold text-white text-sm ml-1">{totals.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
           </div>
       </div>
