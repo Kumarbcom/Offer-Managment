@@ -11,6 +11,7 @@ import { Dashboard } from './components/Dashboard';
 import { Login } from './components/Login';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { UserManager } from './components/UserManager';
+import { DEFAULT_LOGO_BASE64 } from './constants';
 import { Reports } from './components/Reports';
 import { CalendarView } from './components/CalendarView';
 import { UserManual } from './components/UserManual';
@@ -40,9 +41,9 @@ export const App = () => {
 
   const [logoUrl, setLogoUrl] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('company_logo') || 'https://siddhikabel.com/images/favicon.png';
+      return localStorage.getItem('company_logo') || DEFAULT_LOGO_BASE64;
     } catch (e) {
-      return 'https://siddhikabel.com/images/favicon.png';
+      return DEFAULT_LOGO_BASE64;
     }
   });
 

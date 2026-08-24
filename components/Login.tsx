@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { User } from '../types';
+import { DEFAULT_LOGO_BASE64 } from '../constants';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -35,7 +36,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
           
           <div className="text-center space-y-4">
             <img 
-              src="https://siddhikabel.com/images/favicon.png" 
+              src={DEFAULT_LOGO_BASE64}
               alt="Siddhi Kabel Logo" 
               className="h-16 mx-auto mb-4"
             />

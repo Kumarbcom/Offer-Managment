@@ -1,0 +1,1 @@
+﻿const https = require('https'); https.get('https://siddhikabel.com/images/favicon.png', (res) => { const data = []; res.on('data', chunk => data.push(chunk)); res.on('end', () => { const b64 = Buffer.concat(data).toString('base64'); require('fs').writeFileSync('src_constants_logo.ts', 'export const DEFAULT_LOGO_BASE64 = \data:image/png;base64,' + b64 + '\;\n'); }); });

@@ -831,6 +831,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               []
           ];
 
+          const totalCols = exportType === 'withAirFreight' || exportType === 'discounted' ? 11 : 9;
+
           headerRowsArr.forEach((r, idx) => {
               const row = worksheet.addRow(r);
               row.eachCell(cell => {
@@ -839,24 +841,34 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                   else cell.font = baseFont;
                   cell.alignment = { horizontal: 'center' };
               });
-              if (idx <= 5) worksheet.mergeCells(row.number, 1, row.number, 11);
+              if (idx <= 5) worksheet.mergeCells(row.number, 1, row.number, totalCols);
           });
 
           // 4. CUSTOMER & QUOTATION DETAILS
           const detailRowsArr = [
-              ["BILLED TO:", "", "", "", "", "", "", "", "Quotation No:", qtnNo],
-              [selectedCustomerObj.name, "", "", "", "", "", "", "", "Date:", dateStr],
-              [selectedCustomerObj.address, "", "", "", "", "", "", "", "Enquiry Date:", new Date(formData.enquiryDate).toLocaleDateString('en-GB')],
-              [`${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`, "", "", "", "", "", "", "", "Sales Person:", salesPersons.find(sp => sp.id === formData.salesPersonId)?.name || 'N/A'],
-              [`Attn: ${formData.contactPerson} (${formData.contactNumber})`, "", "", "", "", "", "", "", "", ""]
+              ["BILLED TO:", "Quotation No:", qtnNo],
+              [selectedCustomerObj.name, "Date:", dateStr],
+              [selectedCustomerObj.address, "Enquiry Date:", new Date(formData.enquiryDate).toLocaleDateString('en-GB')],
+              [`${selectedCustomerObj.city} - ${selectedCustomerObj.pincode}`, "Sales Person:", salesPersons.find(sp => sp.id === formData.salesPersonId)?.name || 'N/A'],
+              [`Attn: ${formData.contactPerson} (${formData.contactNumber})`, "", ""]
           ];
 
           detailRowsArr.forEach((r, idx) => {
-              const row = worksheet.addRow(r);
-              row.eachCell((cell, colNumber) => {
-                  cell.font = (idx === 0 && colNumber <= 1) || colNumber >= 9 ? headerFont : baseFont;
-                  if (colNumber >= 9) cell.alignment = { horizontal: 'right' };
-              });
+              const rowData = new Array(totalCols).fill("");
+              rowData[0] = r[0]; // Billed To side
+              rowData[totalCols - 2] = r[1]; // Quotation labels
+              rowData[totalCols - 1] = r[2]; // Quotation values
+              
+              const row = worksheet.addRow(rowData);
+              
+              worksheet.mergeCells(row.number, 1, row.number, totalCols - 3);
+
+              row.getCell(1).font = (idx === 0) ? headerFont : baseFont;
+              row.getCell(totalCols - 1).font = headerFont;
+              row.getCell(totalCols).font = baseFont;
+              
+              row.getCell(totalCols - 1).alignment = { horizontal: 'right' };
+              row.getCell(totalCols).alignment = { horizontal: 'right' };
           });
           worksheet.addRow([]); // Gap
 
@@ -937,30 +949,45 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           worksheet.addRow([]);
           
           const createSummaryRow = (label: string, formula: string) => {
-              const rowData = new Array(totalColIndex).fill("");
-              rowData[totalColIndex - 2] = label;
-              rowData[totalColIndex - 1] = { formula };
-              return worksheet.addRow(rowData);
+              const rowData = new Array(totalCols).fill("");
+              rowData[totalCols - 4] = label; // Place label in F (if 9 cols)
+              rowData[totalCols - 1] = { formula }; // Place value in I (if 9 cols)
+              const row = worksheet.addRow(rowData);
+              // Merge from F to H (if 9 cols) for the label so it doesn't clip
+              worksheet.mergeCells(row.number, totalCols - 3, row.number, totalCols - 1);
+              
+              row.getCell(totalCols - 3).alignment = { horizontal: 'right' };
+              row.getCell(totalCols).alignment = { horizontal: 'right' };
+              return row;
           };
 
           const subtotalRow = createSummaryRow("SUBTOTAL:", `ROUND(SUM(${totalColChar}${startDataRow}:${totalColChar}${lastDataRow}), 2)`);
-          subtotalRow.getCell(totalColIndex - 1).font = headerFont;
-          subtotalRow.getCell(totalColIndex).numFmt = '#,##0.00';
-          subtotalRow.getCell(totalColIndex).font = headerFont;
+          subtotalRow.getCell(totalCols - 3).font = headerFont;
+          subtotalRow.getCell(totalCols).numFmt = '#,##0.00';
+          subtotalRow.getCell(totalCols).font = headerFont;
 
           if (formData.gstAdded) {
               const gstRow = createSummaryRow("GST 18%:", `ROUND(${totalColChar}${subtotalRow.number}*0.18, 2)`);
-              gstRow.getCell(totalColIndex - 1).font = headerFont;
-              gstRow.getCell(totalColIndex).numFmt = '#,##0.00';
+              gstRow.getCell(totalCols - 3).font = headerFont;
+              gstRow.getCell(totalCols).numFmt = '#,##0.00';
 
               const roundOffRow = createSummaryRow("Round Off:", `ROUND(${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number}, 0) - (${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number})`);
-              roundOffRow.getCell(totalColIndex - 1).font = headerFont;
-              roundOffRow.getCell(totalColIndex).numFmt = '#,##0.00';
+              roundOffRow.getCell(totalCols - 3).font = headerFont;
+              roundOffRow.getCell(totalCols).numFmt = '#,##0.00';
 
               const grandTotalRow = createSummaryRow("GRAND TOTAL:", `ROUND(${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number}, 0)`);
-              grandTotalRow.getCell(totalColIndex - 1).font = titleFont;
-              grandTotalRow.getCell(totalColIndex).numFmt = '#,##0.00';
-              grandTotalRow.getCell(totalColIndex).font = titleFont;
+              grandTotalRow.getCell(totalCols - 3).font = titleFont;
+              grandTotalRow.getCell(totalCols).numFmt = '#,##0.00';
+              grandTotalRow.getCell(totalCols).font = titleFont;
+          } else {
+              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${totalColChar}${subtotalRow.number}, 0) - ${totalColChar}${subtotalRow.number}`);
+              roundOffRow.getCell(totalCols - 3).font = headerFont;
+              roundOffRow.getCell(totalCols).numFmt = '#,##0.00';
+
+              const grandTotalRow = createSummaryRow("TOTAL AMOUNT:", `ROUND(${totalColChar}${subtotalRow.number}, 0)`);
+              grandTotalRow.getCell(totalCols - 3).font = titleFont;
+              grandTotalRow.getCell(totalCols).numFmt = '#,##0.00';
+              grandTotalRow.getCell(totalCols).font = titleFont;
           }
 
           // 8. FOOTER (Words & Terms)
@@ -976,7 +1003,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           const fGrand = formData.gstAdded ? Math.round(fSub * 1.18) : Math.round(fSub);
           wordsRow.getCell(2).value = numberToWords(fGrand);
           wordsRow.getCell(2).font = baseFont;
-          worksheet.mergeCells(wordsRow.number, 2, wordsRow.number, 11);
+          worksheet.mergeCells(wordsRow.number, 2, wordsRow.number, totalCols);
 
           worksheet.addRow([]);
           worksheet.addRow(["Terms & Conditions:"]).getCell(1).font = headerFont;
@@ -993,20 +1020,24 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           termsArr.forEach(t => {
               const row = worksheet.addRow([t]);
               row.getCell(1).font = baseFont;
-              worksheet.mergeCells(row.number, 1, row.number, 11); // Span across all columns
+              worksheet.mergeCells(row.number, 1, row.number, totalCols); // Span across all columns
           });
 
           worksheet.addRow([]);
           worksheet.addRow([]);
-          const signTitle = worksheet.addRow(["", "", "", "", "", "For SIDDHI KABEL CORPORATION PVT LTD,"]);
-          signTitle.getCell(6).font = headerFont;
-          worksheet.mergeCells(signTitle.number, 6, signTitle.number, 11);
+          const signTitleArr = new Array(totalCols).fill("");
+          signTitleArr[totalCols - 4] = "For SIDDHI KABEL CORPORATION PVT LTD,";
+          const signTitle = worksheet.addRow(signTitleArr);
+          signTitle.getCell(totalCols - 3).font = headerFont;
+          worksheet.mergeCells(signTitle.number, totalCols - 3, signTitle.number, totalCols);
           
           worksheet.addRow([]);
           worksheet.addRow([]);
-          const signBottom = worksheet.addRow(["", "", "", "", "", "Authorised Signatory"]);
-          signBottom.getCell(6).font = headerFont;
-          worksheet.mergeCells(signBottom.number, 6, signBottom.number, 11);
+          const signBottomArr = new Array(totalCols).fill("");
+          signBottomArr[totalCols - 4] = "Authorised Signatory";
+          const signBottom = worksheet.addRow(signBottomArr);
+          signBottom.getCell(totalCols - 3).font = headerFont;
+          worksheet.mergeCells(signBottom.number, totalCols - 3, signBottom.number, totalCols);
 
           // Page Setup to Fit to Page
           worksheet.pageSetup = {
