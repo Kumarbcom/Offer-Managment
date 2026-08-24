@@ -784,8 +784,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           ];
 
           const baseFont = { name: 'Cambria', size: 10 };
-          const titleFont = { name: 'Cambria', size: 14, bold: true };
+          const titleFont = { name: 'Cambria', size: 14, bold: true, color: { argb: 'FF1E3A8A' } };
           const headerFont = { name: 'Cambria', size: 10, bold: true };
+          const quotationTitleFont = { name: 'Cambria', size: 12, bold: true, underline: true };
 
           // 2. LOGO
           if (logoUrl) {
@@ -833,7 +834,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           headerRowsArr.forEach((r, idx) => {
               const row = worksheet.addRow(r);
               row.eachCell(cell => {
-                  cell.font = idx === 0 ? titleFont : baseFont;
+                  if (idx === 0) cell.font = titleFont;
+                  else if (idx === 5) cell.font = quotationTitleFont;
+                  else cell.font = baseFont;
                   cell.alignment = { horizontal: 'center' };
               });
               if (idx <= 5) worksheet.mergeCells(row.number, 1, row.number, 11);
@@ -929,22 +932,35 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           // 7. SUMMARY
           const lastDataRow = worksheet.lastRow!.number;
           const totalColChar = exportType === 'withAirFreight' || exportType === 'discounted' ? 'J' : 'H';
+          const totalColIndex = exportType === 'withAirFreight' || exportType === 'discounted' ? 10 : 8;
           
           worksheet.addRow([]);
-          const subtotalRow = worksheet.addRow(["", "", "", "", "", "", "", "SUBTOTAL:", { formula: `ROUND(SUM(${totalColChar}${startDataRow}:${totalColChar}${lastDataRow}), 2)` }]);
-          subtotalRow.getCell(8).font = headerFont;
-          subtotalRow.getCell(9).numFmt = '#,##0.00';
-          subtotalRow.getCell(9).font = headerFont;
+          
+          const createSummaryRow = (label: string, formula: string) => {
+              const rowData = new Array(totalColIndex).fill("");
+              rowData[totalColIndex - 2] = label;
+              rowData[totalColIndex - 1] = { formula };
+              return worksheet.addRow(rowData);
+          };
+
+          const subtotalRow = createSummaryRow("SUBTOTAL:", `ROUND(SUM(${totalColChar}${startDataRow}:${totalColChar}${lastDataRow}), 2)`);
+          subtotalRow.getCell(totalColIndex - 1).font = headerFont;
+          subtotalRow.getCell(totalColIndex).numFmt = '#,##0.00';
+          subtotalRow.getCell(totalColIndex).font = headerFont;
 
           if (formData.gstAdded) {
-              const gstRow = worksheet.addRow(["", "", "", "", "", "", "", "GST 18%:", { formula: `ROUND(${totalColChar}${subtotalRow.number}*0.18, 2)` }]);
-              gstRow.getCell(8).font = headerFont;
-              gstRow.getCell(9).numFmt = '#,##0.00';
+              const gstRow = createSummaryRow("GST 18%:", `ROUND(${totalColChar}${subtotalRow.number}*0.18, 2)`);
+              gstRow.getCell(totalColIndex - 1).font = headerFont;
+              gstRow.getCell(totalColIndex).numFmt = '#,##0.00';
 
-              const grandTotalRow = worksheet.addRow(["", "", "", "", "", "", "", "GRAND TOTAL:", { formula: `ROUND(${totalColChar}${subtotalRow.number}*1.18, 2)` }]);
-              grandTotalRow.getCell(8).font = titleFont;
-              grandTotalRow.getCell(9).numFmt = '#,##0.00';
-              grandTotalRow.getCell(9).font = titleFont;
+              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number}, 0) - (${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number})`);
+              roundOffRow.getCell(totalColIndex - 1).font = headerFont;
+              roundOffRow.getCell(totalColIndex).numFmt = '#,##0.00';
+
+              const grandTotalRow = createSummaryRow("GRAND TOTAL:", `ROUND(${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number}, 0)`);
+              grandTotalRow.getCell(totalColIndex - 1).font = titleFont;
+              grandTotalRow.getCell(totalColIndex).numFmt = '#,##0.00';
+              grandTotalRow.getCell(totalColIndex).font = titleFont;
           }
 
           // 8. FOOTER (Words & Terms)
@@ -957,7 +973,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               const af = i.airFreight ? ((i.airFreightDetails?.weightPerMtr || 0) / 1000 * airFreightRate) : 0;
               return s + (up + af) * i.moq;
           }, 0);
-          const fGrand = formData.gstAdded ? fSub * 1.18 : fSub;
+          const fGrand = formData.gstAdded ? Math.round(fSub * 1.18) : Math.round(fSub);
           wordsRow.getCell(2).value = numberToWords(fGrand);
           wordsRow.getCell(2).font = baseFont;
           worksheet.mergeCells(wordsRow.number, 2, wordsRow.number, 11);
@@ -991,6 +1007,16 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           const signBottom = worksheet.addRow(["", "", "", "", "", "Authorised Signatory"]);
           signBottom.getCell(6).font = headerFont;
           worksheet.mergeCells(signBottom.number, 6, signBottom.number, 11);
+
+          // Page Setup to Fit to Page
+          worksheet.pageSetup = {
+              paperSize: 9, // A4
+              orientation: 'portrait',
+              fitToPage: true,
+              fitToWidth: 1,
+              fitToHeight: 0,
+              margins: { left: 0.25, right: 0.25, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 }
+          };
 
           // Export
           const buffer = await workbook.xlsx.writeBuffer();
