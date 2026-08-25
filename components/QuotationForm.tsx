@@ -796,10 +796,16 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                   
                   if (logoUrl.startsWith('data:')) {
                       const base64Data = logoUrl.split(',')[1];
-                      buffer = Buffer.from(base64Data, 'base64');
+                      const binaryString = window.atob(base64Data);
+                      const bytes = new Uint8Array(binaryString.length);
+                      for (let i = 0; i < binaryString.length; i++) {
+                          bytes[i] = binaryString.charCodeAt(i);
+                      }
+                      buffer = bytes.buffer;
                       extension = logoUrl.includes('image/jpeg') || logoUrl.includes('image/jpg') ? 'jpeg' : 'png';
                   } else {
                       const response = await fetch(logoUrl);
+                      if (!response.ok) throw new Error(`HTTP ${response.status}`);
                       buffer = await response.arrayBuffer();
                   }
 
@@ -857,20 +863,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           detailRowsArr.forEach((r, idx) => {
               const rowData = new Array(totalCols).fill("");
               rowData[0] = r[0]; // Billed To side
-              rowData[totalCols - 3] = r[1]; // Quotation labels in column G
-              rowData[totalCols - 2] = r[2]; // Quotation values in column H
+              rowData[totalCols - 3] = r[1]; // Quotation labels in column totalCols - 2
+              rowData[totalCols - 2] = r[2]; // Quotation values in column totalCols - 1
               
               const row = worksheet.addRow(rowData);
               
               worksheet.mergeCells(row.number, 1, row.number, totalCols - 4); // A to F
-              worksheet.mergeCells(row.number, totalCols - 2, row.number, totalCols); // H to J (or I)
+              worksheet.mergeCells(row.number, totalCols - 1, row.number, totalCols); // Merge value cells
 
               row.getCell(1).font = (idx === 0) ? headerFont : baseFont;
-              row.getCell(totalCols - 3).font = headerFont; // Label
-              row.getCell(totalCols - 2).font = baseFont; // Value
+              row.getCell(totalCols - 2).font = headerFont; // Label
+              row.getCell(totalCols - 1).font = baseFont; // Value
               
-              row.getCell(totalCols - 3).alignment = { horizontal: 'right' };
               row.getCell(totalCols - 2).alignment = { horizontal: 'right' };
+              row.getCell(totalCols - 1).alignment = { horizontal: 'right' };
           });
           worksheet.addRow([]); // Gap
 
