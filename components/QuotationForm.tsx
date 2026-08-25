@@ -768,20 +768,22 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           const qtnNo = generateFormattedQuotationNumber(formData, quotations || []);
           const dateStr = new Date(formData.quotationDate).toLocaleDateString('en-GB');
 
+          const totalCols = exportType === 'withAirFreight' ? 13 : (exportType === 'discounted' ? 11 : 9);
+          const valueColChar = String.fromCharCode(64 + totalCols);
+
           // 1. FONT & BASE STYLING
-          worksheet.columns = [
-              { key: 'sl', width: 6 },
-              { key: 'part', width: 22 },
-              { key: 'desc', width: 50 },
-              { key: 'moq', width: 10 },
-              { key: 'req', width: 10 },
-              { key: 'uom', width: 8 },
-              { key: 'p1', width: 15 },
-              { key: 'p2', width: 15 },
-              { key: 'p3', width: 15 },
-              { key: 'p4', width: 15 },
-              { key: 'stock', width: 18 }
-          ];
+          const baseColWidths = [6, 20, 36, 8, 8, 7]; // Sl, Part, Desc, MOQ, REQ, UOM
+          let dynamicWidths: number[] = [];
+          if (exportType === 'withAirFreight') {
+              dynamicWidths = [12, 12, 12, 12, 12, 12, 12]; // Unit Price, Amount, Stock Status, Air Freight/Unit, Air Freight Amt, Air Lead Time, Total Amount
+          } else if (exportType === 'discounted') {
+              dynamicWidths = [12, 12, 12, 12, 14];
+          } else {
+              dynamicWidths = [12, 12, 14];
+          }
+
+          const widths = [...baseColWidths, ...dynamicWidths];
+          worksheet.columns = widths.map((w, i) => ({ key: `col${i}`, width: w }));
 
           const baseFont = { name: 'Cambria', size: 10 };
           const titleFont = { name: 'Cambria', size: 14, bold: true, color: { argb: 'FF1E3A8A' } };
@@ -836,9 +838,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               []
           ];
 
-          const totalCols = exportType === 'withAirFreight' || exportType === 'discounted' ? 11 : 9;
-          const valueColChar = String.fromCharCode(64 + totalCols);
-
           headerRowsArr.forEach((r, idx) => {
               const row = worksheet.addRow(r);
               row.eachCell(cell => {
@@ -882,7 +881,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           // 5. TABLE HEADERS
           let tableHeadersArr: string[] = [];
           if (exportType === 'withAirFreight') {
-              tableHeadersArr = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "Unit Price", "Air Freight", "Total Unit Price", "Total Amount", "Stock Status"];
+              tableHeadersArr = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "Unit Price", "Amount", "Stock Status", "Air Freight/Unit", "Air Freight Amt", "Air Lead Time", "Total Amount"];
           } else if (exportType === 'discounted') {
               tableHeadersArr = ["Sl. No", "Part No", "Description", "MOQ", "REQ", "UOM", "LP", "Disc %", "Net Price", "Total Amount", "Stock Status"];
           } else {
@@ -909,10 +908,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                   const up = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
                   rowData = [
                       index + 1, item.partNo, item.description, item.moq, item.req, item.uom,
-                      up, (item.airFreight ? freightPerMtr : 0),
-                      { formula: `ROUND(G${rowNum}+H${rowNum}, 2)` },
-                      { formula: `ROUND(D${rowNum}*I${rowNum}, 2)` },
-                      item.stockStatus
+                      up,
+                      { formula: `ROUND(G${rowNum}*D${rowNum}, 2)` }, // Amount
+                      item.stockStatus,
+                      (item.airFreight ? freightPerMtr : 0),
+                      { formula: `ROUND(J${rowNum}*D${rowNum}, 2)` }, // Air Freight Amt
+                      (item.airFreight && item.airFreightDetails) ? item.airFreightDetails.airFreightLeadTime : '-',
+                      { formula: `ROUND(H${rowNum}+K${rowNum}, 2)` } // Total Amount (Amount + Air Freight Amt)
                   ];
               } else if (exportType === 'discounted') {
                   const lp = item.price;
@@ -939,15 +941,21 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                   cell.font = baseFont;
                   cell.border = { bottom: { style: 'thin' }, top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
                   
-                  // Alignment
-                  if ([1, 4, 5, 6].includes(colNumber)) cell.alignment = { horizontal: 'center' };
-                  if ([7, 8, 9, 10].includes(colNumber) && colNumber <= totalCols) {
-                      cell.alignment = { horizontal: 'right' };
-                      if (colNumber === 8 && exportType === 'discounted') {
+                  // Alignment & Wrapping
+                  const colHeader = tableHeadersArr[colNumber - 1];
+                  if (colHeader === "Description" || colHeader === "Stock Status" || colHeader === "Air Lead Time") {
+                      cell.alignment = { wrapText: true, vertical: 'middle' };
+                  } else if (["Sl. No", "MOQ", "REQ", "UOM"].includes(colHeader)) {
+                      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                  } else if (colNumber >= 7) {
+                      cell.alignment = { horizontal: 'right', vertical: 'middle' };
+                      if (colHeader === "Disc %") {
                           cell.numFmt = '0.00%';
-                      } else if (colNumber < totalCols) {
+                      } else {
                           cell.numFmt = '#,##0.00';
                       }
+                  } else {
+                      cell.alignment = { vertical: 'middle' };
                   }
               });
           });
@@ -959,46 +967,46 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           
           const createSummaryRow = (label: string, formula: string) => {
               const rowData = new Array(totalCols).fill("");
-              rowData[totalCols - 4] = label; // Place label in F (if 9 cols)
-              rowData[totalCols - 1] = { formula }; // Place value in I (if 9 cols)
+              rowData[totalCols - 5] = label; // Place label 3 cols before Total Amount
+              rowData[totalCols - 2] = { formula }; // Place value under Total Amount
               const row = worksheet.addRow(rowData);
-              // Merge from F to H (if 9 cols) for the label so it doesn't clip
-              worksheet.mergeCells(row.number, totalCols - 3, row.number, totalCols - 1);
               
-              row.getCell(totalCols - 3).alignment = { horizontal: 'right' };
-              row.getCell(totalCols).alignment = { horizontal: 'right' };
+              worksheet.mergeCells(row.number, totalCols - 4, row.number, totalCols - 2);
+              
+              row.getCell(totalCols - 4).alignment = { horizontal: 'right' };
+              row.getCell(totalCols - 1).alignment = { horizontal: 'right' };
               return row;
           };
 
-          const totalColCharForSum = exportType === 'withAirFreight' || exportType === 'discounted' ? 'J' : 'H';
+          const totalColCharForSum = String.fromCharCode(64 + totalCols - 1); // Total Amount column
 
           const subtotalRow = createSummaryRow("SUBTOTAL:", `ROUND(SUM(${totalColCharForSum}${startDataRow}:${totalColCharForSum}${lastDataRow}), 2)`);
-          subtotalRow.getCell(totalCols - 3).font = headerFont;
-          subtotalRow.getCell(totalCols).numFmt = '#,##0.00';
-          subtotalRow.getCell(totalCols).font = headerFont;
+          subtotalRow.getCell(totalCols - 4).font = headerFont;
+          subtotalRow.getCell(totalCols - 1).numFmt = '#,##0.00';
+          subtotalRow.getCell(totalCols - 1).font = headerFont;
 
           if (formData.gstAdded) {
-              const gstRow = createSummaryRow("GST 18%:", `ROUND(${valueColChar}${subtotalRow.number}*0.18, 2)`);
-              gstRow.getCell(totalCols - 3).font = headerFont;
-              gstRow.getCell(totalCols).numFmt = '#,##0.00';
+              const gstRow = createSummaryRow("GST 18%:", `ROUND(${totalColCharForSum}${subtotalRow.number}*0.18, 2)`);
+              gstRow.getCell(totalCols - 4).font = headerFont;
+              gstRow.getCell(totalCols - 1).numFmt = '#,##0.00';
 
-              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${valueColChar}${subtotalRow.number}+${valueColChar}${gstRow.number}, 0) - (${valueColChar}${subtotalRow.number}+${valueColChar}${gstRow.number})`);
-              roundOffRow.getCell(totalCols - 3).font = headerFont;
-              roundOffRow.getCell(totalCols).numFmt = '#,##0.00';
+              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${totalColCharForSum}${subtotalRow.number}+${totalColCharForSum}${gstRow.number}, 0) - (${totalColCharForSum}${subtotalRow.number}+${totalColCharForSum}${gstRow.number})`);
+              roundOffRow.getCell(totalCols - 4).font = headerFont;
+              roundOffRow.getCell(totalCols - 1).numFmt = '#,##0.00';
 
-              const grandTotalRow = createSummaryRow("GRAND TOTAL:", `ROUND(${valueColChar}${subtotalRow.number}+${valueColChar}${gstRow.number}, 0)`);
-              grandTotalRow.getCell(totalCols - 3).font = titleFont;
-              grandTotalRow.getCell(totalCols).numFmt = '#,##0.00';
-              grandTotalRow.getCell(totalCols).font = titleFont;
+              const grandTotalRow = createSummaryRow("GRAND TOTAL:", `ROUND(${totalColCharForSum}${subtotalRow.number}+${totalColCharForSum}${gstRow.number}, 0)`);
+              grandTotalRow.getCell(totalCols - 4).font = titleFont;
+              grandTotalRow.getCell(totalCols - 1).numFmt = '#,##0.00';
+              grandTotalRow.getCell(totalCols - 1).font = titleFont;
           } else {
-              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${valueColChar}${subtotalRow.number}, 0) - ${valueColChar}${subtotalRow.number}`);
-              roundOffRow.getCell(totalCols - 3).font = headerFont;
-              roundOffRow.getCell(totalCols).numFmt = '#,##0.00';
+              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${totalColCharForSum}${subtotalRow.number}, 0) - ${totalColCharForSum}${subtotalRow.number}`);
+              roundOffRow.getCell(totalCols - 4).font = headerFont;
+              roundOffRow.getCell(totalCols - 1).numFmt = '#,##0.00';
 
-              const grandTotalRow = createSummaryRow("TOTAL AMOUNT:", `ROUND(${valueColChar}${subtotalRow.number}, 0)`);
-              grandTotalRow.getCell(totalCols - 3).font = titleFont;
-              grandTotalRow.getCell(totalCols).numFmt = '#,##0.00';
-              grandTotalRow.getCell(totalCols).font = titleFont;
+              const grandTotalRow = createSummaryRow("TOTAL AMOUNT:", `ROUND(${totalColCharForSum}${subtotalRow.number}, 0)`);
+              grandTotalRow.getCell(totalCols - 4).font = titleFont;
+              grandTotalRow.getCell(totalCols - 1).numFmt = '#,##0.00';
+              grandTotalRow.getCell(totalCols - 1).font = titleFont;
           }
 
           // 8. FOOTER (Words & Terms)
