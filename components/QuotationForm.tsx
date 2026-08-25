@@ -832,6 +832,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           ];
 
           const totalCols = exportType === 'withAirFreight' || exportType === 'discounted' ? 11 : 9;
+          const valueColChar = String.fromCharCode(64 + totalCols);
 
           headerRowsArr.forEach((r, idx) => {
               const row = worksheet.addRow(r);
@@ -856,19 +857,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           detailRowsArr.forEach((r, idx) => {
               const rowData = new Array(totalCols).fill("");
               rowData[0] = r[0]; // Billed To side
-              rowData[totalCols - 2] = r[1]; // Quotation labels
-              rowData[totalCols - 1] = r[2]; // Quotation values
+              rowData[totalCols - 3] = r[1]; // Quotation labels in column G
+              rowData[totalCols - 2] = r[2]; // Quotation values in column H
               
               const row = worksheet.addRow(rowData);
               
-              worksheet.mergeCells(row.number, 1, row.number, totalCols - 3);
+              worksheet.mergeCells(row.number, 1, row.number, totalCols - 4); // A to F
+              worksheet.mergeCells(row.number, totalCols - 2, row.number, totalCols); // H to J (or I)
 
               row.getCell(1).font = (idx === 0) ? headerFont : baseFont;
-              row.getCell(totalCols - 1).font = headerFont;
-              row.getCell(totalCols).font = baseFont;
+              row.getCell(totalCols - 3).font = headerFont; // Label
+              row.getCell(totalCols - 2).font = baseFont; // Value
               
-              row.getCell(totalCols - 1).alignment = { horizontal: 'right' };
-              row.getCell(totalCols).alignment = { horizontal: 'right' };
+              row.getCell(totalCols - 3).alignment = { horizontal: 'right' };
+              row.getCell(totalCols - 2).alignment = { horizontal: 'right' };
           });
           worksheet.addRow([]); // Gap
 
@@ -934,17 +936,19 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                   
                   // Alignment
                   if ([1, 4, 5, 6].includes(colNumber)) cell.alignment = { horizontal: 'center' };
-                  if ([7, 8, 9, 10].includes(colNumber)) {
+                  if ([7, 8, 9, 10].includes(colNumber) && colNumber <= totalCols) {
                       cell.alignment = { horizontal: 'right' };
-                      cell.numFmt = colNumber === 8 && exportType === 'discounted' ? '0.00%' : '0.00';
+                      if (colNumber === 8 && exportType === 'discounted') {
+                          cell.numFmt = '0.00%';
+                      } else if (colNumber < totalCols) {
+                          cell.numFmt = '#,##0.00';
+                      }
                   }
               });
           });
 
           // 7. SUMMARY
-          const lastDataRow = worksheet.lastRow!.number;
-          const totalColChar = exportType === 'withAirFreight' || exportType === 'discounted' ? 'J' : 'H';
-          const totalColIndex = exportType === 'withAirFreight' || exportType === 'discounted' ? 10 : 8;
+          const lastDataRow = worksheet.lastRow ? worksheet.lastRow.number : startDataRow;
           
           worksheet.addRow([]);
           
@@ -961,30 +965,32 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               return row;
           };
 
-          const subtotalRow = createSummaryRow("SUBTOTAL:", `ROUND(SUM(${totalColChar}${startDataRow}:${totalColChar}${lastDataRow}), 2)`);
+          const totalColCharForSum = exportType === 'withAirFreight' || exportType === 'discounted' ? 'J' : 'H';
+
+          const subtotalRow = createSummaryRow("SUBTOTAL:", `ROUND(SUM(${totalColCharForSum}${startDataRow}:${totalColCharForSum}${lastDataRow}), 2)`);
           subtotalRow.getCell(totalCols - 3).font = headerFont;
           subtotalRow.getCell(totalCols).numFmt = '#,##0.00';
           subtotalRow.getCell(totalCols).font = headerFont;
 
           if (formData.gstAdded) {
-              const gstRow = createSummaryRow("GST 18%:", `ROUND(${totalColChar}${subtotalRow.number}*0.18, 2)`);
+              const gstRow = createSummaryRow("GST 18%:", `ROUND(${valueColChar}${subtotalRow.number}*0.18, 2)`);
               gstRow.getCell(totalCols - 3).font = headerFont;
               gstRow.getCell(totalCols).numFmt = '#,##0.00';
 
-              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number}, 0) - (${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number})`);
+              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${valueColChar}${subtotalRow.number}+${valueColChar}${gstRow.number}, 0) - (${valueColChar}${subtotalRow.number}+${valueColChar}${gstRow.number})`);
               roundOffRow.getCell(totalCols - 3).font = headerFont;
               roundOffRow.getCell(totalCols).numFmt = '#,##0.00';
 
-              const grandTotalRow = createSummaryRow("GRAND TOTAL:", `ROUND(${totalColChar}${subtotalRow.number}+${totalColChar}${gstRow.number}, 0)`);
+              const grandTotalRow = createSummaryRow("GRAND TOTAL:", `ROUND(${valueColChar}${subtotalRow.number}+${valueColChar}${gstRow.number}, 0)`);
               grandTotalRow.getCell(totalCols - 3).font = titleFont;
               grandTotalRow.getCell(totalCols).numFmt = '#,##0.00';
               grandTotalRow.getCell(totalCols).font = titleFont;
           } else {
-              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${totalColChar}${subtotalRow.number}, 0) - ${totalColChar}${subtotalRow.number}`);
+              const roundOffRow = createSummaryRow("Round Off:", `ROUND(${valueColChar}${subtotalRow.number}, 0) - ${valueColChar}${subtotalRow.number}`);
               roundOffRow.getCell(totalCols - 3).font = headerFont;
               roundOffRow.getCell(totalCols).numFmt = '#,##0.00';
 
-              const grandTotalRow = createSummaryRow("TOTAL AMOUNT:", `ROUND(${totalColChar}${subtotalRow.number}, 0)`);
+              const grandTotalRow = createSummaryRow("TOTAL AMOUNT:", `ROUND(${valueColChar}${subtotalRow.number}, 0)`);
               grandTotalRow.getCell(totalCols - 3).font = titleFont;
               grandTotalRow.getCell(totalCols).numFmt = '#,##0.00';
               grandTotalRow.getCell(totalCols).font = titleFont;
