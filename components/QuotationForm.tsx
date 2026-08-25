@@ -818,8 +818,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                           tl: { col: 0, row: 0 },
                           ext: { width: 140, height: 70 }
                       });
-                      // Push the header text down if logo is present
-                      for(let i=0; i<4; i++) worksheet.addRow([]);
+                      // Logo is placed at A1 floating above the centered company name.
                   }
               } catch (e) {
                   console.error("Logo export error:", e);
@@ -1035,8 +1034,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               worksheet.mergeCells(row.number, 1, row.number, totalCols); // Span across all columns
           });
 
-          worksheet.addRow([]);
-          worksheet.addRow([]);
+          for (let i = 0; i < 4; i++) {
+              worksheet.addRow([]);
+          }
           const signTitleArr = new Array(totalCols).fill("");
           signTitleArr[totalCols - 4] = "For SIDDHI KABEL CORPORATION PVT LTD,";
           const signTitle = worksheet.addRow(signTitleArr);
