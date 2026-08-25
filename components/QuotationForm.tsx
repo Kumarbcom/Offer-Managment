@@ -816,7 +816,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                       });
                       worksheet.addImage(imageId, {
                           tl: { col: 0, row: 0 },
-                          ext: { width: 140, height: 70 }
+                          ext: { width: 70, height: 70 }
                       });
                       // Logo is placed at A1 floating above the centered company name.
                   }
