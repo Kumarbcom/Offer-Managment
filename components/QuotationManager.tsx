@@ -529,7 +529,25 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                         {getQuotationSeqNum(q, quotations || [])}
                       </button>
                       <p className="text-sm font-semibold text-slate-800 mt-0.5">{getCustomerName(q.customerId)}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{formatDate(q.quotationDate)} · {getSalesPersonName(q.salesPersonId)}</p>
+                      
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-xs text-slate-400">{formatDate(q.quotationDate)} ·</span>
+                        <select
+                          value={q.salesPersonId || ''}
+                          onChange={e => {
+                            if (!e.target.value) return;
+                            const newSpId = Number(e.target.value);
+                            setQuotations(prev => (prev || []).map(qt => qt.id === q.id ? { ...qt, salesPersonId: newSpId } : qt));
+                          }}
+                          className="bg-transparent border-0 p-0 text-xs font-medium text-slate-500 focus:outline-none cursor-pointer max-w-[120px]"
+                        >
+                          <option value="">Select SP</option>
+                          {salesPersons?.map(sp => (
+                            <option key={sp.id} value={sp.id}>{sp.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
                     </div>
                     <div className="text-right">
                       <p className="text-base font-bold text-slate-900">₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
@@ -549,7 +567,18 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       )}
                     </div>
                   )}
-                  <div className="flex justify-end gap-3 border-t border-slate-100 pt-1.5 mt-2">
+
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      defaultValue={q.comments || ''}
+                      onBlur={e => handleCommentChange(q.id, e.target.value)}
+                      className="w-full bg-slate-50 text-[11px] text-slate-600 placeholder-slate-400 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded px-2 py-1.5 transition-colors"
+                      placeholder="Add comment..."
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 border-t border-slate-100 pt-2 mt-2">
                     <button onClick={() => handleWhatsAppShare(q)} className="text-emerald-600 text-xs font-medium hover:text-emerald-700">Share</button>
                     <button onClick={() => handleEdit(q.id)} className="text-indigo-600 text-xs font-medium hover:text-indigo-700">Open</button>
                     {userRole === 'Admin' && (
@@ -664,16 +693,20 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
                       {/* Sales Person */}
                       <td className="px-3 py-1.5 w-[120px]">
-                        {(() => {
-                          const spName = getSalesPersonName(q.salesPersonId);
-                          const spStyle = getSalesPersonBadgeStyle(q.salesPersonId, spName);
-                          return (
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${spStyle.bg}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${spStyle.dot}`} />
-                              {spName}
-                            </span>
-                          );
-                        })()}
+                        <select
+                          value={q.salesPersonId || ''}
+                          onChange={e => {
+                            if (!e.target.value) return;
+                            const newSpId = Number(e.target.value);
+                            setQuotations(prev => (prev || []).map(qt => qt.id === q.id ? { ...qt, salesPersonId: newSpId } : qt));
+                          }}
+                          className="w-full bg-transparent text-[11px] font-semibold text-slate-700 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1 py-0.5 hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                          <option value="">Select SP</option>
+                          {salesPersons?.map(sp => (
+                            <option key={sp.id} value={sp.id}>{sp.name}</option>
+                          ))}
+                        </select>
                       </td>
 
                       {/* Comments */}
