@@ -324,7 +324,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     
     const totalValue = calculateTotalAmount(q.details);
     const appUrl = `${window.location.origin}${window.location.pathname}?id=${q.id}`;
-    const message = `*New Quotation Assigned*\nQTN No: ${generateFormattedQuotationNumber(q, quotations || [])}\nDate: ${q.quotationDate}\nCustomer: ${getCustomerName(q.customerId)}\nValue: ₹${totalValue.toLocaleString('en-IN')}\nLink: ${appUrl}`;
+    
+    const contactInfo = q.contactPerson ? `\nContact: ${q.contactPerson} ${q.contactNumber ? `(${q.contactNumber})` : ''}` : '';
+    const message = `*New Quotation Assigned*\nQTN No: ${generateFormattedQuotationNumber(q, quotations || [])}\nDate: ${q.quotationDate}\nCustomer: ${getCustomerName(q.customerId)}${contactInfo}\nValue: ₹${totalValue.toLocaleString('en-IN')}\nLink: ${appUrl}`;
     
     let phone = sp.mobile.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
