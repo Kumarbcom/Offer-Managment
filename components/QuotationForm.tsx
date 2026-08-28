@@ -185,7 +185,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
   const [isStockCheckModalOpen, setIsStockCheckModalOpen] = useState(false);
-  const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
+  const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>(
+    currentUser?.role === 'Customer' ? 'standard' : 'none'
+  );
   const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   
@@ -741,7 +743,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
            };
            
            const totalValue = calculateTotal(saved.details);
-           const appUrl = `${window.location.origin}${window.location.pathname}?id=${saved.id}`;
+           const appUrl = `${window.location.origin}${window.location.pathname}?view_pdf=${saved.id}&format=standard`;
            
            const qtnNoStr = generateFormattedQuotationNumber(saved, quotations || []);
            const customerName = selectedCustomerObj?.name || 'Customer';
@@ -1240,7 +1242,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               >
                 Export to Excel
               </button>
-              <button onClick={() => setPreviewMode('none')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Close</button>
+              {userRole === 'Customer' ? (
+                <>
+                  <button onClick={() => setPreviewMode('standard')} className={`py-1 px-3 rounded-md text-xs font-bold transition duration-300 ${previewMode === 'standard' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>Standard</button>
+                  <button onClick={() => setPreviewMode('withAirFreight')} className={`py-1 px-3 rounded-md text-xs font-bold transition duration-300 ${previewMode === 'withAirFreight' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>Air Freight</button>
+                  <button onClick={() => setView('quotations')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Back</button>
+                </>
+              ) : (
+                <button onClick={() => setPreviewMode('none')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Close</button>
+              )}
             </div>
           </div>
           <div id="print-area">

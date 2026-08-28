@@ -9,6 +9,7 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
+  const [loginType, setLoginType] = useState<'employee' | 'customer'>('employee');
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,13 +17,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!users) return;
-    const user = users.find(u => u.name === username && u.password === password);
+    const user = users.find(u => u.name.toLowerCase() === username.toLowerCase() && u.password === password && (loginType === 'customer' ? u.role === 'Customer' : u.role !== 'Customer'));
     if (user) {
       onLogin(user);
     } else {
       setError('Invalid username or password');
     }
   };
+
+  const employeeUsers = users?.filter(u => u.role !== 'Customer') || [];
 
   return (
     <div className="min-h-screen flex bg-[#f8f9fc]">
@@ -44,7 +47,23 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
             <p className="text-slate-500 text-sm">Please enter your details to access your account.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5 mt-10">
+          {/* Login Type Toggle */}
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => { setLoginType('employee'); setUsername(''); setError(''); }}
+              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${loginType === 'employee' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Employee Login
+            </button>
+            <button
+              onClick={() => { setLoginType('customer'); setUsername(''); setError(''); }}
+              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${loginType === 'customer' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Customer Portal
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5 mt-6">
             {error && (
               <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-sm text-center font-medium">
                 {error}
@@ -52,23 +71,37 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
             )}
             
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700 ml-1">Username</label>
-              <div className="relative">
-                <select 
+              <label className="block text-sm font-medium text-slate-700 ml-1">
+                {loginType === 'employee' ? 'Select User' : 'Email / Username'}
+              </label>
+              
+              {loginType === 'employee' ? (
+                <div className="relative">
+                  <select 
+                    value={username} 
+                    onChange={e => setUsername(e.target.value)}
+                    className="block w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm shadow-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-slate-900 appearance-none transition-colors"
+                    required
+                  >
+                    <option value="" disabled className="text-slate-400">Select User...</option>
+                    {employeeUsers.map(u => (
+                      <option key={u.name} value={u.name}>{u.name}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                </div>
+              ) : (
+                <input 
+                  type="text" 
+                  placeholder="Enter your email"
                   value={username} 
                   onChange={e => setUsername(e.target.value)}
-                  className="block w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm shadow-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-slate-900 appearance-none transition-colors"
+                  className="block w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm shadow-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-slate-900 transition-colors placeholder:text-slate-300"
                   required
-                >
-                  <option value="" disabled className="text-slate-400">Select User...</option>
-                  {users?.map(u => (
-                    <option key={u.name} value={u.name}>{u.name}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                </div>
-              </div>
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">

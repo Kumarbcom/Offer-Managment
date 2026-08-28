@@ -44,26 +44,47 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
   };
 
   const handleWhatsAppShare = () => {
-    if (!salesPerson || !salesPerson.mobile) return;
+    // Create view_pdf URL for customer with AirFreight
+    const appUrl = `${window.location.origin}${window.location.pathname}?view_pdf=${quotation.id}&format=withAirFreight`;
     
-    const appUrl = `${window.location.origin}${window.location.pathname}?id=${quotation.id}`;
-    const message = `*New Quotation Generated*\n` +
-                    `QTN No: ${quotation.id}\n` +
-                    `Date: ${quotation.quotationDate}\n` +
-                    `Customer: ${customer?.name || 'N/A'}\n` +
-                    `Contact: ${quotation.contactPerson} (${quotation.contactNumber})\n` +
-                    `Value: ₹${totalValue.toLocaleString('en-IN', {maximumFractionDigits: 0})}\n` +
-                    `Link: ${appUrl}`;
+    // Determine Creator Details
+    const creator = quotation.preparedBy;
+    let creatorName = creator;
+    let creatorTitle = 'Sales Co-Ordinator';
     
-    let phone = salesPerson.mobile.replace(/\D/g, '');
+    if (creator === 'Kumar') {
+        creatorName = 'Kumar N';
+    } else if (creator === 'Vandita') {
+        creatorName = 'Vandita';
+    }
+
+    const message = `Dear Sir/Madam,
+            
+Greeting of the day.
+
+We would like to thank you for your query. Here with we are attaching the offer for your requirement.
+Total Amount is ₹${totalValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+
+📄 *View Offer Document:*
+${appUrl}
+
+Looking forward to your favorable response.
+
+Thanks & Regards,
+${creatorName}
+${creatorTitle}
+SIDDHI KABEL CORPORATION PVT LTD`;
+    
+    let phoneStr = quotation.contactNumber || '';
+    let phone = phoneStr.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
 
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     let url = '';
     if (isMobile) {
-      url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+      url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
     } else {
-      url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+      url = phone ? `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}` : `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     }
     window.open(url, 'whatsapp_share_tab');
   };

@@ -58,23 +58,34 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, quotati
   };
 
   const handleWhatsAppShare = () => {
-    if (!salesPerson || !salesPerson.mobile) {
-      alert("Sales Person does not have a mobile number configured.");
-      return;
-    }
     const totalValue = calculateTotalAmount(quotation.details);
-    const contactInfo = quotation.contactPerson ? `\nContact: ${quotation.contactPerson} ${quotation.contactNumber ? `(${quotation.contactNumber})` : ''}` : '';
-    const message = `*New Quotation Assigned*\nQTN No: ${qtnNoStr}\nDate: ${quotation.quotationDate}\nCustomer: ${customerName}${contactInfo}\nValue: ₹${totalValue.toLocaleString('en-IN')}\n\n📄 *View Offer (${pdfFileName}):*\n${appUrl}`;
+    const message = `Dear Sir/Madam,
+            
+Greeting of the day.
+
+We would like to thank you for your query. Here with we are attaching the offer for your requirement.
+Total Amount is ₹${totalValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+
+📄 *View Offer Document:*
+${appUrl}
+
+Looking forward to your favorable response.
+
+Thanks & Regards,
+${creatorName}
+${creatorTitle}
+SIDDHI KABEL CORPORATION PVT LTD`;
     
-    let phone = salesPerson.mobile.replace(/\D/g, '');
+    let phoneStr = quotation.contactNumber || '';
+    let phone = phoneStr.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
 
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     let url = '';
     if (isMobile) {
-      url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+      url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
     } else {
-      url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+      url = phone ? `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}` : `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     }
     window.open(url, 'whatsapp_share_tab');
   };
