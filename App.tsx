@@ -17,6 +17,7 @@ import { CalendarView } from './components/CalendarView';
 import { UserManual } from './components/UserManual';
 import { StockManager } from './components/StockManager';
 import { CustomerResponsePage } from './components/CustomerResponsePage';
+import { PublicPdfViewer } from './components/PublicPdfViewer';
 import { StorageManager } from './components/StorageManager';
 import { PendingSOManager } from './components/PendingSOManager';
 
@@ -145,6 +146,15 @@ export const App = () => {
     }
     return null;
   })();
+  const publicPdfParams = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const viewPdf = params.get('view_pdf');
+    if (viewPdf) {
+      const id = parseInt(viewPdf, 10);
+      if (!isNaN(id)) return { quotationId: id, format: params.get('format') };
+    }
+    return null;
+  })();
 
   if (customerResponseParams) {
     return (
@@ -152,6 +162,14 @@ export const App = () => {
         quotationId={customerResponseParams.quotationId}
         action={customerResponseParams.action}
         reason={customerResponseParams.reason}
+      />
+    );
+  }
+  if (publicPdfParams) {
+    return (
+      <PublicPdfViewer
+        quotationId={publicPdfParams.quotationId}
+        format={publicPdfParams.format}
       />
     );
   }

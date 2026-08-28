@@ -1,12 +1,13 @@
 
 import type { UOMS, PLANTS, PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES, SALES_PERSON_NAMES } from './constants';
 
-export type UserRole = 'Admin' | 'Sales Person' | 'Management' | 'SCM' | 'Viewer';
+export type UserRole = 'Admin' | 'Sales Person' | 'Management' | 'SCM' | 'Viewer' | 'Customer';
 
 export interface User {
-  name: typeof SALES_PERSON_NAMES[number] | 'Admin' | 'Manager' | 'SCM' | 'Gurudatta' | 'Purshothama' | 'DC Venugopal' | 'Kumar' | 'Vandita' | 'Ranjan' | 'Rachana' | 'Mohan' | 'Geetha';
+  name: string;
   password: string;
   role: UserRole;
+  customerId?: number;
 }
 
 export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form' | 'pending-so' | 'calendar';
@@ -93,6 +94,7 @@ export interface Quotation {
   modeOfEnquiry: ModeOfEnquiry;
   status: QuotationStatus;
   comments: string;
+  commentsList?: { id: string, userName: string, text: string, timestamp: string }[];
   details: QuotationItem[];
   gstAdded: boolean;
 }
