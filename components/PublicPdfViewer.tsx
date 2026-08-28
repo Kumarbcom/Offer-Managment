@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { mapFromSupabase } from '../supabase';
 import type { Quotation, Customer, SalesPerson } from '../types';
 import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
@@ -25,43 +26,43 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
                 // Fetch Quotation
                 const { data: qData, error: qError } = await supabase
                     .from('quotations')
-                    .select('data')
+                    .select('*')
                     .eq('id', quotationId)
                     .single();
                 
                 if (qError) throw qError;
-                const fetchedQuotation = qData.data as Quotation;
+                const fetchedQuotation = mapFromSupabase('quotations', qData) as Quotation;
                 setQuotation(fetchedQuotation);
 
                 // Fetch All Quotations for Sequence Number logic
                 const { data: allQData, error: allQError } = await supabase
                     .from('quotations')
-                    .select('data');
+                    .select('*');
                 if (!allQError && allQData) {
-                    setAllQuotations(allQData.map(d => d.data as Quotation));
+                    setAllQuotations(allQData.map(d => mapFromSupabase('quotations', d) as Quotation));
                 }
 
                 // Fetch Customer
                 if (fetchedQuotation.customerId) {
                     const { data: cData } = await supabase
                         .from('customers')
-                        .select('data');
+                        .select('*')
+                        .eq('id', fetchedQuotation.customerId)
+                        .single();
                     if (cData) {
-                        const customers = cData.map(d => d.data as Customer);
-                        const foundCustomer = customers.find(c => c.id === fetchedQuotation.customerId);
-                        if (foundCustomer) setCustomer(foundCustomer);
+                        setCustomer(mapFromSupabase('customers', cData) as Customer);
                     }
                 }
 
                 // Fetch SalesPerson
                 if (fetchedQuotation.salesPersonId) {
                     const { data: sData } = await supabase
-                        .from('salesPersons')
-                        .select('data');
+                        .from('sales_persons')
+                        .select('*')
+                        .eq('id', fetchedQuotation.salesPersonId)
+                        .single();
                     if (sData) {
-                        const salesPersons = sData.map(d => d.data as SalesPerson);
-                        const foundSP = salesPersons.find(s => s.id === fetchedQuotation.salesPersonId);
-                        if (foundSP) setSalesPerson(foundSP);
+                        setSalesPerson(mapFromSupabase('salesPersons', sData) as SalesPerson);
                     }
                 }
 
