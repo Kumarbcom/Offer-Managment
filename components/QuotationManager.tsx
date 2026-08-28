@@ -148,6 +148,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
         if (userRole === 'Sales Person' && currentSalesPersonId !== undefined) {
           if (q.salesPersonId !== currentSalesPersonId) return false;
         }
+        if (userRole === 'Customer' && currentUser.customerId !== undefined) {
+          if (q.customerId !== currentUser.customerId) return false;
+        }
         if (!universalSearchTerm) return true;
         const term = universalSearchTerm.toLowerCase();
         const formattedNo = generateFormattedQuotationNumber(q, quotations || []).toLowerCase();

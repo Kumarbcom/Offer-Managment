@@ -1,19 +1,20 @@
 
 
 import React, { useState } from 'react';
-import type { User } from '../types';
+import type { User, Customer } from '../types';
 import { SALES_PERSON_NAMES } from '../constants';
 
 interface UserManagerProps {
   users: User[] | null;
   setUsers: (users: React.SetStateAction<User[]>) => Promise<void>;
   currentUser: User;
+  customers: Customer[];
 }
 
-const ROLES: User['role'][] = ['Admin', 'Sales Person', 'Management', 'SCM', 'Viewer'];
+const ROLES: User['role'][] = ['Admin', 'Sales Person', 'Management', 'SCM', 'Viewer', 'Customer'];
 const ALL_USER_NAMES: User['name'][] = ['Kumar', 'Vandita', 'Ranjan', 'Gurudatta', 'Purshothama', 'DC Venugopal', 'Rachana', 'Mohan', 'Geetha', ...SALES_PERSON_NAMES];
 
-export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, currentUser }) => {
+export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, currentUser, customers }) => {
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
 
   const handleEdit = (user: User) => {
@@ -35,7 +36,8 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
               const newUser: User = {
                   name: editingUser.name!,
                   role: editingUser.role!,
-                  password: '123456'
+                  password: '123456',
+                  ...(editingUser.role === 'Customer' && editingUser.customerId && { customerId: editingUser.customerId })
               };
               return [...currentUsers, newUser];
           } else {
@@ -88,54 +90,82 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {users.map(user => (
-              <tr key={user.name}>
-                {editingUser && editingUser.name === user.name ? (
-                  <>
-                    <td className="px-6 py-4"><input type="text" value={editingUser.name} disabled className="p-1 border rounded w-full bg-gray-100"/></td>
-                    <td className="px-6 py-4">
-                      <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as User['role']})} className="p-1 border rounded w-full">
-                        {ROLES.map(role => <option key={role} value={role}>{role}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <button onClick={handleSave} className="text-green-600 hover:text-green-900">Save</button>
-                      <button onClick={() => setEditingUser(null)} className="text-gray-600 hover:text-gray-900">Cancel</button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="px-6 py-4 font-medium">{user.name}</td>
-                    <td className="px-6 py-4">{user.role}</td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <button onClick={() => handleEdit(user)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                      <button onClick={() => handleDelete(user.name)} disabled={user.name === currentUser.name} className="text-red-600 hover:text-red-900 disabled:opacity-50">Delete</button>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-            {editingUser && !editingUser.name && (
-                 <tr>
-                    <td className="px-6 py-4">
-                        <select value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value as User['name']})} className="p-1 border rounded w-full">
-                            <option value="">Select User Name</option>
-                            {ALL_USER_NAMES.filter(name => !users.some(u => u.name === name)).map(name => (
-                                <option key={name} value={name}>{name}</option>
-                            ))}
+              {users.map(user => (
+                <tr key={user.name}>
+                  {editingUser && editingUser.name === user.name ? (
+                    <>
+                      <td className="px-6 py-4"><input type="text" value={editingUser.name} disabled className="p-1 border rounded w-full bg-gray-100"/></td>
+                      <td className="px-6 py-4">
+                        <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as User['role']})} className="p-1 border rounded w-full mb-1">
+                          {ROLES.map(role => <option key={role} value={role}>{role}</option>)}
                         </select>
-                    </td>
-                    <td className="px-6 py-4">
-                      <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as User['role']})} className="p-1 border rounded w-full">
-                        {ROLES.map(role => <option key={role} value={role}>{role}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <button onClick={handleSave} className="text-green-600 hover:text-green-900">Save</button>
-                      <button onClick={() => setEditingUser(null)} className="text-gray-600 hover:text-gray-900">Cancel</button>
-                    </td>
-                 </tr>
-            )}
+                        {editingUser.role === 'Customer' && (
+                          <select value={editingUser.customerId || ''} onChange={e => setEditingUser({...editingUser, customerId: Number(e.target.value)})} className="p-1 border rounded w-full text-xs">
+                             <option value="">Link to Customer...</option>
+                             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button onClick={handleSave} className="text-green-600 hover:text-green-900">Save</button>
+                        <button onClick={() => setEditingUser(null)} className="text-gray-600 hover:text-gray-900">Cancel</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-4 font-medium">{user.name}</td>
+                      <td className="px-6 py-4">
+                        {user.role}
+                        {user.role === 'Customer' && user.customerId && (
+                            <div className="text-xs text-gray-500">{customers.find(c => c.id === user.customerId)?.name}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button onClick={() => handleEdit(user)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
+                        <button onClick={() => handleDelete(user.name)} disabled={user.name === currentUser.name} className="text-red-600 hover:text-red-900 disabled:opacity-50">Delete</button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+              {editingUser && !users.some(u => u.name === editingUser.name) && (
+                   <tr>
+                      <td className="px-6 py-4">
+                          {editingUser.role === 'Customer' ? (
+                            <input 
+                                type="text" 
+                                value={editingUser.name || ''} 
+                                onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
+                                placeholder="Enter Username (e.g. Email)"
+                                className="p-1 border rounded w-full"
+                            />
+                          ) : (
+                            <select value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value as User['name']})} className="p-1 border rounded w-full">
+                                <option value="">Select User Name</option>
+                                {ALL_USER_NAMES.filter(name => !users.some(u => u.name === name)).map(name => (
+                                    <option key={name} value={name}>{name}</option>
+                                ))}
+                            </select>
+                          )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <select value={editingUser.role || ''} onChange={e => setEditingUser({...editingUser, role: e.target.value as User['role']})} className="p-1 border rounded w-full mb-1">
+                          <option value="">Select Role</option>
+                          {ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                        </select>
+                        {editingUser.role === 'Customer' && (
+                          <select value={editingUser.customerId || ''} onChange={e => setEditingUser({...editingUser, customerId: Number(e.target.value)})} className="p-1 border rounded w-full text-xs">
+                             <option value="">Link to Customer...</option>
+                             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button onClick={handleSave} className="text-green-600 hover:text-green-900">Save</button>
+                        <button onClick={() => setEditingUser(null)} className="text-gray-600 hover:text-gray-900">Cancel</button>
+                      </td>
+                   </tr>
+              )}
           </tbody>
         </table>
       </div>
