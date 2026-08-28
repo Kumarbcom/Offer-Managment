@@ -736,8 +736,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
            
            const totalValue = calculateTotal(saved.details);
            const appUrl = `${window.location.origin}${window.location.pathname}?id=${saved.id}`;
+           
+           const qtnNoStr = generateFormattedQuotationNumber(saved, quotations || []);
+           const customerName = selectedCustomerObj?.name || 'Customer';
+           const safeCustomerName = customerName.replace(/\s+/g, '_');
+           const safeQtnNo = qtnNoStr.replace(/\//g, '-');
+           const pdfFileName = `${safeCustomerName}_${safeQtnNo}`;
+
            const contactInfo = saved.contactPerson ? `\nContact: ${saved.contactPerson} ${saved.contactNumber ? `(${saved.contactNumber})` : ''}` : '';
-           const message = `*New Quotation Assigned*\nQTN No: ${generateFormattedQuotationNumber(saved, quotations || [])}\nDate: ${saved.quotationDate}\nCustomer: ${selectedCustomerObj?.name || 'N/A'}${contactInfo}\nValue: ₹${totalValue.toLocaleString('en-IN')}\nLink: ${appUrl}`;
+           const message = `*New Quotation Assigned*\nQTN No: ${qtnNoStr}\nDate: ${saved.quotationDate}\nCustomer: ${customerName}${contactInfo}\nValue: ₹${totalValue.toLocaleString('en-IN')}\n\n📄 *View Offer (${pdfFileName}):*\n${appUrl}`;
            
            let phone = sp.mobile.replace(/\D/g, '');
            if (phone.length === 10) phone = '91' + phone;

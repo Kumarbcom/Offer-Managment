@@ -328,7 +328,16 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const handleWhatsAppShare = (q: Quotation) => {
     const totalValue = calculateTotalAmount(q.details);
     const appUrl = `${window.location.origin}${window.location.pathname}?id=${q.id}`;
-    const message = `*Quotation Details*\nQTN No: ${generateFormattedQuotationNumber(q, quotations || [])}\nDate: ${q.quotationDate}\nCustomer: ${getCustomerName(q.customerId)}\nValue: ₹${totalValue.toLocaleString('en-IN')}\nLink: ${appUrl}`;
+    
+    const qtnNoStr = generateFormattedQuotationNumber(q, quotations || []);
+    const customerName = getCustomerName(q.customerId);
+    const safeCustomerName = customerName.replace(/\s+/g, '_');
+    const safeQtnNo = qtnNoStr.replace(/\//g, '-');
+    const pdfFileName = `${safeCustomerName}_${safeQtnNo}`;
+    
+    const contactInfo = q.contactPerson ? `\nContact: ${q.contactPerson} ${q.contactNumber ? `(${q.contactNumber})` : ''}` : '';
+    const message = `*Quotation Details*\nQTN No: ${qtnNoStr}\nDate: ${q.quotationDate}\nCustomer: ${customerName}${contactInfo}\nValue: ₹${totalValue.toLocaleString('en-IN')}\n\n📄 *View Offer (${pdfFileName}):*\n${appUrl}`;
+    
     openWhatsApp(null, message);
   };
 
@@ -342,8 +351,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     const totalValue = calculateTotalAmount(q.details);
     const appUrl = `${window.location.origin}${window.location.pathname}?id=${q.id}`;
     
+    const qtnNoStr = generateFormattedQuotationNumber(q, quotations || []);
+    const customerName = getCustomerName(q.customerId);
+    const safeCustomerName = customerName.replace(/\s+/g, '_');
+    const safeQtnNo = qtnNoStr.replace(/\//g, '-');
+    const pdfFileName = `${safeCustomerName}_${safeQtnNo}`;
+    
     const contactInfo = q.contactPerson ? `\nContact: ${q.contactPerson} ${q.contactNumber ? `(${q.contactNumber})` : ''}` : '';
-    const message = `*New Quotation Assigned*\nQTN No: ${generateFormattedQuotationNumber(q, quotations || [])}\nDate: ${q.quotationDate}\nCustomer: ${getCustomerName(q.customerId)}${contactInfo}\nValue: ₹${totalValue.toLocaleString('en-IN')}\nLink: ${appUrl}`;
+    const message = `*New Quotation Assigned*\nQTN No: ${qtnNoStr}\nDate: ${q.quotationDate}\nCustomer: ${customerName}${contactInfo}\nValue: ₹${totalValue.toLocaleString('en-IN')}\n\n📄 *View Offer (${pdfFileName}):*\n${appUrl}`;
     
     let phone = sp.mobile.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
