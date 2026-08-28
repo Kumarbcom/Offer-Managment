@@ -80,8 +80,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
         const payload: any = {
             name: item.name,
             password: item.password,
-            role: item.role,
-            customer_id: item.customerId || null
+            role: item.role === 'Customer' && item.customerId ? `Customer:${item.customerId}` : item.role
         };
         if (item.id) payload.id = item.id;
         return payload;
@@ -251,6 +250,18 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
             poNo: get(['po_no', 'poNo'], ''),
             poDate: get(['po_date', 'poDate'], new Date().toISOString()),
             items: item.items || []
+        };
+    }
+
+    if (tableName === 'users') {
+        const rawRole = item.role || '';
+        const isCustomer = rawRole.startsWith('Customer:');
+        return {
+            id: item.id ? Number(item.id) : undefined,
+            name: item.name,
+            password: item.password,
+            role: isCustomer ? 'Customer' : rawRole,
+            customerId: isCustomer ? Number(rawRole.split(':')[1]) : undefined
         };
     }
 
