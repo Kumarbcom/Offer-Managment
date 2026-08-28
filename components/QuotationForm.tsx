@@ -6,6 +6,7 @@ import { CustomerAddModal } from './CustomerAddModal';
 import { ProductAddModal } from './ProductAddModal';
 import { ProductSearchModal } from './ProductSearchModal';
 import { QuotationSuccessModal } from './QuotationSuccessModal';
+import { ShareModal } from './ShareModal';
 import { StockCheckModal } from './StockCheckModal';
 import { SearchableSelect } from './common/SearchableSelect';
 import { QuotationPrintView } from './QuotationPrintView';
@@ -87,8 +88,12 @@ const Icons = {
     Save: () => (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-indigo-600">
             <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-            <path d="M3.75 12h16.5a.75.75 0 010 1.5H3.75a.75.75 0 010-1.5z" className="hidden" />
             <path d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-9a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0112 9V5.25a1.5 1.5 0 00-1.5-1.5h-3z" /> 
+        </svg>
+    ),
+    Share: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-emerald-600">
+            <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
         </svg>
     ),
     PrintStandard: () => (
@@ -182,6 +187,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isStockCheckModalOpen, setIsStockCheckModalOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>('none');
   const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
@@ -1284,6 +1290,16 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             <span>{isSubmitting ? "Saving..." : "Save"}</span>
                         </ActionButton>
                     )}
+                    {(formData?.id && formData.id > 0) ? (
+                        <ActionButton 
+                            onClick={() => setIsShareModalOpen(true)} 
+                            title="Share via Email or WhatsApp"
+                            className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
+                        >
+                            <Icons.Share />
+                            <span>Share</span>
+                        </ActionButton>
+                    ) : null}
                 </div>
                 
                 {/* Print Options */}
@@ -1644,6 +1660,16 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
          onPrint={(type) => { setSuccessModalData(null); handlePreview(type); }}
          onExportExcel={(type) => { handleExportExcel(type); }}
       />
+      {formData?.id && formData.id > 0 && (
+          <ShareModal 
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            quotation={formData}
+            salesPersons={salesPersons}
+            customers={customers}
+            allQuotations={quotations}
+          />
+      )}
       
       <div className="fixed bottom-0 left-0 w-full bg-slate-800 text-white p-2 shadow-inner z-40 flex items-center justify-between px-6 text-xs font-medium">
           <div className="flex gap-6">
