@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Quotation, SalesPerson } from '../types';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
-import { calculateTotalAmount } from '../utils/calculations';
+import { calculateTotalAmount } from '../utils/calc';
 import { DEFAULT_LOGO_BASE64 } from '../constants';
 
 interface ShareModalProps {
