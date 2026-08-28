@@ -98,6 +98,16 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
 
     const mode = format || 'standard';
 
+    if (!customer) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-100">
+                <div className="p-8 bg-white rounded-lg shadow-md border-l-4 border-yellow-500">
+                    <p className="text-lg text-yellow-700 font-semibold">Please log in to view this document.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white min-h-screen pb-10">
             {/* Added a toolbar so the user can easily print or download */}
@@ -115,9 +125,9 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
             </div>
             
             <div id="print-area" className="flex justify-center">
-                {mode === 'standard' && <QuotationPrintView quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson} logoUrl={DEFAULT_LOGO_BASE64} />}
-                {mode === 'discounted' && <QuotationPrintViewDiscounted quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson} logoUrl={DEFAULT_LOGO_BASE64} />}
-                {mode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson} logoUrl={DEFAULT_LOGO_BASE64} />}
+                {mode === 'standard' && <QuotationPrintView quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} />}
+                {mode === 'discounted' && <QuotationPrintViewDiscounted quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} />}
+                {mode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} />}
             </div>
         </div>
     );
