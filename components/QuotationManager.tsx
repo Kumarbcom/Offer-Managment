@@ -308,11 +308,28 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       alert("Failed to export Excel file. Please try again.");
     }
   };
+  const openWhatsApp = (phone: string | null, message: string) => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let url = '';
+    if (isMobile) {
+      url = phone 
+        ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` 
+        : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    } else {
+      url = phone 
+        ? `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}` 
+        : `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    }
+    // Using a named target instead of '_blank' ensures it reuses the same tab
+    // so we don't end up with 20 WhatsApp tabs open.
+    window.open(url, 'whatsapp_share_tab');
+  };
+
   const handleWhatsAppShare = (q: Quotation) => {
     const totalValue = calculateTotalAmount(q.details);
     const appUrl = `${window.location.origin}${window.location.pathname}?id=${q.id}`;
     const message = `*Quotation Details*\nQTN No: ${generateFormattedQuotationNumber(q, quotations || [])}\nDate: ${q.quotationDate}\nCustomer: ${getCustomerName(q.customerId)}\nValue: ₹${totalValue.toLocaleString('en-IN')}\nLink: ${appUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    openWhatsApp(null, message);
   };
 
   const handleNotifySalesPerson = (q: Quotation) => {
@@ -331,7 +348,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     let phone = sp.mobile.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
 
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    openWhatsApp(phone, message);
   };
   const handleSelectOne = (id: number) => {
     setSelectedQuotationIds(prev => {

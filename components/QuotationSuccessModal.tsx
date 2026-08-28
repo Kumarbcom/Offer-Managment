@@ -58,8 +58,14 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
     let phone = salesPerson.mobile.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
 
-    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let url = '';
+    if (isMobile) {
+      url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    } else {
+      url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+    }
+    window.open(url, 'whatsapp_share_tab');
   };
 
   return (
