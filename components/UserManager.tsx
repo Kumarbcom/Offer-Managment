@@ -36,7 +36,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
               const newUser: User = {
                   name: editingUser.name!,
                   role: editingUser.role!,
-                  password: '123456',
+                  password: editingUser.password || '123456',
                   ...(editingUser.role === 'Customer' && editingUser.customerId && { customerId: editingUser.customerId })
               };
               return [...currentUsers, newUser];
@@ -86,6 +86,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Password</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -106,6 +107,9 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
                           </select>
                         )}
                       </td>
+                      <td className="px-6 py-4">
+                        <input type="text" value={editingUser.password || ''} onChange={e => setEditingUser({...editingUser, password: e.target.value})} className="p-1 border rounded w-full" placeholder="Password"/>
+                      </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button onClick={handleSave} className="text-green-600 hover:text-green-900">Save</button>
                         <button onClick={() => setEditingUser(null)} className="text-gray-600 hover:text-gray-900">Cancel</button>
@@ -119,6 +123,9 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
                         {user.role === 'Customer' && user.customerId && (
                             <div className="text-xs text-gray-500">{customers.find(c => c.id === user.customerId)?.name}</div>
                         )}
+                      </td>
+                      <td className="px-6 py-4 text-gray-500 text-sm">
+                        {user.password ? '••••••' : 'Not Set'}
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button onClick={() => handleEdit(user)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
@@ -159,6 +166,9 @@ export const UserManager: React.FC<UserManagerProps> = ({ users, setUsers, curre
                              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                         )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <input type="text" value={editingUser.password || ''} onChange={e => setEditingUser({...editingUser, password: e.target.value})} className="p-1 border rounded w-full" placeholder="Enter Password"/>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button onClick={handleSave} className="text-green-600 hover:text-green-900">Save</button>

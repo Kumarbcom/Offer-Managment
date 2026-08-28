@@ -17,7 +17,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, isLoading }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!users) return;
-    const user = users.find(u => u.name.toLowerCase() === username.toLowerCase() && u.password === password && (loginType === 'customer' ? u.role === 'Customer' : u.role !== 'Customer'));
+    const user = users.find(u => u.name.trim().toLowerCase() === username.trim().toLowerCase() && u.password === password && (loginType === 'customer' ? u.role === 'Customer' : u.role !== 'Customer'));
     if (user) {
       onLogin(user);
     } else {
