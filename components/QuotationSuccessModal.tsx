@@ -62,10 +62,11 @@ export const QuotationSuccessModal: React.FC<QuotationSuccessModalProps> = ({
     let url = '';
     if (isMobile) {
       url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+      window.open(url, 'whatsapp_share_tab');
     } else {
-      url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+      url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
+      window.open(url, '_self');
     }
-    window.open(url, 'whatsapp_share_tab');
   };
 
   return (

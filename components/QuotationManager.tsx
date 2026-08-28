@@ -315,14 +315,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       url = phone 
         ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` 
         : `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(url, 'whatsapp_share_tab');
     } else {
+      // Desktop App Protocol bypasses the browser completely
       url = phone 
-        ? `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}` 
-        : `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+        ? `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}` 
+        : `whatsapp://send?text=${encodeURIComponent(message)}`;
+      // Using _self prevents a blank browser tab from opening before the app launches
+      window.open(url, '_self');
     }
-    // Using a named target instead of '_blank' ensures it reuses the same tab
-    // so we don't end up with 20 WhatsApp tabs open.
-    window.open(url, 'whatsapp_share_tab');
   };
 
   const handleWhatsAppShare = (q: Quotation) => {
