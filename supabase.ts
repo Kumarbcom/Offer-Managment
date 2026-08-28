@@ -76,6 +76,16 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             discount_structure: item.discountStructure
         };
     }
+    if (tableName === 'users') {
+        const payload: any = {
+            name: item.name,
+            password: item.password,
+            role: item.role,
+            customer_id: item.customerId || null
+        };
+        if (item.id) payload.id = item.id;
+        return payload;
+    }
     if (tableName === 'products') {
         return {
             id: item.id,
