@@ -10,7 +10,7 @@ export interface User {
   customerId?: number;
 }
 
-export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form' | 'pending-so' | 'calendar';
+export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form' | 'pending-so' | 'calendar' | 'customer-logins';
 
 export interface SalesPerson {
   id: number;

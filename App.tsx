@@ -11,6 +11,7 @@ import { Dashboard } from './components/Dashboard';
 import { Login } from './components/Login';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { UserManager } from './components/UserManager';
+import { CustomerLoginManager } from './components/CustomerLoginManager';
 import { DEFAULT_LOGO_BASE64 } from './constants';
 import { Reports } from './components/Reports';
 import { CalendarView } from './components/CalendarView';
@@ -304,6 +305,7 @@ export const App = () => {
             <>
               <SidebarItem active={view === 'sales-persons'} label="Sales Staff" onClick={() => handleSetView('sales-persons')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} />
               <SidebarItem active={view === 'users'} label="Users" onClick={() => handleSetView('users')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>} />
+              <SidebarItem active={view === 'customer-logins'} label="Customer Logins" onClick={() => handleSetView('customer-logins')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>} />
             </>
           )}
         </div>
@@ -415,6 +417,7 @@ export const App = () => {
           {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
           {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
           {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} customers={customers || []} />}
+          {view === 'customer-logins' && <CustomerLoginManager users={users} setUsers={setUsers} customers={customers || []} currentUser={currentUser} />}
           {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
           {view === 'user-manual' && <UserManual />}
           {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
