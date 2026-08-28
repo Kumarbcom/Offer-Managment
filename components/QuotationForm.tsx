@@ -711,7 +711,54 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    await saveQuotation(false);
+    
+    // Check if it's a newly created quotation
+    const isNew = editingQuotationId === null || formData?.id === 0;
+    
+    // Open a blank tab synchronously during the click event to avoid popup blockers
+    let newTab: Window | null = null;
+    if (isNew && formData?.salesPersonId) {
+        newTab = window.open('about:blank', 'whatsapp_share_tab');
+    }
+
+    const saved = await saveQuotation(false);
+    
+    if (saved && isNew && newTab) {
+       const sp = salesPersons?.find(s => s.id === saved.salesPersonId);
+       if (sp && sp.mobile) {
+           const calculateTotal = (details: any[]) => {
+               if (!details || !Array.isArray(details)) return 0;
+               return details.reduce((sum, item) => {
+                   const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
+                   return sum + (unitPrice * item.moq);
+               }, 0);
+           };
+           
+           const totalValue = calculateTotal(saved.details);
+           const appUrl = `${window.location.origin}${window.location.pathname}?id=${saved.id}`;
+           const contactInfo = saved.contactPerson ? `\nContact: ${saved.contactPerson} ${saved.contactNumber ? `(${saved.contactNumber})` : ''}` : '';
+           const message = `*New Quotation Assigned*\nQTN No: ${generateFormattedQuotationNumber(saved, quotations || [])}\nDate: ${saved.quotationDate}\nCustomer: ${selectedCustomerObj?.name || 'N/A'}${contactInfo}\nValue: ₹${totalValue.toLocaleString('en-IN')}\nLink: ${appUrl}`;
+           
+           let phone = sp.mobile.replace(/\D/g, '');
+           if (phone.length === 10) phone = '91' + phone;
+
+           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+           let url = '';
+           if (isMobile) {
+             url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+           } else {
+             url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+           }
+           
+           newTab.location.href = url;
+       } else {
+           // No valid phone number, close the preemptive tab
+           newTab.close();
+       }
+    } else if (newTab) {
+       // Save failed or wasn't new, close the preemptive tab
+       newTab.close();
+    }
   };
   
   const handleNewButtonClick = () => { 
