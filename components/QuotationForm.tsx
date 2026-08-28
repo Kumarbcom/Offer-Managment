@@ -1665,9 +1665,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             isOpen={isShareModalOpen}
             onClose={() => setIsShareModalOpen(false)}
             quotation={formData}
-            salesPersons={salesPersons}
-            customers={selectedCustomerObj ? [selectedCustomerObj] : []}
-            allQuotations={quotations}
+            salesPerson={selectedSalesPerson || null}
+            quotations={quotations || []}
+            customerName={selectedCustomerObj?.name || 'Customer'}
           />
       )}
       
