@@ -63,7 +63,16 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
                 <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/>
             </td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.id}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-bold">{product.partNo}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-bold">
+                <div className="flex items-center gap-3">
+                    {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50" />
+                    ) : (
+                        <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs">No img</div>
+                    )}
+                    <span>{product.partNo}</span>
+                </div>
+            </td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-600 max-w-xs truncate text-sm">{product.description}</td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.hsnCode}</td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-semibold text-right">{lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</td>
@@ -214,7 +223,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const handleCloseModal = useCallback(() => { setIsModalOpen(false); setProductToEdit(null); }, []);
   
   const handleDownloadTemplate = () => {
-    const headers = ["PartNo", "Description", "HSNCode", "UOM", "Plant", "Weight", "LP", "SP", "ValidFrom", "ValidTo"];
+    const headers = ["PartNo", "Description", "HSNCode", "UOM", "Plant", "Weight", "LP", "SP", "ValidFrom", "ValidTo", "ImageURL"];
     const ws = XLSX.utils.aoa_to_sheet([headers]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Products");
@@ -224,10 +233,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const handleExport = () => {
     const dataToExport = displayedProducts.flatMap(product => {
       if (product.prices.length === 0) {
-        return [{ PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: 0, SP: 0, ValidFrom: '', ValidTo: '' }];
+        return [{ PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: 0, SP: 0, ValidFrom: '', ValidTo: '', ImageURL: product.imageUrl || '' }];
       }
       return product.prices.map(price => ({
-        PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: price.lp, SP: price.sp, ValidFrom: price.validFrom, ValidTo: price.validTo
+        PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: price.lp, SP: price.sp, ValidFrom: price.validFrom, ValidTo: price.validTo, ImageURL: product.imageUrl || ''
       }));
     });
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -252,7 +261,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                   'New LP': '',
                   'New SP': '',
                   'New Valid From': nextValidFrom.toISOString().split('T')[0],
-                  'New Valid To': '9999-12-31'
+                  'New Valid To': '9999-12-31',
+                  'ImageURL': product.imageUrl || ''
               };
           });
           const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -281,7 +291,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
               const worksheet = workbook.Sheets[sheetName];
               const json: any[] = XLSX.utils.sheet_to_json(worksheet);
               
-              // Identify rows with price updates
+              // Identify rows with price updates or image updates
               const rowsWithUpdates = json.filter(row => {
                   const desc = String(row['Description'] || '').toLowerCase();
                   if (desc.includes('cutting charge') || desc.includes('not in range')) {
@@ -289,11 +299,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                   }
                   const newLP = parseFloat(row['New LP']);
                   const newSP = parseFloat(row['New SP']);
-                  return (!isNaN(newLP) && newLP > 0) || (!isNaN(newSP) && newSP > 0);
+                  const hasPriceUpdate = (!isNaN(newLP) && newLP > 0) || (!isNaN(newSP) && newSP > 0);
+                  const hasImageUpdate = !!row['ImageURL'];
+                  return hasPriceUpdate || hasImageUpdate;
               });
               
               if (rowsWithUpdates.length === 0) {
-                  alert("No valid price updates found in the file. Please ensure 'New LP' or 'New SP' columns are filled.");
+                  alert("No valid updates found in the file. Please ensure 'New LP', 'New SP', or 'ImageURL' columns are filled.");
                   setIsUploading(false);
                   setUploadProgress('');
                   return;
@@ -342,20 +354,29 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                       
                       if (!validFrom) validFrom = new Date().toISOString().split('T')[0];
 
-                      const newPriceEntry: PriceEntry = { lp: newLP, sp: newSP, validFrom, validTo };
-                      const newPrices = [...product.prices, newPriceEntry];
-                      
-                      // Sort and adjust dates
-                      newPrices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
-                      
-                      for (let j = 0; j < newPrices.length - 1; j++) {
-                          const nextDate = new Date(newPrices[j+1].validFrom);
-                          nextDate.setDate(nextDate.getDate() - 1);
-                          newPrices[j].validTo = nextDate.toISOString().split('T')[0];
+                      let newPrices = product.prices;
+                      const hasPriceUpdate = (!isNaN(newLP) && newLP > 0) || (!isNaN(newSP) && newSP > 0);
+                      if (hasPriceUpdate) {
+                          const newPriceEntry: PriceEntry = { lp: newLP, sp: newSP, validFrom, validTo };
+                          newPrices = [...product.prices, newPriceEntry];
+                          
+                          // Sort and adjust dates
+                          newPrices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
+                          
+                          for (let j = 0; j < newPrices.length - 1; j++) {
+                              const nextDate = new Date(newPrices[j+1].validFrom);
+                              nextDate.setDate(nextDate.getDate() - 1);
+                              newPrices[j].validTo = nextDate.toISOString().split('T')[0];
+                          }
+                          newPrices[newPrices.length - 1].validTo = '9999-12-31';
                       }
-                      newPrices[newPrices.length - 1].validTo = '9999-12-31';
                       
-                      productsToUpdate.push({ ...product, prices: newPrices });
+                      let imageUrl = product.imageUrl;
+                      if (row['ImageURL'] !== undefined) {
+                          imageUrl = String(row['ImageURL']).trim();
+                      }
+                      
+                      productsToUpdate.push({ ...product, prices: newPrices, imageUrl });
                   }
                   
                   if (productsToUpdate.length > 0) {
@@ -452,6 +473,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             uom: (UOMS.find(u => u === firstRow['UOM']) || '') as Product['uom'],
             plant: (PLANTS.find(p => p === firstRow['Plant']) || '') as Product['plant'],
             weight: parseFloat(firstRow['Weight']) || 0,
+            imageUrl: String(firstRow['ImageURL'] || '').trim(),
           };
         }).filter((p): p is Product => p !== null);
 

@@ -414,7 +414,7 @@ export const App = () => {
             globalSearch={globalSearchQuery}
             onClearGlobalSearch={() => setGlobalSearchQuery('')}
           />}
-          {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
+          {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} stockStatements={stockStatements} pendingSOs={pendingSOs} />}
           {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
           {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} customers={customers || []} />}
           {view === 'customer-logins' && <CustomerLoginManager users={users} setUsers={setUsers} customers={customers || []} currentUser={currentUser} />}

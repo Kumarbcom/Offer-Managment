@@ -93,7 +93,8 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             hsn_code: item.hsnCode,
             uom: item.uom,
             weight: item.weight,
-            prices: item.prices
+            prices: item.prices,
+            image_url: item.imageUrl || null
         };
     }
     if (tableName === 'pendingSOs') {
@@ -218,7 +219,8 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
             hsnCode: get(['hsn_code', 'hsnCode'], ''),
             uom: item.uom || 'Mtr',
             weight: Number(item.weight) || 0,
-            prices: item.prices || []
+            prices: item.prices || [],
+            imageUrl: get(['image_url', 'imageUrl'], '')
         };
     }
 

@@ -91,7 +91,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         if (!supabase) return;
 
         const supabaseTableName = toSupabaseTableName(tableName);
-        const channelName = `table-changes-${tableName}`;
+        const channelName = `table-changes-${tableName}-${Math.random().toString(36).substring(2, 9)}-${Date.now()}`;
         const primaryKey = tableName === 'users' ? 'name' : 'id';
 
         let channel: any;

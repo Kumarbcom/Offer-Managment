@@ -12,6 +12,7 @@
   "dependencies": {
     "@capacitor/cli": "^7.4.4",
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.116.0",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "firebase": "^12.6.0",

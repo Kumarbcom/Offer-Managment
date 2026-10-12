@@ -13,13 +13,22 @@ export interface ExtractedRequirement {
 
 export async function extractRequirementsFromText(text: string): Promise<ExtractedRequirement[]> {
   const prompt = `
-You are a quotation assistant for a cable manufacturing company.
-Extract the required products and their quantities from the following text.
-For each item/row in the text, extract the 'partNo' (an alphanumeric code, could be 7 digits or more), the 'description' (e.g. OELFLEX CLASSIC 110), and the 'quantity'.
-CRITICAL: The text might be a column of just part numbers, or just descriptions. It is perfectly okay if 'partNo', 'description', or 'quantity' are missing for an item. Just leave them blank. 
-However, you MUST extract an object for EVERY single row/item you see in the text. Do NOT skip any rows. Do NOT make up items.
+You are an advanced quotation and engineering assistant for a cable manufacturing and distribution company (specializing in brands like LAPP).
+Extract the required products, their quantities, and technical parameters from the text.
+For each item, extract:
+1. 'partNo': An alphanumeric code (often 7 or 8 digits for LAPP, e.g., 1119104).
+2. 'description': The full product description (e.g., "ÖLFLEX CLASSIC 110 4G0,75-100 MTR"). Correct common misspellings (e.g., "Oelflex" to "ÖLFLEX").
+3. 'quantity': The requested length or number of items (numeric value).
+4. 'uom': The unit of measure (e.g., MTR, NOS, RL, DRM). Default to MTR if cable length is implied.
+5. 'coreCount': If applicable, extract the number of cores (e.g., 4G0.75 means 4 cores).
+6. 'crossSection': If applicable, extract the cross-sectional area (e.g., 4G0.75 means 0.75 sqmm).
+7. 'remarks': Any additional technical requirements, voltage grades, shielding requirements, or special instructions.
+
+CRITICAL: The input might be messy, contain tables, or be a mix of part numbers and descriptions.
+It is perfectly okay if some fields are missing. Leave them blank or null.
+You MUST extract an object for EVERY single row/item you see. Do NOT skip any rows. Do NOT make up items.
 Return ONLY a valid JSON array of objects.
-Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100}]
+Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100, "uom": "MTR", "coreCount": "4", "crossSection": "0.75", "remarks": "Control cable"}]
 
 Text to extract from:
 ${text}
@@ -66,13 +75,22 @@ async function fileToGenerativePart(file: File): Promise<{ inlineData: { data: s
 
 export async function extractRequirementsFromImage(imageFile: File): Promise<ExtractedRequirement[]> {
   const prompt = `
-You are a quotation assistant for a cable manufacturing company.
-Extract the required products and their quantities from the provided image.
-For each item/row in the image, extract the 'partNo' (an alphanumeric code, could be 7 digits or more), the 'description', and the 'quantity'.
-CRITICAL: The image might be a column of just part numbers, or just descriptions. It is perfectly okay if 'partNo', 'description', or 'quantity' are missing for an item. Just leave them blank. 
-However, you MUST extract an object for EVERY single row/item you see in the image. Do NOT skip any rows. Do NOT make up items.
+You are an advanced quotation and engineering assistant for a cable manufacturing and distribution company (specializing in brands like LAPP).
+Extract the required products, their quantities, and technical parameters from the provided image.
+For each item, extract:
+1. 'partNo': An alphanumeric code (often 7 or 8 digits for LAPP, e.g., 1119104).
+2. 'description': The full product description (e.g., "ÖLFLEX CLASSIC 110 4G0,75-100 MTR"). Correct common misspellings (e.g., "Oelflex" to "ÖLFLEX").
+3. 'quantity': The requested length or number of items (numeric value).
+4. 'uom': The unit of measure (e.g., MTR, NOS, RL, DRM). Default to MTR if cable length is implied.
+5. 'coreCount': If applicable, extract the number of cores (e.g., 4G0.75 means 4 cores).
+6. 'crossSection': If applicable, extract the cross-sectional area (e.g., 4G0.75 means 0.75 sqmm).
+7. 'remarks': Any additional technical requirements, voltage grades, shielding requirements, or special instructions.
+
+CRITICAL: The image might be messy, contain tables, or be a mix of part numbers and descriptions.
+It is perfectly okay if some fields are missing. Leave them blank or null.
+You MUST extract an object for EVERY single row/item you see in the image. Do NOT skip any rows. Do NOT make up items.
 Return ONLY a valid JSON array of objects.
-Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100}]
+Example output: [{"partNo": "1119104", "description": "ÖLFLEX CLASSIC 110 4G0,75-100 MTR", "quantity": 100, "uom": "MTR", "coreCount": "4", "crossSection": "0.75", "remarks": "Control cable"}]
   `;
 
   try {

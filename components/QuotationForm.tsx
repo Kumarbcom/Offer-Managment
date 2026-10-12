@@ -14,7 +14,6 @@ import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { AIAssistantPanel } from './AIAssistantPanel';
 import { useDebounce } from '../hooks/useDebounce';
-import { useOnlineStorage } from '../hooks/useOnlineStorage';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
@@ -30,6 +29,8 @@ interface QuotationFormProps {
   setEditingQuotationId: (id: number | null) => void;
   currentUser: User;
   logoUrl?: string | null;
+  stockStatements?: StockItem[] | null;
+  pendingSOs?: PendingSO[] | null;
 }
 
 const createEmptyQuotationItem = (): QuotationItem => ({
@@ -177,7 +178,8 @@ const isDiscountExceeded = (item: QuotationItem): boolean => {
 };
 
 export const QuotationForm: React.FC<QuotationFormProps> = ({
-  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl
+  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl,
+  stockStatements = [], pendingSOs = []
 }) => {
   const [formData, setFormData] = useState<Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -197,10 +199,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const debouncedProductSearchTerm = useDebounce(productSearchTerm, 300);
   const [fetchedProducts, setFetchedProducts] = useState<Map<number, Product>>(new Map());
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
-
-  // Data hooks for Stock Check
-  const [stockStatements] = useOnlineStorage<StockItem>('stockStatements');
-  const [pendingSOs] = useOnlineStorage<PendingSO>('pendingSOs');
 
   // State for async customer search
   const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
@@ -1284,6 +1282,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
            <div className="flex flex-wrap items-center gap-3 flex-1 justify-end">
                 {/* Main Actions */}
                 <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-lg border border-white/10">
+                    {/* Paused new entry as requested */}
                     {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
                     {((!isReadOnly || userRole === 'Sales Person') && (editingQuotationId === null || formData?.id === 0)) && <ActionButton onClick={() => setIsAIPanelOpen(true)} title="AI Assistant" className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"><Icons.Sparkles /><span>AI Assist</span></ActionButton>}
                     {!isReadOnly && (

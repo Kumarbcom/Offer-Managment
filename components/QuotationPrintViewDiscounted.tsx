@@ -11,6 +11,7 @@ interface QuotationPrintViewProps {
     salesPerson?: SalesPerson;
     logoUrl: string | null;
     allQuotations: Quotation[];
+    showImages?: boolean;
 }
 
 const numberToWords = (num: number): string => {
@@ -46,7 +47,7 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
 };
 
 
-export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl }) => {
+export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl, showImages }) => {
     const subTotal = (quotation.details || []).reduce((sum, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         return sum + (unitPrice * item.moq);
@@ -118,6 +119,7 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                         <thead className="bg-slate-100 text-slate-900 font-extrabold border-b border-slate-400 uppercase tracking-wider text-[9px]">
                             <tr className="divide-x divide-slate-800">
                                 <th className="p-2 font-bold text-center w-10">Sl. No</th>
+                                {showImages && <th className="p-2 font-bold text-center w-16">Image</th>}
                                 <th className="p-2 font-bold">Part No</th>
                                 <th className="p-2 font-bold w-1/4">Description</th>
                                 <th className="p-2 font-bold text-center w-10">MOQ</th>
@@ -138,6 +140,15 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                                 return (
                                     <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50 transition-colors">
                                         <td className="p-2 text-center text-slate-500 font-medium">{index + 1}</td>
+                                        {showImages && (
+                                            <td className="p-2 text-center align-middle">
+                                                {item.imageUrl ? (
+                                                    <img src={item.imageUrl} alt={item.partNo} className="w-12 h-12 object-contain mx-auto mix-blend-multiply" />
+                                                ) : (
+                                                    <div className="text-[8px] text-slate-300">No Img</div>
+                                                )}
+                                            </td>
+                                        )}
                                         <td className="p-2 text-slate-700">
                                              {partNoUrl ? (
                                                 <a href={partNoUrl} target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:underline">

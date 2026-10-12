@@ -145,9 +145,10 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
     return preFiltered
       .filter(q => {
-        if (userRole === 'Sales Person' && currentSalesPersonId !== undefined) {
-          if (q.salesPersonId !== currentSalesPersonId) return false;
-        }
+        // Allow all sales persons to see all quotations to update comments and allocations
+        // if (userRole === 'Sales Person' && currentSalesPersonId !== undefined) {
+        //   if (q.salesPersonId !== currentSalesPersonId) return false;
+        // }
         if (userRole === 'Customer' && currentUser.customerId !== undefined) {
           if (q.customerId !== currentUser.customerId) return false;
         }
@@ -444,6 +445,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
               </button>
 
               {/* New Quotation */}
+              {/* Paused new entry as requested */}
               {canEdit && (
                 <button
                   onClick={handleAddNew}

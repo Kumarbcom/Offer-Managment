@@ -53,6 +53,7 @@ export interface Product {
   uom: UOM | '';
   plant: Plant | '';
   weight: number; // kg/m
+  imageUrl?: string;
 }
 
 export interface QuotationItem {
@@ -71,6 +72,7 @@ export interface QuotationItem {
     weightPerMtr: number;
     airFreightLeadTime: string;
   };
+  imageUrl?: string;
 }
 
 export type PaymentTerm = typeof PAYMENT_TERMS[number];
