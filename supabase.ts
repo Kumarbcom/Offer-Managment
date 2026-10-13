@@ -86,6 +86,19 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
         return payload;
     }
     if (tableName === 'products') {
+        let prices = item.prices || [];
+        const cleanImageUrl = typeof item.imageUrl === 'string' ? item.imageUrl.trim() : '';
+        if (Array.isArray(prices) && prices.length > 0) {
+            prices = prices.map(p => {
+                const updatedPrice = { ...p };
+                if (cleanImageUrl) {
+                    updatedPrice.imageUrl = cleanImageUrl;
+                } else {
+                    delete updatedPrice.imageUrl;
+                }
+                return updatedPrice;
+            });
+        }
         return {
             id: item.id,
             partNo: item.partNo,
@@ -93,8 +106,7 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             hsn_code: item.hsnCode,
             uom: item.uom,
             weight: item.weight,
-            prices: item.prices,
-            image_url: item.imageUrl || null
+            prices: prices
         };
     }
     if (tableName === 'pendingSOs') {
@@ -212,6 +224,9 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
     }
 
     if (tableName === 'products') {
+        const prices = item.prices || [];
+        const latestPriceWithImage = Array.isArray(prices) ? prices.slice().reverse().find(p => p && p.imageUrl) : null;
+        const fallbackImageUrl = latestPriceWithImage ? latestPriceWithImage.imageUrl : '';
         return {
             id: Number(item.id),
             partNo: get(['part_no', 'partNo'], ''),
@@ -219,8 +234,8 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
             hsnCode: get(['hsn_code', 'hsnCode'], ''),
             uom: item.uom || 'Mtr',
             weight: Number(item.weight) || 0,
-            prices: item.prices || [],
-            imageUrl: get(['image_url', 'imageUrl'], '')
+            prices: prices,
+            imageUrl: get(['image_url', 'imageUrl'], fallbackImageUrl) || fallbackImageUrl
         };
     }
 

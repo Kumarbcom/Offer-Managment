@@ -12,6 +12,7 @@ interface QuotationPrintViewProps {
     salesPerson?: SalesPerson;
     logoUrl: string | null;
     allQuotations: Quotation[];
+    showImages?: boolean;
 }
 
 const numberToWords = (num: number): string => {
@@ -46,7 +47,7 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
     'Ranjan': 'Sales Coordinator',
 };
 
-export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl }) => {
+export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl, showImages }) => {
     const airFreightRate = quotation.quotationDate && new Date(quotation.quotationDate) >= new Date('2026-05-25') ? 180 : 150;
 
     const totals = (quotation.details || []).reduce((acc, item) => {
@@ -125,6 +126,7 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                         <thead className="bg-slate-100 text-slate-900 font-extrabold border-b border-slate-400 uppercase tracking-wider text-[9px]">
                             <tr className="divide-x divide-slate-850">
                                 <th className="p-2 font-bold text-center w-8 align-middle" rowSpan={2}>Sl. No</th>
+                                {showImages && <th className="p-2 font-bold text-center w-12 align-middle" rowSpan={2}>Image</th>}
                                 <th className="p-2 font-bold align-middle" rowSpan={2}>Part No</th>
                                 <th className="p-2 font-bold align-middle w-1/4" rowSpan={2}>Description</th>
                                 <th className="p-2 font-bold text-center w-8 align-middle" rowSpan={2}>MOQ</th>
@@ -154,6 +156,15 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                                 return (
                                     <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50 transition-colors">
                                         <td className="p-2 text-center text-slate-500 font-medium">{index + 1}</td>
+                                        {showImages && (
+                                            <td className="p-2 text-center align-middle">
+                                                {item.imageUrl ? (
+                                                    <img src={item.imageUrl} alt={item.partNo} className="w-12 h-12 object-contain mx-auto mix-blend-multiply" />
+                                                ) : (
+                                                    <span className="text-[9px] text-slate-300">—</span>
+                                                )}
+                                            </td>
+                                        )}
                                         <td className="p-2 text-slate-700">
                                              {partNoUrl ? (
                                                 <a href={partNoUrl} target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:underline">

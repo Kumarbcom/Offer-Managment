@@ -64,12 +64,10 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
             </td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.id}</td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-bold">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50" />
-                    ) : (
-                        <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs">No img</div>
-                    )}
+                        <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-200" />
+                    ) : null}
                     <span>{product.partNo}</span>
                 </div>
             </td>
@@ -117,6 +115,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const priceUpdateInputRef = useRef<HTMLInputElement>(null);
+  const imageUpdateInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
@@ -275,6 +274,83 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           setIsUploading(false);
           setUploadProgress('');
       }
+  };
+
+  const handleDownloadImageTemplate = () => {
+    const dataToExport = displayedProducts.map(p => ({
+      'Part No': p.partNo,
+      'Description': p.description,
+      'ImageURL': p.imageUrl || ''
+    }));
+    const defaultData = dataToExport.length > 0 ? dataToExport : [
+      { 'Part No': '', 'Description': '', 'ImageURL': '' }
+    ];
+    const ws = XLSX.utils.json_to_sheet(defaultData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Product_Images");
+    XLSX.writeFile(wb, "Product_Image_Upload_Template.xlsx");
+  };
+
+  const handleImageUpdateUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const data = e.target?.result;
+      if (!data) return;
+      setIsUploading(true);
+      setUploadProgress('Reading image upload file...');
+      try {
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        const rowsWithImages = json.filter(row => {
+          const partNo = String(row['Part No'] || row['PartNo'] || row['partNo'] || '').trim();
+          const imgUrl = String(row['ImageURL'] || row['ImageUrl'] || row['image_url'] || row['Image URL'] || '').trim();
+          return partNo && imgUrl;
+        });
+
+        if (rowsWithImages.length === 0) {
+          alert("No valid rows with 'Part No' and 'ImageURL' found in the file.");
+          setIsUploading(false);
+          setUploadProgress('');
+          return;
+        }
+
+        const partNos = rowsWithImages.map(row => String(row['Part No'] || row['PartNo'] || row['partNo'] || '').trim());
+        const CHUNK_SIZE = 100;
+        let updatedCount = 0;
+
+        for (let i = 0; i < partNos.length; i += CHUNK_SIZE) {
+          const chunkPartNos = partNos.slice(i, i + CHUNK_SIZE);
+          setUploadProgress(`Updating images for products ${i + 1} to ${Math.min(i + CHUNK_SIZE, partNos.length)} of ${partNos.length}...`);
+          const products = await getProductsByPartNos(chunkPartNos);
+          const productsToUpdate: Product[] = [];
+
+          for (const product of products) {
+            const row = rowsWithImages.find(r => String(r['Part No'] || r['PartNo'] || r['partNo'] || '').trim() === product.partNo);
+            if (!row) continue;
+            const newImgUrl = String(row['ImageURL'] || row['ImageUrl'] || row['image_url'] || row['Image URL'] || '').trim();
+            productsToUpdate.push({ ...product, imageUrl: newImgUrl });
+          }
+
+          if (productsToUpdate.length > 0) {
+            await addProductsBatch(productsToUpdate);
+            updatedCount += productsToUpdate.length;
+          }
+        }
+
+        alert(`Successfully updated images for ${updatedCount} products.`);
+        fetchProducts(false);
+      } catch (error) {
+        console.error("Image upload error:", error);
+        alert(error instanceof Error ? error.message : "Failed to process image updates.");
+      } finally {
+        setIsUploading(false);
+        setUploadProgress('');
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handlePriceUpdateUpload = (file: File) => {
@@ -523,7 +599,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           handlePriceUpdateUpload(file);
           event.target.value = '';
       }
-  }
+  };
+
+  const handleImageUpdateUploadClick = () => { imageUpdateInputRef.current?.click(); };
+  const handleImageUpdateFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          handleImageUpdateUpload(file);
+          event.target.value = '';
+      }
+  };
 
   const handleSelectOne = useCallback((id: number) => {
     setSelectedProductIds(prev => {
@@ -559,24 +644,37 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             <h2 className="text-2xl font-bold text-black">Products</h2>
             {/* Mobile-only Upload/Add buttons compact row */}
             {canManageProducts && (
-            <div className="flex md:hidden gap-2">
-                <button onClick={handleAddNew} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">Add</button>
-                <button onClick={handleUploadClick} className="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold">Upload</button>
+            <div className="flex md:hidden gap-1.5 flex-wrap">
+                <button onClick={handleAddNew} className="bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-bold">Add</button>
+                <button onClick={handleUploadClick} className="bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-bold">Upload</button>
+                <button onClick={handleDownloadImageTemplate} className="bg-purple-600 text-white px-2.5 py-1 rounded text-xs font-bold">Img Temp</button>
+                <button onClick={handleImageUpdateUploadClick} className="bg-fuchsia-600 text-white px-2.5 py-1 rounded text-xs font-bold">Img Up</button>
             </div>
             )}
             
             {/* Desktop Buttons */}
             <div className="hidden md:flex flex-wrap gap-2 text-sm">
                 {canManageProducts && (
-                    <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
-                        <button onClick={handleExportPriceList} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">
-                            Export Full Price List
-                        </button>
-                        <input type="file" ref={priceUpdateInputRef} onChange={handlePriceUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
-                        <button onClick={handlePriceUpdateUploadClick} disabled={isUploading} className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">
-                            Import Price Updates
-                        </button>
-                    </div>
+                    <>
+                        <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
+                            <button onClick={handleExportPriceList} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">
+                                Export Full Price List
+                            </button>
+                            <input type="file" ref={priceUpdateInputRef} onChange={handlePriceUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
+                            <button onClick={handlePriceUpdateUploadClick} disabled={isUploading} className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">
+                                Import Price Updates
+                            </button>
+                        </div>
+                        <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
+                            <button onClick={handleDownloadImageTemplate} disabled={isUploading} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Download Excel template for product image URLs">
+                                Image Template
+                            </button>
+                            <input type="file" ref={imageUpdateInputRef} onChange={handleImageUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
+                            <button onClick={handleImageUpdateUploadClick} disabled={isUploading} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Upload bulk image URLs via Excel">
+                                Upload Images
+                            </button>
+                        </div>
+                    </>
                 )}
                 
                 <button onClick={handleExport} disabled={isUploading} className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Export Visible</button>

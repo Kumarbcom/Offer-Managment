@@ -135,7 +135,14 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
 
                     return (
                         <tr key={product.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.partNo}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <div className="flex items-center gap-2">
+                                    {product.imageUrl ? (
+                                        <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-100" />
+                                    ) : null}
+                                    <span>{product.partNo}</span>
+                                </div>
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{product.description}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{currentPrice ? currentPrice.lp.toFixed(2) : 'N/A'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{currentPrice ? currentPrice.sp.toFixed(2) : 'N/A'}</td>

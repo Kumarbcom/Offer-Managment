@@ -143,7 +143,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                                                 {item.imageUrl ? (
                                                     <img src={item.imageUrl} alt={item.partNo} className="w-12 h-12 object-contain mx-auto mix-blend-multiply" />
                                                 ) : (
-                                                    <div className="text-[8px] text-slate-300">No Img</div>
+                                                    <span className="text-[9px] text-slate-300">—</span>
                                                 )}
                                             </td>
                                         )}

@@ -19,6 +19,7 @@ const emptyProductData: Omit<Product, 'id'> = {
   uom: '',
   plant: '',
   weight: 0,
+  imageUrl: '',
 };
 
 export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClose, onSave, productToEdit }) => {
@@ -182,8 +183,19 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                   <input type="number" step="0.001" name="weight" id="weight" value={formData.weight} onChange={handleGeneralChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
               </div>
               <div className="md:col-span-2 lg:col-span-3">
-                  <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">Image URL</label>
-                  <input type="text" name="imageUrl" id="imageUrl" value={formData.imageUrl || ''} onChange={handleGeneralChange} placeholder="https://example.com/image.jpg" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+                  <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">
+                    Image URL <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="imageUrl" 
+                    id="imageUrl" 
+                    value={formData.imageUrl || ''} 
+                    onChange={handleGeneralChange} 
+                    placeholder="Leave blank if no image" 
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">Products can be saved without an image. You can leave this blank.</p>
               </div>
             </div>
             

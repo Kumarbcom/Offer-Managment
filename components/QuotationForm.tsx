@@ -46,6 +46,7 @@ const createEmptyQuotationItem = (): QuotationItem => ({
   uom: '',
   airFreight: false,
   airFreightDetails: { weightPerMtr: 0, airFreightLeadTime: '' },
+  imageUrl: '',
 });
 
 const getTodayDateString = () => {
@@ -192,6 +193,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   );
   const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [printWithImages, setPrintWithImages] = useState(false);
   
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
@@ -570,7 +572,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             const priceEntry = getPriceForDate(product, prevFormData.quotationDate);
             if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${prevFormData.quotationDate ? new Date(prevFormData.quotationDate).toLocaleDateString() : 'N/A'}. Please check product price validity.`);
             const newDetails = [...prevFormData.details];
-            newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
+            newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, imageUrl: product.imageUrl || '', airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
             return { ...prevFormData, details: newDetails };
         }
         return prevFormData;
@@ -616,7 +618,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               
               const newDetails = prev.details.map(item => {
                   if (item.productId === newProduct.id) {
-                      return { ...item, price: newPrice, priceSource, uom: newProduct.uom, description: newProduct.description, partNo: newProduct.partNo };
+                      return { ...item, price: newPrice, priceSource, uom: newProduct.uom, description: newProduct.description, partNo: newProduct.partNo, imageUrl: newProduct.imageUrl || '' };
                   }
                   return item;
               });
@@ -789,7 +791,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         if (!prev) return null;
         const priceEntry = getPriceForDate(product, prev.quotationDate);
         if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return prev; }
-        const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
+        const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, imageUrl: product.imageUrl || '', airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
         const emptyItemIndex = prev.details.findIndex(item => !item.productId);
         const newDetails = [...prev.details];
         if (emptyItemIndex !== -1) newDetails[emptyItemIndex] = newQuotationItem;
@@ -1240,6 +1242,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               >
                 Export to Excel
               </button>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md cursor-pointer border border-slate-300 select-none">
+                <input 
+                  type="checkbox" 
+                  checked={printWithImages} 
+                  onChange={e => setPrintWithImages(e.target.checked)} 
+                  className="rounded text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5"
+                />
+                <span>Print with Images</span>
+              </label>
               {userRole === 'Customer' ? (
                 <>
                   <button onClick={() => setPreviewMode('standard')} className={`py-1 px-3 rounded-md text-xs font-bold transition duration-300 ${previewMode === 'standard' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>Standard</button>
@@ -1252,9 +1263,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             </div>
           </div>
           <div id="print-area">
-             {previewMode === 'standard' && <QuotationPrintView quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
-             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
-             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null}/>}
+             {previewMode === 'standard' && <QuotationPrintView quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages}/>}
           </div>
         </div>
     );
@@ -1435,9 +1446,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             <td className="border-t border-slate-300 p-1 text-center bg-slate-50 text-black">{index + 1}</td>
                             
                             {/* Part No */}
-                            <td className="border-t border-slate-300 w-40 align-top">
-                                <div className={`h-6 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
-                                    <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
+                            <td className="border-t border-slate-300 w-44 align-top">
+                                <div className="flex items-center gap-1">
+                                    {item.imageUrl && (
+                                        <img src={item.imageUrl} alt="" className="w-5 h-5 object-contain rounded shrink-0 border border-slate-200 bg-white" />
+                                    )}
+                                    <div className={`h-6 flex-1 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
+                                        <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
+                                    </div>
                                 </div>
                             </td>
                             
