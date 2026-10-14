@@ -87,21 +87,23 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
     }
     if (tableName === 'products') {
         let prices = item.prices || [];
-        let cleanImageUrl = typeof item.imageUrl === 'string' ? item.imageUrl.trim() : '';
-        // Disallow saving local Windows paths (C:\...) as they cannot be loaded by web browsers
-        if (/^(?:[a-zA-Z]:[\\/]|file:\/\/|\\\\)/i.test(cleanImageUrl)) {
-            cleanImageUrl = '';
-        }
-        if (Array.isArray(prices) && prices.length > 0) {
-            prices = prices.map(p => {
-                const updatedPrice = { ...p };
-                if (cleanImageUrl) {
-                    updatedPrice.imageUrl = cleanImageUrl;
-                } else {
-                    delete updatedPrice.imageUrl;
-                }
-                return updatedPrice;
-            });
+        if (item.imageUrl !== undefined) {
+            let cleanImageUrl = typeof item.imageUrl === 'string' ? item.imageUrl.trim() : '';
+            // Disallow saving local Windows paths (C:\...) as they cannot be loaded by web browsers
+            if (/^(?:[a-zA-Z]:[\\/]|file:\/\/|\\\\)/i.test(cleanImageUrl)) {
+                cleanImageUrl = '';
+            }
+            if (Array.isArray(prices) && prices.length > 0) {
+                prices = prices.map(p => {
+                    const updatedPrice = { ...p };
+                    if (cleanImageUrl) {
+                        updatedPrice.imageUrl = cleanImageUrl;
+                    } else {
+                        delete updatedPrice.imageUrl;
+                    }
+                    return updatedPrice;
+                });
+            }
         }
         return {
             id: item.id,

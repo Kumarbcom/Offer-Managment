@@ -124,6 +124,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const fileInputRef = useRef<HTMLInputElement>(null);
   const priceUpdateInputRef = useRef<HTMLInputElement>(null);
   const imageUpdateInputRef = useRef<HTMLInputElement>(null);
+  const bulkImageFilesInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
@@ -285,19 +286,36 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
       }
   };
 
-  const handleDownloadImageTemplate = () => {
-    const dataToExport = displayedProducts.map(p => ({
-      'Part No': p.partNo,
-      'Description': p.description,
-      'ImageURL': p.imageUrl || ''
-    }));
-    const defaultData = dataToExport.length > 0 ? dataToExport : [
-      { 'Part No': '', 'Description': '', 'ImageURL': '' }
-    ];
-    const ws = XLSX.utils.json_to_sheet(defaultData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Product_Images");
-    XLSX.writeFile(wb, "Product_Image_Upload_Template.xlsx");
+  const handleDownloadImageTemplate = async (mode: 'all' | 'visible' = 'all') => {
+    setIsUploading(true);
+    setUploadProgress('Fetching products for image template...');
+    try {
+      let productsList: Product[] = [];
+      if (mode === 'all') {
+        productsList = await fetchAllProductsForExport();
+      } else {
+        productsList = displayedProducts;
+      }
+
+      const dataToExport = productsList.map(p => ({
+        'Part No': p.partNo,
+        'Description': p.description,
+        'ImageURL': p.imageUrl || ''
+      }));
+      const defaultData = dataToExport.length > 0 ? dataToExport : [
+        { 'Part No': '', 'Description': '', 'ImageURL': '' }
+      ];
+      const ws = XLSX.utils.json_to_sheet(defaultData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Product_Images");
+      XLSX.writeFile(wb, mode === 'all' ? "All_Products_Image_Template.xlsx" : "Visible_Products_Image_Template.xlsx");
+    } catch (error) {
+      console.error("Failed to generate image template:", error);
+      alert(error instanceof Error ? error.message : "Failed to generate image template.");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress('');
+    }
   };
 
   const handleImageUpdateUpload = (file: File) => {
@@ -321,6 +339,18 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
         if (rowsWithImages.length === 0) {
           alert("No valid rows with 'Part No' and 'ImageURL' found in the file.");
+          setIsUploading(false);
+          setUploadProgress('');
+          return;
+        }
+
+        const localPathRows = rowsWithImages.filter(row => {
+          const imgUrl = String(row['ImageURL'] || row['ImageUrl'] || row['image_url'] || row['Image URL'] || '').trim();
+          return /^(?:[a-zA-Z]:[\\/]|file:\/\/|\\\\)/i.test(imgUrl);
+        });
+
+        if (localPathRows.length > 0 && localPathRows.length === rowsWithImages.length) {
+          alert(`Warning: The ImageURL column in your file contains local computer paths (like "C:\\Users\\...").\n\nWeb browsers cannot load files directly from local computer paths for security reasons.\n\nTo upload photos from your computer, please click the "Upload Image Files" button to select the image files directly!`);
           setIsUploading(false);
           setUploadProgress('');
           return;
@@ -360,6 +390,116 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
       }
     };
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleBulkImageFilesUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const fileList = Array.from(files);
+    setIsUploading(true);
+    setUploadProgress(`Processing ${fileList.length} image files...`);
+
+    try {
+      // Fetch all products so we can match filenames to part numbers
+      const allProducts = await fetchAllProductsForExport();
+      const productMapByPartNo = new Map<string, Product>();
+      allProducts.forEach(p => {
+        if (p.partNo) {
+          productMapByPartNo.set(p.partNo.trim().toLowerCase(), p);
+        }
+      });
+
+      const matchedUpdates: Product[] = [];
+      let skippedCount = 0;
+
+      const compressImageFile = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              const maxDim = 250;
+              let width = img.width;
+              let height = img.height;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.round((height * maxDim) / width);
+                  width = maxDim;
+                } else {
+                  width = Math.round((width * maxDim) / height);
+                  height = maxDim;
+                }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.85));
+              } else {
+                resolve(e.target?.result as string);
+              }
+            };
+            img.onerror = () => reject(new Error('Failed to load image'));
+            img.src = e.target?.result as string;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      };
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setUploadProgress(`Matching and optimizing image ${i + 1} of ${fileList.length} (${file.name})...`);
+        
+        const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        
+        // Exact match by partNo
+        let matchedProduct = productMapByPartNo.get(baseName.trim().toLowerCase());
+        
+        // Substring match (e.g. "OELFLEX_221803_Product_1" contains "221803")
+        if (!matchedProduct) {
+          for (const [partNoKey, prod] of productMapByPartNo.entries()) {
+            if (partNoKey.length >= 4 && baseName.toLowerCase().includes(partNoKey)) {
+              matchedProduct = prod;
+              break;
+            }
+          }
+        }
+
+        if (matchedProduct) {
+          const compressedDataUrl = await compressImageFile(file);
+          matchedUpdates.push({ ...matchedProduct, imageUrl: compressedDataUrl });
+        } else {
+          skippedCount++;
+        }
+      }
+
+      if (matchedUpdates.length === 0) {
+        alert(`None of the ${fileList.length} image files matched any product Part Numbers. Please ensure file names match or include the Part No (e.g. "221803.jpg").`);
+        return;
+      }
+
+      const CHUNK_SIZE = 50;
+      for (let i = 0; i < matchedUpdates.length; i += CHUNK_SIZE) {
+        const chunk = matchedUpdates.slice(i, i + CHUNK_SIZE);
+        setUploadProgress(`Saving images ${i + 1} to ${Math.min(i + CHUNK_SIZE, matchedUpdates.length)} of ${matchedUpdates.length}...`);
+        await addProductsBatch(chunk);
+      }
+
+      alert(`Successfully uploaded images for ${matchedUpdates.length} products!${skippedCount > 0 ? ` (${skippedCount} files did not match any Part No)` : ''}`);
+      fetchProducts(false);
+
+    } catch (err) {
+      console.error("Bulk image upload error:", err);
+      alert(err instanceof Error ? err.message : "Bulk image upload failed.");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress('');
+      event.target.value = '';
+    }
   };
 
   const handlePriceUpdateUpload = (file: File) => {
@@ -656,8 +796,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             <div className="flex md:hidden gap-1.5 flex-wrap">
                 <button onClick={handleAddNew} className="bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-bold">Add</button>
                 <button onClick={handleUploadClick} className="bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-bold">Upload</button>
-                <button onClick={handleDownloadImageTemplate} className="bg-purple-600 text-white px-2.5 py-1 rounded text-xs font-bold">Img Temp</button>
-                <button onClick={handleImageUpdateUploadClick} className="bg-fuchsia-600 text-white px-2.5 py-1 rounded text-xs font-bold">Img Up</button>
+                <button onClick={() => handleDownloadImageTemplate('all')} className="bg-purple-600 text-white px-2.5 py-1 rounded text-xs font-bold" title="Download Excel template for all products">Img Temp</button>
+                <button onClick={handleImageUpdateUploadClick} className="bg-fuchsia-600 text-white px-2.5 py-1 rounded text-xs font-bold" title="Upload Excel image URLs">Img Up</button>
+                <button onClick={() => bulkImageFilesInputRef.current?.click()} className="bg-pink-600 text-white px-2.5 py-1 rounded text-xs font-bold" title="Upload multiple image files">Img Files</button>
             </div>
             )}
             
@@ -675,12 +816,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                             </button>
                         </div>
                         <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
-                            <button onClick={handleDownloadImageTemplate} disabled={isUploading} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Download Excel template for product image URLs">
-                                Image Template
+                            <button onClick={() => handleDownloadImageTemplate('all')} disabled={isUploading} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Download Excel template with ALL products in database to fill in image URLs">
+                                Image Template (All)
                             </button>
                             <input type="file" ref={imageUpdateInputRef} onChange={handleImageUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
-                            <button onClick={handleImageUpdateUploadClick} disabled={isUploading} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Upload bulk image URLs via Excel">
-                                Upload Images
+                            <button onClick={handleImageUpdateUploadClick} disabled={isUploading} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Upload bulk image URLs via Excel sheet">
+                                Upload Images (Excel)
+                            </button>
+                            <input type="file" ref={bulkImageFilesInputRef} onChange={handleBulkImageFilesUpload} className="hidden" accept="image/*" multiple />
+                            <button onClick={() => bulkImageFilesInputRef.current?.click()} disabled={isUploading} className="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Select multiple image files from your computer (auto-matches Part No)">
+                                Upload Image Files
                             </button>
                         </div>
                     </>
