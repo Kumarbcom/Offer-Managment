@@ -779,6 +779,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handleNewButtonClick = () => { 
       if (isReadOnly && userRole !== 'Sales Person') return;
       setEditingQuotationId(null); 
+      currentSessionIdRef.current = null;
+      setSelectedCustomerObj(null);
+      setFetchedProducts(new Map());
+      setFormData(createNewQuotation());
       const url = new URL(window.location.href); 
       if (!url.protocol.startsWith('blob')) { 
           url.searchParams.delete('id'); 

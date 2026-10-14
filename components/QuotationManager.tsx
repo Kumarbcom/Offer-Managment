@@ -88,6 +88,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
   const [sortOrder, setSortOrder] = useState<SortOrderType>('desc');
   const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<number>>(new Set());
   const [emailModalQuotation, setEmailModalQuotation] = useState<Quotation | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(50);
 
   useEffect(() => {
     if (globalSearch) {
@@ -183,7 +185,19 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
       });
   }, [quotations, universalSearchTerm, customerMap, salesPersons, sortBy, sortOrder, quotationFilter, userRole, currentUser]);
 
-  useEffect(() => { setSelectedQuotationIds(new Set()); }, [filteredAndSortedQuotations]);
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedQuotationIds(new Set());
+  }, [universalSearchTerm, sortBy, sortOrder, quotationFilter]);
+
+  const totalItems = filteredAndSortedQuotations.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / (pageSize || 50)));
+
+  const paginatedQuotations = useMemo(() => {
+    if (pageSize === 0) return filteredAndSortedQuotations;
+    const start = (currentPage - 1) * pageSize;
+    return filteredAndSortedQuotations.slice(start, start + pageSize);
+  }, [filteredAndSortedQuotations, currentPage, pageSize]);
 
   const handleAddNew = () => { setEditingQuotationId(null); setView('quotation-form'); };
   const handleEdit = (id: number) => {
@@ -338,7 +352,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     });
   };
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) setSelectedQuotationIds(new Set(filteredAndSortedQuotations.map(q => q.id)));
+    if (e.target.checked) setSelectedQuotationIds(new Set(paginatedQuotations.map(q => q.id)));
     else setSelectedQuotationIds(new Set());
   };
   const handleBulkStatusChange = async (status: QuotationStatus) => {
@@ -349,7 +363,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
     }
   };
 
-  const isAllSelected = selectedQuotationIds.size > 0 && selectedQuotationIds.size === filteredAndSortedQuotations.length;
+  const isAllSelected = paginatedQuotations.length > 0 && paginatedQuotations.every(q => selectedQuotationIds.has(q.id));
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
   // Summary stats
@@ -531,9 +545,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
         {/* ── Mobile Cards ── */}
         <div className="block md:hidden space-y-2">
-          {filteredAndSortedQuotations.length === 0 ? (
+          {paginatedQuotations.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">No quotations found</div>
-          ) : filteredAndSortedQuotations.map(q => {
+          ) : paginatedQuotations.map(q => {
             const amount = calculateTotalAmount(q.details);
             const cfg = getStatusCfg(q.status);
             return (
@@ -646,7 +660,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                       </div>
                     </td>
                   </tr>
-                ) : filteredAndSortedQuotations.map((q, rowIdx) => {
+                ) : paginatedQuotations.map((q, rowIdx) => {
                   const isSelected = selectedQuotationIds.has(q.id);
                   const amount = calculateTotalAmount(q.details);
                   return (
@@ -786,7 +800,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
                 <tfoot>
                   <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
                     <td colSpan={5} className="px-3 py-1.5 text-xs font-semibold text-slate-300">
-                      Showing {filteredAndSortedQuotations.length} quotation{filteredAndSortedQuotations.length !== 1 ? 's' : ''}
+                      Showing {pageSize === 0 ? totalItems : Math.min((currentPage - 1) * pageSize + 1, totalItems)} – {pageSize === 0 ? totalItems : Math.min(currentPage * pageSize, totalItems)} of {totalItems} quotation{totalItems !== 1 ? 's' : ''}
                     </td>
                     <td className="px-3 py-1.5 text-right text-sm font-bold text-white whitespace-nowrap">
                       ₹{stats.total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
@@ -798,6 +812,83 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             </table>
           </div>
         </div>
+
+        {/* ── Pagination Bar ── */}
+        {totalItems > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 my-3 px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs text-slate-600 shadow-sm">
+            <div className="flex items-center gap-1.5">
+              <span>Showing</span>
+              <span className="font-bold text-slate-800">
+                {pageSize === 0 ? 1 : Math.min((currentPage - 1) * pageSize + 1, totalItems)}
+              </span>
+              <span>to</span>
+              <span className="font-bold text-slate-800">
+                {pageSize === 0 ? totalItems : Math.min(currentPage * pageSize, totalItems)}
+              </span>
+              <span>of</span>
+              <span className="font-bold text-indigo-600">{totalItems}</span>
+              <span>quotations</span>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500">Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={e => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400 cursor-pointer"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                  <option value={0}>All ({totalItems})</option>
+                </select>
+              </div>
+
+              {pageSize > 0 && totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-bold"
+                    title="First Page"
+                  >
+                    «
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-2.5 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold"
+                  >
+                    Prev
+                  </button>
+                  <span className="px-2 font-semibold text-slate-800">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-2.5 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold"
+                  >
+                    Next
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-bold"
+                    title="Last Page"
+                  >
+                    »
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <ShareModal 
           isOpen={!!emailModalQuotation}
