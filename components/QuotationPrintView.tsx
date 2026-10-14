@@ -1,10 +1,9 @@
 
-import React from 'react';
-import type { Quotation, Customer, SalesPerson, PreparedBy } from '../types';
+import React, { useState } from 'react';
+import type { Quotation, Customer, SalesPerson, PreparedBy, PrintImageSize } from '../types';
 import { PREPARED_BY_LIST } from '../constants';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
-
-
+import { ImageZoomModal } from './ImageZoomModal';
 
 interface QuotationPrintViewProps {
     quotation: Quotation;
@@ -13,6 +12,7 @@ interface QuotationPrintViewProps {
     logoUrl: string | null;
     allQuotations: Quotation[];
     showImages?: boolean;
+    imageSize?: PrintImageSize;
 }
 
 const numberToWords = (num: number): string => {
@@ -47,7 +47,17 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
     'Ranjan': 'Sales Coordinator',
 };
 
-export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl, showImages }) => {
+export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl, showImages, imageSize = 'md' }) => {
+    const [zoomedImage, setZoomedImage] = useState<{ url: string; partNo?: string; description?: string } | null>(null);
+
+    const imageSizeConfig: Record<PrintImageSize, { img: string; th: string }> = {
+        sm: { img: 'w-10 h-10', th: 'w-14' },
+        md: { img: 'w-14 h-14', th: 'w-18' },
+        lg: { img: 'w-20 h-20', th: 'w-24' },
+        xl: { img: 'w-28 h-28', th: 'w-32' },
+    };
+    const currentSize = imageSizeConfig[imageSize];
+
     const subTotal = (quotation.details || []).reduce((sum, item) => {
         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
         return sum + (unitPrice * item.moq);
@@ -119,7 +129,7 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                         <thead className="bg-slate-100 text-slate-900 font-extrabold border-b border-slate-400 uppercase tracking-wider text-[9px]">
                             <tr className="divide-x divide-slate-800">
                                 <th className="p-2 font-bold text-center w-10">Sl. No</th>
-                                {showImages && <th className="p-2 font-bold text-center w-16">Image</th>}
+                                {showImages && <th className={`p-2 font-bold text-center ${currentSize.th}`}>Image</th>}
                                 <th className="p-2 font-bold">Part No</th>
                                 <th className="p-2 font-bold w-auto">Description</th>
                                 <th className="p-2 font-bold text-center w-12">MOQ</th>
@@ -141,7 +151,21 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                                         {showImages && (
                                             <td className="p-2 text-center align-middle">
                                                 {item.imageUrl ? (
-                                                    <img src={item.imageUrl} alt={item.partNo} className="w-12 h-12 object-contain mx-auto mix-blend-multiply" />
+                                                    <div 
+                                                        className="relative group inline-block cursor-zoom-in"
+                                                        onClick={() => setZoomedImage({ url: item.imageUrl!, partNo: item.partNo, description: item.description })}
+                                                        title="Click to zoom image"
+                                                    >
+                                                        <img 
+                                                            src={item.imageUrl} 
+                                                            alt={item.partNo} 
+                                                            className={`${currentSize.img} object-contain mx-auto mix-blend-multiply rounded hover:opacity-90 transition-transform group-hover:scale-105`} 
+                                                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                                        />
+                                                        <span className="no-print absolute -bottom-1 -right-1 bg-slate-800/80 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-xs pointer-events-none">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                                        </span>
+                                                    </div>
                                                 ) : (
                                                     <span className="text-[9px] text-slate-300">—</span>
                                                 )}
@@ -254,7 +278,14 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                 </div>
             </div>
 
-
+            {zoomedImage && (
+                <ImageZoomModal 
+                    imageUrl={zoomedImage.url} 
+                    partNo={zoomedImage.partNo} 
+                    description={zoomedImage.description} 
+                    onClose={() => setZoomedImage(null)} 
+                />
+            )}
         </div>
     );
 };

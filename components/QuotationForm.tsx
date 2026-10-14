@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy, User, StockItem, PendingSO } from '../types';
+import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy, User, StockItem, PendingSO, PrintImageSize } from '../types';
 import { PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES } from '../constants';
 import { CustomerAddModal } from './CustomerAddModal';
 import { ProductAddModal } from './ProductAddModal';
@@ -194,6 +194,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [successModalData, setSuccessModalData] = useState<Quotation | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [printWithImages, setPrintWithImages] = useState(false);
+  const [printImageSize, setPrintImageSize] = useState<PrintImageSize>('md');
   
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [searchedProducts, setSearchedProducts] = useState<Product[]>([]);
@@ -1255,6 +1256,22 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 />
                 <span>Print with Images</span>
               </label>
+              {printWithImages && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded-md border border-slate-300">
+                  <span className="text-slate-600 text-[11px]">Size:</span>
+                  <select
+                    value={printImageSize}
+                    onChange={e => setPrintImageSize(e.target.value as PrintImageSize)}
+                    className="bg-white border border-slate-300 rounded text-xs py-0.5 px-1.5 font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                    title="Select image size for preview and print"
+                  >
+                    <option value="sm">Small (40px)</option>
+                    <option value="md">Normal (56px)</option>
+                    <option value="lg">Large (80px)</option>
+                    <option value="xl">Extra Large (110px)</option>
+                  </select>
+                </div>
+              )}
               {userRole === 'Customer' ? (
                 <>
                   <button onClick={() => setPreviewMode('standard')} className={`py-1 px-3 rounded-md text-xs font-bold transition duration-300 ${previewMode === 'standard' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>Standard</button>
@@ -1267,9 +1284,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             </div>
           </div>
           <div id="print-area">
-             {previewMode === 'standard' && <QuotationPrintView quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages}/>}
-             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages}/>}
-             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages}/>}
+             {previewMode === 'standard' && <QuotationPrintView quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize}/>}
           </div>
         </div>
     );
@@ -1453,7 +1470,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             <td className="border-t border-slate-300 w-44 align-top">
                                 <div className="flex items-center gap-1">
                                     {item.imageUrl && (
-                                        <img src={item.imageUrl} alt="" className="w-5 h-5 object-contain rounded shrink-0 border border-slate-200 bg-white" />
+                                        <img src={item.imageUrl} alt="" className="w-5 h-5 object-contain rounded shrink-0 border border-slate-200 bg-white" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                                     )}
                                     <div className={`h-6 flex-1 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
                                         <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />

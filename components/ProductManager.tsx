@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { ProductAddModal } from './ProductAddModal';
+import { ImageZoomModal } from './ImageZoomModal';
 import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, fetchAllProductsForExport } from '../supabase';
 
 declare var XLSX: any;
@@ -52,7 +53,7 @@ const getEffectivePriceValue = (product: Product): number => {
 };
 
 // Memoized ProductRow component to prevent unnecessary re-renders
-const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; }) => {
+const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete, onZoomImage }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; onZoomImage?: (p: Product) => void; }) => {
     const currentPrice = getCurrentPrice(product);
     const lp = currentPrice?.lp || 0;
     const sp = currentPrice?.sp || 0;
@@ -66,7 +67,14 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
             <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-bold">
                 <div className="flex items-center gap-2">
                     {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-200" />
+                        <img 
+                            src={product.imageUrl} 
+                            alt={product.partNo} 
+                            onClick={() => onZoomImage?.(product)}
+                            className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-200 cursor-zoom-in hover:scale-110 transition-transform" 
+                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            title="Click to zoom image"
+                        />
                     ) : null}
                     <span>{product.partNo}</span>
                 </div>
@@ -119,6 +127,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+  const [zoomedProduct, setZoomedProduct] = useState<Product | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -764,7 +773,19 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 return (
                     <div key={product.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
                         <div className="flex justify-between items-start">
-                            <h3 className="text-sm font-bold text-indigo-700">{product.partNo}</h3>
+                            <div className="flex items-center gap-2">
+                                {product.imageUrl ? (
+                                    <img 
+                                        src={product.imageUrl} 
+                                        alt={product.partNo} 
+                                        onClick={() => setZoomedProduct(product)}
+                                        className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-200 shrink-0 cursor-zoom-in hover:scale-105 transition-transform" 
+                                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                        title="Click to zoom image"
+                                    />
+                                ) : null}
+                                <h3 className="text-sm font-bold text-indigo-700">{product.partNo}</h3>
+                            </div>
                             <div className="text-xs text-black">#{product.id}</div>
                         </div>
                         <p className="text-xs text-black mt-1 line-clamp-2">{product.description}</p>
@@ -815,6 +836,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                         onSelect={handleSelectOne}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onZoomImage={setZoomedProduct}
                     />
                 ))}
             </tbody>
@@ -845,6 +867,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         onSave={handleSaveProduct}
         productToEdit={productToEdit}
       />
+
+      {zoomedProduct && (
+        <ImageZoomModal
+          imageUrl={zoomedProduct.imageUrl || ''}
+          partNo={zoomedProduct.partNo}
+          description={zoomedProduct.description}
+          onClose={() => setZoomedProduct(null)}
+        />
+      )}
     </div>
   );
 };

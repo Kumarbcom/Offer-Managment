@@ -146,3 +146,5 @@ export interface PendingSO {
   dueOn: string;
   // Overdue is derived: today > dueOn
 }
+
+export type PrintImageSize = 'sm' | 'md' | 'lg' | 'xl';

@@ -125,9 +125,9 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
             </div>
             
             <div id="print-area" className="flex justify-center">
-                {mode === 'standard' && <QuotationPrintView quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} />}
-                {mode === 'discounted' && <QuotationPrintViewDiscounted quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} />}
-                {mode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} />}
+                {mode === 'standard' && <QuotationPrintView quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} showImages={(quotation.details || []).some(item => !!item.imageUrl)} />}
+                {mode === 'discounted' && <QuotationPrintViewDiscounted quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} showImages={(quotation.details || []).some(item => !!item.imageUrl)} />}
+                {mode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={quotation} allQuotations={allQuotations} customer={customer} salesPerson={salesPerson!} logoUrl={DEFAULT_LOGO_BASE64} showImages={(quotation.details || []).some(item => !!item.imageUrl)} />}
             </div>
         </div>
     );

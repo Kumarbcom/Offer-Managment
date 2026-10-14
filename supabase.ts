@@ -87,7 +87,11 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
     }
     if (tableName === 'products') {
         let prices = item.prices || [];
-        const cleanImageUrl = typeof item.imageUrl === 'string' ? item.imageUrl.trim() : '';
+        let cleanImageUrl = typeof item.imageUrl === 'string' ? item.imageUrl.trim() : '';
+        // Disallow saving local Windows paths (C:\...) as they cannot be loaded by web browsers
+        if (/^(?:[a-zA-Z]:[\\/]|file:\/\/|\\\\)/i.test(cleanImageUrl)) {
+            cleanImageUrl = '';
+        }
         if (Array.isArray(prices) && prices.length > 0) {
             prices = prices.map(p => {
                 const updatedPrice = { ...p };

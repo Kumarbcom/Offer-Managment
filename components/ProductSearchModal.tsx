@@ -138,7 +138,7 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 <div className="flex items-center gap-2">
                                     {product.imageUrl ? (
-                                        <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-100" />
+                                        <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-100" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                                     ) : null}
                                     <span>{product.partNo}</span>
                                 </div>

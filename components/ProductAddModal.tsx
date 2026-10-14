@@ -96,7 +96,50 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
   const handleRemovePriceRow = (index: number) => {
     if (formData.prices.length <= 1) return;
     setFormData(prev => ({ ...prev, prices: prev.prices.filter((_, i) => i !== index) }));
-  }
+  };
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, WebP, etc.).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize image to max 250x250 to keep storage very small and fast (~5-15 KB)
+        const maxDim = 250;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setFormData(prev => ({ ...prev, imageUrl: compressedDataUrl }));
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,20 +225,72 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                   <label htmlFor="weight" className="block text-sm font-medium text-gray-700">Weight (kg/m)</label>
                   <input type="number" step="0.001" name="weight" id="weight" value={formData.weight} onChange={handleGeneralChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
               </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                  <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">
-                    Image URL <span className="text-gray-400 font-normal">(Optional)</span>
+              <div className="md:col-span-2 lg:col-span-3 border border-slate-200 rounded-lg p-3 bg-slate-50">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Product Image <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
-                  <input 
-                    type="text" 
-                    name="imageUrl" 
-                    id="imageUrl" 
-                    value={formData.imageUrl || ''} 
-                    onChange={handleGeneralChange} 
-                    placeholder="Leave blank if no image" 
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                  <p className="mt-1 text-xs text-gray-400">Products can be saved without an image. You can leave this blank.</p>
+                  
+                  <div className="flex flex-wrap items-center gap-4">
+                    {/* Choose File Button */}
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-indigo-400 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      <span>Choose Image File...</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleImageFileChange} 
+                        className="hidden" 
+                      />
+                    </label>
+
+                    {/* Image Preview & Remove button if present */}
+                    {formData.imageUrl && (
+                      <div className="flex items-center gap-2 bg-white p-1.5 rounded-md border border-gray-200 shadow-xs">
+                        <img 
+                          src={formData.imageUrl} 
+                          alt="Product preview" 
+                          className="w-12 h-12 object-contain rounded bg-slate-50 border border-slate-100" 
+                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                          className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded font-medium transition-colors"
+                          title="Remove image"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Or enter Image URL */}
+                  <div className="mt-2">
+                    <label htmlFor="imageUrl" className="block text-xs font-medium text-gray-500 mb-1">
+                      Or paste an Image Web URL (e.g. https://...):
+                    </label>
+                    <input 
+                      type="text" 
+                      name="imageUrl" 
+                      id="imageUrl" 
+                      value={formData.imageUrl || ''} 
+                      onChange={handleGeneralChange} 
+                      placeholder="https://example.com/image.jpg (Optional)" 
+                      className="block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    />
+                  </div>
+
+                  {/* Warning if user typed a local Windows or file path */}
+                  {formData.imageUrl && /^(?:[a-zA-Z]:[\\/]|file:\/\/|\\\\)/i.test(formData.imageUrl) && (
+                    <div className="mt-2 p-2.5 bg-amber-50 border border-amber-300 rounded-md text-xs text-amber-800 flex items-start gap-2">
+                      <span className="text-base leading-none">⚠️</span>
+                      <span>
+                        <strong>Local computer path detected:</strong> Web browsers cannot display images directly from local paths like <code>C:\...</code> due to browser security restrictions. Please click <strong>"Choose Image File..."</strong> above to upload the image directly!
+                      </span>
+                    </div>
+                  )}
+
+                  <p className="mt-1 text-xs text-gray-500">Products can be saved without an image. You can leave this blank.</p>
               </div>
             </div>
             
