@@ -11,16 +11,14 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       build: {
-        chunkSizeWarningLimit: 1000,
+        chunkSizeWarningLimit: 1500,
         rollupOptions: {
           output: {
             manualChunks(id) {
               if (!id.includes('node_modules')) return;
-              if (id.includes('/react/') || id.includes('/react-dom/')) return 'react';
-              if (id.includes('/@firebase/') || id.includes('/firebase/')) return 'firebase';
-              if (id.includes('/exceljs/') || id.includes('/file-saver/')) return 'excel';
-              if (id.includes('/framer-motion/')) return 'motion';
-              return 'vendor';
+              const normalized = id.replace(/\\/g, '/');
+              if (normalized.includes('/exceljs/') || normalized.includes('/file-saver/')) return 'excel';
+              if (normalized.includes('/framer-motion/')) return 'motion';
             },
           },
         },
