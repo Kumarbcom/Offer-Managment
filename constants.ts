@@ -1,7 +1,7 @@
 
 // import type { PaymentTerm, PreparedBy, ProductBrand, ModeOfEnquiry, QuotationStatus, Plant, UOM } from './types';
 
-export const SALES_PERSON_NAMES = ['Ananthapadmanabha Phandari', 'Giridhar', 'Veeresh', 'Office'] as const;
+export const SALES_PERSON_NAMES = ['N Vinay Kumar', 'Giridhar', 'Veeresh', 'Office'] as const;
 // FIX: Removed explicit type annotations (e.g., `: UOM[]`) and added `as const`.
 // This allows the corresponding types in `types.ts` to be inferred from this constant's value,
 // breaking the circular dependency. The same fix is applied to all subsequent constants.

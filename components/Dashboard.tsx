@@ -464,7 +464,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         if (!barChartRef.current || !salesPersons || typeof Chart === 'undefined') return;
 
         const vibrantColors: Record<string, string> = {
-            'Ananthapadmanabha Phandari': '#8b5cf6', // Violet
+            'N Vinay Kumar': '#8b5cf6', // Violet
             'Giridhar': '#ec4899', // Pink
             'Office': '#f43f5e', // Rose
             'Veeresh': '#10b981', // Emerald

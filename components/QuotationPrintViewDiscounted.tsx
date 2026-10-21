@@ -13,6 +13,7 @@ interface QuotationPrintViewProps {
     allQuotations: Quotation[];
     showImages?: boolean;
     imageSize?: PrintImageSize;
+    productImageMap?: Map<string, string>;
 }
 
 const numberToWords = (num: number): string => {
@@ -48,7 +49,7 @@ const PREPARER_DESIGNATIONS: Record<PreparedBy, string> = {
 };
 
 
-export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl, showImages, imageSize = 'md' }) => {
+export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = ({ quotation, allQuotations, customer, salesPerson, logoUrl, showImages, imageSize = 'md', productImageMap }) => {
     const [zoomedImage, setZoomedImage] = useState<{ url: string; partNo?: string; description?: string } | null>(null);
 
     const imageSizeConfig: Record<PrintImageSize, { img: string; th: string }> = {
@@ -148,19 +149,20 @@ export const QuotationPrintViewDiscounted: React.FC<QuotationPrintViewProps> = (
                                 const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
                                 const amount = unitPrice * item.moq;
                                 const partNoUrl = getPartNoLink(item.partNo);
+                                const effectiveImageUrl = item.imageUrl || (productImageMap && item.partNo ? productImageMap.get(item.partNo.trim()) : undefined);
                                 return (
                                     <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50 transition-colors">
                                         <td className="p-2 text-center text-slate-500 font-medium">{index + 1}</td>
                                         {showImages && (
                                             <td className="p-2 text-center align-middle">
-                                                {item.imageUrl ? (
+                                                {effectiveImageUrl ? (
                                                     <div 
                                                         className="relative group inline-block cursor-zoom-in"
-                                                        onClick={() => setZoomedImage({ url: item.imageUrl!, partNo: item.partNo, description: item.description })}
+                                                        onClick={() => setZoomedImage({ url: effectiveImageUrl, partNo: item.partNo, description: item.description })}
                                                         title="Click to zoom image"
                                                     >
                                                         <img 
-                                                            src={item.imageUrl} 
+                                                            src={effectiveImageUrl} 
                                                             alt={item.partNo} 
                                                             className={`${currentSize.img} object-contain mx-auto mix-blend-multiply rounded hover:opacity-90 transition-transform group-hover:scale-105`} 
                                                             onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}

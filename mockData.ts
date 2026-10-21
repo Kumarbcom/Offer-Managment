@@ -2,7 +2,7 @@
 import type { SalesPerson, Customer, Product, Quotation } from './types';
 
 export const MOCK_SALES_PERSONS: SalesPerson[] = [
-  { id: 1, name: 'Ananthapadmanabha Phandari', email: 'ap@example.com', mobile: '9876543210' },
+  { id: 1, name: 'N Vinay Kumar', email: 'vinay@siddhikabel.com', mobile: '8105851098' },
   { id: 2, name: 'Giridhar', email: 'giridhar@example.com', mobile: '9876543211' },
   { id: 3, name: 'Veeresh', email: 'veeresh@example.com', mobile: '9876543212' },
   { id: 4, name: 'Office', email: 'office@example.com', mobile: '9876543213' },

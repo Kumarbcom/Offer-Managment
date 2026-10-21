@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { mapFromSupabase } from '../supabase';
-import type { Quotation, Customer, SalesPerson } from '../types';
+import { mapFromSupabase, getProductsByIds, getProductsByPartNos } from '../supabase';
+import type { Quotation, Customer, SalesPerson, Product } from '../types';
 import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
@@ -32,6 +32,42 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
                 
                 if (qError) throw qError;
                 const fetchedQuotation = mapFromSupabase('quotations', qData) as Quotation;
+
+                // Auto-enrich details with product images if missing
+                if (fetchedQuotation.details && fetchedQuotation.details.length > 0) {
+                    const pIds = fetchedQuotation.details.map(d => d.productId).filter((id): id is number => typeof id === 'number' && id > 0);
+                    const pNos = fetchedQuotation.details.map(d => d.partNo).filter((p): p is string => Boolean(p && p.trim()));
+                    try {
+                        const [byId, byPart] = await Promise.all([
+                            pIds.length > 0 ? getProductsByIds(pIds) : Promise.resolve([]),
+                            pNos.length > 0 ? getProductsByPartNos(pNos) : Promise.resolve([])
+                        ]);
+                        const combined = [...byId, ...byPart];
+                        const prodMap = new Map<number, Product>();
+                        const partImgMap = new Map<string, string>();
+                        for (const p of combined) {
+                            if (p.id) prodMap.set(p.id, p);
+                            if (p.partNo && p.imageUrl) {
+                                partImgMap.set(p.partNo.trim().toLowerCase(), p.imageUrl);
+                                const unpadded = p.partNo.trim().replace(/^0+/, '');
+                                if (unpadded) partImgMap.set(unpadded.toLowerCase(), p.imageUrl);
+                            }
+                        }
+                        fetchedQuotation.details = fetchedQuotation.details.map(item => {
+                            if (!item.imageUrl) {
+                                const cleanPNo = (item.partNo || '').trim().toLowerCase();
+                                const unpadded = cleanPNo.replace(/^0+/, '');
+                                const matched = (item.productId && prodMap.get(item.productId)?.imageUrl) ||
+                                                (cleanPNo && partImgMap.get(cleanPNo)) ||
+                                                (unpadded && partImgMap.get(unpadded));
+                                if (matched) return { ...item, imageUrl: matched };
+                            }
+                            return item;
+                        });
+                    } catch (e) {
+                        console.warn("Could not fetch product images for public viewer:", e);
+                    }
+                }
                 setQuotation(fetchedQuotation);
 
                 // Fetch All Quotations for Sequence Number logic

@@ -13,7 +13,7 @@ export const USERS: User[] = [
   
   // Sales Person
   { name: 'Giridhar', password: '123456', role: 'Sales Person' },
-  { name: 'Ananthapadmanabha Phandari', password: '123456', role: 'Sales Person' },
+  { name: 'N Vinay Kumar', password: '123456', role: 'Sales Person' },
   { name: 'Veeresh', password: '123456', role: 'Sales Person' },
   { name: 'Office', password: '123456', role: 'Sales Person' },
 

@@ -14,7 +14,7 @@ import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { AIAssistantPanel } from './AIAssistantPanel';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
 
@@ -148,6 +148,11 @@ const Icons = {
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-blue-600">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clipRule="evenodd" />
         </svg>
+    ),
+    Refresh: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-sky-500">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
     )
 };
 
@@ -201,7 +206,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
   const debouncedProductSearchTerm = useDebounce(productSearchTerm, 300);
   const [fetchedProducts, setFetchedProducts] = useState<Map<number, Product>>(new Map());
+  const [isRefreshingImages, setIsRefreshingImages] = useState(false);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+
+  const productImageMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of fetchedProducts.values()) {
+      if (p.partNo && p.imageUrl) {
+        map.set(p.partNo.trim(), p.imageUrl);
+      }
+    }
+    return map;
+  }, [fetchedProducts]);
 
   // State for async customer search
   const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
@@ -425,9 +441,45 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
     if (initialQuotation.details) {
         const productIds = initialQuotation.details.map((d: QuotationItem) => d.productId).filter((id: number) => id > 0);
-        if (productIds.length > 0) {
-            getProductsByIds(productIds).then(products => {
-                setFetchedProducts(new Map(products.map(p => [p.id, p])));
+        const partNos = initialQuotation.details.map((d: QuotationItem) => d.partNo).filter((p: string) => Boolean(p && p.trim()));
+        if (productIds.length > 0 || partNos.length > 0) {
+            Promise.all([
+                productIds.length > 0 ? getProductsByIds(productIds) : Promise.resolve([]),
+                partNos.length > 0 ? getProductsByPartNos(partNos) : Promise.resolve([])
+            ]).then(([byId, byPart]) => {
+                const combined = [...byId, ...byPart];
+                const prodMap = new Map<number, Product>();
+                const partImgMap = new Map<string, string>();
+                for (const p of combined) {
+                    if (p.id) prodMap.set(p.id, p);
+                    if (p.partNo && p.imageUrl) {
+                        partImgMap.set(p.partNo.trim().toLowerCase(), p.imageUrl);
+                        const unpadded = p.partNo.trim().replace(/^0+/, '');
+                        if (unpadded) partImgMap.set(unpadded.toLowerCase(), p.imageUrl);
+                    }
+                }
+                setFetchedProducts(prodMap);
+
+                // Auto-enrich details with image if missing
+                setFormData(prev => {
+                    if (!prev || !prev.details) return prev;
+                    let hasChanges = false;
+                    const updatedDetails = prev.details.map(item => {
+                        if (!item.imageUrl) {
+                            const cleanPNo = (item.partNo || '').trim().toLowerCase();
+                            const unpadded = cleanPNo.replace(/^0+/, '');
+                            const matchedImg = (item.productId && prodMap.get(item.productId)?.imageUrl) ||
+                                               (cleanPNo && partImgMap.get(cleanPNo)) ||
+                                               (unpadded && partImgMap.get(unpadded));
+                            if (matchedImg) {
+                                hasChanges = true;
+                                return { ...item, imageUrl: matchedImg };
+                            }
+                        }
+                        return item;
+                    });
+                    return hasChanges ? { ...prev, details: updatedDetails } : prev;
+                });
             }).catch(error => console.error("QuotationForm: Failed to fetch product details:", error));
         } else {
             setFetchedProducts(new Map());
@@ -518,6 +570,82 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     };
     performSearch();
   }, [debouncedCustomerSearchTerm, selectedCustomerObj]);
+
+  // Auto-enable printWithImages if any quotation item has an imageUrl
+  useEffect(() => {
+    if (formData?.details && formData.details.some(item => !!item.imageUrl)) {
+      setPrintWithImages(true);
+    }
+  }, [formData?.id, formData?.details]);
+
+  const handleRefreshImages = useCallback(async () => {
+    if (!formData || !formData.details || formData.details.length === 0) return;
+    setIsRefreshingImages(true);
+    try {
+      const pIds = formData.details.map(d => d.productId).filter((id): id is number => typeof id === 'number' && id > 0);
+      const pNos = formData.details.map(d => d.partNo).filter((p): p is string => Boolean(p && p.trim()));
+
+      const [byId, byPart] = await Promise.all([
+        pIds.length > 0 ? getProductsByIds(pIds) : Promise.resolve([]),
+        pNos.length > 0 ? getProductsByPartNos(pNos) : Promise.resolve([])
+      ]);
+
+      const combined = [...byId, ...byPart];
+      const prodMap = new Map<number, Product>();
+      const partImgMap = new Map<string, string>();
+
+      for (const p of combined) {
+        if (p.id) prodMap.set(p.id, p);
+        if (p.partNo && p.imageUrl) {
+          partImgMap.set(p.partNo.trim().toLowerCase(), p.imageUrl);
+          const unpadded = p.partNo.trim().replace(/^0+/, '');
+          if (unpadded) partImgMap.set(unpadded.toLowerCase(), p.imageUrl);
+        }
+      }
+
+      setFetchedProducts(prev => {
+        const next = new Map(prev);
+        for (const [k, v] of prodMap.entries()) next.set(k, v);
+        return next;
+      });
+
+      let updatedCount = 0;
+      const updatedDetails = formData.details.map(item => {
+        const cleanPNo = (item.partNo || '').trim().toLowerCase();
+        const unpadded = cleanPNo.replace(/^0+/, '');
+        const matchedImg = (item.productId && prodMap.get(item.productId)?.imageUrl) ||
+                           (cleanPNo && partImgMap.get(cleanPNo)) ||
+                           (unpadded && partImgMap.get(unpadded));
+
+        if (matchedImg && item.imageUrl !== matchedImg) {
+          updatedCount++;
+          return { ...item, imageUrl: matchedImg };
+        }
+        return item;
+      });
+
+      const updatedFormData = { ...formData, details: updatedDetails };
+      setFormData(updatedFormData);
+      setPrintWithImages(true);
+
+      // If existing quotation in database, persist the image backfill
+      if (formData.id && formData.id > 0) {
+        try {
+          await upsertQuotation(updatedFormData);
+          setQuotations(prev => prev.map(q => q.id === formData.id ? updatedFormData : q));
+        } catch (saveErr) {
+          console.warn("Could not auto-save refreshed quotation images to database:", saveErr);
+        }
+      }
+
+      alert(`Offer images refreshed! ${updatedCount > 0 ? `Updated images for ${updatedCount} item(s).` : 'All items are already up to date.'}`);
+    } catch (err: any) {
+      console.error("Failed to refresh offer images:", err);
+      alert(`Failed to refresh images: ${err?.message || 'Unknown error'}`);
+    } finally {
+      setIsRefreshingImages(false);
+    }
+  }, [formData, setQuotations]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -1256,6 +1384,16 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 />
                 <span>Print with Images</span>
               </label>
+              <button
+                type="button"
+                onClick={handleRefreshImages}
+                disabled={isRefreshingImages}
+                className="flex items-center gap-1 text-xs font-semibold text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 px-2.5 py-1 rounded-md border border-sky-300 transition-colors disabled:opacity-50"
+                title="Refresh product images from catalogue database"
+              >
+                <Icons.Refresh />
+                <span>{isRefreshingImages ? 'Refreshing...' : 'Refresh Images'}</span>
+              </button>
               {printWithImages && (
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded-md border border-slate-300">
                   <span className="text-slate-600 text-[11px]">Size:</span>
@@ -1284,9 +1422,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             </div>
           </div>
           <div id="print-area">
-             {previewMode === 'standard' && <QuotationPrintView quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize}/>}
-             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize}/>}
-             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize}/>}
+             {previewMode === 'standard' && <QuotationPrintView quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
           </div>
         </div>
     );
@@ -1354,6 +1492,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10 hidden md:flex">
                     <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span className="hidden xl:inline">Excel</span></ActionButton>
                     <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span className="hidden xl:inline">Stock</span></ActionButton>
+                    <ActionButton onClick={handleRefreshImages} disabled={isRefreshingImages} title="Refresh Product Images for this Offer"><Icons.Refresh /><span className="hidden xl:inline">{isRefreshingImages ? 'Refreshing...' : 'Images'}</span></ActionButton>
                     {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span className="hidden xl:inline">Cust</span></ActionButton>}
                     {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span className="hidden xl:inline">Prod</span></ActionButton>}
                     {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span className="hidden xl:inline">Search</span></ActionButton>}
