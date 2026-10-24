@@ -182,6 +182,10 @@ export const App = () => {
     );
   }
 
+  if (!currentUser) {
+    return <Login onLogin={handleLogin} users={users} isLoading={usersLoading} />;
+  }
+
   if (isLoadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -202,10 +206,6 @@ export const App = () => {
         </div>
       </div>
     );
-  }
-
-  if (!currentUser) {
-    return <Login onLogin={handleLogin} users={users} isLoading={usersLoading} />;
   }
 
   const SidebarItem = ({ active, label, icon, onClick }: { active: boolean, label: string, icon: React.ReactNode, onClick: () => void }) => (

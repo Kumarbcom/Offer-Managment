@@ -297,30 +297,54 @@ export async function get(tableName: TableName): Promise<any[]> {
     const supabaseTableName = toSupabaseTableName(tableName);
     let allData: any[] = [];
     let from = 0;
-    const limit = 1000;
+    // Quotations table contains heavy JSONB line items with images, so use smaller batches (300) to prevent 57014 statement timeouts
+    let batchLimit = tableName === 'quotations' ? 200 : (tableName === 'products' ? 500 : 1000);
     
     const isUsers = tableName === 'users';
     const hasIdOrder = tableName !== 'stockStatements' && tableName !== 'pendingSOs';
     
     while (true) {
-        let query = supabase.from(supabaseTableName).select('*').range(from, from + limit - 1);
-        
-        if (isUsers) {
-            query = query.order('name', { ascending: true });
-        } else if (hasIdOrder) {
-            query = query.order('id', { ascending: false });
-        }
-        
-        const { data, error } = await query;
-        if (error) {
-            console.error(`Error fetching ${tableName} (${supabaseTableName}):`, JSON.stringify(error, null, 2));
-            throw new Error(parseSupabaseError(error, `Failed to fetch data for ${tableName}`));
+        let retries = 0;
+        let data: any = null;
+        let currentBatch = batchLimit;
+
+        while (retries < 4) {
+            let query = supabase.from(supabaseTableName).select('*').range(from, from + currentBatch - 1);
+            
+            if (isUsers) {
+                query = query.order('name', { ascending: true });
+            } else if (hasIdOrder) {
+                query = query.order('id', { ascending: false });
+            }
+            
+            const res = await query;
+            if (!res.error) {
+                data = res.data;
+                break;
+            }
+
+            console.warn(`Fetch error for ${tableName} (${from} to ${from + currentBatch - 1}), attempt ${retries + 1}:`, res.error.message);
+            retries++;
+
+            // If statement timeout (57014), reduce batch size to avoid overloading Postgres
+            if ((res.error.code === '57014' || res.error.message?.includes('timeout')) && currentBatch > 50) {
+                currentBatch = Math.floor(currentBatch / 2);
+                console.info(`Reduced batch size for ${tableName} to ${currentBatch} due to timeout.`);
+            }
+
+            if (retries >= 4) {
+                console.error(`Exhausted retries fetching ${tableName}:`, JSON.stringify(res.error, null, 2));
+                throw new Error(parseSupabaseError(res.error, `Failed to fetch data for ${tableName}`));
+            }
+
+            // Exponential backoff wait
+            await new Promise(r => setTimeout(r, 400 * retries));
         }
         
         if (!data || data.length === 0) break;
         allData = allData.concat(data);
-        if (data.length < limit) break;
-        from += limit;
+        if (data.length < currentBatch) break;
+        from += data.length;
     }
     
     // Map back from Supabase snake_case to camelCase
