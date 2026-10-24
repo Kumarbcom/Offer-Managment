@@ -147,10 +147,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
 
     return preFiltered
       .filter(q => {
-        // Allow all sales persons to see all quotations to update comments and allocations
-        // if (userRole === 'Sales Person' && currentSalesPersonId !== undefined) {
-        //   if (q.salesPersonId !== currentSalesPersonId) return false;
-        // }
+        // Sales Person: show only their own quotations by default.
+        // When a search term is typed, they can search across all records.
+        if (userRole === 'Sales Person' && currentSalesPersonId !== undefined && !universalSearchTerm) {
+          if (q.salesPersonId !== currentSalesPersonId) return false;
+        }
         if (userRole === 'Customer' && currentUser.customerId !== undefined) {
           if (q.customerId !== currentUser.customerId) return false;
         }
@@ -621,6 +622,30 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({ quotations, 
             );
           })}
         </div>
+
+        {/* ── Mobile Pagination ── */}
+        {totalItems > 0 && (
+          <div className="block md:hidden my-2">
+            <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+              <span>Showing <span className="font-bold text-slate-800">{pageSize === 0 ? 1 : Math.min((currentPage - 1) * pageSize + 1, totalItems)}</span>–<span className="font-bold text-slate-800">{pageSize === 0 ? totalItems : Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-bold text-indigo-600">{totalItems}</span></span>
+              <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none">
+                <option value={25}>25/page</option>
+                <option value={50}>50/page</option>
+                <option value={100}>100/page</option>
+                <option value={0}>All ({totalItems})</option>
+              </select>
+            </div>
+            {pageSize > 0 && totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 disabled:opacity-30">«</button>
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-100 disabled:opacity-30">Prev</button>
+                <span className="px-2 text-xs font-semibold text-slate-700">Page {currentPage} / {totalPages}</span>
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-100 disabled:opacity-30">Next</button>
+                <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 disabled:opacity-30">»</button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Desktop Table ── */}
         <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
