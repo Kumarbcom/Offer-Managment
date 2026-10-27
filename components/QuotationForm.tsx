@@ -224,6 +224,23 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewingVersion, setViewingVersion] = useState<'current' | 'initial'>('current');
+
+  // When viewing initial snapshot, display the original Rev 0 data
+  const displayQuotation: Quotation | null = useMemo(() => {
+    if (!formData) return null;
+    if (viewingVersion === 'initial' && formData.initialSnapshot) {
+      return {
+        ...formData,
+        quotationDate: formData.initialSnapshot.quotationDate || formData.quotationDate,
+        details: formData.initialSnapshot.details || formData.details,
+        otherTerms: formData.initialSnapshot.otherTerms !== undefined ? formData.initialSnapshot.otherTerms : formData.otherTerms,
+        paymentTerms: formData.initialSnapshot.paymentTerms || formData.paymentTerms,
+        gstAdded: formData.initialSnapshot.gstAdded !== undefined ? formData.initialSnapshot.gstAdded : formData.gstAdded,
+        revisionNumber: 0
+      };
+    }
+    return formData;
+  }, [formData, viewingVersion]);
   const [rowsToAdd, setRowsToAdd] = useState(1);
   const airFreightRate = formData?.quotationDate && new Date(formData.quotationDate) >= new Date('2026-05-25') ? 180 : 150;
 
@@ -1428,22 +1445,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     );
   }
 
-  // When viewing initial snapshot, display the original Rev 0 data
-  const displayQuotation: Quotation | null = React.useMemo(() => {
-    if (!formData) return null;
-    if (viewingVersion === 'initial' && formData.initialSnapshot) {
-      return {
-        ...formData,
-        quotationDate: formData.initialSnapshot.quotationDate || formData.quotationDate,
-        details: formData.initialSnapshot.details || formData.details,
-        otherTerms: formData.initialSnapshot.otherTerms !== undefined ? formData.initialSnapshot.otherTerms : formData.otherTerms,
-        paymentTerms: formData.initialSnapshot.paymentTerms || formData.paymentTerms,
-        gstAdded: formData.initialSnapshot.gstAdded !== undefined ? formData.initialSnapshot.gstAdded : formData.gstAdded,
-        revisionNumber: 0
-      };
-    }
-    return formData;
-  }, [formData, viewingVersion]);
+
 
   if (!formData || !displayQuotation) return <div className="p-8 text-center text-xs text-black">Loading form...</div>;
 

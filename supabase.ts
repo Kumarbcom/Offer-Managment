@@ -312,7 +312,7 @@ export async function get(tableName: TableName): Promise<any[]> {
     let allData: any[] = [];
     let from = 0;
     // Quotations table contains heavy JSONB line items with images, so use smaller batches (300) to prevent 57014 statement timeouts
-    let batchLimit = tableName === 'quotations' ? 500 : (tableName === 'products' ? 500 : 1000);
+    let batchLimit = tableName === 'quotations' ? 200 : (tableName === 'products' ? 500 : 1000);
     
     const isUsers = tableName === 'users';
     const hasIdOrder = tableName !== 'stockStatements' && tableName !== 'pendingSOs';

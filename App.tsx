@@ -77,8 +77,10 @@ export const App = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const isLoadingData = usersLoading || salesPersonsLoading || customersLoading || quotationsLoading;
-  const dataError = usersError || salesPersonsError || customersError || quotationsError;
+  const isSyncingBackgroundData = quotationsLoading || customersLoading;
+  // Non-blocking initial load: only wait for critical auth & staff metadata (sub-second!)
+  const isLoadingData = usersLoading || salesPersonsLoading;
+  const dataError = usersError || salesPersonsError;
 
   // Ensure Customer role is locked to quotations
   useEffect(() => {
@@ -407,7 +409,7 @@ export const App = () => {
             </button>
             <button onClick={() => setIsStorageModalOpen(true)} className="text-slate-400 hover:text-slate-600 relative" title="Storage Status">
                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10l8 4m8-4V7l-8-4m0 10L4 7m8 4v10M4 7v10l8 4" /></svg>
-               <span className={`absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white ${dataError ? 'bg-red-500' : isLoadingData ? 'bg-amber-400' : 'bg-green-500'}`}></span>
+               <span className={`absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white ${dataError ? 'bg-red-500' : isSyncingBackgroundData ? 'bg-amber-400 animate-pulse' : 'bg-green-500'}`}></span>
             </button>
             
             <div className="h-6 w-px bg-slate-200 hidden md:block mx-1"></div>
