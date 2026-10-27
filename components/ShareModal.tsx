@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Quotation, SalesPerson } from '../types';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { calculateTotalAmount } from '../utils/calc';
@@ -27,11 +27,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<'standard' | 'discounted' | 'withAirFreight' | 'comparison'>('standard');
   const [showPreview, setShowPreview] = useState(false);
+  const [includeComparison, setIncludeComparison] = useState(false);
+
+  const isRevision = Boolean(quotation?.revisionNumber && quotation.revisionNumber > 0) || Boolean(quotation?.initialSnapshot);
+
+  useEffect(() => {
+    if (isRevision) {
+      setIncludeComparison(true);
+    }
+  }, [isRevision, quotation?.id]);
 
   if (!isOpen || !quotation) return null;
-
-  const isRevision = Boolean(quotation.revisionNumber && quotation.revisionNumber > 0) || Boolean(quotation.initialSnapshot);
-  const [includeComparison, setIncludeComparison] = useState(isRevision);
 
   const diff = calculateQuotationDiff(quotation);
   const qtnNoStr = generateFormattedQuotationNumber(quotation, quotations);
