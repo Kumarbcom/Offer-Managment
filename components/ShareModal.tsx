@@ -129,7 +129,7 @@ We are pleased to submit our Amended Offer (Revision ${diff.revisionNumber}) as 
 • Amended Offer (Rev ${diff.revisionNumber}): ${formatCurrency(diff.finalGrandTotal)}
 • Commercial Variance: ${diff.grandTotalDelta < 0 ? '-' : '+'}${formatCurrency(diff.grandTotalDelta)} (${diff.percentageChange > 0 ? '+' : ''}${diff.percentageChange.toFixed(2)}%)
 
-👉 Please Click Below to View & Download Your Quotation:
+👇 Please Click Below to View & Download Your Quotation:
 ${appUrl}
 
 📊 View Revision Variance Comparison Sheet:
@@ -156,7 +156,7 @@ We are pleased to submit our offer as per your requirement:
 • Date: ${quotation.quotationDate}
 • Quoted Amount: ${totalFormatted}
 
-👉 Please Click Below to View & Download Your Quotation:
+👇 Please Click Below to View & Download Your Quotation:
 ${appUrl}
 
 In case you need any further assistance please feel free to contact us. We will be more than happy to assist you.
@@ -217,7 +217,7 @@ We are pleased to submit our Amended Offer (Revision ${diff.revisionNumber}):
 • Revised Total (Rev ${diff.revisionNumber}): ${formatCurrency(diff.finalGrandTotal)}
 • Variance: ${diff.grandTotalDelta < 0 ? '-' : '+'}${formatCurrency(diff.grandTotalDelta)} (${diff.percentageChange > 0 ? '+' : ''}${diff.percentageChange.toFixed(2)}%)
 
-👉 *Click to View Revised Quotation:*
+👇 *Click to View Revised Quotation:*
 ${appUrl}
 
 📊 *Click to View Revision Comparison:*
@@ -238,7 +238,7 @@ We would like to thank you for your enquiry. Herewith we are submitting the offe
 • Quotation Ref: ${qtnNoStr}
 • Quoted Amount: ${totalFormatted}
 
-👉 *Please Click to View Quotation:*
+👇 *Please Click to View Quotation:*
 ${appUrl}
 
 Looking forward to your favorable response.
@@ -476,7 +476,7 @@ We are pleased to submit our offer as per your requirement:
 • Date: ${quotation.quotationDate}
 • Quoted Amount: ${totalFormatted}
 
-👉 Please Click Below to View & Download Your Quotation:
+👇 Please Click Below to View & Download Your Quotation:
 ${appUrl}
 ${isRevision && includeComparison ? `\n📊 View Revision Variance Comparison Sheet:\n${comparisonUrl}` : ''}
 
@@ -614,7 +614,7 @@ Looking forward to your valuable orders.`}
           {/* HIGHLIGHTED CALLOUT - EXACT USER REQUEST FORMAT */}
           <div style={{ margin: '22px 0 16px 0' }}>
             <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
-              👉 Please Click Below to View &amp; Download Your Quotation:
+              👇 Please Click Below to View &amp; Download Your Quotation:
             </p>
             <p style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 'bold' }}>
               📄{' '}

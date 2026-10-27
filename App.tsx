@@ -429,7 +429,7 @@ export const App = () => {
         {/* Scrollable Main Content */}
         <main className={`flex-1 overflow-y-auto relative ${view === 'quotation-form' || view === 'quotations' ? 'p-0 bg-white' : 'p-4 md:p-6 pb-24 md:pb-6'}`}>
           <React.Suspense fallback={<ViewLoadingFallback />}>
-          {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
+          {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} customers={customers} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
           {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter} currentUser={currentUser} />}
           {view === 'products' && <ProductManager currentUser={currentUser} />}
           {view === 'sales-persons' && <SalesPersonManager salesPersons={salesPersons} setSalesPersons={setSalesPersons} />}

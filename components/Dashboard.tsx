@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import type { Quotation, SalesPerson, QuotationStatus, User } from '../types';
+import type { Quotation, SalesPerson, QuotationStatus, User, Customer } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
 import { generateFormattedQuotationNumber, getFinancialYear } from '../utils/quotationNumber';
@@ -14,6 +14,7 @@ declare const ChartDataLabels: any;
 interface DashboardProps {
     quotations: Quotation[] | null;
     salesPersons: SalesPerson[] | null;
+    customers?: Customer[] | null;
     currentUser: User;
     onLogoUpload: (url: string | null) => void;
     logoUrl: string | null;
@@ -51,7 +52,7 @@ const StatusIcon = ({ status, className }: { status: string, className?: string 
     }
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, currentUser, onLogoUpload, logoUrl }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, customers, currentUser, onLogoUpload, logoUrl }) => {
 
     const lineChartRef = useRef<HTMLCanvasElement>(null);
     const barChartRef = useRef<HTMLCanvasElement>(null);
@@ -67,8 +68,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count'); // New state for Performance Table
     const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
 
+    // Synchronously populate customerMap from customers prop when available (avoids network waterfall)
     useEffect(() => {
-        if (quotations) {
+        if (customers && customers.length > 0) {
+            setCustomerMap(prevMap => {
+                const newMap = new Map(prevMap);
+                customers.forEach(c => newMap.set(c.id, c.name));
+                return newMap;
+            });
+        }
+    }, [customers]);
+
+    useEffect(() => {
+        if (!customers && quotations) {
             const customerIdsToFetch = [...new Set(quotations.map(q => q.customerId))]
                 .filter((id): id is number => id !== null && !customerMap.has(id));
 
@@ -82,7 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 });
             }
         }
-    }, [quotations, customerMap]);
+    }, [customers, quotations, customerMap]);
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

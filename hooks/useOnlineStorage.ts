@@ -4,12 +4,16 @@ import { get, set, toSupabaseTableName, mapFromSupabase } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
+import { idbGet, idbSet } from '../utils/idbStorage';
 
 type CollectionName = keyof typeof INITIAL_DATA;
 
 const isSupabaseConfigured = !!(supabaseConfig.url && !supabaseConfig.url.includes('YOUR_PROJECT_ID'));
 
 const seededTables = new Set<CollectionName>();
+
+// Fast in-memory SWR cache across component re-renders
+const memoryCache = new Map<string, any>();
 
 // When Supabase is configured, proactively clear localStorage for all known tables
 // to recover quota space. localStorage should only be used when Supabase is absent.
@@ -36,15 +40,23 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
     const [localData, setLocalData] = useLocalStorage<T[]>(tableName, initialData);
     const [inMemoryData, setInMemoryData] = useState<T[]>(initialData);
 
-    // SWR Cache: read from sessionStorage for instant initial render
+    // SWR Cache: check in-memory cache, then sessionStorage for instant render
     const [state, setState] = useState<T[] | null>(() => {
+        if (memoryCache.has(tableName)) {
+            return memoryCache.get(tableName);
+        }
         try {
             const cached = sessionStorage.getItem(`cache_${tableName}`);
-            if (cached) return JSON.parse(cached);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                memoryCache.set(tableName, parsed);
+                return parsed;
+            }
         } catch (_) {}
         return null;
     });
     const [isLoading, setIsLoading] = useState(() => {
+        if (memoryCache.has(tableName)) return false;
         try {
             const cached = sessionStorage.getItem(`cache_${tableName}`);
             if (cached) return false;
@@ -59,16 +71,28 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
     }, [state]);
 
     useEffect(() => {
+        // Hydrate from IndexedDB immediately for instant render (<50ms)
+        let isMounted = true;
+        idbGet<T[]>(`cache_${tableName}`).then(idbData => {
+            if (isMounted && idbData && Array.isArray(idbData) && idbData.length > 0) {
+                memoryCache.set(tableName, idbData);
+                setState(prev => prev ?? idbData);
+                setIsLoading(false);
+            }
+        });
+
         // --- NO SUPABASE: use local fallbacks ---
         if (!isSupabaseConfigured) {
             setState(useInMemoryFallback ? inMemoryData : localData);
             setIsLoading(false);
-            return;
+            return () => { isMounted = false; };
         }
 
         // --- SUPABASE CONFIGURED: fetch from cloud ---
         const fetchData = async () => {
-            setIsLoading(true);
+            if (!stateRef.current) {
+                setIsLoading(true);
+            }
             setError(null);
             try {
                 let data = await get(tableName);
@@ -80,16 +104,24 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                         data = await get(tableName);
                     }
                 }
-                setState(data as T[]);
+                if (isMounted) {
+                    setState(data as T[]);
+                    memoryCache.set(tableName, data);
+                    idbSet(`cache_${tableName}`, data);
+                }
                 try {
                     sessionStorage.setItem(`cache_${tableName}`, JSON.stringify(data));
                 } catch (_) {}
             } catch (e) {
                 console.warn(`Supabase error loading '${tableName}', using in-memory fallback.`, e);
-                // When Supabase fails, use in-memory state only — NEVER write to localStorage
-                setState(tableName === 'users' ? localData : []);
+                // When Supabase fails, retain cached data if available
+                if (isMounted && !stateRef.current) {
+                    setState(tableName === 'users' ? localData : []);
+                }
             } finally {
-                setIsLoading(false);
+                if (isMounted) {
+                    setIsLoading(false);
+                }
             }
         };
         fetchData();
@@ -156,6 +188,8 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         const newState = value instanceof Function ? value(safePrev as T[]) : value;
 
         setState(newState); // optimistic update
+        memoryCache.set(tableName, newState);
+        idbSet(`cache_${tableName}`, newState);
         
         if (newState === undefined) {
             console.warn('State update resulted in undefined. Aborting persistence.');
