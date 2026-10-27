@@ -13,16 +13,7 @@ const seededTables = new Set<CollectionName>();
 
 // When Supabase is configured, proactively clear localStorage for all known tables
 // to recover quota space. localStorage should only be used when Supabase is absent.
-if (isSupabaseConfigured) {
-    const tablesToClear: CollectionName[] = [
-        'quotations', 'customers', 'products', 'salesPersons',
-        'deliveryChallans', 'pendingSOs', 'stockStatements'
-        // 'users' is intentionally kept — needed for offline login fallback
-    ];
-    tablesToClear.forEach(key => {
-        try { localStorage.removeItem(key); } catch (_) { /* ignore */ }
-    });
-}
+// Caching strategy: retain in sessionStorage to enable instant sub-second page loads
 
 /**
  * A hook to manage data persistence with real-time synchronization via Supabase.
@@ -45,8 +36,21 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
     const [localData, setLocalData] = useLocalStorage<T[]>(tableName, initialData);
     const [inMemoryData, setInMemoryData] = useState<T[]>(initialData);
 
-    const [state, setState] = useState<T[] | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    // SWR Cache: read from sessionStorage for instant initial render
+    const [state, setState] = useState<T[] | null>(() => {
+        try {
+            const cached = sessionStorage.getItem(`cache_${tableName}`);
+            if (cached) return JSON.parse(cached);
+        } catch (_) {}
+        return null;
+    });
+    const [isLoading, setIsLoading] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem(`cache_${tableName}`);
+            if (cached) return false;
+        } catch (_) {}
+        return true;
+    });
     const [error, setError] = useState<Error | null>(null);
     
     const stateRef = useRef(state);
@@ -77,6 +81,9 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                     }
                 }
                 setState(data as T[]);
+                try {
+                    sessionStorage.setItem(`cache_${tableName}`, JSON.stringify(data));
+                } catch (_) {}
             } catch (e) {
                 console.warn(`Supabase error loading '${tableName}', using in-memory fallback.`, e);
                 // When Supabase fails, use in-memory state only — NEVER write to localStorage

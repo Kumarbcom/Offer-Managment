@@ -60,5 +60,9 @@ export function generateFormattedQuotationNumber(quotation: Quotation, allQuotat
     const fyInfo = getFinancialYear(quotation.quotationDate);
     const seqNumStr = getQuotationSeqNum(quotation, allQuotations);
     if (seqNumStr === 'ERROR' || seqNumStr === 'DRAFT') return seqNumStr;
-    return `SKC/QTN/${seqNumStr}-${fyInfo.fyString}`;
+    const baseNumber = `SKC/QTN/${seqNumStr}-${fyInfo.fyString}`;
+    if (quotation.revisionNumber && Number(quotation.revisionNumber) > 0) {
+        return `${baseNumber} (Rev ${quotation.revisionNumber})`;
+    }
+    return baseNumber;
 }

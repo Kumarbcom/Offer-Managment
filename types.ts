@@ -10,7 +10,7 @@ export interface User {
   customerId?: number;
 }
 
-export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'reports' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form' | 'pending-so' | 'calendar' | 'customer-logins';
+export type View = 'dashboard' | 'customers' | 'products' | 'quotations' | 'quotation-form' | 'sales-persons' | 'users' | 'user-manual' | 'delivery-challans' | 'delivery-challan-form' | 'calendar' | 'customer-logins';
 
 export interface SalesPerson {
   id: number;
@@ -99,6 +99,7 @@ export interface Quotation {
   commentsList?: { id: string, userName: string, text: string, timestamp: string }[];
   details: QuotationItem[];
   gstAdded: boolean;
+  revisionNumber?: number;
 }
 
 export interface DeliveryChallanItem {

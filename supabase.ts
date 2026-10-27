@@ -63,6 +63,10 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
         if (item.id && item.id !== 0) {
             payload.id = item.id;
         }
+        // Persist revisionNumber inside details JSONB without requiring database schema changes
+        if (payload.details && payload.details.length > 0 && item.revisionNumber !== undefined) {
+            payload.details = payload.details.map((d, idx) => idx === 0 ? { ...d, _rev: item.revisionNumber } : d);
+        }
         return payload;
     }
     if (tableName === 'customers') {
@@ -211,7 +215,8 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
             status: item.status || 'Open',
             comments: item.comments || '',
             details: item.details || [],
-            gstAdded: !!(get(['gst_added', 'gstAdded'], false))
+            gstAdded: !!(get(['gst_added', 'gstAdded'], false)),
+            revisionNumber: (item.details && item.details[0] && item.details[0]._rev) ? Number(item.details[0]._rev) : 0
         };
     }
 
@@ -298,7 +303,7 @@ export async function get(tableName: TableName): Promise<any[]> {
     let allData: any[] = [];
     let from = 0;
     // Quotations table contains heavy JSONB line items with images, so use smaller batches (300) to prevent 57014 statement timeouts
-    let batchLimit = tableName === 'quotations' ? 200 : (tableName === 'products' ? 500 : 1000);
+    let batchLimit = tableName === 'quotations' ? 500 : (tableName === 'products' ? 500 : 1000);
     
     const isUsers = tableName === 'users';
     const hasIdOrder = tableName !== 'stockStatements' && tableName !== 'pendingSOs';

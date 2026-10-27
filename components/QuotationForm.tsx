@@ -7,7 +7,6 @@ import { ProductAddModal } from './ProductAddModal';
 import { ProductSearchModal } from './ProductSearchModal';
 import { QuotationSuccessModal } from './QuotationSuccessModal';
 import { ShareModal } from './ShareModal';
-import { StockCheckModal } from './StockCheckModal';
 import { SearchableSelect } from './common/SearchableSelect';
 import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
@@ -29,8 +28,6 @@ interface QuotationFormProps {
   setEditingQuotationId: (id: number | null) => void;
   currentUser: User;
   logoUrl?: string | null;
-  stockStatements?: StockItem[] | null;
-  pendingSOs?: PendingSO[] | null;
 }
 
 const createEmptyQuotationItem = (): QuotationItem => ({
@@ -185,14 +182,13 @@ const isDiscountExceeded = (item: QuotationItem): boolean => {
 
 export const QuotationForm: React.FC<QuotationFormProps> = ({
   salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl,
-  stockStatements = [], pendingSOs = []
+  
 }) => {
   const [formData, setFormData] = useState<Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [isProductSearchModalOpen, setIsProductSearchModalOpen] = useState(false);
-  const [isStockCheckModalOpen, setIsStockCheckModalOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<'none' | 'standard' | 'discounted' | 'withAirFreight'>(
     currentUser?.role === 'Customer' ? 'standard' : 'none'
   );
@@ -1551,9 +1547,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                    <ActionButton onClick={handleExportExcel} title="Export to Excel" className="px-2 py-1 text-[11px] h-6">
                        <Icons.Excel /><span>Excel</span>
                    </ActionButton>
-                   <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability" className="px-2 py-1 text-[11px] h-6">
-                       <Icons.Stock /><span>Stock</span>
-                   </ActionButton>
+                   
                    <ActionButton onClick={handleRefreshImages} disabled={isRefreshingImages} title="Refresh Product Images for this Offer" className="px-2 py-1 text-[11px] h-6">
                        <Icons.Refresh /><span>{isRefreshingImages ? 'Refreshing...' : 'Images'}</span>
                    </ActionButton>
@@ -1591,7 +1585,23 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-2 gap-y-1 text-xs">
                 <div className="space-y-1">
-                    <FormField label="Quotation No"><div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center text-xs shadow-sm text-[11px] truncate" title={formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : "New"}>{formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : "New"}</div></FormField>
+                    <FormField label="Quotation No">
+                        <div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center justify-between text-xs shadow-sm text-[11px]">
+                            <span className="truncate" title={formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : 'New'}>
+                                {formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : 'New'}
+                            </span>
+                            {formData.id > 0 && !isReadOnly && (
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => prev ? { ...prev, revisionNumber: ((prev.revisionNumber || 0) + 1) } : null)}
+                                    className="ml-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 transition-colors"
+                                    title="Click to increment Revision number when modifying this quotation"
+                                >
+                                    + Rev {formData.revisionNumber ? formData.revisionNumber + 1 : 1}
+                                </button>
+                            )}
+                        </div>
+                    </FormField>
                     <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
                     <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); if (!val) { setSelectedCustomerObj(null); } else { const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
@@ -1887,12 +1897,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
       <ProductAddModal isOpen={isProductModalOpen} onClose={() => { setIsProductModalOpen(false); setProductToEdit(null); }} onSave={handleSaveProduct} productToEdit={productToEdit} />
       <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
-      <StockCheckModal 
-        isOpen={isStockCheckModalOpen}
-        onClose={() => setIsStockCheckModalOpen(false)}
-        stockStatements={stockStatements}
-        pendingSOs={pendingSOs}
-      />
+
       <QuotationSuccessModal 
          isOpen={!!successModalData} 
          onClose={() => setSuccessModalData(null)} 

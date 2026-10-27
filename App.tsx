@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem, PendingSO } from './types';
+import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
 import { Login } from './components/Login';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
@@ -17,11 +17,9 @@ const QuotationForm = React.lazy(() => import('./components/QuotationForm').then
 const Dashboard = React.lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
 const UserManager = React.lazy(() => import('./components/UserManager').then(m => ({ default: m.UserManager })));
 const CustomerLoginManager = React.lazy(() => import('./components/CustomerLoginManager').then(m => ({ default: m.CustomerLoginManager })));
-const Reports = React.lazy(() => import('./components/Reports').then(m => ({ default: m.Reports })));
 const CalendarView = React.lazy(() => import('./components/CalendarView').then(m => ({ default: m.CalendarView })));
 const UserManual = React.lazy(() => import('./components/UserManual').then(m => ({ default: m.UserManual })));
 const StorageManager = React.lazy(() => import('./components/StorageManager').then(m => ({ default: m.StorageManager })));
-const PendingSOManager = React.lazy(() => import('./components/PendingSOManager').then(m => ({ default: m.PendingSOManager })));
 
 const ViewLoadingFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] p-8 text-center animate-pulse">
@@ -35,8 +33,6 @@ export const App = () => {
   const [salesPersons, setSalesPersons, salesPersonsLoading, salesPersonsError] = useOnlineStorage<SalesPerson>('salesPersons');
   const [customers, setCustomers, customersLoading, customersError] = useOnlineStorage<Customer>('customers');
   const [quotations, setQuotations, quotationsLoading, quotationsError] = useOnlineStorage<Quotation>('quotations');
-  const [stockStatements, setStockStatements, stockStatementsLoading, stockStatementsError] = useOnlineStorage<StockItem>('stockStatements');
-  const [pendingSOs, setPendingSOs, pendingSOsLoading, pendingSOsError] = useOnlineStorage<PendingSO>('pendingSOs');
 
   const [view, setView] = useState<View | 'calendar'>('dashboard');
   const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null);
@@ -81,8 +77,8 @@ export const App = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const isLoadingData = usersLoading || salesPersonsLoading || customersLoading || quotationsLoading || pendingSOsLoading;
-  const dataError = usersError || salesPersonsError || customersError || quotationsError || pendingSOsError;
+  const isLoadingData = usersLoading || salesPersonsLoading || customersLoading || quotationsLoading;
+  const dataError = usersError || salesPersonsError || customersError || quotationsError;
 
   // Ensure Customer role is locked to quotations
   useEffect(() => {
@@ -322,9 +318,7 @@ export const App = () => {
             </>
           )}
           
-          {(currentUser.role === 'Admin' || currentUser.role === 'Sales Person' || currentUser.role === 'Management') && (
-            <SidebarItem active={view === 'reports'} label="Reports" onClick={() => handleSetView('reports')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} />
-          )}
+
 
           <div className="h-6 flex items-center mt-6 mb-1">
              {isSidebarExpanded ? (
@@ -334,9 +328,7 @@ export const App = () => {
              )}
           </div>
           
-          {(currentUser.role === 'Admin' || currentUser.role === 'SCM') && (
-            <SidebarItem active={view === 'pending-so'} label="Pending SO" onClick={() => handleSetView('pending-so')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
-          )}
+
           {currentUser.role === 'Admin' && (
             <>
               <SidebarItem active={view === 'sales-persons'} label="Sales Staff" onClick={() => handleSetView('sales-persons')} icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} />
@@ -452,14 +444,12 @@ export const App = () => {
             globalSearch={globalSearchQuery}
             onClearGlobalSearch={() => setGlobalSearchQuery('')}
           />}
-          {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} stockStatements={stockStatements} pendingSOs={pendingSOs} />}
+          {view === 'quotation-form' && <QuotationForm salesPersons={salesPersons || []} quotations={quotations || []} setQuotations={setQuotations} setView={handleSetView} editingQuotationId={editingQuotationId} setEditingQuotationId={setEditingQuotationId} currentUser={currentUser} logoUrl={logoUrl} />}
           {view === 'calendar' && <CalendarView quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onSelectQuotation={(id) => { setEditingQuotationId(id); handleSetView('quotation-form'); }} setQuotations={setQuotations} />}
           {view === 'users' && <UserManager users={users} setUsers={setUsers} currentUser={currentUser} customers={customers || []} />}
           {view === 'customer-logins' && <CustomerLoginManager users={users} setUsers={setUsers} customers={customers || []} currentUser={currentUser} />}
-          {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
-          {view === 'user-manual' && <UserManual />}
-          {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
-          </React.Suspense>
+                    {view === 'user-manual' && <UserManual />}
+                    </React.Suspense>
         </main>
 
       </div>
