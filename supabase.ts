@@ -64,8 +64,16 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             payload.id = item.id;
         }
         // Persist revisionNumber inside details JSONB without requiring database schema changes
-        if (payload.details && payload.details.length > 0 && item.revisionNumber !== undefined) {
-            payload.details = payload.details.map((d, idx) => idx === 0 ? { ...d, _rev: item.revisionNumber } : d);
+        if (payload.details && payload.details.length > 0) {
+            payload.details = payload.details.map((d, idx) => {
+                if (idx === 0) {
+                    const first = { ...d };
+                    if (item.revisionNumber !== undefined) first._rev = item.revisionNumber;
+                    if (item.initialSnapshot) first._initialSnapshot = item.initialSnapshot;
+                    return first;
+                }
+                return d;
+            });
         }
         return payload;
     }
@@ -216,7 +224,8 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
             comments: item.comments || '',
             details: item.details || [],
             gstAdded: !!(get(['gst_added', 'gstAdded'], false)),
-            revisionNumber: (item.details && item.details[0] && item.details[0]._rev) ? Number(item.details[0]._rev) : 0
+            revisionNumber: (item.details && item.details[0] && item.details[0]._rev) ? Number(item.details[0]._rev) : 0,
+            initialSnapshot: (item.details && item.details[0] && item.details[0]._initialSnapshot) ? item.details[0]._initialSnapshot : undefined
         };
     }
 

@@ -223,6 +223,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewingVersion, setViewingVersion] = useState<'current' | 'initial'>('current');
   const [rowsToAdd, setRowsToAdd] = useState(1);
   const airFreightRate = formData?.quotationDate && new Date(formData.quotationDate) >= new Date('2026-05-25') ? 180 : 150;
 
@@ -1296,7 +1297,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   };
   
   const totals = useMemo(() => {
-      if (!formData || !formData.details) return { moq: 0, req: 0, amount: 0, airFreightAmount: 0, gstAmount: 0, grandTotal: 0 };
+      const activeQuotation = displayQuotation || formData;
+      if (!activeQuotation || !activeQuotation.details) return { moq: 0, req: 0, amount: 0, airFreightAmount: 0, gstAmount: 0, grandTotal: 0 };
       
       // Automatically assign Sales Person if missing for new quotations
       if (editingQuotationId === null && formData.salesPersonId === null && userRole === 'Sales Person') {
@@ -1306,7 +1308,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           }
       }
 
-      const baseTotals = formData.details.reduce((acc, item) => {
+      const baseTotals = activeQuotation.details.reduce((acc, item) => {
           const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
           acc.moq += item.moq || 0;
           acc.req += item.req || 0;
@@ -1418,15 +1420,32 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             </div>
           </div>
           <div id="print-area">
-             {previewMode === 'standard' && <QuotationPrintView quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
-             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
-             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={formData} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
+             {previewMode === 'standard' && <QuotationPrintView quotation={displayQuotation} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
+             {previewMode === 'discounted' && <QuotationPrintViewDiscounted quotation={displayQuotation} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
+             {previewMode === 'withAirFreight' && <QuotationPrintViewWithAirFreight quotation={displayQuotation} allQuotations={quotations || []} customer={selectedCustomerObj} salesPerson={selectedSalesPerson} logoUrl={logoUrl ?? null} showImages={printWithImages} imageSize={printImageSize} productImageMap={productImageMap}/>}
           </div>
         </div>
     );
   }
 
-  if (!formData) return <div className="p-8 text-center text-xs text-black">Loading form...</div>;
+  // When viewing initial snapshot, display the original Rev 0 data
+  const displayQuotation: Quotation | null = React.useMemo(() => {
+    if (!formData) return null;
+    if (viewingVersion === 'initial' && formData.initialSnapshot) {
+      return {
+        ...formData,
+        quotationDate: formData.initialSnapshot.quotationDate || formData.quotationDate,
+        details: formData.initialSnapshot.details || formData.details,
+        otherTerms: formData.initialSnapshot.otherTerms !== undefined ? formData.initialSnapshot.otherTerms : formData.otherTerms,
+        paymentTerms: formData.initialSnapshot.paymentTerms || formData.paymentTerms,
+        gstAdded: formData.initialSnapshot.gstAdded !== undefined ? formData.initialSnapshot.gstAdded : formData.gstAdded,
+        revisionNumber: 0
+      };
+    }
+    return formData;
+  }, [formData, viewingVersion]);
+
+  if (!formData || !displayQuotation) return <div className="p-8 text-center text-xs text-black">Loading form...</div>;
 
   // Define Grid Columns based on user request
   const gridColumns = ['SL No', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount%', 'Unit Price', 'Amount', 'Stock Status', 'Air per Unit', 'Air Freight Amt', 'Air Lead Time'];
@@ -1453,6 +1472,28 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                        <NavButton onClick={() => handleNavigation('next')} disabled={quotations.length === 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
                        <NavButton onClick={() => handleNavigation('last')} disabled={quotations.length === 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
                    </div>
+
+                   {/* Initial vs Amended Version Switcher */}
+                   {formData && formData.id > 0 && (formData.revisionNumber > 0 || formData.initialSnapshot) && (
+                       <div className="flex items-center bg-black/40 p-0.5 rounded-lg border border-white/15 text-[11px] font-bold ml-1 shadow-inner">
+                           <button
+                               type="button"
+                               onClick={() => setViewingVersion('initial')}
+                               className={`px-2.5 py-0.5 rounded-md transition-all ${viewingVersion === 'initial' ? 'bg-amber-400 text-slate-950 font-black shadow-xs' : 'text-slate-300 hover:text-white'}`}
+                               title="Click to view the original Initial Quotation (Rev 0)"
+                           >
+                               Initial (Rev 0)
+                           </button>
+                           <button
+                               type="button"
+                               onClick={() => setViewingVersion('current')}
+                               className={`px-2.5 py-0.5 rounded-md transition-all ${viewingVersion === 'current' ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-slate-300 hover:text-white'}`}
+                               title="Click to view the active Amended Quotation"
+                           >
+                               Amended (Rev {formData.revisionNumber || 1})
+                           </button>
+                       </div>
+                   )}
                </div>
 
                {/* Right: Primary Lifecycle Actions + GST + Close in ONE continuous clean group */}
@@ -1569,6 +1610,21 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         </header>
 
         <form onSubmit={handleSubmit} className="p-2">
+            {viewingVersion === 'initial' && (
+                <div className="bg-amber-50 border-l-4 border-amber-500 p-2.5 mb-2 rounded-r-md text-xs flex items-center justify-between text-amber-900 shadow-xs">
+                    <div className="flex items-center gap-2">
+                        <span className="font-black bg-amber-200 text-amber-950 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">Initial Snapshot</span>
+                        <span className="font-semibold">Viewing Original Quotation (Rev 0). This is read-only.</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setViewingVersion('current')}
+                        className="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded text-xs font-bold transition-colors shadow-2xs"
+                    >
+                        Return to Amended (Rev {formData.revisionNumber || 1})
+                    </button>
+                </div>
+            )}
             
             {(formData?.details || []).some(isDiscountExceeded) && (
                 <div className="bg-red-100 border-l-4 border-red-500 p-2 mb-2 text-xs text-red-700">
@@ -1593,7 +1649,21 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             {formData.id > 0 && !isReadOnly && (
                                 <button
                                     type="button"
-                                    onClick={() => setFormData(prev => prev ? { ...prev, revisionNumber: ((prev.revisionNumber || 0) + 1) } : null)}
+                                    onClick={() => {
+                                        setFormData(prev => {
+                                            if (!prev) return null;
+                                            const newRev = (prev.revisionNumber || 0) + 1;
+                                            // Snapshot the current state as Initial Rev 0 if not already snapshotted
+                                            const snap = prev.initialSnapshot || {
+                                                quotationDate: prev.quotationDate,
+                                                details: JSON.parse(JSON.stringify(prev.details)),
+                                                otherTerms: prev.otherTerms,
+                                                paymentTerms: prev.paymentTerms,
+                                                gstAdded: prev.gstAdded
+                                            };
+                                            return { ...prev, revisionNumber: newRev, initialSnapshot: snap };
+                                        });
+                                    }}
                                     className="ml-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 transition-colors"
                                     title="Click to increment Revision number when modifying this quotation"
                                 >
@@ -1656,7 +1726,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             {gridColumns.map(h => <th key={h} className="p-1 text-center whitespace-nowrap">{h}</th>)}
                         </tr>
                     </thead>
-                    <tbody className="bg-white text-xs text-black">{(formData.details || []).map((item, index) => {
+                    <tbody className="bg-white text-xs text-black">{((displayQuotation || formData).details || []).map((item, index) => {
                         const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100); 
                         const amount = unitPrice * (item.moq || 0); 
                         const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) : 0; 

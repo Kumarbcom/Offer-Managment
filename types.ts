@@ -100,6 +100,7 @@ export interface Quotation {
   details: QuotationItem[];
   gstAdded: boolean;
   revisionNumber?: number;
+  initialSnapshot?: { quotationDate?: string; details: QuotationItem[]; otherTerms?: string; paymentTerms?: PaymentTerm; gstAdded?: boolean; };
 }
 
 export interface DeliveryChallanItem {
