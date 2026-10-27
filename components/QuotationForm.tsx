@@ -1515,14 +1515,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                            onClick={handleSubmit} 
                            title={isSubmitting ? "Saving..." : "Save Quotation"} 
                            disabled={isSubmitting}
-                           className="bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-500 shadow-sm"
+                           
                        >
                            {isSubmitting ? (
                                <div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full" />
                            ) : (
                                <Icons.Save />
                            )}
-                           <span className="text-white font-bold">{isSubmitting ? "Saving..." : "Save"}</span>
+                           <span className="text-indigo-950 font-bold">{isSubmitting ? "Saving..." : "Save"}</span>
                        </ActionButton>
                    )}
                    {(formData?.id && formData.id > 0) ? (
