@@ -6,6 +6,7 @@ import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
 import { generateFormattedQuotationNumber, getFinancialYear } from '../utils/quotationNumber';
 import { MonthlyTargets } from './MonthlyTargets';
+import { ManagementReportModal } from './ManagementReportModal';
 
 // Forward declaration for Chart.js and DataLabels from CDN
 declare const Chart: any;
@@ -65,6 +66,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
     const [quotationSortType, setQuotationSortType] = useState<'latest' | 'highestValue'>('latest');
     const [barChartMode, setBarChartMode] = useState<'count' | 'value'>('count');
     const [orderStatusMode, setOrderStatusMode] = useState<'count' | 'value'>('value');
+    const [selectedStatus, setSelectedStatus] = useState<QuotationStatus | 'all'>('all');
+    const [isManagementMailOpen, setIsManagementMailOpen] = useState(false);
     const [performanceMode, setPerformanceMode] = useState<'count' | 'value'>('count'); // New state for Performance Table
     const [customerMap, setCustomerMap] = useState<Map<number, string>>(new Map());
 
@@ -162,6 +165,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             
             if (!salesPersonMatch) return false;
 
+            if (selectedStatus !== 'all' && q.status !== selectedStatus) {
+                return false;
+            }
+
             if (selectedDateRange === 'all' || !startDate) {
                 return true;
             }
@@ -170,7 +177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             quotationDate.setHours(0, 0, 0, 0);
             return quotationDate >= startDate && quotationDate <= today;
         });
-    }, [quotations, selectedSalesPersonId, selectedDateRange, currentUser, salesPersons]);
+    }, [quotations, selectedSalesPersonId, selectedDateRange, selectedStatus, currentUser, salesPersons]);
 
     const customerStats = useMemo(() => {
         if (!filteredQuotations) return { total: 0, repeated: 0, oneTime: 0, newCust: 0 };
@@ -326,6 +333,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         });
         return totals;
     }, [salesPersonStats]);
+
+    const dateRangeLabel = useMemo(() => {
+        if (selectedDateRange === 'week') return 'Last 7 Days (1 Wk)';
+        if (selectedDateRange === 'month') return 'Last 30 Days (1 Mo)';
+        if (selectedDateRange === 'year') return 'Last 1 Year (1 Yr)';
+        return 'All Time';
+    }, [selectedDateRange]);
 
     const recentQuotations = useMemo(() => {
         let sortedQuotations = [...filteredQuotations];
@@ -852,6 +866,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                             <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                         </div>
                     </div>
+                    {/* Status Slicer */}
+                    <div className="relative">
+                        <select
+                            id="statusSlicer"
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value as any)}
+                            className="pl-4 pr-10 py-2 text-sm font-semibold rounded-xl bg-white border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm appearance-none min-w-[140px]"
+                        >
+                            <option value="all">All Statuses</option>
+                            {QUOTATION_STATUSES.map(st => (
+                                <option key={st} value={st}>{st}</option>
+                            ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
+
+                    {/* Management Mail Button */}
+                    <button
+                        type="button"
+                        onClick={() => setIsManagementMailOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition-all shrink-0 cursor-pointer"
+                        title="Generate and copy quotation management email report"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span>Management Mail</span>
+                    </button>
+
                 </div>
             </div>
 
@@ -1090,7 +1135,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 </motion.div>
             </div>
 
-        </div>
+        
+            {/* Management Email Report Modal */}
+            <ManagementReportModal
+                isOpen={isManagementMailOpen}
+                onClose={() => setIsManagementMailOpen(false)}
+                salesPersonStats={salesPersonStats}
+                performanceTotals={performanceTotals}
+                dateRangeLabel={dateRangeLabel}
+                currentUser={currentUser}
+            />
+</div>
     );
 };
 

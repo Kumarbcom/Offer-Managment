@@ -773,7 +773,7 @@ export async function getProductsByPartNos(partNos: string[]) {
     if (!supabase) return [];
     if (!partNos || partNos.length === 0) return [];
     const distinctPartNos = [...new Set(partNos)];
-    const { data, error } = await supabase.from('products').select('*').in('partNo', distinctPartNos);
+    const { data, error } = await supabase.from('products').select('*').in('part_no', distinctPartNos);
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
     return (data || []).map(item => mapFromSupabase('products', item));
 }

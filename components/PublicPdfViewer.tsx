@@ -8,12 +8,33 @@ import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFre
 import { QuotationDiffModal } from './QuotationDiffModal';
 import { DEFAULT_LOGO_BASE64 } from '../constants';
 
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
+import { mapFromSupabase, getProductsByIds, getProductsByPartNos } from '../supabase';
+import type { Quotation, Customer, SalesPerson, Product } from '../types';
+import { QuotationPrintView } from './QuotationPrintView';
+import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
+import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
+import { QuotationDiffModal } from './QuotationDiffModal';
+import { DEFAULT_LOGO_BASE64 } from '../constants';
+import { idbGet } from '../utils/idbStorage';
+
 interface PublicPdfViewerProps {
     quotationId: number;
     format: string | null;
+    cachedQuotations?: Quotation[] | null;
+    cachedCustomers?: Customer[] | null;
+    cachedSalesPersons?: SalesPerson[] | null;
 }
 
-export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, format }) => {
+export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({
+    quotationId,
+    format,
+    cachedQuotations,
+    cachedCustomers,
+    cachedSalesPersons,
+}) => {
+    const [mode, setMode] = useState<string>(format || 'standard');
     const [quotation, setQuotation] = useState<Quotation | null>(null);
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [salesPerson, setSalesPerson] = useState<SalesPerson | null>(null);
@@ -21,158 +42,163 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Keep mode in sync if format prop changes
     useEffect(() => {
-        const fetchData = async () => {
+        if (format) setMode(format);
+    }, [format]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const hydrateAndFetch = async () => {
+            // STEP 1: FAST HYDRATION (Instant 0ms from Props or <20ms from IndexedDB)
+            let initialQ: Quotation | null = null;
+            let initialCust: Customer | null = null;
+            let initialSp: SalesPerson | null = null;
+            let initialAllQ: Quotation[] = [];
+
+            // A) Check props passed from App
+            if (cachedQuotations && cachedQuotations.length > 0) {
+                const found = cachedQuotations.find(q => q.id === quotationId);
+                if (found) {
+                    initialQ = found;
+                    initialAllQ = cachedQuotations;
+                    if (cachedCustomers && found.customerId) {
+                        initialCust = cachedCustomers.find(c => c.id === found.customerId) || null;
+                    }
+                    if (cachedSalesPersons && found.salesPersonId) {
+                        initialSp = cachedSalesPersons.find(sp => sp.id === found.salesPersonId) || null;
+                    }
+                }
+            }
+
+            // B) If not found in props, check browser IndexedDB cache
+            if (!initialQ) {
+                try {
+                    const idbQ = await idbGet<Quotation[]>('cache_quotations');
+                    if (idbQ && idbQ.length > 0) {
+                        const found = idbQ.find(q => q.id === quotationId);
+                        if (found) {
+                            initialQ = found;
+                            initialAllQ = idbQ;
+                            const idbCust = await idbGet<Customer[]>('cache_customers');
+                            if (idbCust && found.customerId) {
+                                initialCust = idbCust.find(c => c.id === found.customerId) || null;
+                            }
+                            const idbSp = await idbGet<SalesPerson[]>('cache_salesPersons');
+                            if (idbSp && found.salesPersonId) {
+                                initialSp = idbSp.find(sp => sp.id === found.salesPersonId) || null;
+                            }
+                        }
+                    }
+                } catch (_) {}
+            }
+
+            // If found in local cache, render immediately (<20ms)!
+            if (initialQ && isMounted) {
+                setQuotation(initialQ);
+                setAllQuotations(initialAllQ.length > 0 ? initialAllQ : [initialQ]);
+                if (initialCust) setCustomer(initialCust);
+                if (initialSp) setSalesPerson(initialSp);
+                setLoading(false);
+            }
+
+            // STEP 2: Background or First-Time Cloud Fetch from Supabase
             try {
-                // 1. Fetch the requested Quotation by ID
+                if (!supabase) throw new Error("Supabase client not initialized");
+
+                // Fetch requested Quotation
                 const { data: qData, error: qError } = await supabase
                     .from('quotations')
                     .select('*')
                     .eq('id', quotationId)
                     .single();
-                
+
                 if (qError) throw qError;
                 if (!qData) throw new Error(`Quotation #${quotationId} not found.`);
 
                 const fetchedQuotation = mapFromSupabase('quotations', qData) as Quotation;
 
-                // Auto-enrich details with product images if missing
+                if (isMounted) {
+                    setQuotation(fetchedQuotation);
+                    setAllQuotations(prev => (prev.length > 1 ? prev : [fetchedQuotation]));
+                    setLoading(false); // Instantly show document to user!
+                }
+
+                // In parallel, fetch Customer & SalesPerson
+                const fetchCustPromise = fetchedQuotation.customerId
+                    ? supabase.from('customers').select('*').eq('id', fetchedQuotation.customerId).maybeSingle()
+                    : Promise.resolve({ data: null });
+
+                const fetchSpPromise = fetchedQuotation.salesPersonId
+                    ? supabase.from('sales_persons').select('*').eq('id', fetchedQuotation.salesPersonId).maybeSingle()
+                    : Promise.resolve({ data: null });
+
+                const [custRes, spRes] = await Promise.all([fetchCustPromise, fetchSpPromise]);
+
+                if (isMounted) {
+                    if (custRes.data) {
+                        setCustomer(mapFromSupabase('customers', custRes.data) as Customer);
+                    }
+                    if (spRes.data) {
+                        setSalesPerson(mapFromSupabase('salesPersons', spRes.data) as SalesPerson);
+                    }
+                }
+
+                // Non-blocking product image enrichment in background
                 if (fetchedQuotation.details && fetchedQuotation.details.length > 0) {
-                    const pIds = fetchedQuotation.details.map(d => d.productId).filter((id): id is number => typeof id === 'number' && id > 0);
-                    const pNos = fetchedQuotation.details.map(d => d.partNo).filter((p): p is string => Boolean(p && p.trim()));
-                    try {
-                        const [byId, byPart] = await Promise.all([
+                    const missingImages = fetchedQuotation.details.some(d => !d.imageUrl);
+                    if (missingImages) {
+                        const pIds = fetchedQuotation.details.map(d => d.productId).filter((id): id is number => typeof id === 'number' && id > 0);
+                        const pNos = fetchedQuotation.details.map(d => d.partNo).filter((p): p is string => Boolean(p && p.trim()));
+                        
+                        Promise.all([
                             pIds.length > 0 ? getProductsByIds(pIds) : Promise.resolve([]),
                             pNos.length > 0 ? getProductsByPartNos(pNos) : Promise.resolve([])
-                        ]);
-                        const combined = [...byId, ...byPart];
-                        const prodMap = new Map<number, Product>();
-                        const partImgMap = new Map<string, string>();
-                        for (const p of combined) {
-                            if (p.id) prodMap.set(p.id, p);
-                            if (p.partNo && p.imageUrl) {
-                                partImgMap.set(p.partNo.trim().toLowerCase(), p.imageUrl);
-                                const unpadded = p.partNo.trim().replace(/^0+/, '');
-                                if (unpadded) partImgMap.set(unpadded.toLowerCase(), p.imageUrl);
+                        ]).then(([byId, byPart]) => {
+                            if (!isMounted) return;
+                            const combined = [...byId, ...byPart];
+                            const prodMap = new Map<number, Product>();
+                            const partImgMap = new Map<string, string>();
+                            for (const p of combined) {
+                                if (p.id) prodMap.set(p.id, p);
+                                if (p.partNo && p.imageUrl) {
+                                    partImgMap.set(p.partNo.trim().toLowerCase(), p.imageUrl);
+                                    const unpadded = p.partNo.trim().replace(/^0+/, '');
+                                    if (unpadded) partImgMap.set(unpadded.toLowerCase(), p.imageUrl);
+                                }
                             }
-                        }
-                        fetchedQuotation.details = fetchedQuotation.details.map(item => {
-                            if (!item.imageUrl) {
-                                const cleanPNo = (item.partNo || '').trim().toLowerCase();
-                                const unpadded = cleanPNo.replace(/^0+/, '');
-                                const matched = (item.productId && prodMap.get(item.productId)?.imageUrl) ||
-                                                (cleanPNo && partImgMap.get(cleanPNo)) ||
-                                                (unpadded && partImgMap.get(unpadded));
-                                if (matched) return { ...item, imageUrl: matched };
-                            }
-                            return item;
-                        });
-                    } catch (e) {
-                        console.warn("Could not fetch product images for public viewer:", e);
+                            setQuotation(prev => {
+                                if (!prev || !prev.details) return prev;
+                                const enrichedDetails = prev.details.map(item => {
+                                    if (!item.imageUrl) {
+                                        const cleanPNo = (item.partNo || '').trim().toLowerCase();
+                                        const unpadded = cleanPNo.replace(/^0+/, '');
+                                        const matched = (item.productId && prodMap.get(item.productId)?.imageUrl) ||
+                                                        (cleanPNo && partImgMap.get(cleanPNo)) ||
+                                                        (unpadded && partImgMap.get(unpadded));
+                                        if (matched) return { ...item, imageUrl: matched };
+                                    }
+                                    return item;
+                                });
+                                return { ...prev, details: enrichedDetails };
+                            });
+                        }).catch(() => {});
                     }
                 }
-                setQuotation(fetchedQuotation);
-
-                // 2. Fetch Lightweight Quotations metadata for Sequence Number (id and quotation_date ONLY)
-                try {
-                    const { data: lightQData } = await supabase
-                        .from('quotations')
-                        .select('id, quotation_date')
-                        .order('id', { ascending: true });
-                    if (lightQData && lightQData.length > 0) {
-                        setAllQuotations(lightQData.map(d => ({
-                            id: d.id,
-                            quotationDate: d.quotation_date,
-                            enquiryDate: '',
-                            customerId: null,
-                            contactPerson: '',
-                            contactNumber: '',
-                            otherTerms: '',
-                            paymentTerms: '100% Against Proforma Invoice' as any,
-                            preparedBy: 'Kumar' as any,
-                            productsBrand: 'Lapp' as any,
-                            salesPersonId: null,
-                            modeOfEnquiry: 'Customer Email' as any,
-                            status: 'Open' as any,
-                            comments: '',
-                            details: [],
-                            gstAdded: true
-                        })));
-                    } else {
-                        setAllQuotations([fetchedQuotation]);
-                    }
-                } catch (e) {
-                    setAllQuotations([fetchedQuotation]);
-                }
-
-                // 3. Setup Fallback Customer
-                const fallbackCustomer: Customer = {
-                    id: fetchedQuotation.customerId || 0,
-                    name: fetchedQuotation.contactPerson || 'Customer',
-                    address: '',
-                    city: '',
-                    pincode: '',
-                    salesPersonId: fetchedQuotation.salesPersonId,
-                    discountStructure: { singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0 }
-                };
-
-                // Fetch Customer from Supabase if customerId exists
-                if (fetchedQuotation.customerId) {
-                    try {
-                        const { data: cData } = await supabase
-                            .from('customers')
-                            .select('*')
-                            .eq('id', fetchedQuotation.customerId)
-                            .maybeSingle();
-                        if (cData) {
-                            setCustomer(mapFromSupabase('customers', cData) as Customer);
-                        } else {
-                            setCustomer(fallbackCustomer);
-                        }
-                    } catch (e) {
-                        setCustomer(fallbackCustomer);
-                    }
-                } else {
-                    setCustomer(fallbackCustomer);
-                }
-
-                // 4. Setup Fallback SalesPerson
-                const fallbackSalesPerson: SalesPerson = {
-                    id: fetchedQuotation.salesPersonId || 0,
-                    name: fetchedQuotation.preparedBy || 'Sales Coordinator',
-                    email: 'sales@siddhikabel.com',
-                    mobile: '9620000947'
-                };
-
-                // Fetch SalesPerson from Supabase if salesPersonId exists
-                if (fetchedQuotation.salesPersonId) {
-                    try {
-                        const { data: sData } = await supabase
-                            .from('sales_persons')
-                            .select('*')
-                            .eq('id', fetchedQuotation.salesPersonId)
-                            .maybeSingle();
-                        if (sData) {
-                            setSalesPerson(mapFromSupabase('salesPersons', sData) as SalesPerson);
-                        } else {
-                            setSalesPerson(fallbackSalesPerson);
-                        }
-                    } catch (e) {
-                        setSalesPerson(fallbackSalesPerson);
-                    }
-                } else {
-                    setSalesPerson(fallbackSalesPerson);
-                }
-
-                setLoading(false);
             } catch (err: any) {
-                console.error("Error fetching public PDF data:", err);
-                setError(err.message || "Failed to load quotation.");
-                setLoading(false);
+                if (isMounted && !initialQ) {
+                    console.error("Error loading quotation document:", err);
+                    setError(err.message || "Failed to load quotation.");
+                    setLoading(false);
+                }
             }
         };
-        fetchData();
-    }, [quotationId]);
+
+        hydrateAndFetch();
+
+        return () => { isMounted = false; };
+    }, [quotationId, cachedQuotations, cachedCustomers, cachedSalesPersons]);
 
     if (loading) {
         return (
@@ -199,7 +225,6 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
         );
     }
 
-    const mode = format || 'standard';
     const effectiveCustomer = customer || {
         id: quotation.customerId || 0,
         name: quotation.contactPerson || 'Customer',
@@ -231,20 +256,28 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
                 </div>
                 <div className="flex items-center gap-2">
                     {mode === 'comparison' ? (
-                        <a 
-                            href={`?view_pdf=${quotation.id}&format=standard`}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors"
+                        <button 
+                            type="button"
+                            onClick={() => {
+                                setMode('standard');
+                                window.history.replaceState({}, '', `?view_pdf=${quotation.id}&format=standard`);
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors cursor-pointer"
                         >
                             View Standard Offer
-                        </a>
+                        </button>
                     ) : (
                         (quotation.revisionNumber && quotation.revisionNumber > 0) && (
-                            <a 
-                                href={`?view_pdf=${quotation.id}&format=comparison`}
-                                className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded text-xs font-bold transition-colors"
+                            <button 
+                                type="button"
+                                onClick={() => {
+                                    setMode('comparison');
+                                    window.history.replaceState({}, '', `?view_pdf=${quotation.id}&format=comparison`);
+                                }}
+                                className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded text-xs font-bold transition-colors cursor-pointer"
                             >
                                 View Revision Variance
-                            </a>
+                            </button>
                         )
                     )}
                     <button 
@@ -294,7 +327,10 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({ quotationId, f
                     <div className="w-full max-w-6xl mx-auto px-2">
                         <QuotationDiffModal
                             isOpen={true}
-                            onClose={() => { window.location.href = `?view_pdf=${quotation.id}&format=standard`; }}
+                            onClose={() => { 
+                                setMode('standard'); 
+                                window.history.replaceState({}, '', `?view_pdf=${quotation.id}&format=standard`); 
+                            }}
                             quotation={quotation}
                             customer={effectiveCustomer}
                             salesPerson={effectiveSalesPerson}

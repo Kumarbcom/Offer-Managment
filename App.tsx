@@ -212,6 +212,9 @@ export const App = () => {
       <PublicPdfViewer
         quotationId={publicPdfParams.quotationId}
         format={publicPdfParams.format}
+        cachedQuotations={quotations}
+        cachedCustomers={customers}
+        cachedSalesPersons={salesPersons}
       />
     );
   }
