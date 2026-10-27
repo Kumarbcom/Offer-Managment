@@ -2,25 +2,33 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus, StockItem, PendingSO } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
-import { SalesPersonManager } from './components/SalesPersonManager';
-import { CustomerManager } from './components/CustomerManager';
-import { ProductManager } from './components/ProductManager';
-import { QuotationManager } from './components/QuotationManager';
-import { QuotationForm } from './components/QuotationForm';
-import { Dashboard } from './components/Dashboard';
 import { Login } from './components/Login';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
-import { UserManager } from './components/UserManager';
-import { CustomerLoginManager } from './components/CustomerLoginManager';
 import { DEFAULT_LOGO_BASE64 } from './constants';
-import { Reports } from './components/Reports';
-import { CalendarView } from './components/CalendarView';
-import { UserManual } from './components/UserManual';
-import { StockManager } from './components/StockManager';
 import { CustomerResponsePage } from './components/CustomerResponsePage';
 import { PublicPdfViewer } from './components/PublicPdfViewer';
-import { StorageManager } from './components/StorageManager';
-import { PendingSOManager } from './components/PendingSOManager';
+
+// Route-level code-splitting for high performance & instant initial load
+const SalesPersonManager = React.lazy(() => import('./components/SalesPersonManager').then(m => ({ default: m.SalesPersonManager })));
+const CustomerManager = React.lazy(() => import('./components/CustomerManager').then(m => ({ default: m.CustomerManager })));
+const ProductManager = React.lazy(() => import('./components/ProductManager').then(m => ({ default: m.ProductManager })));
+const QuotationManager = React.lazy(() => import('./components/QuotationManager').then(m => ({ default: m.QuotationManager })));
+const QuotationForm = React.lazy(() => import('./components/QuotationForm').then(m => ({ default: m.QuotationForm })));
+const Dashboard = React.lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const UserManager = React.lazy(() => import('./components/UserManager').then(m => ({ default: m.UserManager })));
+const CustomerLoginManager = React.lazy(() => import('./components/CustomerLoginManager').then(m => ({ default: m.CustomerLoginManager })));
+const Reports = React.lazy(() => import('./components/Reports').then(m => ({ default: m.Reports })));
+const CalendarView = React.lazy(() => import('./components/CalendarView').then(m => ({ default: m.CalendarView })));
+const UserManual = React.lazy(() => import('./components/UserManual').then(m => ({ default: m.UserManual })));
+const StorageManager = React.lazy(() => import('./components/StorageManager').then(m => ({ default: m.StorageManager })));
+const PendingSOManager = React.lazy(() => import('./components/PendingSOManager').then(m => ({ default: m.PendingSOManager })));
+
+const ViewLoadingFallback = () => (
+  <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] p-8 text-center animate-pulse">
+    <div className="w-10 h-10 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin mb-3" />
+    <p className="text-xs font-semibold text-slate-500">Loading view...</p>
+  </div>
+);
 
 export const App = () => {
   const [users, setUsers, usersLoading, usersError] = useOnlineStorage<User>('users');
@@ -32,7 +40,14 @@ export const App = () => {
 
   const [view, setView] = useState<View | 'calendar'>('dashboard');
   const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('active_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
@@ -48,6 +63,23 @@ export const App = () => {
       return DEFAULT_LOGO_BASE64;
     }
   });
+
+  
+  // Shortcut: Ctrl+K / Cmd+K to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('global-search-input');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const isLoadingData = usersLoading || salesPersonsLoading || customersLoading || quotationsLoading || pendingSOsLoading;
   const dataError = usersError || salesPersonsError || customersError || quotationsError || pendingSOsError;
@@ -79,6 +111,7 @@ export const App = () => {
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
+    try { sessionStorage.setItem('active_user', JSON.stringify(user)); } catch (e) {}
     if (user.password === '123456') {
       setIsPasswordChangeRequired(true);
       setIsPasswordModalOpen(true);
@@ -87,6 +120,7 @@ export const App = () => {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    try { sessionStorage.removeItem('active_user'); } catch (e) {}
     setView('dashboard');
     setEditingQuotationId(null);
     setQuotationFilter(null);
@@ -104,7 +138,9 @@ export const App = () => {
       await setUsers(updatedUsers);
       setIsPasswordModalOpen(false);
       setIsPasswordChangeRequired(false);
-      setCurrentUser({ ...currentUser, password: newPassword });
+      const updatedUser = { ...currentUser, password: newPassword };
+      setCurrentUser(updatedUser);
+      try { sessionStorage.setItem('active_user', JSON.stringify(updatedUser)); } catch (e) {}
     }
   };
 
@@ -339,7 +375,8 @@ export const App = () => {
                </div>
                <input 
                  type="text" 
-                 placeholder="Search quotations (Press Enter)..." 
+                 id="global-search-input"
+                  placeholder="Search quotations (Ctrl+K or Enter)..." 
                  value={globalSearchInput}
                  onChange={(e) => setGlobalSearchInput(e.target.value)}
                  onKeyDown={(e) => {
@@ -397,6 +434,7 @@ export const App = () => {
 
         {/* Scrollable Main Content */}
         <main className={`flex-1 overflow-y-auto relative ${view === 'quotation-form' || view === 'quotations' ? 'p-0 bg-white' : 'p-4 md:p-6 pb-24 md:pb-6'}`}>
+          <React.Suspense fallback={<ViewLoadingFallback />}>
           {view === 'dashboard' && <Dashboard quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} onLogoUpload={handleLogoUpload} logoUrl={logoUrl} />}
           {view === 'customers' && <CustomerManager salesPersons={salesPersons} quotations={quotations} onFilterQuotations={navigateToQuotationsWithFilter} currentUser={currentUser} />}
           {view === 'products' && <ProductManager currentUser={currentUser} />}
@@ -421,6 +459,7 @@ export const App = () => {
           {view === 'reports' && <Reports quotations={quotations} salesPersons={salesPersons} currentUser={currentUser} />}
           {view === 'user-manual' && <UserManual />}
           {view === 'pending-so' && <PendingSOManager pendingSOs={pendingSOs} setPendingSOs={setPendingSOs} />}
+          </React.Suspense>
         </main>
 
       </div>
@@ -467,7 +506,7 @@ export const App = () => {
               </button>
             </div>
             <div className="p-6">
-               <StorageManager />
+               <React.Suspense fallback={<div className="p-4 text-center text-xs text-slate-500">Loading storage...</div>}><StorageManager /></React.Suspense>
                <div className="mt-6 flex justify-end">
                    <button 
                     onClick={() => setIsStorageModalOpen(false)}

@@ -440,7 +440,7 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
     let toUpsert: T[] = [];
     for (const [key, newItem] of newDataMap.entries()) {
         const prevItem = previousDataMap.get(key);
-        if (!prevItem || JSON.stringify(prevItem) !== JSON.stringify(newItem)) {
+        if (!prevItem || (prevItem !== newItem && JSON.stringify(prevItem) !== JSON.stringify(newItem))) {
             toUpsert.push(newItem);
         }
     }
