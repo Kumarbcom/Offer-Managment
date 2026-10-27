@@ -489,33 +489,48 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 const combined = [...byId, ...byPart];
                 const prodMap = new Map<number, Product>();
                 const partImgMap = new Map<string, string>();
+                const partProdMap = new Map<string, Product>();
                 for (const p of combined) {
                     if (p.id) prodMap.set(p.id, p);
-                    if (p.partNo && p.imageUrl) {
-                        partImgMap.set(p.partNo.trim().toLowerCase(), p.imageUrl);
-                        const unpadded = p.partNo.trim().replace(/^0+/, '');
-                        if (unpadded) partImgMap.set(unpadded.toLowerCase(), p.imageUrl);
+                    if (p.partNo) {
+                        const cleanP = p.partNo.trim().toLowerCase();
+                        partProdMap.set(cleanP, p);
+                        const unpadded = cleanP.replace(/^0+/, '');
+                        if (unpadded) partProdMap.set(unpadded, p);
+                        if (p.imageUrl) {
+                            partImgMap.set(cleanP, p.imageUrl);
+                            if (unpadded) partImgMap.set(unpadded, p.imageUrl);
+                        }
                     }
                 }
                 setFetchedProducts(prodMap);
 
-                // Auto-enrich details with image if missing
+                // Auto-enrich details with image and productId if missing
                 setFormData(prev => {
                     if (!prev || !prev.details) return prev;
                     let hasChanges = false;
                     const updatedDetails = prev.details.map(item => {
-                        if (!item.imageUrl) {
-                            const cleanPNo = (item.partNo || '').trim().toLowerCase();
-                            const unpadded = cleanPNo.replace(/^0+/, '');
-                            const matchedImg = (item.productId && prodMap.get(item.productId)?.imageUrl) ||
+                        let updated = item;
+                        const cleanPNo = (item.partNo || '').trim().toLowerCase();
+                        const unpadded = cleanPNo.replace(/^0+/, '');
+                        const matchedProd = (item.productId && prodMap.get(item.productId)) ||
+                                            (cleanPNo && partProdMap.get(cleanPNo)) ||
+                                            (unpadded && partProdMap.get(unpadded));
+
+                        if (matchedProd && (!item.productId || item.productId <= 0)) {
+                            updated = { ...updated, productId: matchedProd.id };
+                            hasChanges = true;
+                        }
+                        if (!updated.imageUrl) {
+                            const matchedImg = (matchedProd && matchedProd.imageUrl) ||
                                                (cleanPNo && partImgMap.get(cleanPNo)) ||
                                                (unpadded && partImgMap.get(unpadded));
                             if (matchedImg) {
+                                updated = { ...updated, imageUrl: matchedImg };
                                 hasChanges = true;
-                                return { ...item, imageUrl: matchedImg };
                             }
                         }
-                        return item;
+                        return updated;
                     });
                     return hasChanges ? { ...prev, details: updatedDetails } : prev;
                 });
@@ -1794,9 +1809,17 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) : 0; 
                         const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
                         const limitExceeded = isDiscountExceeded(item);
-                        const currentProduct = fetchedProducts.get(item.productId);
+                        const currentProduct = fetchedProducts.get(item.productId) || (item.partNo ? {
+                            id: item.productId || item.partNo,
+                            partNo: item.partNo,
+                            description: item.description || '',
+                            prices: [],
+                            imageUrl: item.imageUrl,
+                            uom: item.uom || 'M',
+                            brand: (item as any).brand || 'Lapp'
+                        } as any as Product : undefined);
                         const optionsForSelect = [...searchedProducts];
-                        if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
+                        if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id || (p.partNo && p.partNo === currentProduct.partNo))) {
                             optionsForSelect.unshift(currentProduct);
                         }
 
@@ -1831,7 +1854,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         <img src={item.imageUrl} alt="" className="w-5 h-5 object-contain rounded shrink-0 border border-slate-200 bg-white" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                                     )}
                                     <div className={`h-6 flex-1 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
-                                        <SearchableSelect<Product> options={optionsForSelect} value={item.productId} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
+                                        <SearchableSelect<Product> options={optionsForSelect} value={item.productId || (currentProduct ? currentProduct.id : null)} fallbackDisplayValue={item.partNo} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
                                     </div>
                                 </div>
                             </td>

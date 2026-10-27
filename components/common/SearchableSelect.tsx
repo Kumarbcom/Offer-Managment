@@ -7,16 +7,23 @@ interface SearchableSelectProps<T> {
   idKey: keyof T;
   displayKey: keyof T;
   placeholder?: string;
+  fallbackDisplayValue?: string;
   onSearch?: (term: string) => void;
   isLoading?: boolean;
   onOpen?: () => void;
 }
 
 export const SearchableSelect = <T extends Record<string, any>,>(
-  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', onSearch, isLoading, onOpen }: SearchableSelectProps<T>
+  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', fallbackDisplayValue, onSearch, isLoading, onOpen }: SearchableSelectProps<T>
 ) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const selectedOption = options.find(option => option[idKey] === value);
+    if (selectedOption && selectedOption[displayKey]) {
+      return String(selectedOption[displayKey]);
+    }
+    return fallbackDisplayValue || '';
+  });
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const wrapperRef = useRef<HTMLDivElement>(null);
   const prevValueRef = useRef(value);
@@ -30,7 +37,7 @@ export const SearchableSelect = <T extends Record<string, any>,>(
         if (selectedOption) {
             setSearchTerm(String(selectedOption[displayKey]));
         } else {
-            setSearchTerm('');
+            setSearchTerm(fallbackDisplayValue || '');
         }
     } else {
         // If value hasn't changed but options have (e.g. initial load), 
@@ -39,10 +46,12 @@ export const SearchableSelect = <T extends Record<string, any>,>(
             const selectedOption = options.find(option => option[idKey] === value);
             if (selectedOption) {
                 setSearchTerm(String(selectedOption[displayKey]));
+            } else if (fallbackDisplayValue && !searchTerm) {
+                setSearchTerm(fallbackDisplayValue);
             }
         }
     }
-  }, [value, options, idKey, displayKey, isOpen]);
+  }, [value, options, idKey, displayKey, isOpen, fallbackDisplayValue]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -50,7 +59,7 @@ export const SearchableSelect = <T extends Record<string, any>,>(
         setIsOpen(false);
         // Reset search term to selected value if dropdown is closed without selection
         const selectedOption = options.find(option => option[idKey] === value);
-        setSearchTerm(selectedOption ? String(selectedOption[displayKey]) : '');
+        setSearchTerm(selectedOption ? String(selectedOption[displayKey]) : (fallbackDisplayValue || ''));
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
