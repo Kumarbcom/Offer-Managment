@@ -12,6 +12,7 @@ import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
 import { AIAssistantPanel } from './AIAssistantPanel';
+import { QuotationDiffModal } from './QuotationDiffModal';
 import { useDebounce } from '../hooks/useDebounce';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
@@ -150,6 +151,11 @@ const Icons = {
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-sky-500">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
         </svg>
+    ),
+    Diff: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
     )
 };
 
@@ -224,6 +230,25 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewingVersion, setViewingVersion] = useState<'current' | 'initial'>('current');
+  const [isDiffModalOpen, setIsDiffModalOpen] = useState(false);
+  const [showInlineDiff, setShowInlineDiff] = useState(true);
+
+  // Map of initial snapshot items for in-line diff checks
+  const initialDetailsLookup = useMemo(() => {
+    const snap = formData?.initialSnapshot;
+    if (!snap || !snap.details) return new Map<string, QuotationItem>();
+    const map = new Map<string, QuotationItem>();
+    snap.details.forEach((item, idx) => {
+      if (item.productId && item.productId > 0) {
+        map.set(`prod_${item.productId}`, item);
+      }
+      if (item.partNo && item.partNo.trim()) {
+        map.set(`part_${item.partNo.trim().toLowerCase()}`, item);
+      }
+      map.set(`idx_${idx}`, item);
+    });
+    return map;
+  }, [formData?.initialSnapshot]);
 
   // When viewing initial snapshot, display the original Rev 0 data
   const displayQuotation: Quotation | null = useMemo(() => {
@@ -1427,6 +1452,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
               )}
               {userRole === 'Customer' ? (
                 <>
+                  <button 
+                    type="button"
+                    onClick={() => setIsShareModalOpen(true)} 
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300 flex items-center gap-1 shadow-sm"
+                    title="Share or Copy PDF Link"
+                  >
+                    <Icons.Share />
+                    <span>Share PDF Link</span>
+                  </button>
                   <button onClick={() => setPreviewMode('standard')} className={`py-1 px-3 rounded-md text-xs font-bold transition duration-300 ${previewMode === 'standard' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>Standard</button>
                   <button onClick={() => setPreviewMode('withAirFreight')} className={`py-1 px-3 rounded-md text-xs font-bold transition duration-300 ${previewMode === 'withAirFreight' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>Air Freight</button>
                   <button onClick={() => setView('quotations')} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded-md text-xs transition duration-300">Back</button>
@@ -1476,26 +1510,37 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                    </div>
 
                    {/* Initial vs Amended Version Switcher */}
-                   {formData && formData.id > 0 && (formData.revisionNumber > 0 || formData.initialSnapshot) && (
-                       <div className="flex items-center bg-black/40 p-0.5 rounded-lg border border-white/15 text-[11px] font-bold ml-1 shadow-inner">
-                           <button
-                               type="button"
-                               onClick={() => setViewingVersion('initial')}
-                               className={`px-2.5 py-0.5 rounded-md transition-all ${viewingVersion === 'initial' ? 'bg-amber-400 text-slate-950 font-black shadow-xs' : 'text-slate-300 hover:text-white'}`}
-                               title="Click to view the original Initial Quotation (Rev 0)"
-                           >
-                               Initial (Rev 0)
-                           </button>
-                           <button
-                               type="button"
-                               onClick={() => setViewingVersion('current')}
-                               className={`px-2.5 py-0.5 rounded-md transition-all ${viewingVersion === 'current' ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-slate-300 hover:text-white'}`}
-                               title="Click to view the active Amended Quotation"
-                           >
-                               Amended (Rev {formData.revisionNumber || 1})
-                           </button>
-                       </div>
-                   )}
+                    {formData && formData.id > 0 && (formData.revisionNumber > 0 || formData.initialSnapshot) && (
+                        <div className="flex items-center gap-1.5 ml-1">
+                            <div className="flex items-center bg-black/40 p-0.5 rounded-lg border border-white/15 text-[11px] font-bold shadow-inner">
+                                <button
+                                    type="button"
+                                    onClick={() => setViewingVersion('initial')}
+                                    className={`px-2.5 py-0.5 rounded-md transition-all ${viewingVersion === 'initial' ? 'bg-amber-400 text-slate-950 font-black shadow-xs' : 'text-slate-300 hover:text-white'}`}
+                                    title="Click to view the original Initial Quotation (Rev 0)"
+                                >
+                                    Initial (Rev 0)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewingVersion('current')}
+                                    className={`px-2.5 py-0.5 rounded-md transition-all ${viewingVersion === 'current' ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-slate-300 hover:text-white'}`}
+                                    title="Click to view the active Amended Quotation"
+                                >
+                                    Amended (Rev {formData.revisionNumber || 1})
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsDiffModalOpen(true)}
+                                className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-md text-xs shadow-xs transition-all transform active:scale-95 border border-amber-300/60"
+                                title="Compare Initial Offer vs Final Amended Offer (Side-by-Side Analysis)"
+                            >
+                                <Icons.Diff />
+                                <span>Compare Diff</span>
+                            </button>
+                        </div>
+                    )}
                </div>
 
                {/* Right: Primary Lifecycle Actions + GST + Close in ONE continuous clean group */}
@@ -1583,9 +1628,24 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                    <ActionButton onClick={() => handlePreview('withAirFreight')} title="Print Air Freight View" className="px-2 py-1 text-[11px] h-6">
                        <Icons.PrintAirFreight /><span>Air Freight</span>
                    </ActionButton>
-               </div>
+                   {/* In-Line Diff Toggle */}
+                {formData && formData.id > 0 && (formData.revisionNumber > 0 || formData.initialSnapshot) && (
+                    <button
+                        type="button"
+                        onClick={() => setShowInlineDiff(prev => !prev)}
+                        className={`px-2.5 py-1 text-[11px] h-6 rounded-md font-bold border transition-all flex items-center gap-1 ${
+                            showInlineDiff
+                                ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-xs'
+                                : 'bg-white/10 text-slate-300 border-white/15 hover:text-white'
+                        }`}
+                        title="Toggle in-line difference highlights on quotation grid"
+                    >
+                        <span>In-Line Diff: {showInlineDiff ? 'ON' : 'OFF'}</span>
+                    </button>
+                )}
+            </div>
 
-               {/* Right: Quick Tools & Data Links */}
+            {/* Right: Quick Tools & Data Links */}
                <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5 border border-white/10 ml-auto flex-wrap">
                    <ActionButton onClick={handleExportExcel} title="Export to Excel" className="px-2 py-1 text-[11px] h-6">
                        <Icons.Excel /><span>Excel</span>
@@ -1739,6 +1799,26 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id)) {
                             optionsForSelect.unshift(currentProduct);
                         }
+
+                        // In-Line Diff Calculation
+                        const isRev = Boolean(formData && formData.id > 0 && (formData.revisionNumber > 0 || formData.initialSnapshot));
+                        const initialItem = isRev ? (
+                            (item.productId > 0 ? initialDetailsLookup.get(`prod_${item.productId}`) : undefined) ||
+                            (item.partNo ? initialDetailsLookup.get(`part_${item.partNo.trim().toLowerCase()}`) : undefined) ||
+                            initialDetailsLookup.get(`idx_${index}`)
+                        ) : undefined;
+                        const canDiff = isRev && viewingVersion === 'current' && showInlineDiff && Boolean(initialItem);
+                        const hasMoqDiff = Boolean(canDiff && initialItem && (initialItem.moq || 0) !== (item.moq || 0));
+                        const hasReqDiff = Boolean(canDiff && initialItem && (initialItem.req || 0) !== (item.req || 0));
+                        const hasPriceDiff = Boolean(canDiff && initialItem && Math.abs((initialItem.price || 0) - (item.price || 0)) > 0.01);
+                        const initialDiscNum = initialItem ? (parseFloat(String(initialItem.discount)) || 0) : 0;
+                        const currDiscNum = parseFloat(String(item.discount)) || 0;
+                        const hasDiscountDiff = Boolean(canDiff && initialItem && Math.abs(initialDiscNum - currDiscNum) > 0.01);
+                        const initialUnitPrice = initialItem ? (initialItem.price || 0) * (1 - initialDiscNum / 100) : 0;
+                        const hasUnitPriceDiff = Boolean(canDiff && initialItem && Math.abs(initialUnitPrice - unitPrice) > 0.01);
+                        const initialAmount = initialItem ? initialUnitPrice * (initialItem.moq || 0) : 0;
+                        const hasAmountDiff = Boolean(canDiff && initialItem && Math.abs(initialAmount - amount) > 0.01);
+                        const isNewlyAdded = Boolean(isRev && viewingVersion === 'current' && showInlineDiff && !initialItem);
                         return (
                         <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50">
                             {/* SL No */}
@@ -1761,6 +1841,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             
                             {/* MOQ */}
                             <td className="border-t border-slate-300 align-top">
+                                {hasMoqDiff && initialItem && (
+                                    <div className="text-[9px] text-red-600 font-bold line-through text-center leading-none pt-0.5" title="Initial MOQ">
+                                        {initialItem.moq}
+                                    </div>
+                                )}
                                 <input 
                                     type="number" 
                                     ref={(el) => { inputRefs.current[`${index}-moq`] = el; }}
@@ -1768,13 +1853,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
                                     onFocus={(e) => e.target.select()}
-                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
+                                    className={`w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black ${hasMoqDiff ? 'bg-amber-50 font-bold border-amber-300' : ''}`} 
                                     disabled={isReadOnly}
                                 />
                             </td>
 
                             {/* REQ */}
                             <td className="border-t border-slate-300 align-top">
+                                {hasReqDiff && initialItem && (
+                                    <div className="text-[9px] text-red-600 font-bold line-through text-center leading-none pt-0.5" title="Initial REQ">
+                                        {initialItem.req}
+                                    </div>
+                                )}
                                 <input 
                                     type="number" 
                                     ref={(el) => { inputRefs.current[`${index}-req`] = el; }}
@@ -1782,15 +1872,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
                                     onFocus={(e) => e.target.select()}
-                                    className="w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
+                                    className={`w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black ${hasReqDiff ? 'bg-amber-50 font-bold border-amber-300' : ''}`} 
                                     disabled={isReadOnly}
                                 />
                             </td>
                             
                             {/* Price (LP/SP) */}
                             <td className="border-t border-slate-300 align-top">
-                                <div className="flex items-center bg-slate-100 h-6">
-                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className="w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black" disabled/>
+                                {hasPriceDiff && initialItem && (
+                                    <div className="text-[9px] text-red-600 font-bold line-through text-right pr-1 leading-none pt-0.5" title="Initial Price">
+                                        ₹{initialItem.price.toFixed(2)}
+                                    </div>
+                                )}
+                                <div className={`flex items-center ${hasPriceDiff ? 'bg-amber-50' : 'bg-slate-100'} h-6`}>
+                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className={`w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black ${hasPriceDiff ? 'font-bold text-indigo-950' : ''}`} disabled/>
                                     <select 
                                         value={item.priceSource} 
                                         className="bg-transparent border-l border-slate-200 p-0 text-[9px] text-black h-full appearance-none text-center w-6 focus:outline-none" 
@@ -1803,6 +1898,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             
                             {/* Discount % */}
                             <td className="border-t border-slate-300 align-top">
+                                {hasDiscountDiff && initialItem && (
+                                    <div className="text-[9px] text-red-600 font-bold line-through text-center leading-none pt-0.5" title="Initial Discount">
+                                        {initialItem.discount}%
+                                    </div>
+                                )}
                                 <input 
                                     type="text" 
                                     ref={(el) => { inputRefs.current[`${index}-discount`] = el; }}
@@ -1810,19 +1910,33 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     onChange={e => handleItemChange(index, 'discount', e.target.value)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
                                     onFocus={(e) => e.target.select()}
-                                    className={`w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs ${limitExceeded ? 'bg-red-500 text-white print:bg-transparent print:text-black font-bold' : 'text-black'}`}
+                                    className={`w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs ${limitExceeded ? 'bg-red-500 text-white print:bg-transparent print:text-black font-bold' : hasDiscountDiff ? 'bg-amber-50 font-bold border-amber-300 text-black' : 'text-black'}`}
                                     disabled={isReadOnly}
                                 />
                             </td>
                             
                             {/* Unit Price */}
                             <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
-                                {unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {hasUnitPriceDiff && (
+                                    <div className="text-[9px] text-red-600 font-bold line-through leading-none mb-0.5" title="Initial Unit Price">
+                                        ₹{initialUnitPrice.toFixed(2)}
+                                    </div>
+                                )}
+                                <span className={hasUnitPriceDiff ? 'font-black text-indigo-950' : ''}>
+                                    {unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
                             </td>
 
                             {/* Amount */}
                             <td className="border-t border-slate-300 p-1 text-right bg-slate-100 align-top font-medium h-6 whitespace-nowrap text-black">
-                                {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {hasAmountDiff && (
+                                    <div className="text-[9px] text-red-600 font-bold line-through leading-none mb-0.5" title="Initial Amount">
+                                        ₹{initialAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                )}
+                                <span className={hasAmountDiff ? 'font-black text-indigo-950' : ''}>
+                                    {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
                             </td>
                             
                             {/* Stock Status */}
@@ -1987,6 +2101,17 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             salesPerson={selectedSalesPerson || null}
             quotations={quotations || []}
             customerName={selectedCustomerObj?.name || 'Customer'}
+          />
+      )}
+      {formData && formData.id > 0 && (
+          <QuotationDiffModal 
+            isOpen={isDiffModalOpen}
+            onClose={() => setIsDiffModalOpen(false)}
+            quotation={formData}
+            customer={selectedCustomerObj}
+            salesPerson={salesPersons?.find(sp => sp.id === formData.salesPersonId) || null}
+            allQuotations={quotations || []}
+            logoUrl={logoUrl}
           />
       )}
       
