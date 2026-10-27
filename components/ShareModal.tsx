@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Quotation, SalesPerson } from '../types';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { calculateTotalAmount } from '../utils/calc';
+import { calculateQuotationDiff } from '../utils/quotationDiff';
 import { DEFAULT_LOGO_BASE64 } from '../constants';
 
 interface ShareModalProps {
@@ -24,11 +25,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [selectedFormat, setSelectedFormat] = useState<'standard' | 'discounted' | 'withAirFreight'>('standard');
+  const [selectedFormat, setSelectedFormat] = useState<'standard' | 'discounted' | 'withAirFreight' | 'comparison'>('standard');
   const [showPreview, setShowPreview] = useState(false);
 
   if (!isOpen || !quotation) return null;
 
+  const isRevision = Boolean(quotation.revisionNumber && quotation.revisionNumber > 0) || Boolean(quotation.initialSnapshot);
+  const [includeComparison, setIncludeComparison] = useState(isRevision);
+
+  const diff = calculateQuotationDiff(quotation);
   const qtnNoStr = generateFormattedQuotationNumber(quotation, quotations);
   const safeCustomerName = (customerName || 'Customer').replace(/\s+/g, '_');
   const safeQtnNo = qtnNoStr.replace(/\//g, '-');
@@ -36,9 +41,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   let formatSuffix = '';
   if (selectedFormat === 'discounted') formatSuffix = '_Discounted';
   if (selectedFormat === 'withAirFreight') formatSuffix = '_AirFreight';
+  if (selectedFormat === 'comparison') formatSuffix = '_RevisionComparison';
   const pdfFileName = `${safeCustomerName}_${safeQtnNo}${formatSuffix}.pdf`;
 
   const appUrl = `${window.location.origin}${window.location.pathname}?view_pdf=${quotation.id}&format=${selectedFormat}`;
+  const comparisonUrl = `${window.location.origin}${window.location.pathname}?view_pdf=${quotation.id}&format=comparison`;
 
   // Determine Creator Details (Kumar, Vandita, etc.)
   const creator = quotation.preparedBy;
@@ -69,6 +76,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     maximumFractionDigits: 2,
   });
 
+  const formatCurrency = (val: number) => {
+    return '₹' + Math.abs(val).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   const getMailto = (subject: string, bodyText: string) => {
     return `mailto:sales@siddhikabel.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
   };
@@ -94,18 +108,26 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     if (!contentRef.current) return;
     try {
       const html = contentRef.current.innerHTML;
-      const plainText = `Dear Sir/Madam,
+      
+      let plainText = '';
+      if (isRevision && includeComparison) {
+        plainText = `Dear Sir/Madam,
 
 Thank you for your enquiry.
 
-We are pleased to submit our offer as per your requirement:
+We are pleased to submit our Amended Offer (Revision ${diff.revisionNumber}) as per our discussion.
+
 • Quotation Ref: ${qtnNoStr}
 • Date: ${quotation.quotationDate}
-• Quoted Amount: ${totalFormatted}
+• Initial Offer (Rev 0): ${formatCurrency(diff.initialGrandTotal)}
+• Amended Offer (Rev ${diff.revisionNumber}): ${formatCurrency(diff.finalGrandTotal)}
+• Commercial Variance: ${diff.grandTotalDelta < 0 ? '-' : '+'}${formatCurrency(diff.grandTotalDelta)} (${diff.percentageChange > 0 ? '+' : ''}${diff.percentageChange.toFixed(2)}%)
 
-👉 PLEASE CLICK THE LINK BELOW TO VIEW / DOWNLOAD YOUR QUOTATION:
-🔗 ${appUrl}
-(Document: ${pdfFileName})
+👉 Please Click Below to View & Download Your Quotation:
+${appUrl}
+
+📊 View Revision Variance Comparison Sheet:
+${comparisonUrl}
 
 In case you need any further assistance please feel free to contact us. We will be more than happy to assist you.
 
@@ -118,6 +140,31 @@ ${creatorTitle}
 SIDDHI KABEL CORPORATION PVT LTD
 Email: ${creatorEmail} | Phone: ${creatorPhone}
 Website: www.siddhikabel.com`;
+      } else {
+        plainText = `Dear Sir/Madam,
+
+Thank you for your enquiry.
+
+We are pleased to submit our offer as per your requirement:
+• Quotation Ref: ${qtnNoStr}
+• Date: ${quotation.quotationDate}
+• Quoted Amount: ${totalFormatted}
+
+👉 Please Click Below to View & Download Your Quotation:
+${appUrl}
+
+In case you need any further assistance please feel free to contact us. We will be more than happy to assist you.
+
+Thanking you,
+Assuring you of our best services. We look forward to receiving your valuable orders.
+
+Thanks & Regards,
+${creatorName}
+${creatorTitle}
+SIDDHI KABEL CORPORATION PVT LTD
+Email: ${creatorEmail} | Phone: ${creatorPhone}
+Website: www.siddhikabel.com`;
+      }
 
       const clipboardItem = new ClipboardItem({
         'text/html': new Blob([html], { type: 'text/html' }),
@@ -152,16 +199,23 @@ Website: www.siddhikabel.com`;
   };
 
   const handleWhatsAppShare = () => {
-    const message = `Dear Sir/Madam,
+    let message = '';
+    if (isRevision && includeComparison) {
+      message = `Dear Sir/Madam,
 
 Greeting of the day.
 
-We would like to thank you for your enquiry. Herewith we are submitting the offer for your requirement:
-• Quotation Ref: ${qtnNoStr}
-• Quoted Amount: ${totalFormatted}
+We are pleased to submit our Amended Offer (Revision ${diff.revisionNumber}):
+• QTN Ref: ${qtnNoStr}
+• Initial Total (Rev 0): ${formatCurrency(diff.initialGrandTotal)}
+• Revised Total (Rev ${diff.revisionNumber}): ${formatCurrency(diff.finalGrandTotal)}
+• Variance: ${diff.grandTotalDelta < 0 ? '-' : '+'}${formatCurrency(diff.grandTotalDelta)} (${diff.percentageChange > 0 ? '+' : ''}${diff.percentageChange.toFixed(2)}%)
 
-👉 *PLEASE CLICK THE LINK TO VIEW / DOWNLOAD QUOTATION:*
-🔗 ${appUrl}
+👉 *Click to View Revised Quotation:*
+${appUrl}
+
+📊 *Click to View Revision Comparison:*
+${comparisonUrl}
 
 Looking forward to your favorable response.
 
@@ -169,6 +223,25 @@ Thanks & Regards,
 ${creatorName}
 ${creatorTitle}
 SIDDHI KABEL CORPORATION PVT LTD`;
+    } else {
+      message = `Dear Sir/Madam,
+
+Greeting of the day.
+
+We would like to thank you for your enquiry. Herewith we are submitting the offer for your requirement:
+• Quotation Ref: ${qtnNoStr}
+• Quoted Amount: ${totalFormatted}
+
+👉 *Please Click to View Quotation:*
+${appUrl}
+
+Looking forward to your favorable response.
+
+Thanks & Regards,
+${creatorName}
+${creatorTitle}
+SIDDHI KABEL CORPORATION PVT LTD`;
+    }
 
     let phoneStr = quotation.contactNumber || '';
     let phone = phoneStr.replace(/\D/g, '');
@@ -200,6 +273,11 @@ SIDDHI KABEL CORPORATION PVT LTD`;
               <span className="bg-indigo-500/40 border border-indigo-400/40 text-indigo-200 text-[10px] font-bold px-2 py-0.5 rounded">
                 #{quotation.id}
               </span>
+              {isRevision && (
+                <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded uppercase">
+                  Rev {diff.revisionNumber}
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
               {qtnNoStr} • {customerName || 'Customer'}
@@ -221,7 +299,7 @@ SIDDHI KABEL CORPORATION PVT LTD`;
             <label className="text-[11px] font-black text-slate-600 uppercase tracking-wider block mb-2">
               1. Select Quotation Document Format
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedFormat('standard')}
@@ -255,13 +333,46 @@ SIDDHI KABEL CORPORATION PVT LTD`;
               >
                 With Air Freight
               </button>
+              {isRevision && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFormat('comparison')}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg border transition-all text-center ${
+                    selectedFormat === 'comparison'
+                      ? 'bg-amber-500 border-amber-500 text-slate-950 font-black shadow-sm'
+                      : 'bg-white border-amber-300 text-amber-900 hover:bg-amber-50'
+                  }`}
+                >
+                  Comparison
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Revision Comparison Inclusion Checkbox */}
+          {isRevision && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex items-center justify-between gap-2 shadow-xs">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={includeComparison}
+                  onChange={e => setIncludeComparison(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded border-amber-400 focus:ring-amber-500"
+                />
+                <span className="text-xs font-bold text-amber-950">
+                  Include Revision Comparison &amp; Variance Link in Email Draft
+                </span>
+              </label>
+              <span className="text-[10px] font-black uppercase bg-amber-200 text-amber-950 px-2 py-0.5 rounded shrink-0">
+                Rev {diff.revisionNumber} vs Rev 0
+              </span>
+            </div>
+          )}
 
           {/* Quotation Link Callout Box */}
           <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-700">Online Quotation Link:</span>
+              <span className="font-bold text-slate-700">Online Link:</span>
               <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
                 Total: {totalFormatted}
               </span>
@@ -290,7 +401,7 @@ SIDDHI KABEL CORPORATION PVT LTD`;
               </span>
             </div>
             <p className="text-[11px] text-slate-600 leading-relaxed">
-              Click the button below to copy the complete formal email draft. When pasted into <strong>Gmail</strong> or <strong>Outlook</strong>, it renders beautifully with the quotation link highlighted as a clickable button.
+              Click the button below to copy the complete formal email draft. When pasted into <strong>Gmail</strong> or <strong>Outlook</strong>, it renders beautifully with the quotation link clearly highlighted and directly clickable.
             </p>
 
             <button
@@ -359,9 +470,9 @@ We are pleased to submit our offer as per your requirement:
 • Date: ${quotation.quotationDate}
 • Quoted Amount: ${totalFormatted}
 
-👉 PLEASE CLICK THE LINK TO VIEW / DOWNLOAD QUOTATION:
-🔗 ${appUrl}
-(Document: ${pdfFileName})
+👉 Please Click Below to View & Download Your Quotation:
+${appUrl}
+${isRevision && includeComparison ? `\n📊 View Revision Variance Comparison Sheet:\n${comparisonUrl}` : ''}
 
 Looking forward to your valuable orders.`}
                 </div>
@@ -407,90 +518,133 @@ Looking forward to your valuable orders.`}
           <p>Dear Sir/Madam,</p>
           <p>Thank you for your enquiry.</p>
           <p>
-            We are pleased to submit our official offer as per your requirement. Please find the quotation summary below:
+            {isRevision && includeComparison
+              ? `We are pleased to submit our Amended Offer (Revision ${diff.revisionNumber}) as per our discussion:`
+              : 'We are pleased to submit our official offer as per your requirement. Please find the quotation summary below:'}
           </p>
 
-          <table
-            cellPadding={6}
-            cellSpacing={0}
-            style={{
-              width: '100%',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px',
-              margin: '12px 0',
-              fontSize: '13px',
-              fontFamily: 'Arial, sans-serif',
-            }}
-          >
-            <tbody>
-              <tr>
-                <td style={{ color: '#64748b', width: '130px', fontWeight: 'bold' }}>Quotation Ref:</td>
-                <td style={{ color: '#0f172a', fontWeight: 'bold' }}>{qtnNoStr}</td>
-              </tr>
-              <tr>
-                <td style={{ color: '#64748b', fontWeight: 'bold' }}>Quotation Date:</td>
-                <td style={{ color: '#0f172a' }}>{quotation.quotationDate}</td>
-              </tr>
-              <tr>
-                <td style={{ color: '#64748b', fontWeight: 'bold' }}>Customer:</td>
-                <td style={{ color: '#0f172a', fontWeight: 'bold' }}>{customerName || 'Customer'}</td>
-              </tr>
-              <tr>
-                <td style={{ color: '#64748b', fontWeight: 'bold' }}>Quoted Amount:</td>
-                <td style={{ color: '#1e40af', fontWeight: 'bold', fontSize: '15px' }}>{totalFormatted}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* HIGHLIGHTED CALL TO ACTION BOX WITH BUTTON LINK */}
-          <div
-            style={{
-              backgroundColor: '#eff6ff',
-              border: '2px solid #2563eb',
-              borderRadius: '8px',
-              padding: '16px 20px',
-              margin: '20px 0',
-              textAlign: 'center',
-            }}
-          >
-            <p
+          {isRevision && includeComparison ? (
+            <table
+              cellPadding={6}
+              cellSpacing={0}
               style={{
-                margin: '0 0 10px 0',
+                width: '100%',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                margin: '12px 0',
                 fontSize: '13px',
-                fontWeight: 'bold',
-                color: '#1e40af',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
+                fontFamily: 'Arial, sans-serif',
               }}
             >
-              👉 Please Click Below to View &amp; Download Your Quotation
+              <tbody>
+                <tr>
+                  <td style={{ color: '#64748b', width: '160px', fontWeight: 'bold' }}>Quotation Ref:</td>
+                  <td style={{ color: '#0f172a', fontWeight: 'bold' }}>{qtnNoStr}</td>
+                </tr>
+                <tr>
+                  <td style={{ color: '#64748b', fontWeight: 'bold' }}>Quotation Date:</td>
+                  <td style={{ color: '#0f172a' }}>{quotation.quotationDate}</td>
+                </tr>
+                <tr>
+                  <td style={{ color: '#64748b', fontWeight: 'bold' }}>Customer:</td>
+                  <td style={{ color: '#0f172a', fontWeight: 'bold' }}>{customerName || 'Customer'}</td>
+                </tr>
+                <tr>
+                  <td style={{ color: '#64748b', fontWeight: 'bold' }}>Initial Offer (Rev 0):</td>
+                  <td style={{ color: '#64748b', fontWeight: 'bold', textDecoration: 'line-through' }}>
+                    {formatCurrency(diff.initialGrandTotal)}
+                  </td>
+                </tr>
+                <tr style={{ backgroundColor: '#eff6ff' }}>
+                  <td style={{ color: '#1e40af', fontWeight: 'bold' }}>Amended Offer (Rev {diff.revisionNumber}):</td>
+                  <td style={{ color: '#1e40af', fontWeight: 'bold', fontSize: '15px' }}>
+                    {formatCurrency(diff.finalGrandTotal)}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ color: '#64748b', fontWeight: 'bold' }}>Commercial Variance:</td>
+                  <td style={{ color: diff.grandTotalDelta <= 0 ? '#166534' : '#b45309', fontWeight: 'bold' }}>
+                    {diff.grandTotalDelta < 0 ? '-' : '+'}{formatCurrency(diff.grandTotalDelta)} ({diff.percentageChange > 0 ? '+' : ''}{diff.percentageChange.toFixed(2)}%)
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          ) : (
+            <table
+              cellPadding={6}
+              cellSpacing={0}
+              style={{
+                width: '100%',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px',
+                margin: '12px 0',
+                fontSize: '13px',
+                fontFamily: 'Arial, sans-serif',
+              }}
+            >
+              <tbody>
+                <tr>
+                  <td style={{ color: '#64748b', width: '130px', fontWeight: 'bold' }}>Quotation Ref:</td>
+                  <td style={{ color: '#0f172a', fontWeight: 'bold' }}>{qtnNoStr}</td>
+                </tr>
+                <tr>
+                  <td style={{ color: '#64748b', fontWeight: 'bold' }}>Quotation Date:</td>
+                  <td style={{ color: '#0f172a' }}>{quotation.quotationDate}</td>
+                </tr>
+                <tr>
+                  <td style={{ color: '#64748b', fontWeight: 'bold' }}>Customer:</td>
+                  <td style={{ color: '#0f172a', fontWeight: 'bold' }}>{customerName || 'Customer'}</td>
+                </tr>
+                <tr>
+                  <td style={{ color: '#64748b', fontWeight: 'bold' }}>Quoted Amount:</td>
+                  <td style={{ color: '#1e40af', fontWeight: 'bold', fontSize: '15px' }}>{totalFormatted}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+
+          {/* HIGHLIGHTED CALLOUT - EXACT USER REQUEST FORMAT */}
+          <div style={{ margin: '22px 0 16px 0' }}>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
+              👉 Please Click Below to View &amp; Download Your Quotation:
             </p>
-            <div style={{ margin: '10px 0' }}>
+            <p style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 'bold' }}>
+              📄{' '}
               <a
                 href={appUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  display: 'inline-block',
-                  backgroundColor: '#2563eb',
-                  color: '#ffffff',
-                  textDecoration: 'none',
+                  color: '#0056b3',
+                  textDecoration: 'underline',
                   fontWeight: 'bold',
                   fontSize: '15px',
-                  padding: '12px 28px',
-                  borderRadius: '6px',
                 }}
               >
-                📄 CLICK HERE TO VIEW QUOTATION ({qtnNoStr})
-              </a>
-            </div>
-            <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#64748b' }}>
-              Document: <strong>{pdfFileName}</strong> &nbsp;|&nbsp; Direct Link:{' '}
-              <a href={appUrl} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                {appUrl}
+                View Offer Document ({pdfFileName})
               </a>
             </p>
+
+            {isRevision && includeComparison && (
+              <p style={{ margin: '12px 0 8px 0', fontSize: '14px', fontWeight: 'bold' }}>
+                📊{' '}
+                <a
+                  href={comparisonUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#0284c7',
+                    textDecoration: 'underline',
+                    fontWeight: 'bold',
+                    fontSize: '14px',
+                  }}
+                >
+                  Click Here to View Revision Variance Analysis (Side-by-Side Comparison)
+                </a>
+              </p>
+            )}
           </div>
 
           <p>
