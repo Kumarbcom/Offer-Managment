@@ -1438,82 +1438,139 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   return (
     <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
       <div className="bg-white rounded-lg shadow-lg">
-        <header className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white px-3 py-2 flex flex-col md:flex-row justify-between items-center rounded-t-lg shadow-sm gap-2">
-           <div className="flex items-center gap-3 w-full md:w-auto">
-               <h1 className="text-sm font-extrabold uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-100 shrink-0 hidden lg:block">Quotation</h1>
-               <div className="flex items-center space-x-1 bg-white/10 p-1 rounded-md">
-                   <NavButton onClick={() => handleNavigation('first')} disabled={quotations.length === 0 || currentQuotationIndex <= 0}>|◀</NavButton>
-                   <NavButton onClick={() => handleNavigation('prev')} disabled={quotations.length === 0 || currentQuotationIndex <= 0}>◀</NavButton>
-                   <NavButton onClick={() => handleNavigation('next')} disabled={quotations.length === 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
-                   <NavButton onClick={() => handleNavigation('last')} disabled={quotations.length === 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
+        <header className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-4 py-2.5 rounded-t-lg shadow-md border-b border-indigo-900/40">
+           {/* Row 1: Primary Controls (Title, Nav, Key Actions, GST, Close) */}
+           <div className="flex items-center justify-between gap-2.5 flex-wrap">
+               {/* Left: Title & Navigation */}
+               <div className="flex items-center gap-2 shrink-0">
+                   <span className="text-xs font-black uppercase tracking-wider text-white bg-indigo-600/50 border border-indigo-400/30 px-2.5 py-1 rounded-md shadow-xs">
+                       Quotation
+                   </span>
+                   {formData && formData.id > 0 && (
+                       <span className="text-xs font-bold text-indigo-200 bg-white/10 px-2 py-1 rounded-md border border-white/10">
+                           #{formData.id}
+                       </span>
+                   )}
+                   <div className="flex items-center space-x-1 bg-white/10 p-0.5 rounded-md border border-white/10 ml-1">
+                       <NavButton onClick={() => handleNavigation('first')} disabled={quotations.length === 0 || currentQuotationIndex <= 0}>|◀</NavButton>
+                       <NavButton onClick={() => handleNavigation('prev')} disabled={quotations.length === 0 || currentQuotationIndex <= 0}>◀</NavButton>
+                       <NavButton onClick={() => handleNavigation('next')} disabled={quotations.length === 0 || currentQuotationIndex >= quotations.length - 1}>▶</NavButton>
+                       <NavButton onClick={() => handleNavigation('last')} disabled={quotations.length === 0 || currentQuotationIndex >= quotations.length - 1}>▶|</NavButton>
+                   </div>
+               </div>
+
+               {/* Right: Primary Lifecycle Actions + GST + Close in ONE continuous clean group */}
+               <div className="flex items-center gap-1.5 shrink-0 ml-auto flex-wrap justify-end">
+                   {(!isReadOnly || userRole === 'Sales Person') && (
+                       <ActionButton onClick={handleNewButtonClick} title="New Quotation">
+                           <Icons.New /><span>New</span>
+                       </ActionButton>
+                   )}
+                   {((!isReadOnly || userRole === 'Sales Person') && (editingQuotationId === null || formData?.id === 0)) && (
+                       <ActionButton onClick={() => setIsAIPanelOpen(true)} title="AI Assistant" className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200">
+                           <Icons.Sparkles /><span>AI Assist</span>
+                       </ActionButton>
+                   )}
+                   {!isReadOnly && (
+                       <ActionButton 
+                           onClick={handleSubmit} 
+                           title={isSubmitting ? "Saving..." : "Save Quotation"} 
+                           disabled={isSubmitting}
+                           className="bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-500 shadow-sm"
+                       >
+                           {isSubmitting ? (
+                               <div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full" />
+                           ) : (
+                               <Icons.Save />
+                           )}
+                           <span className="text-white font-bold">{isSubmitting ? "Saving..." : "Save"}</span>
+                       </ActionButton>
+                   )}
+                   {(formData?.id && formData.id > 0) ? (
+                       <ActionButton 
+                           onClick={() => setIsShareModalOpen(true)} 
+                           title="Share via Email or WhatsApp"
+                           className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
+                       >
+                           <Icons.Share />
+                           <span>Share</span>
+                       </ActionButton>
+                   ) : null}
+
+                   {/* GST Added Toggle */}
+                   <button
+                       type="button"
+                       onClick={() => setFormData(prev => prev ? { ...prev, gstAdded: !prev.gstAdded } : null)}
+                       className={`flex items-center gap-1.5 border shadow-xs rounded-md px-2.5 py-1 text-xs font-bold transition-all transform active:scale-95 ${
+                           formData?.gstAdded 
+                           ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950/20' 
+                           : 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20'
+                       }`}
+                       title="Toggle GST Added Option"
+                   >
+                       {formData?.gstAdded ? (
+                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                           </svg>
+                       ) : (
+                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                       )}
+                       <span>GST Added</span>
+                   </button>
+
+                   {/* Close Button */}
+                   <button 
+                       type="button"
+                       onClick={() => setView('quotations')} 
+                       className="bg-rose-600 hover:bg-rose-700 text-white border border-rose-500 rounded-md h-7 px-3 flex items-center justify-center font-bold text-xs shadow-sm transition-colors" 
+                       title="Close and return to Quotations"
+                   >
+                       Close
+                   </button>
                </div>
            </div>
-           
-           <div className="flex flex-wrap items-center gap-3 flex-1 justify-end">
-                {/* Main Actions */}
-                <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-lg border border-white/10">
-                    {/* Paused new entry as requested */}
-                    {(!isReadOnly || userRole === 'Sales Person') && <ActionButton onClick={handleNewButtonClick} title="New Quotation"><Icons.New /><span>New</span></ActionButton>}
-                    {((!isReadOnly || userRole === 'Sales Person') && (editingQuotationId === null || formData?.id === 0)) && <ActionButton onClick={() => setIsAIPanelOpen(true)} title="AI Assistant" className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"><Icons.Sparkles /><span>AI Assist</span></ActionButton>}
-                    {!isReadOnly && (
-                        <ActionButton 
-                            onClick={handleSubmit} 
-                            title={isSubmitting ? "Saving..." : "Save Quotation"} 
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
-                                <div className="animate-spin h-3 w-3 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full" />
-                            ) : (
-                                <Icons.Save />
-                            )}
-                            <span>{isSubmitting ? "Saving..." : "Save"}</span>
-                        </ActionButton>
-                    )}
-                    {(formData?.id && formData.id > 0) ? (
-                        <ActionButton 
-                            onClick={() => setIsShareModalOpen(true)} 
-                            title="Share via Email or WhatsApp"
-                            className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
-                        >
-                            <Icons.Share />
-                            <span>Share</span>
-                        </ActionButton>
-                    ) : null}
-                </div>
-                
-                {/* Print Options */}
-                <div className="flex items-center bg-white/10 rounded-lg p-1 gap-1 shadow-inner border border-white/10">
-                    <ActionButton onClick={() => handlePreview('standard')} title="Print Standard" className="px-1.5"><Icons.PrintStandard /><span className="hidden xl:inline">Std</span></ActionButton>
-                    <ActionButton onClick={() => handlePreview('discounted')} title="Print Discount" className="px-1.5"><Icons.PrintDiscount /><span className="hidden xl:inline">Disc</span></ActionButton>
-                    <ActionButton onClick={() => handlePreview('withAirFreight')} title="Print Airfreight" className="px-1.5"><Icons.PrintAirFreight /><span className="hidden xl:inline">Air</span></ActionButton>
-                </div>
-                
-                {/* Tools & Links */}
-                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10 hidden md:flex">
-                    <ActionButton onClick={handleExportExcel} title="Export to Excel"><Icons.Excel /><span className="hidden xl:inline">Excel</span></ActionButton>
-                    <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability"><Icons.Stock /><span className="hidden xl:inline">Stock</span></ActionButton>
-                    <ActionButton onClick={handleRefreshImages} disabled={isRefreshingImages} title="Refresh Product Images for this Offer"><Icons.Refresh /><span className="hidden xl:inline">{isRefreshingImages ? 'Refreshing...' : 'Images'}</span></ActionButton>
-                    {!isReadOnly && <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer"><Icons.AddCustomer /><span className="hidden xl:inline">Cust</span></ActionButton>}
-                    {!isReadOnly && <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product"><Icons.AddProduct /><span className="hidden xl:inline">Prod</span></ActionButton>}
-                    {!isReadOnly && <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product"><Icons.SearchProduct /><span className="hidden xl:inline">Search</span></ActionButton>}
-                </div>
-                
-                {/* Final Actions */}
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setFormData(prev => prev ? { ...prev, gstAdded: !prev.gstAdded } : null)}
-                        className={`flex items-center gap-1 border shadow-sm rounded-md px-2 py-1.5 text-xs font-bold transition-all transform active:scale-95 ${formData.gstAdded ? 'bg-green-500 text-white border-green-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
-                        title="Toggle GST Added Option"
-                    >
-                        {formData.gstAdded && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
-                        GST Added
-                    </button>
 
-                    <button onClick={() => setView('quotations')} className="bg-red-500 hover:bg-red-600 text-white border border-red-600 rounded-md h-7 px-3 flex items-center justify-center font-bold text-xs shadow-sm" title="Close and return to Quotations">
-                        Close
-                    </button>
-                </div>
+           {/* Row 2: Secondary Toolstrip (Print views on left, Data/Utilities on right) */}
+           <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-2 flex-wrap text-xs">
+               {/* Left: Print Options Group */}
+               <div className="flex items-center gap-1 bg-white/10 rounded-lg p-0.5 border border-white/10 shadow-xs">
+                   <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-200 px-1.5">Print:</span>
+                   <ActionButton onClick={() => handlePreview('standard')} title="Print Standard View" className="px-2 py-1 text-[11px] h-6">
+                       <Icons.PrintStandard /><span>Standard</span>
+                   </ActionButton>
+                   <ActionButton onClick={() => handlePreview('discounted')} title="Print Discounted View" className="px-2 py-1 text-[11px] h-6">
+                       <Icons.PrintDiscount /><span>Discounted</span>
+                   </ActionButton>
+                   <ActionButton onClick={() => handlePreview('withAirFreight')} title="Print Air Freight View" className="px-2 py-1 text-[11px] h-6">
+                       <Icons.PrintAirFreight /><span>Air Freight</span>
+                   </ActionButton>
+               </div>
+
+               {/* Right: Quick Tools & Data Links */}
+               <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5 border border-white/10 ml-auto flex-wrap">
+                   <ActionButton onClick={handleExportExcel} title="Export to Excel" className="px-2 py-1 text-[11px] h-6">
+                       <Icons.Excel /><span>Excel</span>
+                   </ActionButton>
+                   <ActionButton onClick={() => setIsStockCheckModalOpen(true)} title="Check Stock Availability" className="px-2 py-1 text-[11px] h-6">
+                       <Icons.Stock /><span>Stock</span>
+                   </ActionButton>
+                   <ActionButton onClick={handleRefreshImages} disabled={isRefreshingImages} title="Refresh Product Images for this Offer" className="px-2 py-1 text-[11px] h-6">
+                       <Icons.Refresh /><span>{isRefreshingImages ? 'Refreshing...' : 'Images'}</span>
+                   </ActionButton>
+                   {!isReadOnly && (
+                       <>
+                           <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer" className="px-2 py-1 text-[11px] h-6">
+                               <Icons.AddCustomer /><span>+ Customer</span>
+                           </ActionButton>
+                           <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product" className="px-2 py-1 text-[11px] h-6">
+                               <Icons.AddProduct /><span>+ Product</span>
+                           </ActionButton>
+                           <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product Catalogue" className="px-2 py-1 text-[11px] h-6">
+                               <Icons.SearchProduct /><span>Search</span>
+                           </ActionButton>
+                       </>
+                   )}
+               </div>
            </div>
         </header>
 
