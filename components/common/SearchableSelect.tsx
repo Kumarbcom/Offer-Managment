@@ -137,19 +137,36 @@ export const SearchableSelect = <T extends Record<string, any>,>(
                 width: `${Math.max(coords.width, 250)}px` // Ensure minimum width for readability
             }}
         >
-          {isLoading ? (
-            <li className="p-2 text-gray-500">Loading...</li>
+          {isLoading && optionsToDisplay.length === 0 ? (
+            <li className="p-2 text-gray-500 flex items-center gap-2">
+              <svg className="animate-spin h-3.5 w-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span>Searching...</span>
+            </li>
           ) : optionsToDisplay.length > 0 ? (
-            optionsToDisplay.map(option => (
-              <li
-                key={option[idKey]}
-                className={`p-2 cursor-pointer hover:bg-indigo-100 border-b border-gray-100 last:border-0 ${option[idKey] === value ? 'bg-indigo-200' : ''}`}
-                onClick={() => handleSelect(option)}
-              >
-                <div className="font-medium">{String(option[displayKey])}</div>
-                {option.description && <div className="text-[10px] text-gray-500 truncate">{option.description}</div>}
-              </li>
-            ))
+            <>
+              {isLoading && (
+                <li className="px-2 py-1 bg-indigo-50 text-[10px] text-indigo-600 font-medium flex items-center justify-between border-b border-indigo-100">
+                  <span>Searching online...</span>
+                  <svg className="animate-spin h-3 w-3 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  </svg>
+                </li>
+              )}
+              {optionsToDisplay.map(option => (
+                <li
+                  key={option[idKey]}
+                  className={`p-2 cursor-pointer hover:bg-indigo-100 border-b border-gray-100 last:border-0 ${option[idKey] === value ? 'bg-indigo-200' : ''}`}
+                  onClick={() => handleSelect(option)}
+                >
+                  <div className="font-medium">{String(option[displayKey])}</div>
+                  {option.description && <div className="text-[10px] text-gray-500 truncate">{option.description}</div>}
+                </li>
+              ))}
+            </>
           ) : (
             <li className="p-2 text-gray-500">{searchTerm ? 'No results found' : isAsync ? 'Type to search' : 'No options'}</li>
           )}

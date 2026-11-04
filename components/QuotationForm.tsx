@@ -14,7 +14,7 @@ import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFre
 import { AIAssistantPanel } from './AIAssistantPanel';
 import { QuotationDiffModal } from './QuotationDiffModal';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
 
@@ -23,6 +23,7 @@ declare var XLSX: any;
 interface QuotationFormProps {
   salesPersons: SalesPerson[];
   quotations: Quotation[];
+  customers?: Customer[];
   setQuotations: (value: React.SetStateAction<Quotation[]>) => Promise<void>;
   setView: (view: View) => void;
   editingQuotationId: number | null;
@@ -187,8 +188,7 @@ const isDiscountExceeded = (item: QuotationItem): boolean => {
 };
 
 export const QuotationForm: React.FC<QuotationFormProps> = ({
-  salesPersons, quotations, setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl,
-  
+  salesPersons, quotations, customers = [], setQuotations, setView, editingQuotationId, setEditingQuotationId, currentUser, logoUrl,
 }) => {
   const [formData, setFormData] = useState<Quotation | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -211,6 +211,30 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isRefreshingImages, setIsRefreshingImages] = useState(false);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
 
+  // Pre-seed in-memory product cache with all products from historical quotations (instant 0ms lookup)
+  useEffect(() => {
+    if (quotations && quotations.length > 0) {
+      for (const q of quotations) {
+        if (Array.isArray(q.details)) {
+          for (const d of q.details) {
+            if (d && (d.partNo || d.productId)) {
+              const prod: Product = {
+                id: d.productId || (d.partNo as any),
+                partNo: d.partNo || '',
+                description: d.description || '',
+                uom: d.uom || 'Mtr',
+                weight: d.airFreightDetails?.weightPerMtr || 0,
+                prices: d.price ? [{ lp: d.price, sp: d.price, validFrom: '2020-01-01', validTo: '2099-12-31' }] : [],
+                imageUrl: d.imageUrl || ''
+              };
+              cacheProductLocally(prod);
+            }
+          }
+        }
+      }
+    }
+  }, [quotations]);
+
   const productImageMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of fetchedProducts.values()) {
@@ -221,12 +245,36 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     return map;
   }, [fetchedProducts]);
 
-  // State for async customer search
+  // State for customer selection & search
   const [searchedCustomers, setSearchedCustomers] = useState<Customer[]>([]);
   const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
+
+  // Fast in-memory customer filtering (0ms!)
+  const customerList = customers && customers.length > 0 ? customers : searchedCustomers;
+  const displayedCustomers = useMemo(() => {
+    if (!customerSearchTerm || !customerSearchTerm.trim()) {
+      if (selectedCustomerObj) {
+        const others = customerList.filter(c => c.id !== selectedCustomerObj.id).slice(0, 50);
+        return [selectedCustomerObj, ...others];
+      }
+      return customerList.slice(0, 50);
+    }
+    const term = customerSearchTerm.toLowerCase().trim();
+    const matches = customerList.filter(c => 
+      (c.name && c.name.toLowerCase().includes(term)) ||
+      (c.city && c.city.toLowerCase().includes(term)) ||
+      (c.id && String(c.id).includes(term))
+    ).slice(0, 50);
+
+    if (selectedCustomerObj && !matches.some(c => c.id === selectedCustomerObj.id)) {
+      return [selectedCustomerObj, ...matches];
+    }
+    return matches;
+  }, [customerList, customerSearchTerm, selectedCustomerObj]);
+
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewingVersion, setViewingVersion] = useState<'current' | 'initial'>('current');
@@ -381,6 +429,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [userRole, salesPersons, currentUser]); 
   
   const handleCustomerOpen = useCallback(() => {
+    // If customers are passed via props, they are already available instantly in memory
+    if (customers && customers.length > 0) return;
     if (searchedCustomers.length === 0 && !isSearchingCustomers) {
         setIsSearchingCustomers(true);
         searchCustomers('').then(results => {
@@ -391,20 +441,45 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             setIsSearchingCustomers(false);
         });
     }
-  }, [searchedCustomers.length, isSearchingCustomers]);
+  }, [customers, searchedCustomers.length, isSearchingCustomers]);
 
   const handleProductOpen = useCallback(() => {
-      if (searchedProducts.length === 0 && !isSearchingProducts) {
-          setIsSearchingProducts(true);
-          searchProducts('').then(results => {
-              setSearchedProducts(results);
-              setIsSearchingProducts(false);
-          }).catch(err => {
-              console.error(err);
-              setIsSearchingProducts(false);
-          });
+      if (searchedProducts.length === 0) {
+          // Instantly populate top 50 products from cache (0ms!)
+          const cached = Array.from(productCacheByPartNo.values()).slice(0, 50);
+          if (cached.length > 0) {
+              setSearchedProducts(cached);
+          } else if (!isSearchingProducts) {
+              setIsSearchingProducts(true);
+              searchProducts('').then(results => {
+                  setSearchedProducts(results);
+                  setIsSearchingProducts(false);
+              }).catch(err => {
+                  console.error(err);
+                  setIsSearchingProducts(false);
+              });
+          }
       }
   }, [searchedProducts.length, isSearchingProducts]);
+
+  const handleProductSearch = useCallback((term: string) => {
+      setProductSearchTerm(term);
+      if (term && term.trim()) {
+          const words = term.toLowerCase().split(/\s+/).filter(Boolean);
+          const instantMatches: Product[] = [];
+          for (const p of productCacheByPartNo.values()) {
+              const pNo = (p.partNo || '').toLowerCase();
+              const desc = (p.description || '').toLowerCase();
+              if (words.every(w => pNo.includes(w) || desc.includes(w))) {
+                  instantMatches.push(p);
+                  if (instantMatches.length >= 50) break;
+              }
+          }
+          if (instantMatches.length > 0) {
+              setSearchedProducts(instantMatches);
+          }
+      }
+  }, []);
 
   // Reset customer object whenever the quotation being edited changes.
   // This ensures customer/salesPerson data is always re-fetched when opening a quotation.
@@ -544,13 +619,19 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   useEffect(() => {
     const customerId = formData?.customerId;
     if (customerId && (!selectedCustomerObj || selectedCustomerObj.id !== customerId)) {
-      getCustomersByIds([customerId]).then(customers => {
+      // 1. Instant check in local customers prop (0ms!)
+      const localCustomer = (customers || []).find(c => c.id === customerId);
+      if (localCustomer) {
+        setSelectedCustomerObj(localCustomer);
+        return;
+      }
+      getCustomersByIds([customerId]).then(res => {
         try {
-          if (customers && customers.length > 0) {
-            setSelectedCustomerObj(customers[0]);
+          if (res && res.length > 0) {
+            setSelectedCustomerObj(res[0]);
             setSearchedCustomers(prev => {
-              if (prev.some(c => c.id === customers[0].id)) return prev;
-              return [customers[0], ...prev];
+              if (prev.some(c => c.id === res[0].id)) return prev;
+              return [res[0], ...prev];
             });
           }
         } catch (err) {
@@ -560,7 +641,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     } else if (!customerId) {
       setSelectedCustomerObj(null);
     }
-  }, [formData?.customerId, selectedCustomerObj]);
+  }, [formData?.customerId, selectedCustomerObj, customers]);
 
   useEffect(() => {
     if (selectedCustomerObj && selectedCustomerObj.salesPersonId && editingQuotationId === null) {
@@ -598,6 +679,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   useEffect(() => {
     const performSearch = async () => {
+      // If search term is empty and we already have cached products, avoid redundant network calls
+      if (!debouncedProductSearchTerm && searchedProducts.length > 0) return;
       setIsSearchingProducts(true);
       try {
           const results = await searchProducts(debouncedProductSearchTerm);
@@ -612,6 +695,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [debouncedProductSearchTerm]);
   
   useEffect(() => {
+    // If customers are loaded locally via props, skip remote search!
+    if (customers && customers.length > 0) return;
     const performSearch = async () => {
       setIsSearchingCustomers(true);
       const results = await searchCustomers(debouncedCustomerSearchTerm);
@@ -623,7 +708,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       setIsSearchingCustomers(false);
     };
     performSearch();
-  }, [debouncedCustomerSearchTerm, selectedCustomerObj]);
+  }, [debouncedCustomerSearchTerm, selectedCustomerObj, customers]);
 
   // Auto-enable printWithImages if any quotation item has an imageUrl
   useEffect(() => {
@@ -749,7 +834,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     setFormData(prevFormData => {
         if (!prevFormData) return null;
         const numericProductId = Number(productId);
-        const product = searchedProducts.find(p => p.id === numericProductId);
+        const product = searchedProducts.find(p => p.id === numericProductId) || 
+                        fetchedProducts.get(numericProductId) || 
+                        (numericProductId ? Array.from(productCacheByPartNo.values()).find(p => p.id === numericProductId) : undefined);
         if (product) {
             setFetchedProducts(prev => new Map(prev).set(product.id, product));
             const priceEntry = getPriceForDate(product, prevFormData.quotationDate);
@@ -1751,7 +1838,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     </FormField>
                     <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
-                    <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={searchedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); if (!val) { setSelectedCustomerObj(null); } else { const customer = searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers} onOpen={handleCustomerOpen}/></div></FormField>
+                    <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={displayedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); if (!val) { setSelectedCustomerObj(null); } else { const customer = (customers || []).find(c => c.id === val) || searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers && customerList.length === 0} onOpen={handleCustomerOpen}/></div></FormField>
                      {selectedCustomerObj && (
                         <div className="ml-[33.33%] pl-1 text-[10px] text-black whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address || ''}, ${selectedCustomerObj.city || ''} - ${selectedCustomerObj.pincode || ''}`}>
                             {selectedCustomerObj.address || ''}, {selectedCustomerObj.city || ''} - {selectedCustomerObj.pincode || ''}
@@ -1854,7 +1941,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         <img src={item.imageUrl} alt="" className="w-5 h-5 object-contain rounded shrink-0 border border-slate-200 bg-white" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                                     )}
                                     <div className={`h-6 flex-1 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
-                                        <SearchableSelect<Product> options={optionsForSelect} value={item.productId || (currentProduct ? currentProduct.id : null)} fallbackDisplayValue={item.partNo} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={setProductSearchTerm} isLoading={isSearchingProducts} onOpen={handleProductOpen} />
+                                        <SearchableSelect<Product> options={optionsForSelect} value={item.productId || (currentProduct ? currentProduct.id : null)} fallbackDisplayValue={item.partNo} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={handleProductSearch} isLoading={isSearchingProducts && optionsForSelect.length === 0} onOpen={handleProductOpen} />
                                     </div>
                                 </div>
                             </td>

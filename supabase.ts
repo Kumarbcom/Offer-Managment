@@ -523,13 +523,25 @@ export async function getCustomersPaginated(options: any) {
 }
 
 export async function searchCustomers(term: string) { 
-    if (!supabase) throw new Error("Supabase client not initialized");
-    let query = supabase.from('customers').select('*').limit(50);
-    if (term) query = query.ilike('name', `%${term}%`);
-    else query = query.order('id', { ascending: false });
-    const { data, error } = await query;
-    if (error) throw new Error(parseSupabaseError(error, "Failed to search customers"));
-    return (data || []).map(item => mapFromSupabase('customers', item));
+    if (!supabase) return [];
+    try {
+        let query = supabase.from('customers').select('*').limit(50);
+        if (term) query = query.ilike('name', `%${term}%`);
+        else query = query.order('id', { ascending: false });
+
+        const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error("Customer search timeout")), 3500)
+        );
+        const { data, error } = await Promise.race([query, timeoutPromise]) as any;
+        if (error) {
+            console.warn("searchCustomers failed:", error.message);
+            return [];
+        }
+        return (data || []).map(item => mapFromSupabase('customers', item));
+    } catch (err) {
+        console.warn("searchCustomers error:", err);
+        return [];
+    }
 }
 
 export async function getCustomersByIds(ids: number[]) { 
@@ -697,58 +709,115 @@ export async function upsertQuotation(quotation: Quotation): Promise<Quotation> 
     }
 }
 
-export async function searchProducts(term: string) { 
-    if (!supabase) throw new Error("Supabase client not initialized");
-    let query = supabase.from('products').select('*').limit(50);
-    if (term) {
-        // Use partNo (camelCase) as requested by Supabase schema
-        // For description, split by spaces and match all words (AND logic)
-        const sanitizedTerm = term.replace(/\*/g, '%').replace(/\./g, '_');
-        const words = sanitizedTerm.split(/\s+/).filter(w => w.length > 0);
-        
-        if (words.length > 0) {
-            const escapeQuote = (val: string) => val.replace(/"/g, '');
-            const descConditions = words.map(w => `description.ilike."%${escapeQuote(w)}%"`).join(',');
-            // Match if partNo matches the full term, OR if description matches ALL words
-            query = query.or(`partNo.ilike."%${escapeQuote(sanitizedTerm)}%",and(${descConditions})`);
+// Ultra-fast in-memory product caches to eliminate redundant egress and provide 0ms response
+export const productCacheById = new Map<number, Product>();
+export const productCacheByPartNo = new Map<string, Product>();
+export const productSearchCache = new Map<string, Product[]>();
+
+export function cacheProductLocally(product: Product) {
+    if (!product) return;
+    if (product.id && typeof product.id === 'number' && product.id > 0) {
+        productCacheById.set(product.id, product);
+    }
+    if (product.partNo && typeof product.partNo === 'string' && product.partNo.trim()) {
+        productCacheByPartNo.set(product.partNo.trim().toLowerCase(), product);
+    }
+}
+
+export async function searchProducts(term: string): Promise<Product[]> { 
+    const cleanTerm = (term || '').trim();
+    const cacheKey = cleanTerm.toLowerCase();
+
+    // 1. Check search term query cache
+    if (productSearchCache.has(cacheKey)) {
+        return productSearchCache.get(cacheKey)!;
+    }
+
+    // 2. Local instant match from cached products
+    const localMatches: Product[] = [];
+    if (cleanTerm) {
+        const words = cleanTerm.toLowerCase().split(/\s+/).filter(Boolean);
+        for (const p of productCacheByPartNo.values()) {
+            const pNo = (p.partNo || '').toLowerCase();
+            const desc = (p.description || '').toLowerCase();
+            if (words.every(w => pNo.includes(w) || desc.includes(w))) {
+                localMatches.push(p);
+                if (localMatches.length >= 50) break;
+            }
         }
     } else {
-        query = query.order('id', { ascending: false });
+        let count = 0;
+        for (const p of productCacheByPartNo.values()) {
+            localMatches.push(p);
+            if (++count >= 50) break;
+        }
     }
-    
-    const { data, error } = await query;
-    if (error) {
-        throw new Error(parseSupabaseError(error, "Failed to search products"));
-    }
-    
-    const results = (data || []).map(item => mapFromSupabase('products', item));
-    
-    // Sort results by price (low to high)
-    // We use the most recent/current price as a reference
-    const now = new Date();
-    results.sort((a, b) => {
-        const getPrice = (p: Product) => {
-            if (!p.prices || p.prices.length === 0) return 0;
-            const active = p.prices.find(pr => {
-                const from = new Date(pr.validFrom);
-                const to = new Date(pr.validTo);
-                return now >= from && now <= to;
-            }) || p.prices[0];
-            return active.lp || active.sp || 0;
-        };
-        return getPrice(a) - getPrice(b);
-    });
 
-    return results;
+    if (!supabase) return localMatches;
+
+    // 3. Background/concurrent query with 3.5s timeout
+    try {
+        const queryPromise = (async () => {
+            let query = supabase.from('products').select('*').limit(50);
+            if (cleanTerm) {
+                const sanitizedTerm = cleanTerm.replace(/\*/g, '%').replace(/\./g, '_');
+                const words = sanitizedTerm.split(/\s+/).filter(w => w.length > 0);
+                if (words.length > 0) {
+                    const escapeQuote = (val: string) => val.replace(/"/g, '');
+                    const descConditions = words.map(w => `description.ilike."%${escapeQuote(w)}%"`).join(',');
+                    query = query.or(`partNo.ilike."%${escapeQuote(sanitizedTerm)}%",and(${descConditions})`);
+                }
+            } else {
+                query = query.order('id', { ascending: false });
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            return (data || []).map(item => mapFromSupabase('products', item));
+        })();
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("searchProducts timeout")), 3500)
+        );
+
+        const results = await Promise.race([queryPromise, timeoutPromise]);
+        results.forEach(p => cacheProductLocally(p));
+
+        // Merge with local matches
+        const combinedMap = new Map<number | string, Product>();
+        results.forEach(p => combinedMap.set(p.id || p.partNo, p));
+        localMatches.forEach(p => {
+            const key = p.id || p.partNo;
+            if (!combinedMap.has(key)) combinedMap.set(key, p);
+        });
+        const finalResults = Array.from(combinedMap.values()).slice(0, 50);
+
+        const now = new Date();
+        finalResults.sort((a, b) => {
+            const getPrice = (p: Product) => {
+                if (!p.prices || p.prices.length === 0) return 0;
+                const active = p.prices.find(pr => {
+                    const from = new Date(pr.validFrom);
+                    const to = new Date(pr.validTo);
+                    return now >= from && now <= to;
+                }) || p.prices[0];
+                return active.lp || active.sp || 0;
+            };
+            return getPrice(a) - getPrice(b);
+        });
+
+        productSearchCache.set(cacheKey, finalResults);
+        return finalResults;
+    } catch (err) {
+        console.warn("searchProducts remote call failed or timed out, returning local matches:", err);
+        return localMatches;
+    }
 }
 
 export async function bulkFetchProducts(partNos: string[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
     if (partNos.length === 0) return [];
     
-    // Convert to uppercase/lowercase if needed, but ilike or in is best.
     const cleanNos = partNos.map(p => p.trim());
-    
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -758,22 +827,66 @@ export async function bulkFetchProducts(partNos: string[]) {
         throw new Error(parseSupabaseError(error, "Failed to bulk fetch products"));
     }
     
-    return (data || []).map(item => mapFromSupabase('products', item));
+    const mapped = (data || []).map(item => mapFromSupabase('products', item));
+    mapped.forEach(p => cacheProductLocally(p));
+    return mapped;
 }
 
 export async function getProductsByIds(ids: number[]): Promise<Product[]> { 
-    if (!supabase) return [];
     if (!ids || ids.length === 0) return [];
-    const { data, error } = await supabase.from('products').select('*').in('id', ids);
-    if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by IDs"));
-    return (data || []).map(item => mapFromSupabase('products', item));
+    const validIds = ids.filter(id => typeof id === 'number' && id > 0);
+    const cached: Product[] = [];
+    const missing: number[] = [];
+    for (const id of validIds) {
+        if (productCacheById.has(id)) {
+            cached.push(productCacheById.get(id)!);
+        } else {
+            missing.push(id);
+        }
+    }
+    if (missing.length === 0 || !supabase) return cached;
+
+    try {
+        const { data, error } = await supabase.from('products').select('*').in('id', missing);
+        if (error) {
+            console.warn("getProductsByIds failed, using cached:", error.message);
+            return cached;
+        }
+        const mapped = (data || []).map(item => mapFromSupabase('products', item));
+        mapped.forEach(p => cacheProductLocally(p));
+        return [...cached, ...mapped];
+    } catch (e) {
+        console.warn("getProductsByIds exception, using cached:", e);
+        return cached;
+    }
 }
 
-export async function getProductsByPartNos(partNos: string[]) { 
-    if (!supabase) return [];
+export async function getProductsByPartNos(partNos: string[]): Promise<Product[]> { 
     if (!partNos || partNos.length === 0) return [];
-    const distinctPartNos = [...new Set(partNos)];
-    const { data, error } = await supabase.from('products').select('*').in('partNo', distinctPartNos);
-    if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products by Part Nos"));
-    return (data || []).map(item => mapFromSupabase('products', item));
+    const distinctClean = [...new Set(partNos.map(p => (p || '').trim()).filter(Boolean))];
+    const cached: Product[] = [];
+    const missing: string[] = [];
+    for (const pNo of distinctClean) {
+        const lower = pNo.toLowerCase();
+        if (productCacheByPartNo.has(lower)) {
+            cached.push(productCacheByPartNo.get(lower)!);
+        } else {
+            missing.push(pNo);
+        }
+    }
+    if (missing.length === 0 || !supabase) return cached;
+
+    try {
+        const { data, error } = await supabase.from('products').select('*').in('partNo', missing);
+        if (error) {
+            console.warn("getProductsByPartNos failed, using cached:", error.message);
+            return cached;
+        }
+        const mapped = (data || []).map(item => mapFromSupabase('products', item));
+        mapped.forEach(p => cacheProductLocally(p));
+        return [...cached, ...mapped];
+    } catch (e) {
+        console.warn("getProductsByPartNos exception, using cached:", e);
+        return cached;
+    }
 }
