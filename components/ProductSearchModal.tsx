@@ -9,27 +9,54 @@ interface ProductSearchModalProps {
   onSelect: (product: Product, discount: number) => void;
 }
 
+const parseProductDate = (dateStr: any): Date => {
+    if (!dateStr) return new Date(NaN);
+    if (dateStr instanceof Date) return dateStr;
+    const s = String(dateStr).trim();
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) {
+        const [d, m, y] = s.split('.');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+        const [d, m, y] = s.split('-');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    return new Date(s);
+};
+
 const getCurrentPriceForDate = (product: Product, date: string): PriceEntry | null => {
     if (!product.prices || product.prices.length === 0) return null;
-    const targetDate = new Date(date);
+    const targetDate = parseProductDate(date);
     targetDate.setHours(0,0,0,0);
     
-    const currentPrice = product.prices.find(p => {
-      const from = new Date(p.validFrom);
-      from.setHours(0,0,0,0);
-      const to = new Date(p.validTo);
-      to.setHours(23,59,59,999);
-      return targetDate >= from && targetDate <= to;
-    });
+    for (const p of product.prices) {
+        const from = parseProductDate(p.validFrom);
+        const to = parseProductDate(p.validTo);
+        if (!isNaN(from.getTime()) && !isNaN(to.getTime())) {
+            from.setHours(0,0,0,0);
+            to.setHours(23,59,59,999);
+            if (targetDate >= from && targetDate <= to) {
+                return p;
+            }
+        }
+    }
 
-    if (currentPrice) return currentPrice;
-    
-    const pastOrCurrentPrices = product.prices.filter(p => new Date(p.validFrom) <= targetDate);
-    if(pastOrCurrentPrices.length > 0) {
-        return pastOrCurrentPrices.sort((a,b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime())[0];
+    const validPrices = product.prices
+        .map(p => ({ p, from: parseProductDate(p.validFrom) }))
+        .filter(item => !isNaN(item.from.getTime()));
+
+    const past = validPrices.filter(item => item.from <= targetDate);
+    if (past.length > 0) {
+        past.sort((a,b) => b.from.getTime() - a.from.getTime());
+        return past[0].p;
     }
     
-    return [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
+    if (validPrices.length > 0) {
+        validPrices.sort((a,b) => b.from.getTime() - a.from.getTime());
+        return validPrices[0].p;
+    }
+
+    return product.prices[product.prices.length - 1] || null;
 };
 
 export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, onClose, onSelect }) => {

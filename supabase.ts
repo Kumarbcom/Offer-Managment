@@ -731,10 +731,17 @@ export const productSearchCache = new Map<string, Product[]>();
 export function cacheProductLocally(product: Product) {
     if (!product) return;
     if (product.id && typeof product.id === 'number' && product.id > 0) {
-        productCacheById.set(product.id, product);
+        const existing = productCacheById.get(product.id);
+        if (!existing || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
+            productCacheById.set(product.id, product);
+        }
     }
     if (product.partNo && typeof product.partNo === 'string' && product.partNo.trim()) {
-        productCacheByPartNo.set(product.partNo.trim().toLowerCase(), product);
+        const key = product.partNo.trim().toLowerCase();
+        const existing = productCacheByPartNo.get(key);
+        if (!existing || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
+            productCacheByPartNo.set(key, product);
+        }
     }
 }
 
@@ -853,7 +860,12 @@ export async function getProductsByIds(ids: number[]): Promise<Product[]> {
     const missing: number[] = [];
     for (const id of validIds) {
         if (productCacheById.has(id)) {
-            cached.push(productCacheById.get(id)!);
+            const p = productCacheById.get(id)!;
+            if (p.prices && p.prices.length > 1) {
+                cached.push(p);
+            } else {
+                missing.push(id);
+            }
         } else {
             missing.push(id);
         }
@@ -883,7 +895,12 @@ export async function getProductsByPartNos(partNos: string[]): Promise<Product[]
     for (const pNo of distinctClean) {
         const lower = pNo.toLowerCase();
         if (productCacheByPartNo.has(lower)) {
-            cached.push(productCacheByPartNo.get(lower)!);
+            const p = productCacheByPartNo.get(lower)!;
+            if (p.prices && p.prices.length > 1) {
+                cached.push(p);
+            } else {
+                missing.push(pNo);
+            }
         } else {
             missing.push(pNo);
         }

@@ -23,27 +23,57 @@ type SortOrderType = 'asc' | 'desc';
 
 const PAGE_LIMIT = 50;
 
+const parseProductDate = (dateStr: any): Date => {
+    if (!dateStr) return new Date(NaN);
+    if (dateStr instanceof Date) return dateStr;
+    const s = String(dateStr).trim();
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) {
+        const [d, m, y] = s.split('.');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+        const [d, m, y] = s.split('-');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    return new Date(s);
+};
+
 const getCurrentPrice = (product: Product): PriceEntry | null => {
     if (!product.prices || product.prices.length === 0) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
   
-    const currentPrice = product.prices.find(p => {
-      const from = new Date(p.validFrom);
-      const to = new Date(p.validTo);
-      from.setHours(0, 0, 0, 0);
-      to.setHours(23, 59, 59, 999);
-      return today >= from && today <= to;
-    });
-    
-    if (currentPrice) return currentPrice;
+    // 1. Check exact bracket
+    for (const p of product.prices) {
+        const from = parseProductDate(p.validFrom);
+        const to = parseProductDate(p.validTo);
+        if (!isNaN(from.getTime()) && !isNaN(to.getTime())) {
+            from.setHours(0, 0, 0, 0);
+            to.setHours(23, 59, 59, 999);
+            if (today >= from && today <= to) {
+                return p;
+            }
+        }
+    }
 
-    const pastOrCurrentPrices = product.prices.filter(p => new Date(p.validFrom) <= today);
-    if(pastOrCurrentPrices.length > 0) {
-        return pastOrCurrentPrices.sort((a,b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime())[0];
+    // 2. Filter past or current, sort descending by validFrom
+    const validPrices = product.prices
+        .map(p => ({ p, from: parseProductDate(p.validFrom) }))
+        .filter(item => !isNaN(item.from.getTime()));
+
+    const past = validPrices.filter(item => item.from <= today);
+    if (past.length > 0) {
+        past.sort((a, b) => b.from.getTime() - a.from.getTime());
+        return past[0].p;
+    }
+
+    // 3. Fallback to latest price
+    if (validPrices.length > 0) {
+        validPrices.sort((a, b) => b.from.getTime() - a.from.getTime());
+        return validPrices[0].p;
     }
     
-    return [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
+    return product.prices[product.prices.length - 1] || null;
 };
 
 const getEffectivePriceValue = (product: Product): number => {

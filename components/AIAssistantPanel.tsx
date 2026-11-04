@@ -33,7 +33,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ isOpen, onCl
           const from = new Date(p.validFrom);
           const to = new Date(p.validTo);
           return now >= from && now <= to;
-        }) || product.prices?.[0] || { lp: 0, sp: 0 };
+        }) || product.prices?.[product.prices.length - 1] || { lp: 0, sp: 0 };
         
         const finalPrice = activePrice.lp > 0 ? activePrice.lp : (activePrice.sp || 0);
         const finalPriceSource = activePrice.lp > 0 ? 'LP' : 'SP';

@@ -211,30 +211,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [isRefreshingImages, setIsRefreshingImages] = useState(false);
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
 
-  // Pre-seed in-memory product cache with all products from historical quotations (instant 0ms lookup)
-  useEffect(() => {
-    if (quotations && quotations.length > 0) {
-      for (const q of quotations) {
-        if (Array.isArray(q.details)) {
-          for (const d of q.details) {
-            if (d && (d.partNo || d.productId)) {
-              const prod: Product = {
-                id: d.productId || (d.partNo as any),
-                partNo: d.partNo || '',
-                description: d.description || '',
-                uom: d.uom || 'Mtr',
-                weight: d.airFreightDetails?.weightPerMtr || 0,
-                prices: d.price ? [{ lp: d.price, sp: d.price, validFrom: '2020-01-01', validTo: '2099-12-31' }] : [],
-                imageUrl: d.imageUrl || ''
-              };
-              cacheProductLocally(prod);
-            }
-          }
-        }
-      }
-    }
-  }, [quotations]);
-
   const productImageMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of fetchedProducts.values()) {
@@ -377,24 +353,57 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
 
   const getPriceForDate = useCallback((product: Product, date: string): PriceEntry | null => {
-    if (!product || !product.prices) return null;
-    const targetDate = new Date(date);
+    if (!product || !product.prices || product.prices.length === 0) return null;
+
+    const parseDate = (dateStr: any): Date => {
+      if (!dateStr) return new Date(NaN);
+      if (dateStr instanceof Date) return dateStr;
+      const s = String(dateStr).trim();
+      if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) {
+        const [d, m, y] = s.split('.');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+      }
+      if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+        const [d, m, y] = s.split('-');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+      }
+      return new Date(s);
+    };
+
+    const targetDate = parseDate(date);
     targetDate.setHours(0, 0, 0, 0);
-    const priceEntry = product.prices.find(p => {
-        const from = new Date(p.validFrom);
-        const to = new Date(p.validTo);
+
+    // 1. Check exact validity bracket
+    for (const p of product.prices) {
+      const from = parseDate(p.validFrom);
+      const to = parseDate(p.validTo);
+      if (!isNaN(from.getTime()) && !isNaN(to.getTime())) {
         from.setHours(0, 0, 0, 0);
         to.setHours(23, 59, 59, 999);
-        return targetDate >= from && targetDate <= to;
-    })
-    if(priceEntry) return priceEntry;
-
-    const pastOrCurrentPrices = product.prices.filter(p => new Date(p.validFrom) <= targetDate);
-    if(pastOrCurrentPrices.length > 0) {
-        return pastOrCurrentPrices.sort((a,b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime())[0];
+        if (targetDate >= from && targetDate <= to) {
+          return p;
+        }
+      }
     }
-    
-    return [...product.prices].sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())[0] || null;
+
+    // 2. Filter past or current prices, sort DESCENDING by validFrom (latest first)
+    const validPrices = product.prices
+      .map(p => ({ p, from: parseDate(p.validFrom) }))
+      .filter(item => !isNaN(item.from.getTime()));
+
+    const past = validPrices.filter(item => item.from <= targetDate);
+    if (past.length > 0) {
+      past.sort((a, b) => b.from.getTime() - a.from.getTime());
+      return past[0].p;
+    }
+
+    // 3. Fallback to latest price
+    if (validPrices.length > 0) {
+      validPrices.sort((a, b) => b.from.getTime() - a.from.getTime());
+      return validPrices[0].p;
+    }
+
+    return product.prices[product.prices.length - 1] || null;
   }, []);
 
   const createNewQuotation = useCallback((): Quotation => {
@@ -2119,8 +2128,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                             <Icons.Insert />
                                         </button>
                                         {item.productId > 0 && (
-                                            <button type="button" onClick={() => {
-                                                const p = fetchedProducts.get(item.productId);
+                                            <button type="button" onClick={async () => {
+                                                let p = fetchedProducts.get(item.productId);
+                                                if (!p || !p.prices || p.prices.length <= 1) {
+                                                    const fresh = await getProductsByIds([item.productId]);
+                                                    if (fresh && fresh.length > 0) {
+                                                        p = fresh[0];
+                                                        setFetchedProducts(prev => new Map(prev).set(p!.id, p!));
+                                                    }
+                                                }
                                                 if (p) {
                                                     setProductToEdit(p);
                                                     setIsProductModalOpen(true);
