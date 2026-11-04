@@ -233,13 +233,13 @@ export const App = () => {
     );
   }
 
-  if (dataError) {
+  if (dataError && !quotations && !customers && !salesPersons) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-red-50">
-        <div className="p-8 bg-white rounded-lg shadow-md border border-red-200">
+      <div className="min-h-screen flex items-center justify-center bg-red-50 p-4">
+        <div className="p-8 bg-white rounded-lg shadow-md border border-red-200 max-w-md w-full">
           <h2 className="text-xl text-red-700 font-bold mb-2">Error Loading Data</h2>
-          <p className="text-gray-700">{dataError.message}</p>
-          <button onClick={() => window.location.reload()} className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Retry</button>
+          <p className="text-gray-700 text-sm mb-4">{dataError.message}</p>
+          <button onClick={() => window.location.reload()} className="w-full bg-red-600 text-white px-4 py-2 rounded font-semibold hover:bg-red-700 transition">Retry</button>
         </div>
       </div>
     );
@@ -350,6 +350,12 @@ export const App = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {dataError && (
+          <div className="bg-amber-600 text-white text-xs px-4 py-2 flex items-center justify-between z-20 shrink-0">
+            <span className="truncate">⚠️ Cloud database notice: {dataError.message}</span>
+            <button onClick={() => window.location.reload()} className="underline font-bold ml-3 shrink-0 hover:text-amber-100">Retry Connection</button>
+          </div>
+        )}
         
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 z-10 transition-all">
