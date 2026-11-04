@@ -45,20 +45,32 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
     if (tableName === 'quotations') {
         const payload: any = {
             quotation_date: item.quotationDate,
+            quotationDate: item.quotationDate,
             enquiry_date: item.enquiryDate,
+            enquiryDate: item.enquiryDate,
             customer_id: item.customerId,
+            customerId: item.customerId,
             sales_person_id: item.salesPersonId,
+            salesPersonId: item.salesPersonId,
             contact_person: item.contactPerson,
+            contactPerson: item.contactPerson,
             contact_number: item.contactNumber,
+            contactNumber: item.contactNumber,
             other_terms: item.otherTerms,
+            otherTerms: item.otherTerms,
             payment_terms: item.paymentTerms,
+            paymentTerms: item.paymentTerms,
             prepared_by: item.preparedBy,
+            preparedBy: item.preparedBy,
             products_brand: item.productsBrand,
+            productsBrand: item.productsBrand,
             mode_of_enquiry: item.modeOfEnquiry,
+            modeOfEnquiry: item.modeOfEnquiry,
             status: item.status,
             comments: item.comments,
             details: item.details,
-            gst_added: item.gstAdded
+            gst_added: item.gstAdded,
+            gstAdded: item.gstAdded
         };
         if (item.id && item.id !== 0) {
             payload.id = item.id;
@@ -85,7 +97,9 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
             city: item.city,
             pincode: item.pincode,
             sales_person_id: item.salesPersonId,
-            discount_structure: item.discountStructure
+            salesPersonId: item.salesPersonId,
+            discount_structure: item.discountStructure,
+            discountStructure: item.discountStructure
         };
     }
     if (tableName === 'users') {
