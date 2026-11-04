@@ -300,7 +300,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // This ensures that if we are drafting (editingQuotationId is null), we don't get reset by background updates.
   // Session ID will equal editingQuotationId (which can be null).
   const currentSessionIdRef = useRef<number | null | undefined>(undefined);
-  const prevDateRef = useRef<string | undefined>(undefined);
+  const lastEvaluatedDateKeyRef = useRef<string | null>(null);
+  const [recheckMessage, setRecheckMessage] = useState<string | null>(null);
 
   const userRole = currentUser.role;
 
@@ -660,24 +661,63 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   }, [selectedCustomerObj, editingQuotationId]);
 
+  const handleRecheckPrices = useCallback(() => {
+    if (!formData || !formData.details || formData.details.length === 0) return;
+    const targetDate = formData.quotationDate || getTodayDateString();
+    let updatedCount = 0;
+
+    const newDetails = formData.details.map(item => {
+        const product = (item.productId && fetchedProducts.get(item.productId)) ||
+                        (item.partNo && Array.from(fetchedProducts.values()).find(p => p.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
+                        (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
+
+        if (product && product.prices && product.prices.length > 0) {
+            const priceEntry = getPriceForDate(product, targetDate);
+            if (priceEntry) {
+                const newPrice = priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp;
+                const roundedNew = Math.round(newPrice * 100) / 100;
+                const roundedOld = Math.round((item.price || 0) * 100) / 100;
+                if (Math.abs(roundedNew - roundedOld) > 0.01) {
+                    updatedCount++;
+                    const priceSource: 'LP' | 'SP' = priceEntry.lp > 0 ? 'LP' : 'SP';
+                    return { ...item, price: newPrice, priceSource };
+                }
+            }
+        }
+        return item;
+    });
+
+    if (updatedCount > 0) {
+        setFormData(prev => prev ? { ...prev, details: newDetails } : null);
+        setRecheckMessage(`Updated ${updatedCount} item(s) to match ${targetDate}`);
+    } else {
+        setRecheckMessage(`All items already match ${targetDate}`);
+    }
+    setTimeout(() => setRecheckMessage(null), 4000);
+  }, [formData, fetchedProducts, getPriceForDate]);
+
   useEffect(() => {
     if (!formData || !formData.details?.length || fetchedProducts.size === 0) return;
-    
-    // Only auto-update prices if the quotation date actually changes
-    if (prevDateRef.current === formData.quotationDate) return;
-    prevDateRef.current = formData.quotationDate;
+    const targetDate = formData.quotationDate || getTodayDateString();
+
+    const evaluationKey = `${targetDate}_${fetchedProducts.size}`;
+    if (lastEvaluatedDateKeyRef.current === evaluationKey) return;
+    lastEvaluatedDateKeyRef.current = evaluationKey;
 
     let wasUpdated = false;
     const newDetails = formData.details.map(item => {
-        if (item.productId > 0) {
-            const product = fetchedProducts.get(item.productId);
-            if (product) {
-                const priceEntry = getPriceForDate(product, formData.quotationDate);
-                const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
-                if (newPrice !== item.price) {
+        const product = (item.productId && fetchedProducts.get(item.productId)) ||
+                        (item.partNo && Array.from(fetchedProducts.values()).find(p => p.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase()));
+        if (product && product.prices && product.prices.length > 0) {
+            const priceEntry = getPriceForDate(product, targetDate);
+            if (priceEntry) {
+                const newPrice = priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp;
+                const roundedNew = Math.round(newPrice * 100) / 100;
+                const roundedOld = Math.round((item.price || 0) * 100) / 100;
+                if (Math.abs(roundedNew - roundedOld) > 0.01) {
                     wasUpdated = true;
-                    const priceSource: 'LP' | 'SP' = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
-                    return { ...item, price: newPrice, priceSource: priceSource };
+                    const priceSource: 'LP' | 'SP' = priceEntry.lp > 0 ? 'LP' : 'SP';
+                    return { ...item, price: newPrice, priceSource };
                 }
             }
         }
@@ -798,6 +838,27 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     const isNumericId = name === 'salesPersonId';
+    if (name === 'quotationDate') {
+        setFormData(prev => {
+            if (!prev) return null;
+            const updatedDetails = prev.details.map(item => {
+                const product = (item.productId && fetchedProducts.get(item.productId)) ||
+                                (item.partNo && Array.from(fetchedProducts.values()).find(p => p.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
+                                (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
+                if (product && product.prices && product.prices.length > 0) {
+                    const priceEntry = getPriceForDate(product, value);
+                    if (priceEntry) {
+                        const newPrice = priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp;
+                        const priceSource: 'LP' | 'SP' = priceEntry.lp > 0 ? 'LP' : 'SP';
+                        return { ...item, price: newPrice, priceSource };
+                    }
+                }
+                return item;
+            });
+            return { ...prev, quotationDate: value, details: updatedDetails };
+        });
+        return;
+    }
     setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
   };
   
@@ -848,8 +909,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         (numericProductId ? Array.from(productCacheByPartNo.values()).find(p => p.id === numericProductId) : undefined);
         if (product) {
             setFetchedProducts(prev => new Map(prev).set(product.id, product));
-            const priceEntry = getPriceForDate(product, prevFormData.quotationDate);
-            if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${prevFormData.quotationDate ? new Date(prevFormData.quotationDate).toLocaleDateString() : 'N/A'}. Please check product price validity.`);
+            const targetDate = prevFormData.quotationDate || getTodayDateString();
+            const priceEntry = getPriceForDate(product, targetDate);
+            if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${targetDate ? new Date(targetDate).toLocaleDateString() : 'N/A'}. Please check product price validity.`);
             const newDetails = [...prevFormData.details];
             newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, imageUrl: product.imageUrl || '', airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
             return { ...prevFormData, details: newDetails };
@@ -1845,7 +1907,33 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             )}
                         </div>
                     </FormField>
-                    <FormField label="Quotation Date"><input type="date" name="quotationDate" value={formData.quotationDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
+                    <FormField label="Quotation Date">
+                        <div className="flex items-center w-full gap-1">
+                            <input 
+                                type="date" 
+                                name="quotationDate" 
+                                value={formData.quotationDate} 
+                                onChange={handleChange} 
+                                className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" 
+                                disabled={isReadOnly}
+                            />
+                            {!isReadOnly && (
+                                <button
+                                    type="button"
+                                    onClick={handleRecheckPrices}
+                                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded text-[11px] font-bold shrink-0 transition-all flex items-center gap-1 shadow-sm"
+                                    title="Recheck and update all item prices to match this Quotation Date"
+                                >
+                                    <span>🔄 Recheck Prices</span>
+                                </button>
+                            )}
+                        </div>
+                    </FormField>
+                    {recheckMessage && (
+                        <div className="ml-[33.33%] pl-1 text-[11px] font-semibold text-emerald-600 transition-all">
+                            ✓ {recheckMessage}
+                        </div>
+                    )}
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
                     <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={displayedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); if (!val) { setSelectedCustomerObj(null); } else { const customer = (customers || []).find(c => c.id === val) || searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers && customerList.length === 0} onOpen={handleCustomerOpen}/></div></FormField>
                      {selectedCustomerObj && (
@@ -2208,7 +2296,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
       <ProductAddModal isOpen={isProductModalOpen} onClose={() => { setIsProductModalOpen(false); setProductToEdit(null); }} onSave={handleSaveProduct} productToEdit={productToEdit} />
-      <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch}/>
+      <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch} quotationDate={formData?.quotationDate}/>
 
       <QuotationSuccessModal 
          isOpen={!!successModalData} 

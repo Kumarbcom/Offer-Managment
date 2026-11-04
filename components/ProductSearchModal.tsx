@@ -7,6 +7,7 @@ interface ProductSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (product: Product, discount: number) => void;
+  quotationDate?: string;
 }
 
 const parseProductDate = (dateStr: any): Date => {
@@ -59,7 +60,7 @@ const getCurrentPriceForDate = (product: Product, date: string): PriceEntry | nu
     return product.prices[product.prices.length - 1] || null;
 };
 
-export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, onClose, onSelect }) => {
+export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, onClose, onSelect, quotationDate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [discount, setDiscount] = useState('0');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -154,8 +155,8 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {searchResults.map(product => {
-                    const today = new Date().toISOString().split('T')[0];
-                    const currentPrice = getCurrentPriceForDate(product, today);
+                    const targetDate = quotationDate || new Date().toISOString().split('T')[0];
+                    const currentPrice = getCurrentPriceForDate(product, targetDate);
                     const discountValue = parseFloat(discount) || 0;
                     const priceToUse = currentPrice ? (currentPrice.lp > 0 ? currentPrice.lp : currentPrice.sp) : 0;
                     const discountPrice = priceToUse * (1 - discountValue / 100);
