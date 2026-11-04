@@ -113,10 +113,23 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                     sessionStorage.setItem(`cache_${tableName}`, JSON.stringify(data));
                 } catch (_) {}
             } catch (e) {
-                console.warn(`Supabase error loading '${tableName}', using in-memory fallback.`, e);
-                // When Supabase fails, retain cached data if available
-                if (isMounted && !stateRef.current) {
-                    setState(tableName === 'users' ? localData : []);
+                console.warn(`Supabase error loading '${tableName}', retaining local/cached fallback.`, e);
+                setError(e as Error);
+                // When Supabase fails (e.g. quota limit/timeout), NEVER wipe out existing data!
+                // Attempt to hydrate from IndexedDB/sessionStorage if state is currently empty
+                if (isMounted) {
+                    if (!stateRef.current || (Array.isArray(stateRef.current) && stateRef.current.length === 0)) {
+                        idbGet<T[]>(`cache_${tableName}`).then(idbData => {
+                            if (isMounted && idbData && Array.isArray(idbData) && idbData.length > 0) {
+                                setState(idbData);
+                                memoryCache.set(tableName, idbData);
+                            } else if (tableName === 'users') {
+                                setState(localData);
+                            }
+                        }).catch(() => {
+                            if (isMounted && tableName === 'users') setState(localData);
+                        });
+                    }
                 }
             } finally {
                 if (isMounted) {

@@ -116,18 +116,32 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
   const userRole = currentUser.role;
 
-  // Build customer name map synchronously from the prop — no async fetch needed
+  // Build customer name map synchronously from the prop — handles both number & string IDs
   const customerMap = useMemo(() => {
-    const map = new Map<number, string>();
-    if (customers) {
-      customers.forEach(c => map.set(c.id, c.name));
+    const map = new Map<number | string, string>();
+    if (customers && Array.isArray(customers)) {
+      customers.forEach(c => {
+        if (c && c.name) {
+          if (c.id !== undefined && c.id !== null) {
+            map.set(c.id, c.name);
+            map.set(Number(c.id), c.name);
+            map.set(String(c.id), c.name);
+          }
+        }
+      });
     }
     return map;
   }, [customers]);
 
-  const getCustomerName = (id: number | null): string => {
-    if (id === null) return '—';
-    return customerMap.get(id) || '—';
+  const getCustomerName = (id: number | null | undefined, quotation?: Quotation): string => {
+    if (quotation) {
+      const embeddedName = (quotation as any).customerName || (quotation as any).customer_name;
+      if (embeddedName && typeof embeddedName === 'string' && embeddedName.trim()) {
+        return embeddedName.trim();
+      }
+    }
+    if (id === null || id === undefined || id === 0) return '—';
+    return customerMap.get(id) || customerMap.get(Number(id)) || customerMap.get(String(id)) || '—';
   };
 
   const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || '—';
