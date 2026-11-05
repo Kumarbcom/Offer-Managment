@@ -101,6 +101,21 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
   // View Mode: 'excel' (Spreadsheet table with column filters) or 'standard' (Card/clean table)
   const [viewMode, setViewMode] = useState<'excel' | 'standard'>('excel');
 
+  // Cloud Sync Status
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>('Live');
+
+  const handleSyncOffers = async () => {
+    setIsSyncing(true);
+    try {
+      window.dispatchEvent(new CustomEvent('sync_quotations_requested'));
+      await new Promise(r => setTimeout(r, 650));
+      setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Excel Column Filters State
   const [columnFilters, setColumnFilters] = useState<ColumnFilterState>({});
   const [activeFilterDropdown, setActiveFilterDropdown] = useState<string | null>(null);
@@ -754,6 +769,20 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                   <span>Standard View</span>
                 </button>
               </div>
+
+              {/* Cloud Sync Button */}
+              <button
+                type="button"
+                onClick={handleSyncOffers}
+                disabled={isSyncing}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                title={`Sync latest quotations from cloud. Last synced: ${lastSyncTime}`}
+              >
+                <svg className={`w-3.5 h-3.5 text-blue-600 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>{isSyncing ? 'Syncing...' : 'Sync Offers'}</span>
+              </button>
 
               {/* Export to Excel */}
               <button

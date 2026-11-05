@@ -11,10 +11,11 @@ interface SearchableSelectProps<T> {
   onSearch?: (term: string) => void;
   isLoading?: boolean;
   onOpen?: () => void;
+  disabled?: boolean;
 }
 
 export const SearchableSelect = <T extends Record<string, any>,>(
-  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', fallbackDisplayValue, onSearch, isLoading, onOpen }: SearchableSelectProps<T>
+  { options, value, onChange, idKey, displayKey, placeholder = 'Select...', fallbackDisplayValue, onSearch, isLoading, onOpen, disabled }: SearchableSelectProps<T>
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(() => {
@@ -90,6 +91,15 @@ export const SearchableSelect = <T extends Record<string, any>,>(
   }, [isOpen]);
   
   const handleFocus = () => {
+    if (disabled) return;
+    if (wrapperRef.current) {
+        const rect = wrapperRef.current.getBoundingClientRect();
+        setCoords({
+            top: rect.bottom,
+            left: rect.left,
+            width: rect.width
+        });
+    }
     setIsOpen(true);
     if (onOpen) {
       onOpen();
@@ -103,6 +113,7 @@ export const SearchableSelect = <T extends Record<string, any>,>(
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const newSearchTerm = e.target.value;
     setSearchTerm(newSearchTerm);
     if (isAsync && onSearch) {
@@ -114,21 +125,41 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     setIsOpen(true);
   }
 
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSearchTerm('');
+    onChange(null);
+    if (isAsync && onSearch) {
+      onSearch('');
+    }
+  };
+
   const optionsToDisplay = isAsync ? options : options.filter(option =>
     String(option[displayKey]).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="relative w-full h-full" ref={wrapperRef}>
+    <div className="relative w-full h-full flex items-center" ref={wrapperRef}>
       <input
         type="text"
-        className="w-full h-full px-2 py-1 text-xs border border-transparent hover:border-gray-300 focus:border-gray-300 focus:outline-none bg-transparent truncate"
+        className="w-full h-full px-2 py-1 pr-6 text-xs border border-transparent hover:border-gray-300 focus:border-gray-300 focus:outline-none bg-transparent truncate disabled:cursor-not-allowed"
         value={searchTerm}
         onChange={handleInputChange}
         onFocus={handleFocus}
         placeholder={placeholder}
+        disabled={disabled}
       />
-      {isOpen && (
+      {searchTerm && !disabled && (
+        <button
+          type="button"
+          onClick={handleClear}
+          className="absolute right-1 text-slate-400 hover:text-slate-700 text-xs px-1 font-bold transition-colors"
+          title="Clear"
+        >
+          ×
+        </button>
+      )}
+      {isOpen && !disabled && (
         <ul 
             className="fixed z-[9999] bg-white border border-gray-300 rounded-md mt-0.5 max-h-60 overflow-y-auto shadow-2xl text-xs"
             style={{
@@ -160,9 +191,18 @@ export const SearchableSelect = <T extends Record<string, any>,>(
                 <li
                   key={option[idKey]}
                   className={`p-2 cursor-pointer hover:bg-indigo-100 border-b border-gray-100 last:border-0 ${option[idKey] === value ? 'bg-indigo-200' : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(option);
+                  }}
                   onClick={() => handleSelect(option)}
                 >
-                  <div className="font-medium">{String(option[displayKey])}</div>
+                  <div className="font-medium text-slate-900">{String(option[displayKey])}</div>
+                  {option.city && (
+                    <div className="text-[10px] text-slate-500 truncate">
+                      📍 {option.city}{option.pincode ? ` - ${option.pincode}` : ''}
+                    </div>
+                  )}
                   {option.description && <div className="text-[10px] text-gray-500 truncate">{option.description}</div>}
                 </li>
               ))}

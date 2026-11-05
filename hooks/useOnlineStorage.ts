@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set, toSupabaseTableName, mapFromSupabase } from '../supabase';
+import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, liveQuotationSyncChannel } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
@@ -94,6 +94,31 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                 setIsLoading(true);
             }
             setError(null);
+
+            // Fast stage 1 for quotations: immediately fetch latest 100 offers (takes ~1-2s vs 40s)
+            if (tableName === 'quotations') {
+                try {
+                    const latest = await fetchLatestQuotations(100);
+                    if (latest && latest.length > 0 && isMounted) {
+                        setState(prev => {
+                            const current = prev || [];
+                            const map = new Map<number, any>();
+                            // Keep any existing items
+                            current.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                            // Overwrite/insert with latest fresh items from DB
+                            latest.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                            const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
+                            memoryCache.set(tableName, merged);
+                            idbSet(`cache_${tableName}`, merged);
+                            return merged as T[];
+                        });
+                        setIsLoading(false);
+                    }
+                } catch (fastErr) {
+                    console.warn("Fast quotations preview sync:", fastErr);
+                }
+            }
+
             try {
                 let data = await get(tableName);
                 if (data.length === 0 && !seededTables.has(tableName)) {
@@ -105,13 +130,30 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                     }
                 }
                 if (isMounted) {
-                    setState(data as T[]);
-                    memoryCache.set(tableName, data);
-                    idbSet(`cache_${tableName}`, data);
+                    setState(prev => {
+                        if (tableName === 'quotations') {
+                            const current = prev || [];
+                            const map = new Map<number, any>();
+                            // Full DB fetch
+                            (data as any[]).forEach(item => { if (item && item.id) map.set(item.id, item); });
+                            // Keep any newest local items in case of in-flight changes
+                            current.forEach((item: any) => { if (item && item.id && !map.has(item.id)) map.set(item.id, item); });
+                            const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
+                            memoryCache.set(tableName, merged);
+                            idbSet(`cache_${tableName}`, merged);
+                            return merged as T[];
+                        }
+                        memoryCache.set(tableName, data);
+                        idbSet(`cache_${tableName}`, data);
+                        return data as T[];
+                    });
                 }
-                try {
-                    sessionStorage.setItem(`cache_${tableName}`, JSON.stringify(data));
-                } catch (_) {}
+                // Do not write quotations or products to sessionStorage to prevent QuotaExceededError (5MB limit)
+                if (tableName !== 'quotations' && tableName !== 'products') {
+                    try {
+                        sessionStorage.setItem(`cache_${tableName}`, JSON.stringify(data));
+                    } catch (_) {}
+                }
             } catch (e) {
                 console.warn(`Supabase error loading '${tableName}', retaining local/cached fallback.`, e);
                 setError(e as Error);
@@ -139,7 +181,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         };
         fetchData();
 
-        // --- REAL-TIME SUBSCRIPTIONS ---
+        // --- REAL-TIME BROADCAST & POSTGRES_CHANGES ---
         if (!supabase) return;
 
         const supabaseTableName = toSupabaseTableName(tableName);
@@ -159,21 +201,36 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                             case 'INSERT': {
                                 const newRecord = mapFromSupabase(tableName, payload.new) as T;
                                 if (!currentState.some(item => (item as any)[primaryKey] === (newRecord as any)[primaryKey])) {
-                                    setState(prev => [...(prev || []), newRecord]);
+                                    setState(prev => {
+                                        const updated = [newRecord, ...(prev || [])];
+                                        memoryCache.set(tableName, updated);
+                                        idbSet(`cache_${tableName}`, updated);
+                                        return updated;
+                                    });
                                 }
                                 break;
                             }
                             case 'UPDATE': {
                                 const updatedRecord = mapFromSupabase(tableName, payload.new) as T;
-                                setState(prev => (prev || []).map(item =>
-                                    (item as any)[primaryKey] === (updatedRecord as any)[primaryKey] ? updatedRecord : item
-                                ));
+                                setState(prev => {
+                                    const updated = (prev || []).map(item =>
+                                        (item as any)[primaryKey] === (updatedRecord as any)[primaryKey] ? updatedRecord : item
+                                    );
+                                    memoryCache.set(tableName, updated);
+                                    idbSet(`cache_${tableName}`, updated);
+                                    return updated;
+                                });
                                 break;
                             }
                             case 'DELETE': {
                                 const oldRecord = payload.old as Partial<T>;
                                 const recordIdToDelete = (oldRecord as any)[primaryKey];
-                                setState(prev => (prev || []).filter(item => (item as any)[primaryKey] !== recordIdToDelete));
+                                setState(prev => {
+                                    const updated = (prev || []).filter(item => (item as any)[primaryKey] !== recordIdToDelete);
+                                    memoryCache.set(tableName, updated);
+                                    idbSet(`cache_${tableName}`, updated);
+                                    return updated;
+                                });
                                 break;
                             }
                         }
@@ -188,8 +245,88 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
              console.warn(`Failed to initialize subscription for ${tableName}. Real-time updates disabled.`, subError);
         }
 
+        // Shared broadcast listener for instant cross-device updates without waiting for postgres_changes
+        let broadcastListener: any = null;
+        if (tableName === 'quotations' && liveQuotationSyncChannel) {
+            broadcastListener = (msg: any) => {
+                if (msg && msg.payload && msg.payload.id) {
+                    const incoming = msg.payload as T;
+                    console.log('⚡ Received peer quotation update via broadcast:', (incoming as any).id, (incoming as any).preparedBy);
+                    setState(prev => {
+                        const current = prev || [];
+                        const exists = current.some(item => (item as any).id === (incoming as any).id);
+                        const updated = exists
+                            ? current.map(item => (item as any).id === (incoming as any).id ? incoming : item)
+                            : [incoming, ...current];
+                        memoryCache.set('quotations', updated);
+                        idbSet('cache_quotations', updated);
+                        return updated;
+                    });
+                }
+            };
+            liveQuotationSyncChannel.on('broadcast', { event: 'quotation_updated' }, broadcastListener);
+        }
+
+        // Periodic background polling & tab-focus sync for quotations (every 12 seconds)
+        let pollInterval: any = null;
+        let removeWindowListeners: (() => void) | undefined;
+
+        if (tableName === 'quotations') {
+            const syncTopQuotations = async () => {
+                if (!isMounted) return;
+                try {
+                    const freshTop = await fetchLatestQuotations(30);
+                    if (freshTop && freshTop.length > 0 && isMounted) {
+                        setState(prev => {
+                            const list = prev || [];
+                            let hasDiff = false;
+                            const map = new Map<number, any>();
+                            list.forEach((q: any) => { if (q && q.id) map.set(q.id, q); });
+                            freshTop.forEach((q: any) => {
+                                const existing = map.get(q.id);
+                                if (!existing || existing.status !== q.status || existing.comments !== q.comments) {
+                                    hasDiff = true;
+                                    map.set(q.id, q);
+                                }
+                            });
+                            if (!hasDiff) return prev;
+                            const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
+                            memoryCache.set('quotations', merged);
+                            idbSet('cache_quotations', merged);
+                            return merged as T[];
+                        });
+                    }
+                } catch (e) {
+                    // silent polling catch
+                }
+            };
+
+            pollInterval = setInterval(syncTopQuotations, 12000);
+
+            const handleFocusOrVisible = () => {
+                syncTopQuotations();
+            };
+
+            const handleCustomSync = () => {
+                syncTopQuotations();
+            };
+
+            window.addEventListener('focus', handleFocusOrVisible);
+            window.addEventListener('visibilitychange', handleFocusOrVisible);
+            window.addEventListener('sync_quotations_requested', handleCustomSync);
+
+            removeWindowListeners = () => {
+                window.removeEventListener('focus', handleFocusOrVisible);
+                window.removeEventListener('visibilitychange', handleFocusOrVisible);
+                window.removeEventListener('sync_quotations_requested', handleCustomSync);
+            };
+        }
+
         return () => {
+            isMounted = false;
             if (channel) supabase.removeChannel(channel);
+            if (pollInterval) clearInterval(pollInterval);
+            if (removeWindowListeners) removeWindowListeners();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tableName]);

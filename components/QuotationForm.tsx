@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import type { Quotation, QuotationItem, Customer, SalesPerson, Product, View, UserRole, PriceEntry, PreparedBy, User, StockItem, PendingSO, PrintImageSize } from '../types';
 import { PAYMENT_TERMS, PREPARED_BY_LIST, PRODUCTS_BRANDS, MODES_OF_ENQUIRY, QUOTATION_STATUSES } from '../constants';
 import { CustomerAddModal } from './CustomerAddModal';
+import { CustomerSearchModal } from './CustomerSearchModal';
 import { ProductAddModal } from './ProductAddModal';
 import { ProductSearchModal } from './ProductSearchModal';
 import { QuotationSuccessModal } from './QuotationSuccessModal';
@@ -14,7 +15,7 @@ import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFre
 import { AIAssistantPanel } from './AIAssistantPanel';
 import { QuotationDiffModal } from './QuotationDiffModal';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, customerCache, cacheCustomerLocally } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
 
@@ -227,9 +228,22 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
+  const [isCustomerSearchModalOpen, setIsCustomerSearchModalOpen] = useState(false);
+
+  // Synchronize customers prop into local customerCache for instant lookups
+  useEffect(() => {
+    if (customers && customers.length > 0) {
+      customers.forEach(c => cacheCustomerLocally(c));
+    }
+  }, [customers]);
 
   // Fast in-memory customer filtering (0ms!)
-  const customerList = customers && customers.length > 0 ? customers : searchedCustomers;
+  const customerList = useMemo(() => {
+    if (customers && customers.length > 0) return customers;
+    if (searchedCustomers.length > 0) return searchedCustomers;
+    return Array.from(customerCache.values());
+  }, [customers, searchedCustomers]);
+
   const displayedCustomers = useMemo(() => {
     if (!customerSearchTerm || !customerSearchTerm.trim()) {
       if (selectedCustomerObj) {
@@ -238,12 +252,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }
       return customerList.slice(0, 50);
     }
-    const term = customerSearchTerm.toLowerCase().trim();
-    const matches = customerList.filter(c => 
-      (c.name && c.name.toLowerCase().includes(term)) ||
-      (c.city && c.city.toLowerCase().includes(term)) ||
-      (c.id && String(c.id).includes(term))
-    ).slice(0, 50);
+    const words = customerSearchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+    const matches = customerList.filter(c => {
+      const name = (c.name || '').toLowerCase();
+      const city = (c.city || '').toLowerCase();
+      const idStr = String(c.id || '');
+      return words.every(w => name.includes(w) || city.includes(w) || idStr.includes(w));
+    }).slice(0, 50);
 
     if (selectedCustomerObj && !matches.some(c => c.id === selectedCustomerObj.id)) {
       return [selectedCustomerObj, ...matches];
@@ -439,19 +454,45 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [userRole, salesPersons, currentUser]); 
   
   const handleCustomerOpen = useCallback(() => {
-    // If customers are passed via props, they are already available instantly in memory
-    if (customers && customers.length > 0) return;
-    if (searchedCustomers.length === 0 && !isSearchingCustomers) {
-        setIsSearchingCustomers(true);
-        searchCustomers('').then(results => {
-            setSearchedCustomers(results);
-            setIsSearchingCustomers(false);
-        }).catch(err => {
-            console.error(err);
-            setIsSearchingCustomers(false);
-        });
+    // If all customers are already available in memory, skip remote fetch
+    if (customers && customers.length >= 2000) return;
+    if (searchedCustomers.length === 0) {
+        const cached = Array.from(customerCache.values()).slice(0, 50);
+        if (cached.length > 0) {
+            setSearchedCustomers(cached);
+        } else if (!isSearchingCustomers) {
+            setIsSearchingCustomers(true);
+            searchCustomers('').then(results => {
+                setSearchedCustomers(results);
+                setIsSearchingCustomers(false);
+            }).catch(err => {
+                console.error("handleCustomerOpen search error:", err);
+                setIsSearchingCustomers(false);
+            });
+        }
     }
   }, [customers, searchedCustomers.length, isSearchingCustomers]);
+
+  const handleCustomerSearch = useCallback((term: string) => {
+      setCustomerSearchTerm(term);
+      if (term && term.trim()) {
+          const words = term.toLowerCase().split(/\s+/).filter(Boolean);
+          const instantMatches: Customer[] = [];
+          const source = (customers && customers.length > 0) ? customers : Array.from(customerCache.values());
+          for (const c of source) {
+              const name = (c.name || '').toLowerCase();
+              const city = (c.city || '').toLowerCase();
+              const idStr = String(c.id || '');
+              if (words.every(w => name.includes(w) || city.includes(w) || idStr.includes(w))) {
+                  instantMatches.push(c);
+                  if (instantMatches.length >= 50) break;
+              }
+          }
+          if (instantMatches.length > 0) {
+              setSearchedCustomers(instantMatches);
+          }
+      }
+  }, [customers]);
 
   const handleProductOpen = useCallback(() => {
       if (searchedProducts.length === 0) {
@@ -495,6 +536,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // This ensures customer/salesPerson data is always re-fetched when opening a quotation.
   useEffect(() => {
     setSelectedCustomerObj(null);
+    setCustomerSearchTerm('');
     // Also reset the session lock so the init effect runs fresh for this quotation.
     currentSessionIdRef.current = undefined;
   }, [editingQuotationId]);
@@ -744,19 +786,28 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [debouncedProductSearchTerm]);
   
   useEffect(() => {
-    // If customers are loaded locally via props, skip remote search!
-    if (customers && customers.length > 0) return;
+    // If all customers are already available in memory (>= 2000), skip remote search
+    if (customers && customers.length >= 2000) return;
+    let isCancelled = false;
     const performSearch = async () => {
       setIsSearchingCustomers(true);
-      const results = await searchCustomers(debouncedCustomerSearchTerm);
-      if (selectedCustomerObj && !results.some(c => c.id === selectedCustomerObj.id)) {
-        setSearchedCustomers([selectedCustomerObj, ...results]);
-      } else {
-        setSearchedCustomers(results);
+      try {
+        const results = await searchCustomers(debouncedCustomerSearchTerm);
+        if (!isCancelled) {
+          if (selectedCustomerObj && !results.some(c => c.id === selectedCustomerObj.id)) {
+            setSearchedCustomers([selectedCustomerObj, ...results]);
+          } else {
+            setSearchedCustomers(results);
+          }
+        }
+      } catch (err) {
+        console.error("performCustomerSearch error:", err);
+      } finally {
+        if (!isCancelled) setIsSearchingCustomers(false);
       }
-      setIsSearchingCustomers(false);
     };
     performSearch();
+    return () => { isCancelled = true; };
   }, [debouncedCustomerSearchTerm, selectedCustomerObj, customers]);
 
   // Auto-enable printWithImages if any quotation item has an imageUrl
@@ -1117,11 +1168,31 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   };
   
+  const handleSelectCustomer = useCallback((customer: Customer | null) => {
+    if (isReadOnly) return;
+    if (!customer) {
+      setFormData(prev => prev ? { ...prev, customerId: null } : null);
+      setSelectedCustomerObj(null);
+      setCustomerSearchTerm('');
+    } else {
+      cacheCustomerLocally(customer);
+      setFormData(prev => prev ? { 
+        ...prev, 
+        customerId: customer.id,
+        salesPersonId: (editingQuotationId === null && customer.salesPersonId) ? customer.salesPersonId : prev.salesPersonId
+      } : null);
+      setSelectedCustomerObj(customer);
+      setCustomerSearchTerm('');
+    }
+  }, [isReadOnly, editingQuotationId]);
+
   const handleNewButtonClick = () => { 
       if (isReadOnly && userRole !== 'Sales Person') return;
       setEditingQuotationId(null); 
       currentSessionIdRef.current = null;
       setSelectedCustomerObj(null);
+      setCustomerSearchTerm('');
+      setSearchedCustomers([]);
       setFetchedProducts(new Map());
       setFormData(createNewQuotation());
       const url = new URL(window.location.href); 
@@ -1832,11 +1903,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                            <ActionButton onClick={() => setIsCustomerModalOpen(true)} title="Add New Customer" className="px-2 py-1 text-[11px] h-6">
                                <Icons.AddCustomer /><span>+ Customer</span>
                            </ActionButton>
+                           <ActionButton onClick={() => setIsCustomerSearchModalOpen(true)} title="Search Customer Directory" className="px-2 py-1 text-[11px] h-6">
+                               <Icons.SearchProduct /><span>Search Customer</span>
+                           </ActionButton>
                            <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product" className="px-2 py-1 text-[11px] h-6">
                                <Icons.AddProduct /><span>+ Product</span>
                            </ActionButton>
                            <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product Catalogue" className="px-2 py-1 text-[11px] h-6">
-                               <Icons.SearchProduct /><span>Search</span>
+                               <Icons.SearchProduct /><span>Search Product</span>
                            </ActionButton>
                        </>
                    )}
@@ -1935,7 +2009,43 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         </div>
                     )}
                     <FormField label="Enquiry Date"><input type="date" name="enquiryDate" value={formData.enquiryDate} onChange={handleChange} className="w-full px-2 py-1 h-full text-xs border border-slate-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-black" disabled={isReadOnly}/></FormField>
-                    <FormField label="Customer" className='items-start'><div className={`h-full border border-slate-300 rounded-r-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}><SearchableSelect<Customer> options={displayedCustomers} value={formData.customerId} onChange={val => { if(!isReadOnly) { setFormData(prev => prev ? { ...prev, customerId: val as number | null } : null); if (!val) { setSelectedCustomerObj(null); } else { const customer = (customers || []).find(c => c.id === val) || searchedCustomers.find(c => c.id === val); if(customer) setSelectedCustomerObj(customer); } } }} idKey="id" displayKey="name" placeholder="Search customer..." onSearch={setCustomerSearchTerm} isLoading={isSearchingCustomers && customerList.length === 0} onOpen={handleCustomerOpen}/></div></FormField>
+                    <FormField label="Customer" className='items-start'>
+                        <div className="flex items-center w-full h-full gap-1">
+                            <div className={`h-full flex-1 border border-slate-300 rounded-md shadow-sm text-black ${isReadOnly ? 'bg-slate-100' : ''}`}>
+                                <SearchableSelect<Customer> 
+                                    options={displayedCustomers} 
+                                    value={formData.customerId} 
+                                    onChange={val => {
+                                        if (!val) {
+                                            handleSelectCustomer(null);
+                                        } else {
+                                            const customer = (customers || []).find(c => c.id === val) || 
+                                                             searchedCustomers.find(c => c.id === val) || 
+                                                             customerCache.get(Number(val));
+                                            handleSelectCustomer(customer || null);
+                                        }
+                                    }} 
+                                    idKey="id" 
+                                    displayKey="name" 
+                                    placeholder="Search customer by name, city, or ID..." 
+                                    onSearch={handleCustomerSearch} 
+                                    isLoading={isSearchingCustomers} 
+                                    onOpen={handleCustomerOpen}
+                                    disabled={isReadOnly}
+                                />
+                            </div>
+                            {!isReadOnly && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCustomerSearchModalOpen(true)}
+                                    className="h-full px-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-md text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1 shadow-xs"
+                                    title="Search customer directory modal"
+                                >
+                                    <span>🔍 Search</span>
+                                </button>
+                            )}
+                        </div>
+                    </FormField>
                      {selectedCustomerObj && (
                         <div className="ml-[33.33%] pl-1 text-[10px] text-black whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address || ''}, ${selectedCustomerObj.city || ''} - ${selectedCustomerObj.pincode || ''}`}>
                             {selectedCustomerObj.address || ''}, {selectedCustomerObj.city || ''} - {selectedCustomerObj.pincode || ''}
@@ -2295,6 +2405,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       />
 
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
+      <CustomerSearchModal 
+        isOpen={isCustomerSearchModalOpen} 
+        onClose={() => setIsCustomerSearchModalOpen(false)} 
+        onSelect={(customer) => handleSelectCustomer(customer)} 
+        customers={customers} 
+        salesPersons={salesPersons} 
+      />
       <ProductAddModal isOpen={isProductModalOpen} onClose={() => { setIsProductModalOpen(false); setProductToEdit(null); }} onSave={handleSaveProduct} productToEdit={productToEdit} />
       <ProductSearchModal isOpen={isProductSearchModalOpen} onClose={() => setIsProductSearchModalOpen(false)} onSelect={handleAddProductFromSearch} quotationDate={formData?.quotationDate}/>
 

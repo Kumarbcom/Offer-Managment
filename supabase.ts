@@ -4,6 +4,14 @@ import type { Customer, Product, Quotation } from './types';
 
 type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'users' | 'deliveryChallans' | 'stockStatements' | 'pendingSOs';
 
+// In-memory cache of customers for instant lookups
+export const customerCache = new Map<number, Customer>();
+
+export function cacheCustomerLocally(customer: Customer) {
+    if (!customer || !customer.id) return;
+    customerCache.set(Number(customer.id), customer);
+}
+
 const parseSupabaseError = (error: unknown, context?: string): string => {
   const prefix = context ? `${context}: ` : '';
   try {
@@ -244,7 +252,7 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
     }
 
     if (tableName === 'customers') {
-        return {
+        const cust = {
             id: Number(item.id),
             name: item.name || '',
             address: item.address || '',
@@ -255,6 +263,8 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
                 singleCore: 0, multiCore: 0, specialCable: 0, accessories: 0
             })
         };
+        cacheCustomerLocally(cust);
+        return cust;
     }
 
     if (tableName === 'products') {
@@ -536,25 +546,75 @@ export async function getCustomersPaginated(options: any) {
     return { customers: mappedCustomers, count: count || 0 };
 }
 
-export async function searchCustomers(term: string) { 
-    if (!supabase) return [];
+export async function searchCustomers(term: string): Promise<Customer[]> { 
+    const cleanTerm = (term || '').trim();
+    const localMatches: Customer[] = [];
+
+    // 1. Instant in-memory check across customerCache (0ms)
+    if (cleanTerm) {
+        const words = cleanTerm.toLowerCase().split(/\s+/).filter(Boolean);
+        for (const c of customerCache.values()) {
+            const name = (c.name || '').toLowerCase();
+            const city = (c.city || '').toLowerCase();
+            const idStr = String(c.id || '');
+            if (words.every(w => name.includes(w) || city.includes(w) || idStr.includes(w))) {
+                localMatches.push(c);
+                if (localMatches.length >= 50) break;
+            }
+        }
+    } else {
+        let count = 0;
+        for (const c of customerCache.values()) {
+            localMatches.push(c);
+            if (++count >= 50) break;
+        }
+    }
+
+    if (!supabase) return localMatches;
+
+    // 2. Query Supabase
     try {
         let query = supabase.from('customers').select('*').limit(50);
-        if (term) query = query.ilike('name', `%${term}%`);
-        else query = query.order('id', { ascending: false });
+        if (cleanTerm) {
+            const sanitized = cleanTerm.replace(/\*/g, '%').replace(/\./g, '_');
+            const words = sanitized.split(/\s+/).filter(Boolean);
+            if (words.length > 0) {
+                const escapeQuote = (val: string) => val.replace(/"/g, '');
+                const nameConditions = words.map(w => `name.ilike."%${escapeQuote(w)}%"`).join(',');
+                const cityConditions = words.map(w => `city.ilike."%${escapeQuote(w)}%"`).join(',');
+                const isNumeric = !isNaN(Number(cleanTerm));
+                if (isNumeric) {
+                    query = query.or(`id.eq.${Number(cleanTerm)},and(${nameConditions}),and(${cityConditions})`);
+                } else {
+                    query = query.or(`and(${nameConditions}),and(${cityConditions})`);
+                }
+            }
+        } else {
+            query = query.order('id', { ascending: false });
+        }
 
         const timeoutPromise = new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error("Customer search timeout")), 3500)
+            setTimeout(() => reject(new Error("Customer search timeout")), 10000)
         );
         const { data, error } = await Promise.race([query, timeoutPromise]) as any;
         if (error) {
             console.warn("searchCustomers failed:", error.message);
-            return [];
+            return localMatches;
         }
-        return (data || []).map(item => mapFromSupabase('customers', item));
+        const remoteResults: Customer[] = (data || []).map((item: any) => mapFromSupabase('customers', item));
+        remoteResults.forEach(c => cacheCustomerLocally(c));
+
+        // Merge results: remoteResults + localMatches (deduplicated by id)
+        const combined = new Map<number, Customer>();
+        remoteResults.forEach(c => combined.set(c.id, c));
+        localMatches.forEach(c => {
+            if (!combined.has(c.id)) combined.set(c.id, c);
+        });
+
+        return Array.from(combined.values()).slice(0, 50);
     } catch (err) {
         console.warn("searchCustomers error:", err);
-        return [];
+        return localMatches;
     }
 }
 
@@ -571,6 +631,7 @@ export async function upsertCustomer(customer: any) {
     const payload = mapToSupabase('customers', customer);
     const { error } = await supabase.from('customers').upsert(payload, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, 'Failed to upsert customer'));
+    cacheCustomerLocally(customer);
 }
 
 export async function deleteCustomer(id: number) {
@@ -700,7 +761,9 @@ export async function upsertQuotation(quotation: Quotation): Promise<Quotation> 
                 throw new Error(parseSupabaseError(error, "Failed to save new quotation to cloud"));
             }
             
-            return mapFromSupabase('quotations', data);
+            const saved = mapFromSupabase('quotations', data);
+            broadcastQuotationUpdate(saved);
+            return saved;
         }
         throw new Error("Failed to generate a unique quotation number after multiple attempts due to high server traffic. Please try again.");
     } else {
@@ -719,7 +782,51 @@ export async function upsertQuotation(quotation: Quotation): Promise<Quotation> 
             throw new Error(parseSupabaseError(error, "Failed to update quotation in cloud"));
         }
         
-        return mapFromSupabase('quotations', data);
+        const saved = mapFromSupabase('quotations', data);
+        broadcastQuotationUpdate(saved);
+        return saved;
+    }
+}
+
+// Global broadcast channel for instant multi-user synchronization across devices & browsers
+export const liveQuotationSyncChannel = supabase ? supabase.channel('shared-live-quotations') : null;
+if (liveQuotationSyncChannel) {
+    liveQuotationSyncChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            console.log('⚡ Multi-user quotation sync broadcast channel connected');
+        }
+    });
+}
+
+export function broadcastQuotationUpdate(quotation: Quotation) {
+    if (!liveQuotationSyncChannel || !quotation) return;
+    try {
+        liveQuotationSyncChannel.send({
+            type: 'broadcast',
+            event: 'quotation_updated',
+            payload: quotation
+        });
+    } catch (e) {
+        console.warn('Failed to broadcast quotation update:', e);
+    }
+}
+
+export async function fetchLatestQuotations(limit: number = 100): Promise<Quotation[]> {
+    if (!supabase) return [];
+    try {
+        const { data, error } = await supabase
+            .from('quotations')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(limit);
+        if (error) {
+            console.warn("fetchLatestQuotations query error:", error);
+            return [];
+        }
+        return (data || []).map(q => mapFromSupabase('quotations', q));
+    } catch (e) {
+        console.warn("fetchLatestQuotations error:", e);
+        return [];
     }
 }
 
