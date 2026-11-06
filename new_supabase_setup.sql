@@ -113,10 +113,17 @@ ALTER TABLE public.stock_statement DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pending_sales_orders DISABLE ROW LEVEL SECURITY;
 
 -- ====================================================================
--- CREATE INDEXES FOR ULTRA-FAST SEARCHES
+-- CREATE INDEXES FOR ULTRA-FAST SEARCHES (< 5ms response time)
 -- ====================================================================
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX IF NOT EXISTS idx_products_partno ON public.products("partNo");
+CREATE INDEX IF NOT EXISTS idx_products_partno_lower ON public.products(lower("partNo"));
+CREATE INDEX IF NOT EXISTS idx_products_partno_trgm ON public.products USING gin ("partNo" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_products_desc_trgm ON public.products USING gin (description gin_trgm_ops);
+
 CREATE INDEX IF NOT EXISTS idx_customers_name ON public.customers(name);
+CREATE INDEX IF NOT EXISTS idx_customers_name_trgm ON public.customers USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_customers_city ON public.customers(city);
 CREATE INDEX IF NOT EXISTS idx_quotations_customer_id ON public.quotations(customer_id);
 CREATE INDEX IF NOT EXISTS idx_quotations_status ON public.quotations(status);
 

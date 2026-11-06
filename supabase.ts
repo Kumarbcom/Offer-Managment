@@ -864,12 +864,35 @@ export const productCacheById = new Map<number, Product>();
 export const productCacheByPartNo = new Map<string, Product>();
 export const productSearchCache = new Map<string, Product[]>();
 
-export function cacheProductLocally(product: Product) {
+// Eagerly hydrate product catalog cache from IndexedDB on startup for 0ms lookups
+if (typeof window !== 'undefined') {
+    idbGet<Product[]>('cache_products_catalog').then(cached => {
+        if (cached && Array.isArray(cached) && cached.length > 0) {
+            cached.forEach(p => cacheProductLocally(p, false));
+        }
+    }).catch(() => {});
+}
+
+let saveCatalogTimer: any = null;
+function scheduleProductCatalogPersist() {
+    if (typeof window === 'undefined') return;
+    if (saveCatalogTimer) clearTimeout(saveCatalogTimer);
+    saveCatalogTimer = setTimeout(() => {
+        const allCached = Array.from(productCacheById.values());
+        if (allCached.length > 0) {
+            idbSet('cache_products_catalog', allCached.slice(0, 5000)).catch(() => {});
+        }
+    }, 1500);
+}
+
+export function cacheProductLocally(product: Product, persist = true) {
     if (!product) return;
+    let added = false;
     if (product.id && typeof product.id === 'number' && product.id > 0) {
         const existing = productCacheById.get(product.id);
         if (!existing || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
             productCacheById.set(product.id, product);
+            added = true;
         }
     }
     if (product.partNo && typeof product.partNo === 'string' && product.partNo.trim()) {
@@ -877,8 +900,48 @@ export function cacheProductLocally(product: Product) {
         const existing = productCacheByPartNo.get(key);
         if (!existing || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
             productCacheByPartNo.set(key, product);
+            added = true;
         }
     }
+    if (added && persist) {
+        scheduleProductCatalogPersist();
+    }
+}
+
+/**
+ * Hydrates commonly quoted products from loaded quotations into in-memory product cache.
+ * Gives 0ms instant autocomplete for all items the team quotes regularly!
+ */
+export function hydrateProductsFromQuotations(quotations: Quotation[]) {
+    if (!quotations || !Array.isArray(quotations)) return;
+    quotations.forEach(q => {
+        if (q.details && Array.isArray(q.details)) {
+            q.details.forEach(item => {
+                if (item && item.partNo && item.partNo.trim()) {
+                    const cleanPartNo = item.partNo.trim();
+                    const existing = productCacheByPartNo.get(cleanPartNo.toLowerCase());
+                    if (!existing) {
+                        const p: Product = {
+                            id: item.productId || 0,
+                            partNo: cleanPartNo,
+                            description: item.description || '',
+                            uom: item.uom || 'M',
+                            weight: item.airFreightDetails?.weightPerMtr || 0,
+                            imageUrl: item.imageUrl || '',
+                            prices: item.price ? [{
+                                validFrom: '2000-01-01',
+                                validTo: '9999-12-31',
+                                price: item.price,
+                                lp: item.price,
+                                sp: 0
+                            } as any] : []
+                        };
+                        cacheProductLocally(p, false);
+                    }
+                }
+            });
+        }
+    });
 }
 
 export async function searchProducts(term: string): Promise<Product[]> { 
@@ -890,7 +953,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
         return productSearchCache.get(cacheKey)!;
     }
 
-    // 2. Local instant match from cached products
+    // 2. Local instant match from cached products (0ms response)
     const localMatches: Product[] = [];
     if (cleanTerm) {
         const words = cleanTerm.toLowerCase().split(/\s+/).filter(Boolean);
@@ -927,42 +990,76 @@ export async function searchProducts(term: string): Promise<Product[]> {
 
             const combined = new Map<number, any>();
 
-            // Query partNo first (fast btree index scan)
-            const { data: partData, error: partErr } = await supabase
-                .from('products')
-                .select('id,partNo,description,uom,weight,image_url,hsn_code')
-                .ilike('partNo', '%' + sanitized + '%')
-                .limit(30);
+            // PRIORITY 1: Exact candidate match on partNo (runs fast in ~2s, or <5ms if indexed)
+            // Generate candidate exact variations: exact, upper, lower, and stripped
+            const candidates = Array.from(new Set([
+                sanitized,
+                sanitized.toUpperCase(),
+                sanitized.toLowerCase(),
+                sanitized.replace(/[\s\-_]/g, '')
+            ])).filter(Boolean);
 
-            if (!partErr && partData) {
-                partData.forEach(p => combined.set(p.id, p));
+            const { data: exactData, error: exactErr } = await supabase
+                .from('products')
+                .select('id,partNo,description,uom,weight,image_url,hsn_code,prices')
+                .in('partNo', candidates)
+                .limit(10);
+
+            if (!exactErr && exactData && exactData.length > 0) {
+                exactData.forEach(p => combined.set(p.id, p));
             }
 
-            // If fewer than 15 results, also search description
-            if (combined.size < 15) {
-                const { data: descData } = await supabase
+            // If exact match was found, return immediately to give fast response!
+            if (combined.size > 0 && combined.size >= candidates.length) {
+                return Array.from(combined.values()).map(item => mapFromSupabase('products', item));
+            }
+
+            // PRIORITY 2: Prefix match on partNo (without leading % so index can be leveraged)
+            try {
+                const { data: partData, error: partErr } = await supabase
                     .from('products')
                     .select('id,partNo,description,uom,weight,image_url,hsn_code')
-                    .ilike('description', '%' + sanitized + '%')
-                    .limit(30);
+                    .ilike('partNo', sanitized + '%')
+                    .limit(20);
 
-                if (descData) {
-                    descData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
+                if (!partErr && partData) {
+                    partData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
+                }
+            } catch (pErr) {
+                console.warn("Prefix search skipped:", pErr);
+            }
+
+            // PRIORITY 3: If fewer than 10 results, search description
+            if (combined.size < 10) {
+                try {
+                    const { data: descData } = await supabase
+                        .from('products')
+                        .select('id,partNo,description,uom,weight,image_url,hsn_code')
+                        .ilike('description', '%' + sanitized + '%')
+                        .limit(20);
+
+                    if (descData) {
+                        descData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
+                    }
+                } catch (dErr) {
+                    console.warn("Description search skipped:", dErr);
                 }
             }
 
             const lightList = Array.from(combined.values()).slice(0, 30);
-            if (lightList.length > 0) {
-                // Fetch prices for the matched IDs in a single fast indexed lookup
-                const ids = lightList.map(p => p.id);
+            // Fetch prices for items that don't have prices yet
+            const missingPriceIds = lightList.filter(p => !p.prices || p.prices.length === 0).map(p => p.id);
+            if (missingPriceIds.length > 0) {
                 const { data: priceData } = await supabase
                     .from('products')
                     .select('id,prices')
-                    .in('id', ids);
+                    .in('id', missingPriceIds);
 
                 const priceMap = new Map((priceData || []).map(p => [p.id, p.prices || []]));
                 lightList.forEach(p => {
-                    p.prices = priceMap.get(p.id) || [];
+                    if (!p.prices || p.prices.length === 0) {
+                        p.prices = priceMap.get(p.id) || [];
+                    }
                 });
             }
 
@@ -970,7 +1067,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
         })();
 
         const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("searchProducts timeout")), 8000)
+            setTimeout(() => reject(new Error("searchProducts timeout")), 12000)
         );
 
         const results = await Promise.race([queryPromise, timeoutPromise]);

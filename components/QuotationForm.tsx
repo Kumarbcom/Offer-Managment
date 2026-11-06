@@ -15,7 +15,7 @@ import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFre
 import { AIAssistantPanel } from './AIAssistantPanel';
 import { QuotationDiffModal } from './QuotationDiffModal';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, customerCache, cacheCustomerLocally } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, productCacheById, customerCache, cacheCustomerLocally, hydrateProductsFromQuotations } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
 
@@ -506,6 +506,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       setSearchedCustomers(instantMatches);
   }, [customers]);
 
+  // Eagerly hydrate commonly quoted products from quotations for 0ms autocomplete
+  useEffect(() => {
+      if (quotations && quotations.length > 0) {
+          hydrateProductsFromQuotations(quotations);
+      }
+  }, [quotations]);
+
   const handleProductOpen = useCallback(() => {
       if (searchedProducts.length === 0) {
           // Instantly populate top 50 products from cache (0ms!)
@@ -808,7 +815,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       try {
         const results = await searchCustomers(debouncedCustomerSearchTerm);
         if (!isCancelled) {
-          if (selectedCustomerObj && !results.some(c => c.id === selectedCustomerObj.id)) {
+          if (!debouncedCustomerSearchTerm && selectedCustomerObj && !results.some(c => c.id === selectedCustomerObj.id)) {
             setSearchedCustomers([selectedCustomerObj, ...results]);
           } else {
             setSearchedCustomers(results);
@@ -971,6 +978,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         const numericProductId = Number(productId);
         const product = searchedProducts.find(p => p.id === numericProductId) || 
                         fetchedProducts.get(numericProductId) || 
+                        productCacheById.get(numericProductId) ||
                         (numericProductId ? Array.from(productCacheByPartNo.values()).find(p => p.id === numericProductId) : undefined);
         if (product) {
             setFetchedProducts(prev => new Map(prev).set(product.id, product));

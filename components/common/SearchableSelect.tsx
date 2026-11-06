@@ -149,8 +149,10 @@ export const SearchableSelect = <T extends Record<string, any>,>(
       const disp = String(option[displayKey] || '').toLowerCase();
       const desc = String(option.description || '').toLowerCase();
       const city = String(option.city || '').toLowerCase();
+      const address = String(option.address || '').toLowerCase();
+      const pincode = String(option.pincode || '').toLowerCase();
       const idStr = String(option[idKey] || '');
-      return words.every(w => disp.includes(w) || desc.includes(w) || city.includes(w) || idStr.includes(w));
+      return words.every(w => disp.includes(w) || desc.includes(w) || city.includes(w) || address.includes(w) || pincode.includes(w) || idStr.includes(w));
     });
   }, [options, searchTerm, displayKey, idKey]);
 
