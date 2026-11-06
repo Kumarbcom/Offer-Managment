@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchProducts } from '../supabase';
+import { searchProducts, productCacheByPartNo } from '../supabase';
 
 interface ProductSearchModalProps {
   isOpen: boolean;
@@ -65,21 +65,49 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
   const [discount, setDiscount] = useState('0');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const debouncedSearchTerm = useDebounce(searchTerm, 250);
+
+  // Instant in-memory cache lookup on every keystroke (0ms response)
+  useEffect(() => {
+    const clean = searchTerm.trim().toLowerCase();
+    if (clean.length >= 2) {
+      const words = clean.split(/\s+/).filter(Boolean);
+      const instant: Product[] = [];
+      for (const p of productCacheByPartNo.values()) {
+        const pNo = (p.partNo || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        if (words.every(w => pNo.includes(w) || desc.includes(w))) {
+          instant.push(p);
+          if (instant.length >= 40) break;
+        }
+      }
+      if (instant.length > 0) {
+        setSearchResults(instant);
+      }
+    } else if (clean.length === 0) {
+      setSearchResults([]);
+    }
+  }, [searchTerm]);
 
   useEffect(() => {
-    if (debouncedSearchTerm.length < 2) {
-      setSearchResults([]);
+    if (debouncedSearchTerm.trim().length < 2) {
       return;
     }
     
+    let isCancelled = false;
     const performSearch = async () => {
       setIsLoading(true);
-      const results = await searchProducts(debouncedSearchTerm);
-      setSearchResults(results);
-      setIsLoading(false);
-    }
+      try {
+        const results = await searchProducts(debouncedSearchTerm);
+        if (!isCancelled) {
+          setSearchResults(results);
+        }
+      } finally {
+        if (!isCancelled) setIsLoading(false);
+      }
+    };
     performSearch();
+    return () => { isCancelled = true; };
   }, [debouncedSearchTerm]);
 
 

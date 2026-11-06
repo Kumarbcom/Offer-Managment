@@ -252,18 +252,28 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       }
       return customerList.slice(0, 50);
     }
-    const words = customerSearchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+    const cleanLower = customerSearchTerm.trim().toLowerCase();
+    const words = cleanLower.split(/\s+/).filter(Boolean);
     const matches = customerList.filter(c => {
       const name = (c.name || '').toLowerCase();
       const city = (c.city || '').toLowerCase();
       const idStr = String(c.id || '');
       return words.every(w => name.includes(w) || city.includes(w) || idStr.includes(w));
-    }).slice(0, 50);
+    });
 
-    if (selectedCustomerObj && !matches.some(c => c.id === selectedCustomerObj.id)) {
-      return [selectedCustomerObj, ...matches];
-    }
-    return matches;
+    matches.sort((a, b) => {
+      const aName = (a.name || '').toLowerCase();
+      const bName = (b.name || '').toLowerCase();
+      const aExact = aName === cleanLower ? 1 : 0;
+      const bExact = bName === cleanLower ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+      const aStarts = aName.startsWith(cleanLower) ? 1 : 0;
+      const bStarts = bName.startsWith(cleanLower) ? 1 : 0;
+      if (aStarts !== bStarts) return bStarts - aStarts;
+      return aName.localeCompare(bName);
+    });
+
+    return matches.slice(0, 50);
   }, [customerList, customerSearchTerm, selectedCustomerObj]);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -475,23 +485,25 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleCustomerSearch = useCallback((term: string) => {
       setCustomerSearchTerm(term);
-      if (term && term.trim()) {
-          const words = term.toLowerCase().split(/\s+/).filter(Boolean);
-          const instantMatches: Customer[] = [];
-          const source = (customers && customers.length > 0) ? customers : Array.from(customerCache.values());
-          for (const c of source) {
-              const name = (c.name || '').toLowerCase();
-              const city = (c.city || '').toLowerCase();
-              const idStr = String(c.id || '');
-              if (words.every(w => name.includes(w) || city.includes(w) || idStr.includes(w))) {
-                  instantMatches.push(c);
-                  if (instantMatches.length >= 50) break;
-              }
-          }
-          if (instantMatches.length > 0) {
-              setSearchedCustomers(instantMatches);
+      const clean = (term || '').trim();
+      if (!clean) {
+          const topList = (customers && customers.length > 0) ? customers.slice(0, 50) : Array.from(customerCache.values()).slice(0, 50);
+          setSearchedCustomers(topList);
+          return;
+      }
+      const words = clean.toLowerCase().split(/\s+/).filter(Boolean);
+      const instantMatches: Customer[] = [];
+      const source = (customers && customers.length > 0) ? customers : Array.from(customerCache.values());
+      for (const c of source) {
+          const name = (c.name || '').toLowerCase();
+          const city = (c.city || '').toLowerCase();
+          const idStr = String(c.id || '');
+          if (words.every(w => name.includes(w) || city.includes(w) || idStr.includes(w))) {
+              instantMatches.push(c);
+              if (instantMatches.length >= 50) break;
           }
       }
+      setSearchedCustomers(instantMatches);
   }, [customers]);
 
   const handleProductOpen = useCallback(() => {
@@ -515,21 +527,23 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   const handleProductSearch = useCallback((term: string) => {
       setProductSearchTerm(term);
-      if (term && term.trim()) {
-          const words = term.toLowerCase().split(/\s+/).filter(Boolean);
-          const instantMatches: Product[] = [];
-          for (const p of productCacheByPartNo.values()) {
-              const pNo = (p.partNo || '').toLowerCase();
-              const desc = (p.description || '').toLowerCase();
-              if (words.every(w => pNo.includes(w) || desc.includes(w))) {
-                  instantMatches.push(p);
-                  if (instantMatches.length >= 50) break;
-              }
-          }
-          if (instantMatches.length > 0) {
-              setSearchedProducts(instantMatches);
+      const clean = (term || '').trim();
+      if (!clean) {
+          const topList = Array.from(productCacheByPartNo.values()).slice(0, 50);
+          setSearchedProducts(topList);
+          return;
+      }
+      const words = clean.toLowerCase().split(/\s+/).filter(Boolean);
+      const instantMatches: Product[] = [];
+      for (const p of productCacheByPartNo.values()) {
+          const pNo = (p.partNo || '').toLowerCase();
+          const desc = (p.description || '').toLowerCase();
+          if (words.every(w => pNo.includes(w) || desc.includes(w))) {
+              instantMatches.push(p);
+              if (instantMatches.length >= 50) break;
           }
       }
+      setSearchedProducts(instantMatches);
   }, []);
 
   // Reset customer object whenever the quotation being edited changes.
@@ -2112,9 +2126,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             uom: item.uom || 'M',
                             brand: (item as any).brand || 'Lapp'
                         } as any as Product : undefined);
-                        const optionsForSelect = [...searchedProducts];
-                        if(currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id || (p.partNo && p.partNo === currentProduct.partNo))) {
-                            optionsForSelect.unshift(currentProduct);
+                        const cleanProductTerm = (productSearchTerm || '').trim().toLowerCase();
+                        let optionsForSelect = [...searchedProducts];
+                        if (!cleanProductTerm) {
+                            if (currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id || (p.partNo && p.partNo === currentProduct.partNo))) {
+                                optionsForSelect.unshift(currentProduct);
+                            }
+                        } else {
+                            if (currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id || (p.partNo && p.partNo === currentProduct.partNo))) {
+                                const cNo = (currentProduct.partNo || '').toLowerCase();
+                                const cDesc = (currentProduct.description || '').toLowerCase();
+                                if (cNo.includes(cleanProductTerm) || cDesc.includes(cleanProductTerm)) {
+                                    optionsForSelect.unshift(currentProduct);
+                                }
+                            }
                         }
 
                         // In-Line Diff Calculation

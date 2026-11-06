@@ -1,6 +1,7 @@
 
 import { supabase } from './supabaseClient';
 import type { Customer, Product, Quotation } from './types';
+import { idbGet } from './utils/idbStorage';
 
 type TableName = 'salesPersons' | 'customers' | 'products' | 'quotations' | 'users' | 'deliveryChallans' | 'stockStatements' | 'pendingSOs';
 
@@ -10,6 +11,15 @@ export const customerCache = new Map<number, Customer>();
 export function cacheCustomerLocally(customer: Customer) {
     if (!customer || !customer.id) return;
     customerCache.set(Number(customer.id), customer);
+}
+
+// Eagerly hydrate customer cache from IndexedDB on startup for 0ms initial search response
+if (typeof window !== 'undefined') {
+    idbGet<Customer[]>('cache_customers').then(cached => {
+        if (cached && Array.isArray(cached) && cached.length > 0) {
+            cached.forEach(c => cacheCustomerLocally(c));
+        }
+    }).catch(() => {});
 }
 
 const parseSupabaseError = (error: unknown, context?: string): string => {
@@ -570,31 +580,39 @@ export async function searchCustomers(term: string): Promise<Customer[]> {
         }
     }
 
-    if (!supabase) return localMatches;
+    // If local cache has plenty of matching results (>= 25), return them immediately (0ms!)
+    if (localMatches.length >= 25 || !supabase) {
+        const cleanLower = cleanTerm.toLowerCase();
+        return localMatches.sort((a, b) => {
+            const aName = (a.name || '').toLowerCase();
+            const bName = (b.name || '').toLowerCase();
+            const aExact = aName === cleanLower ? 1 : 0;
+            const bExact = bName === cleanLower ? 1 : 0;
+            if (aExact !== bExact) return bExact - aExact;
+            const aStarts = aName.startsWith(cleanLower) ? 1 : 0;
+            const bStarts = bName.startsWith(cleanLower) ? 1 : 0;
+            if (aStarts !== bStarts) return bStarts - aStarts;
+            return aName.localeCompare(bName);
+        }).slice(0, 50);
+    }
 
     // 2. Query Supabase
     try {
         let query = supabase.from('customers').select('*').limit(50);
         if (cleanTerm) {
-            const sanitized = cleanTerm.replace(/\*/g, '%').replace(/\./g, '_');
-            const words = sanitized.split(/\s+/).filter(Boolean);
-            if (words.length > 0) {
-                const escapeQuote = (val: string) => val.replace(/"/g, '');
-                const nameConditions = words.map(w => `name.ilike."%${escapeQuote(w)}%"`).join(',');
-                const cityConditions = words.map(w => `city.ilike."%${escapeQuote(w)}%"`).join(',');
-                const isNumeric = !isNaN(Number(cleanTerm));
-                if (isNumeric) {
-                    query = query.or(`id.eq.${Number(cleanTerm)},and(${nameConditions}),and(${cityConditions})`);
-                } else {
-                    query = query.or(`and(${nameConditions}),and(${cityConditions})`);
-                }
+            const sanitized = cleanTerm.replace(/[%_\*]/g, '').trim();
+            const isNumeric = !isNaN(Number(sanitized));
+            if (isNumeric) {
+                query = query.or(`id.eq.${Number(sanitized)},name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`);
+            } else {
+                query = query.or(`name.ilike.%${sanitized}%,city.ilike.%${sanitized}%`);
             }
         } else {
             query = query.order('id', { ascending: false });
         }
 
         const timeoutPromise = new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error("Customer search timeout")), 10000)
+            setTimeout(() => reject(new Error("Customer search timeout")), 6000)
         );
         const { data, error } = await Promise.race([query, timeoutPromise]) as any;
         if (error) {
@@ -611,7 +629,18 @@ export async function searchCustomers(term: string): Promise<Customer[]> {
             if (!combined.has(c.id)) combined.set(c.id, c);
         });
 
-        return Array.from(combined.values()).slice(0, 50);
+        const cleanLower = cleanTerm.toLowerCase();
+        return Array.from(combined.values()).sort((a, b) => {
+            const aName = (a.name || '').toLowerCase();
+            const bName = (b.name || '').toLowerCase();
+            const aExact = aName === cleanLower ? 1 : 0;
+            const bExact = bName === cleanLower ? 1 : 0;
+            if (aExact !== bExact) return bExact - aExact;
+            const aStarts = aName.startsWith(cleanLower) ? 1 : 0;
+            const bStarts = bName.startsWith(cleanLower) ? 1 : 0;
+            if (aStarts !== bStarts) return bStarts - aStarts;
+            return aName.localeCompare(bName);
+        }).slice(0, 50);
     } catch (err) {
         console.warn("searchCustomers error:", err);
         return localMatches;
@@ -883,28 +912,65 @@ export async function searchProducts(term: string): Promise<Product[]> {
 
     if (!supabase) return localMatches;
 
-    // 3. Background/concurrent query with 3.5s timeout
+    // 3. Fast lightweight remote search without statement timeouts
     try {
         const queryPromise = (async () => {
-            let query = supabase.from('products').select('*').limit(50);
-            if (cleanTerm) {
-                const sanitizedTerm = cleanTerm.replace(/\*/g, '%').replace(/\./g, '_');
-                const words = sanitizedTerm.split(/\s+/).filter(w => w.length > 0);
-                if (words.length > 0) {
-                    const escapeQuote = (val: string) => val.replace(/"/g, '');
-                    const descConditions = words.map(w => `description.ilike."%${escapeQuote(w)}%"`).join(',');
-                    query = query.or(`partNo.ilike."%${escapeQuote(sanitizedTerm)}%",and(${descConditions})`);
-                }
-            } else {
-                query = query.order('id', { ascending: false });
+            const sanitized = cleanTerm.replace(/[%_\*]/g, '').trim();
+            if (!sanitized) {
+                const { data } = await supabase
+                    .from('products')
+                    .select('id,partNo,description,uom,weight,image_url,hsn_code,prices')
+                    .order('id', { ascending: false })
+                    .limit(30);
+                return (data || []).map(item => mapFromSupabase('products', item));
             }
-            const { data, error } = await query;
-            if (error) throw error;
-            return (data || []).map(item => mapFromSupabase('products', item));
+
+            const combined = new Map<number, any>();
+
+            // Query partNo first (fast btree index scan)
+            const { data: partData, error: partErr } = await supabase
+                .from('products')
+                .select('id,partNo,description,uom,weight,image_url,hsn_code')
+                .ilike('partNo', '%' + sanitized + '%')
+                .limit(30);
+
+            if (!partErr && partData) {
+                partData.forEach(p => combined.set(p.id, p));
+            }
+
+            // If fewer than 15 results, also search description
+            if (combined.size < 15) {
+                const { data: descData } = await supabase
+                    .from('products')
+                    .select('id,partNo,description,uom,weight,image_url,hsn_code')
+                    .ilike('description', '%' + sanitized + '%')
+                    .limit(30);
+
+                if (descData) {
+                    descData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
+                }
+            }
+
+            const lightList = Array.from(combined.values()).slice(0, 30);
+            if (lightList.length > 0) {
+                // Fetch prices for the matched IDs in a single fast indexed lookup
+                const ids = lightList.map(p => p.id);
+                const { data: priceData } = await supabase
+                    .from('products')
+                    .select('id,prices')
+                    .in('id', ids);
+
+                const priceMap = new Map((priceData || []).map(p => [p.id, p.prices || []]));
+                lightList.forEach(p => {
+                    p.prices = priceMap.get(p.id) || [];
+                });
+            }
+
+            return lightList.map(item => mapFromSupabase('products', item));
         })();
 
         const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("searchProducts timeout")), 3500)
+            setTimeout(() => reject(new Error("searchProducts timeout")), 8000)
         );
 
         const results = await Promise.race([queryPromise, timeoutPromise]);
@@ -917,26 +983,27 @@ export async function searchProducts(term: string): Promise<Product[]> {
             const key = p.id || p.partNo;
             if (!combinedMap.has(key)) combinedMap.set(key, p);
         });
-        const finalResults = Array.from(combinedMap.values()).slice(0, 50);
 
-        const now = new Date();
-        finalResults.sort((a, b) => {
-            const getPrice = (p: Product) => {
-                if (!p.prices || p.prices.length === 0) return 0;
-                const active = p.prices.find(pr => {
-                    const from = new Date(pr.validFrom);
-                    const to = new Date(pr.validTo);
-                    return now >= from && now <= to;
-                }) || p.prices[0];
-                return active.lp || active.sp || 0;
-            };
-            return getPrice(a) - getPrice(b);
-        });
+        // Exact / prefix partNo matches first!
+        const cleanLower = cleanTerm.toLowerCase();
+        const finalResults = Array.from(combinedMap.values()).sort((a, b) => {
+            const aPart = (a.partNo || '').toLowerCase();
+            const bPart = (b.partNo || '').toLowerCase();
+            const aExact = aPart === cleanLower ? 1 : 0;
+            const bExact = bPart === cleanLower ? 1 : 0;
+            if (aExact !== bExact) return bExact - aExact;
+
+            const aStarts = aPart.startsWith(cleanLower) ? 1 : 0;
+            const bStarts = bPart.startsWith(cleanLower) ? 1 : 0;
+            if (aStarts !== bStarts) return bStarts - aStarts;
+
+            return aPart.localeCompare(bPart);
+        }).slice(0, 40);
 
         productSearchCache.set(cacheKey, finalResults);
         return finalResults;
     } catch (err) {
-        console.warn("searchProducts remote call failed or timed out, returning local matches:", err);
+        console.warn("searchProducts remote call failed, returning local matches:", err);
         return localMatches;
     }
 }
