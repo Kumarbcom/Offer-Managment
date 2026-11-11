@@ -62,40 +62,28 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
     // Default pass-through for tables without specific mapping
     if (tableName === 'quotations') {
         const payload: any = {
-            quotation_date: item.quotationDate,
-            quotationDate: item.quotationDate,
-            enquiry_date: item.enquiryDate,
-            enquiryDate: item.enquiryDate,
-            customer_id: item.customerId,
-            customerId: item.customerId,
-            sales_person_id: item.salesPersonId,
-            salesPersonId: item.salesPersonId,
-            contact_person: item.contactPerson,
-            contactPerson: item.contactPerson,
-            contact_number: item.contactNumber,
-            contactNumber: item.contactNumber,
-            other_terms: item.otherTerms,
-            otherTerms: item.otherTerms,
-            payment_terms: item.paymentTerms,
-            paymentTerms: item.paymentTerms,
-            prepared_by: item.preparedBy,
-            preparedBy: item.preparedBy,
-            products_brand: item.productsBrand,
-            productsBrand: item.productsBrand,
-            mode_of_enquiry: item.modeOfEnquiry,
-            modeOfEnquiry: item.modeOfEnquiry,
-            status: item.status,
-            comments: item.comments,
-            details: item.details,
-            gst_added: item.gstAdded,
-            gstAdded: item.gstAdded
+            quotation_date: item.quotationDate || item.quotation_date || null,
+            enquiry_date: item.enquiryDate || item.enquiry_date || null,
+            customer_id: item.customerId !== undefined ? item.customerId : item.customer_id,
+            sales_person_id: item.salesPersonId !== undefined ? item.salesPersonId : item.sales_person_id,
+            contact_person: item.contactPerson !== undefined ? item.contactPerson : (item.contact_person || ''),
+            contact_number: item.contactNumber !== undefined ? item.contactNumber : (item.contact_number || ''),
+            other_terms: item.otherTerms !== undefined ? item.otherTerms : (item.other_terms || ''),
+            payment_terms: item.paymentTerms !== undefined ? item.paymentTerms : (item.payment_terms || ''),
+            prepared_by: item.preparedBy !== undefined ? item.preparedBy : (item.prepared_by || 'Kumar'),
+            products_brand: item.productsBrand !== undefined ? item.productsBrand : (item.products_brand || 'Lapp'),
+            mode_of_enquiry: item.modeOfEnquiry !== undefined ? item.modeOfEnquiry : (item.mode_of_enquiry || 'Customer Email'),
+            status: item.status || 'Open',
+            comments: item.comments || '',
+            details: item.details || [],
+            gst_added: item.gstAdded !== undefined ? item.gstAdded : (item.gst_added !== undefined ? item.gst_added : true)
         };
         if (item.id && item.id !== 0) {
             payload.id = item.id;
         }
         // Persist revisionNumber inside details JSONB without requiring database schema changes
         if (payload.details && payload.details.length > 0) {
-            payload.details = payload.details.map((d, idx) => {
+            payload.details = payload.details.map((d: any, idx: number) => {
                 if (idx === 0) {
                     const first = { ...d };
                     if (item.revisionNumber !== undefined) first._rev = item.revisionNumber;
@@ -108,17 +96,20 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
         return payload;
     }
     if (tableName === 'customers') {
-        return {
-            id: item.id,
-            name: item.name,
-            address: item.address,
-            city: item.city,
-            pincode: item.pincode,
-            sales_person_id: item.salesPersonId,
-            salesPersonId: item.salesPersonId,
-            discount_structure: item.discountStructure,
-            discountStructure: item.discountStructure
+        const spId = item.sales_person_id !== undefined ? item.sales_person_id : item.salesPersonId;
+        const disc = item.discount_structure !== undefined ? item.discount_structure : item.discountStructure;
+        const payload: any = {
+            name: item.name || '',
+            address: item.address || '',
+            city: item.city || '',
+            pincode: item.pincode || '',
+            sales_person_id: spId !== undefined && spId !== null && spId !== '' ? Number(spId) : null,
+            discount_structure: disc || {}
         };
+        if (item.id && item.id !== 0) {
+            payload.id = item.id;
+        }
+        return payload;
     }
     if (tableName === 'users') {
         const payload: any = {
