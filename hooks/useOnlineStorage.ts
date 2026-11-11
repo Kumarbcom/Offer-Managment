@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, liveQuotationSyncChannel } from '../supabase';
+import { get, set, toSupabaseTableName, mapFromSupabase, liveQuotationSyncChannel } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
@@ -94,30 +94,6 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                 setIsLoading(true);
             }
             setError(null);
-
-            // Fast stage 1 for quotations: immediately fetch latest 100 offers (takes ~1-2s vs 40s)
-            if (tableName === 'quotations') {
-                try {
-                    const latest = await fetchLatestQuotations(100);
-                    if (latest && latest.length > 0 && isMounted) {
-                        setState(prev => {
-                            const current = prev || [];
-                            const map = new Map<number, any>();
-                            // Keep any existing items
-                            current.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
-                            // Overwrite/insert with latest fresh items from DB
-                            latest.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
-                            const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
-                            memoryCache.set(tableName, merged);
-                            idbSet(`cache_${tableName}`, merged);
-                            return merged as T[];
-                        });
-                        setIsLoading(false);
-                    }
-                } catch (fastErr) {
-                    console.warn("Fast quotations preview sync:", fastErr);
-                }
-            }
 
             try {
                 let data = await get(tableName);
@@ -267,29 +243,26 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             liveQuotationSyncChannel.on('broadcast', { event: 'quotation_updated' }, broadcastListener);
         }
 
-        // Periodic background polling & tab-focus sync for quotations (every 12 seconds)
-        let pollInterval: any = null;
+        // Real-time subscriptions handle live changes. Refresh once when the tab regains focus.
         let removeWindowListeners: (() => void) | undefined;
 
         if (tableName === 'quotations') {
             const syncTopQuotations = async () => {
-                if (!isMounted) return;
+                if (!isMounted || document.visibilityState === 'hidden') return;
                 try {
-                    const freshTop = await fetchLatestQuotations(30);
-                    if (freshTop && freshTop.length > 0 && isMounted) {
+                    const { data, error } = await supabase
+                        .from('quotations')
+                        .select('id, status, comments, quotation_date, quotationDate, enquiry_date, enquiryDate, customer_id, customerId, sales_person_id, salesPersonId, contact_person, contactPerson, contact_number, contactNumber, other_terms, otherTerms, payment_terms, paymentTerms, prepared_by, preparedBy, products_brand, productsBrand, mode_of_enquiry, modeOfEnquiry, other_terms, otherTerms, payment_terms, paymentTerms, status, comments, details, gst_added, gstAdded')
+                        .order('id', { ascending: false })
+                        .limit(30);
+                    if (error) throw error;
+                    const freshTop = (data || []).map((q: any) => mapFromSupabase('quotations', q));
+                    if (freshTop.length > 0 && isMounted) {
                         setState(prev => {
                             const list = prev || [];
-                            let hasDiff = false;
                             const map = new Map<number, any>();
                             list.forEach((q: any) => { if (q && q.id) map.set(q.id, q); });
-                            freshTop.forEach((q: any) => {
-                                const existing = map.get(q.id);
-                                if (!existing || existing.status !== q.status || existing.comments !== q.comments) {
-                                    hasDiff = true;
-                                    map.set(q.id, q);
-                                }
-                            });
-                            if (!hasDiff) return prev;
+                            freshTop.forEach((q: any) => map.set(q.id, q));
                             const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
                             memoryCache.set('quotations', merged);
                             idbSet('cache_quotations', merged);
@@ -297,14 +270,12 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                         });
                     }
                 } catch (e) {
-                    // silent polling catch
+                    console.warn('Quotation focus refresh failed:', e);
                 }
             };
 
-            pollInterval = setInterval(syncTopQuotations, 12000);
-
             const handleFocusOrVisible = () => {
-                syncTopQuotations();
+                if (document.visibilityState !== 'hidden') syncTopQuotations();
             };
 
             const handleCustomSync = () => {
@@ -325,7 +296,6 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         return () => {
             isMounted = false;
             if (channel) supabase.removeChannel(channel);
-            if (pollInterval) clearInterval(pollInterval);
             if (removeWindowListeners) removeWindowListeners();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
