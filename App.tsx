@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';
+import { isDataSaverEnabled, setDataSaverEnabled } from './supabase';
 import { Login } from './components/Login';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { DEFAULT_LOGO_BASE64 } from './constants';
@@ -48,6 +49,17 @@ export const App = () => {
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [quotationFilter, setQuotationFilter] = useState<{ customerIds?: number[], status?: QuotationStatus } | null>(null);
   const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
+  const [isDataSaver, setIsDataSaver] = useState(isDataSaverEnabled());
+
+  useEffect(() => {
+    const handleDataSaverChanged = (e: any) => {
+      if (e && e.detail && typeof e.detail.enabled === 'boolean') {
+        setIsDataSaver(e.detail.enabled);
+      }
+    };
+    window.addEventListener('data_saver_changed', handleDataSaverChanged);
+    return () => window.removeEventListener('data_saver_changed', handleDataSaverChanged);
+  }, []);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [globalSearchInput, setGlobalSearchInput] = useState('');
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
@@ -415,6 +427,22 @@ export const App = () => {
             <button className="text-slate-400 hover:text-slate-600 relative hidden md:block">
                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+            </button>
+            <button
+               onClick={() => {
+                 const next = !isDataSaver;
+                 setIsDataSaver(next);
+                 setDataSaverEnabled(next);
+               }}
+               className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                 isDataSaver 
+                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+               }`}
+               title="Toggle Low Egress Mode (Data Saver) to minimize Supabase network bandwidth"
+            >
+               <span className={`w-1.5 h-1.5 rounded-full ${isDataSaver ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+               <span>{isDataSaver ? '⚡ Data Saver ON' : 'Data Saver OFF'}</span>
             </button>
             <button onClick={() => setIsStorageModalOpen(true)} className="text-slate-400 hover:text-slate-600 relative" title="Storage Status">
                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10l8 4m8-4V7l-8-4m0 10L4 7m8 4v10M4 7v10l8 4" /></svg>

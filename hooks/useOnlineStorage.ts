@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, fetchQuotationStatuses, fetchSingleQuotation, updateQuotationField, liveQuotationSyncChannel } from '../supabase';
+import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, fetchQuotationStatuses, fetchSingleQuotation, updateQuotationField, liveQuotationSyncChannel, isDataSaverEnabled } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
@@ -305,6 +305,10 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             };
 
             const handleFocusOrVisible = () => {
+                // When Data Saver is ON, do NOT auto-refetch on tab focus to save egress
+                if (isDataSaverEnabled()) return;
+                // Throttle: only refetch if at least 5 minutes have elapsed since last sync
+                if (Date.now() - lastSyncTime < 300000) return;
                 if (document.visibilityState !== 'hidden') syncTopQuotations();
             };
 

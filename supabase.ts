@@ -836,14 +836,27 @@ export function broadcastQuotationUpdate(quotation: Quotation) {
     }
 }
 
-export async function fetchLatestQuotations(limit: number = 50): Promise<Quotation[]> {
+export function isDataSaverEnabled(): boolean {
+    if (typeof window === 'undefined') return true;
+    const val = localStorage.getItem('data_saver_mode');
+    return val === null ? true : val === 'true';
+}
+
+export function setDataSaverEnabled(enabled: boolean) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('data_saver_mode', enabled ? 'true' : 'false');
+    window.dispatchEvent(new CustomEvent('data_saver_changed', { detail: { enabled } }));
+}
+
+export async function fetchLatestQuotations(limit?: number): Promise<Quotation[]> {
     if (!supabase) return [];
+    const effectiveLimit = limit !== undefined ? limit : (isDataSaverEnabled() ? 20 : 40);
     try {
         const { data, error } = await supabase
             .from('quotations')
             .select('*')
             .order('id', { ascending: false })
-            .limit(limit);
+            .limit(effectiveLimit);
         if (error) {
             console.warn("fetchLatestQuotations query error:", error);
             return [];
@@ -1119,7 +1132,24 @@ export async function searchProducts(term: string): Promise<Product[]> {
                 }
             }
 
-            const lightList = Array.from(combined.values()).slice(0, 50);
+            const maxResults = isDataSaverEnabled() ? 25 : 50;
+            const lightList = Array.from(combined.values()).slice(0, maxResults);
+
+            // EGRESS OPTIMIZATION: Strip heavy base64 image strings from search result payloads
+            if (isDataSaverEnabled()) {
+                lightList.forEach(p => {
+                    if (p.prices && Array.isArray(p.prices)) {
+                        p.prices = p.prices.map((pr: any) => {
+                            if (pr && pr.imageUrl && pr.imageUrl.startsWith('data:')) {
+                                const { imageUrl, ...rest } = pr;
+                                return rest;
+                            }
+                            return pr;
+                        });
+                    }
+                });
+            }
+
             return lightList.map(item => mapFromSupabase('products', item));
         })();
 

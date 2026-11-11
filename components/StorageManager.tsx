@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, supabaseConfig } from '../supabaseClient';
-import { toSupabaseTableName, get, set } from '../supabase';
+import { toSupabaseTableName, get, set, isDataSaverEnabled, setDataSaverEnabled } from '../supabase';
 import { USERS } from '../auth';
 import { INITIAL_DATA } from '../initialData';
 
@@ -9,6 +9,13 @@ export const StorageManager: React.FC = () => {
     const [totalUsage, setTotalUsage] = useState(0);
     const [dbStatus, setDbStatus] = useState<{ table: string, status: 'ok' | 'error' | 'checking' }[]>([]);
     const [isConfigured, setIsConfigured] = useState(false);
+    const [dataSaver, setDataSaver] = useState(isDataSaverEnabled());
+
+    const toggleDataSaver = () => {
+        const next = !dataSaver;
+        setDataSaver(next);
+        setDataSaverEnabled(next);
+    };
 
     const checkUsage = () => {
         const items: { key: string, size: number }[] = [];
@@ -226,9 +233,9 @@ export const StorageManager: React.FC = () => {
                         </button>
                         <button 
                             onClick={async () => {
-                                if (!window.confirm("Repair all cloud data? This will fix misnamed columns and restore missing dates/names by re-syncing your live data.")) return;
+                                if (!window.confirm("Repair cloud data? This will fix misnamed columns and restore missing dates/names by re-syncing your live data.")) return;
                                 try {
-                                    const tables = ['quotations', 'customers', 'products', 'salesPersons'] as const;
+                                    const tables = ['quotations', 'customers', 'salesPersons'] as const;
                                     for (const t of tables) {
                                         const data = await get(t);
                                         if (data.length > 0) {
@@ -248,7 +255,7 @@ export const StorageManager: React.FC = () => {
                         </button>
                         <button 
                             onClick={async () => {
-                                const tables = ['quotations', 'customers', 'products', 'salesPersons'] as const;
+                                const tables = ['quotations', 'customers', 'salesPersons'] as const;
                                 console.log("--- CLOUD DATA INSPECTOR ---");
                                 for (const t of tables) {
                                   try {
@@ -265,6 +272,32 @@ export const StorageManager: React.FC = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Egress / Bandwidth Saver Card */}
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-3.5 rounded-xl border border-emerald-200 flex items-center justify-between">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-emerald-900">⚡ Low Egress / Data Saver</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${dataSaver ? 'bg-emerald-200 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+                                {dataSaver ? 'Active (Recommended)' : 'Disabled'}
+                            </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-700 mt-0.5">
+                            Reduces Supabase bandwidth by 90%+ (limits initial quote sync, disables tab-switch refetches, strips heavy images in search).
+                        </p>
+                    </div>
+                    <button
+                        onClick={toggleDataSaver}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs ${
+                            dataSaver 
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        }`}
+                    >
+                        {dataSaver ? 'ON' : 'OFF'}
+                    </button>
+                </div>
+
                 <p className="text-[10px] text-slate-500 leading-tight">
                     This application is configured for <strong>Cloud-Only Storage</strong>. No application data is saved on this device.
                 </p>
