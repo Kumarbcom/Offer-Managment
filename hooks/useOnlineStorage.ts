@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, liveQuotationSyncChannel } from '../supabase';
+import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, fetchQuotationStatuses, fetchSingleQuotation, updateQuotationField, liveQuotationSyncChannel } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
@@ -95,9 +95,52 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             }
             setError(null);
 
+            // EGRESS OPTIMIZATION FOR QUOTATIONS:
+            // 1. Immediately hydrate from IndexedDB (sub-50ms render, 0 network bytes)
+            // 2. Fetch only the latest 50 quotations to sync recent additions/modifications
+            // 3. NEVER perform a table scan over all historical quotations!
+            if (tableName === 'quotations') {
+                try {
+                    const latest = await fetchLatestQuotations(50);
+                    if (latest && latest.length > 0 && isMounted) {
+                        setState(prev => {
+                            const current = prev || [];
+                            const map = new Map<number, any>();
+                            // Keep any existing items from local cache
+                            current.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                            // Overwrite/insert with latest fresh items from DB
+                            latest.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                            const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
+                            memoryCache.set(tableName, merged);
+                            idbSet(`cache_${tableName}`, merged);
+                            return merged as T[];
+                        });
+                    }
+                } catch (fastErr) {
+                    console.warn("Quotations sync error:", fastErr);
+                } finally {
+                    if (isMounted) {
+                        setIsLoading(false);
+                    }
+                }
+                return; // Stop here! Do not fall through to get('quotations') table scan
+            }
             try {
-                let data = await get(tableName);
-                if (data.length === 0 && !seededTables.has(tableName)) {
+                // EGRESS OPTIMIZATION FOR CUSTOMERS:
+                // If customers are already available in IndexedDB / in-memory cache, skip redundant full-table download
+                const hasCachedCustomers = tableName === 'customers' && (
+                    (stateRef.current && stateRef.current.length > 0) ||
+                    (memoryCache.has('customers') && (memoryCache.get('customers')?.length || 0) > 0)
+                );
+
+                let data: any[] = [];
+                if (!hasCachedCustomers) {
+                    data = await get(tableName);
+                } else {
+                    data = memoryCache.get(tableName) || stateRef.current || [];
+                }
+
+                if (data.length === 0 && !hasCachedCustomers && !seededTables.has(tableName)) {
                     if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
                         console.log(`Supabase table '${tableName}' is empty. Seeding with initial data.`);
                         await set(tableName, [], initialData);
@@ -105,24 +148,10 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                         data = await get(tableName);
                     }
                 }
-                if (isMounted) {
-                    setState(prev => {
-                        if (tableName === 'quotations') {
-                            const current = prev || [];
-                            const map = new Map<number, any>();
-                            // Full DB fetch
-                            (data as any[]).forEach(item => { if (item && item.id) map.set(item.id, item); });
-                            // Keep any newest local items in case of in-flight changes
-                            current.forEach((item: any) => { if (item && item.id && !map.has(item.id)) map.set(item.id, item); });
-                            const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
-                            memoryCache.set(tableName, merged);
-                            idbSet(`cache_${tableName}`, merged);
-                            return merged as T[];
-                        }
-                        memoryCache.set(tableName, data);
-                        idbSet(`cache_${tableName}`, data);
-                        return data as T[];
-                    });
+                if (isMounted && data.length > 0 && !hasCachedCustomers) {
+                    setState(data as T[]);
+                    memoryCache.set(tableName, data);
+                    idbSet(`cache_${tableName}`, data);
                 }
                 // Do not write quotations or products to sessionStorage to prevent QuotaExceededError (5MB limit)
                 if (tableName !== 'quotations' && tableName !== 'products') {
@@ -161,64 +190,69 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         if (!supabase) return;
 
         const supabaseTableName = toSupabaseTableName(tableName);
-        const channelName = `table-changes-${tableName}-${Math.random().toString(36).substring(2, 9)}-${Date.now()}`;
         const primaryKey = tableName === 'users' ? 'name' : 'id';
 
         let channel: any;
-        try {
-            channel = supabase
-                .channel(channelName)
-                .on(
-                    'postgres_changes',
-                    { event: '*', schema: 'public', table: supabaseTableName },
-                    (payload: any) => {
-                        const currentState = stateRef.current || [];
-                        switch (payload.eventType) {
-                            case 'INSERT': {
-                                const newRecord = mapFromSupabase(tableName, payload.new) as T;
-                                if (!currentState.some(item => (item as any)[primaryKey] === (newRecord as any)[primaryKey])) {
+        // EGRESS OPTIMIZATION: For 'quotations', we use lightweight Broadcast and status polling.
+        // We DO NOT subscribe to postgres_changes for quotations, because postgres_changes decodes WAL
+        // and broadcasts entire rows with large details JSONB over WebSockets, consuming excessive egress.
+        if (tableName !== 'quotations') {
+            const channelName = `changes-${tableName}`;
+            try {
+                channel = supabase
+                    .channel(channelName)
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table: supabaseTableName },
+                        (payload: any) => {
+                            const currentState = stateRef.current || [];
+                            switch (payload.eventType) {
+                                case 'INSERT': {
+                                    const newRecord = mapFromSupabase(tableName, payload.new) as T;
+                                    if (!currentState.some(item => (item as any)[primaryKey] === (newRecord as any)[primaryKey])) {
+                                        setState(prev => {
+                                            const updated = [newRecord, ...(prev || [])];
+                                            memoryCache.set(tableName, updated);
+                                            idbSet(`cache_${tableName}`, updated);
+                                            return updated;
+                                        });
+                                    }
+                                    break;
+                                }
+                                case 'UPDATE': {
+                                    const updatedRecord = mapFromSupabase(tableName, payload.new) as T;
                                     setState(prev => {
-                                        const updated = [newRecord, ...(prev || [])];
+                                        const updated = (prev || []).map(item =>
+                                            (item as any)[primaryKey] === (updatedRecord as any)[primaryKey] ? updatedRecord : item
+                                        );
                                         memoryCache.set(tableName, updated);
                                         idbSet(`cache_${tableName}`, updated);
                                         return updated;
                                     });
+                                    break;
                                 }
-                                break;
-                            }
-                            case 'UPDATE': {
-                                const updatedRecord = mapFromSupabase(tableName, payload.new) as T;
-                                setState(prev => {
-                                    const updated = (prev || []).map(item =>
-                                        (item as any)[primaryKey] === (updatedRecord as any)[primaryKey] ? updatedRecord : item
-                                    );
-                                    memoryCache.set(tableName, updated);
-                                    idbSet(`cache_${tableName}`, updated);
-                                    return updated;
-                                });
-                                break;
-                            }
-                            case 'DELETE': {
-                                const oldRecord = payload.old as Partial<T>;
-                                const recordIdToDelete = (oldRecord as any)[primaryKey];
-                                setState(prev => {
-                                    const updated = (prev || []).filter(item => (item as any)[primaryKey] !== recordIdToDelete);
-                                    memoryCache.set(tableName, updated);
-                                    idbSet(`cache_${tableName}`, updated);
-                                    return updated;
-                                });
-                                break;
+                                case 'DELETE': {
+                                    const oldRecord = payload.old as Partial<T>;
+                                    const recordIdToDelete = (oldRecord as any)[primaryKey];
+                                    setState(prev => {
+                                        const updated = (prev || []).filter(item => (item as any)[primaryKey] !== recordIdToDelete);
+                                        memoryCache.set(tableName, updated);
+                                        idbSet(`cache_${tableName}`, updated);
+                                        return updated;
+                                    });
+                                    break;
+                                }
                             }
                         }
-                    }
-                )
-                .subscribe((status: string, err?: Error) => {
-                    if (status === 'CHANNEL_ERROR' || err) {
-                        console.warn(`Real-time subscription error for '${tableName}'. Live updates may be delayed.`, err);
-                    }
-                });
-        } catch(subError) {
-             console.warn(`Failed to initialize subscription for ${tableName}. Real-time updates disabled.`, subError);
+                    )
+                    .subscribe((status: string, err?: Error) => {
+                        if (status === 'CHANNEL_ERROR' || err) {
+                            console.warn(`Real-time subscription error for '${tableName}'. Live updates may be delayed.`, err);
+                        }
+                    });
+            } catch(subError) {
+                 console.warn(`Failed to initialize subscription for ${tableName}. Real-time updates disabled.`, subError);
+            }
         }
 
         // Shared broadcast listener for instant cross-device updates without waiting for postgres_changes
@@ -247,6 +281,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         let removeWindowListeners: (() => void) | undefined;
 
         if (tableName === 'quotations') {
+            let lastSyncTime = Date.now();
             const syncTopQuotations = async () => {
                 if (!isMounted || document.visibilityState === 'hidden') return;
                 try {
@@ -263,6 +298,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                             return merged as T[];
                         });
                     }
+                    lastSyncTime = Date.now();
                 } catch (e) {
                     console.warn('Quotation focus refresh failed:', e);
                 }
@@ -329,6 +365,45 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
 
         // --- SUPABASE CONFIGURED: write to cloud only ---
         try {
+            if (tableName === 'quotations') {
+                // Quotations are saved directly to Supabase via `upsertQuotation` in QuotationForm.
+                // Do NOT call set('quotations') to avoid double-uploading heavy quotation JSON and false revert errors.
+                // We only handle deletions and quick status/comment updates from QuotationManager or CalendarView here.
+                const prevList = (previousState || []) as any[];
+                const newList = (newState || []) as any[];
+                const prevMap = new Map<number, any>(prevList.map(q => [q.id, q]));
+                const newMap = new Map<number, any>(newList.map(q => [q.id, q]));
+
+                // Detect deletions
+                const toDelete: number[] = [];
+                for (const id of prevMap.keys()) {
+                    if (!newMap.has(id) && typeof id === 'number' && id > 0) {
+                        toDelete.push(id);
+                    }
+                }
+                if (toDelete.length > 0 && supabase) {
+                    await supabase.from('quotations').delete().in('id', toDelete);
+                }
+
+                // Detect quick status/comment/salesPerson changes
+                for (const [id, newItem] of newMap.entries()) {
+                    const prevItem = prevMap.get(id);
+                    if (prevItem && typeof id === 'number' && id > 0) {
+                        const statusChanged = prevItem.status !== newItem.status;
+                        const commentChanged = prevItem.comments !== newItem.comments;
+                        const spChanged = prevItem.salesPersonId !== newItem.salesPersonId;
+                        if (statusChanged || commentChanged || spChanged) {
+                            await updateQuotationField(id, {
+                                status: newItem.status,
+                                comments: newItem.comments,
+                                salesPersonId: newItem.salesPersonId
+                            });
+                        }
+                    }
+                }
+                return;
+            }
+
             await set(tableName, previousState, newState);
             // Success — do NOT write to localStorage. Supabase is the source of truth.
         } catch (e) {

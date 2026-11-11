@@ -1,6 +1,6 @@
 -- ====================================================================
 -- OFFER MANAGEMENT SYSTEM - COMPLETE DATABASE SCHEMA SETUP
--- Run this in your Supabase SQL Editor: https://supabase.com/dashboard/project/vojuwzvxblxqavnpxzsj/sql/new
+-- Run this in your Supabase SQL Editor: https://supabase.com/dashboard/project/hrvjlqqldbgzlvqavwwl/sql/new
 -- ====================================================================
 
 -- 1. USERS TABLE

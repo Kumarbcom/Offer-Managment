@@ -1077,7 +1077,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
 
     // Final check for empty details
-    if (!formData.details || formData.details.length === 0 || (formData.details.length === 1 && !formData.details[0].productId)) {
+    if (!formData.details || formData.details.length === 0 || (formData.details.length === 1 && !formData.details[0].productId && !formData.details[0].partNo?.trim())) {
         alert("Please add at least one product with a valid Part Number.");
         return null;
     }

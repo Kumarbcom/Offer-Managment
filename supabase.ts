@@ -342,6 +342,11 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
 export async function get(tableName: TableName): Promise<any[]> {
     if (!supabase) throw new Error("Supabase client not initialized");
     
+    // STRICT EGRESS GUARD: Never perform an exhaustive full-table scan on quotations (protects against gigabyte spikes)
+    if (tableName === 'quotations') {
+        return fetchLatestQuotations(50);
+    }
+    
     const supabaseTableName = toSupabaseTableName(tableName);
     let allData: any[] = [];
     let from = 0;
@@ -840,7 +845,7 @@ export function broadcastQuotationUpdate(quotation: Quotation) {
     }
 }
 
-export async function fetchLatestQuotations(limit: number = 100): Promise<Quotation[]> {
+export async function fetchLatestQuotations(limit: number = 50): Promise<Quotation[]> {
     if (!supabase) return [];
     try {
         const { data, error } = await supabase
@@ -856,6 +861,59 @@ export async function fetchLatestQuotations(limit: number = 100): Promise<Quotat
     } catch (e) {
         console.warn("fetchLatestQuotations error:", e);
         return [];
+    }
+}
+
+// Ultra-lightweight polling query (transfers <1 KB instead of ~250 KB per poll!)
+export async function fetchQuotationStatuses(limit: number = 40): Promise<Array<{ id: number, status: string, comments: string }>> {
+    if (!supabase) return [];
+    try {
+        const { data, error } = await supabase
+            .from('quotations')
+            .select('id, status, comments')
+            .order('id', { ascending: false })
+            .limit(limit);
+        if (error) {
+            console.warn("fetchQuotationStatuses query error:", error);
+            return [];
+        }
+        return data || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+export async function fetchSingleQuotation(id: number): Promise<Quotation | null> {
+    if (!supabase || !id) return null;
+    try {
+        const { data, error } = await supabase
+            .from('quotations')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (error || !data) return null;
+        return mapFromSupabase('quotations', data);
+    } catch {
+        return null;
+    }
+}
+
+export async function updateQuotationField(id: number, fields: { status?: string, comments?: string, salesPersonId?: number }): Promise<void> {
+    if (!supabase || !id) return;
+    try {
+        const payload: any = {};
+        if (fields.status !== undefined) payload.status = fields.status;
+        if (fields.comments !== undefined) payload.comments = fields.comments;
+        if (fields.salesPersonId !== undefined) {
+            payload.sales_person_id = fields.salesPersonId;
+            payload.salesPersonId = fields.salesPersonId;
+        }
+        await supabase
+            .from('quotations')
+            .update(payload)
+            .eq('id', id);
+    } catch (e) {
+        console.warn("updateQuotationField error:", e);
     }
 }
 

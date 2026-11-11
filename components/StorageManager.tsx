@@ -159,6 +159,73 @@ export const StorageManager: React.FC = () => {
                         </button>
                         <button 
                             onClick={async () => {
+                                if (!window.confirm("Migrate all tables from old project (vojuwzvxblxqavnpxzsj) to this new live project (hrvjlqqldbgzlvqavwwl)?")) return;
+                                const statusDiv = document.createElement('div');
+                                statusDiv.style.cssText = 'position:fixed;top:20px;right:20px;background:#1e1b4b;color:white;padding:16px;border-radius:12px;z-index:99999;box-shadow:0 10px 25px rgba(0,0,0,0.3);font-family:sans-serif;font-size:13px;max-width:320px;';
+                                statusDiv.innerHTML = '<div style="font-weight:bold;margin-bottom:8px">Migrating Tables...</div><div id="mig-msg">Connecting...</div>';
+                                document.body.appendChild(statusDiv);
+                                const setMsg = (txt: string) => { const el = document.getElementById('mig-msg'); if (el) el.innerText = txt; };
+
+                                const OLD_URL = 'https://vojuwzvxblxqavnpxzsj.supabase.co';
+                                const OLD_KEY = 'sb_publishable_5gS-xt8Puw7-jgzr6rAHOQ_4LN9_xL3';
+                                const NEW_URL = 'https://hrvjlqqldbgzlvqavwwl.supabase.co';
+                                const NEW_KEY = 'sb_publishable_zVgpGYf029VcVG_ae0hv8w_yyGUtil8';
+
+                                const tables = ['customers', 'products', 'quotations'];
+                                try {
+                                    for (const t of tables) {
+                                        setMsg(`Migrating ${t}...`);
+                                        let offset = 0;
+                                        const limit = 200;
+                                        let count = 0;
+                                        while (true) {
+                                            const res = await fetch(`${OLD_URL}/rest/v1/${t}?select=*&order=id.asc&offset=${offset}&limit=${limit}`, {
+                                                headers: { 'apikey': OLD_KEY, 'Authorization': `Bearer ${OLD_KEY}` }
+                                            });
+                                            if (!res.ok) break;
+                                            const rows = await res.json();
+                                            if (!rows || rows.length === 0) break;
+                                            
+                                            const cleaned = rows.map((r: any) => {
+                                                const c = { ...r };
+                                                delete c.created_at;
+                                                delete c.quotationDate; delete c.enquiryDate; delete c.customerId;
+                                                delete c.salesPersonId; delete c.contactPerson; delete c.contactNumber;
+                                                delete c.otherTerms; delete c.paymentTerms; delete c.preparedBy;
+                                                delete c.productsBrand; delete c.modeOfEnquiry; delete c.gstAdded;
+                                                delete c.revisionNumber; delete c.discountStructure; delete c.hsnCode; delete c.imageUrl;
+                                                return c;
+                                            });
+
+                                            await fetch(`${NEW_URL}/rest/v1/${t}`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'apikey': NEW_KEY,
+                                                    'Authorization': `Bearer ${NEW_KEY}`,
+                                                    'Content-Type': 'application/json',
+                                                    'Prefer': 'resolution=merge-duplicates'
+                                                },
+                                                body: JSON.stringify(cleaned)
+                                            });
+                                            count += rows.length;
+                                            if (rows.length < limit) break;
+                                            offset += limit;
+                                        }
+                                    }
+                                    setMsg('✅ Migration complete! Refreshing...');
+                                    setTimeout(() => { window.location.reload(); }, 1200);
+                                } catch (err: any) {
+                                    alert('Migration error: ' + (err instanceof Error ? err.message : String(err)));
+                                    statusDiv.remove();
+                                }
+                            }}
+                            className="text-xs bg-purple-50 text-purple-700 px-3 py-1 rounded-lg border border-purple-200 hover:bg-purple-100 font-bold"
+                            title="Migrate all data from old project to new live project"
+                        >
+                            Migrate from Old DB
+                        </button>
+                        <button 
+                            onClick={async () => {
                                 if (!window.confirm("Repair all cloud data? This will fix misnamed columns and restore missing dates/names by re-syncing your live data.")) return;
                                 try {
                                     const tables = ['quotations', 'customers', 'products', 'salesPersons'] as const;
