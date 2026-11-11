@@ -1031,7 +1031,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
             if (!sanitized) {
                 const { data } = await supabase
                     .from('products')
-                    .select('id,partNo,description,uom,weight,image_url,hsn_code,prices')
+                    .select('id,partNo,description,uom,weight,hsn_code,prices')
                     .order('id', { ascending: false })
                     .limit(30);
                 return (data || []).map(item => mapFromSupabase('products', item));
@@ -1039,8 +1039,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
 
             const combined = new Map<number, any>();
 
-            // PRIORITY 1: Exact candidate match on partNo (runs fast in ~2s, or <5ms if indexed)
-            // Generate candidate exact variations: exact, upper, lower, and stripped
+            // PRIORITY 1: Exact candidate match on partNo (runs fast, <5ms if indexed)
             const candidates = Array.from(new Set([
                 sanitized,
                 sanitized.toUpperCase(),
@@ -1050,7 +1049,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
 
             const { data: exactData, error: exactErr } = await supabase
                 .from('products')
-                .select('id,partNo,description,uom,weight,image_url,hsn_code,prices')
+                .select('id,partNo,description,uom,weight,hsn_code,prices')
                 .in('partNo', candidates)
                 .limit(10);
 
@@ -1058,18 +1057,13 @@ export async function searchProducts(term: string): Promise<Product[]> {
                 exactData.forEach(p => combined.set(p.id, p));
             }
 
-            // If exact match was found, return immediately to give fast response!
-            if (combined.size > 0 && combined.size >= candidates.length) {
-                return Array.from(combined.values()).map(item => mapFromSupabase('products', item));
-            }
-
-            // PRIORITY 2: Prefix match on partNo (without leading % so index can be leveraged)
+            // PRIORITY 2: Prefix match on partNo (using index without leading %)
             try {
                 const { data: partData, error: partErr } = await supabase
                     .from('products')
-                    .select('id,partNo,description,uom,weight,image_url,hsn_code')
+                    .select('id,partNo,description,uom,weight,hsn_code,prices')
                     .ilike('partNo', sanitized + '%')
-                    .limit(20);
+                    .limit(35);
 
                 if (!partErr && partData) {
                     partData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
@@ -1078,14 +1072,29 @@ export async function searchProducts(term: string): Promise<Product[]> {
                 console.warn("Prefix search skipped:", pErr);
             }
 
-            // PRIORITY 3: If fewer than 10 results, search description
-            if (combined.size < 10) {
+            // Also check prefix with stripped spaces/hyphens if different
+            const stripped = sanitized.replace(/[\s\-_]/g, '');
+            if (stripped && stripped !== sanitized && combined.size < 25) {
+                try {
+                    const { data: strippedData } = await supabase
+                        .from('products')
+                        .select('id,partNo,description,uom,weight,hsn_code,prices')
+                        .ilike('partNo', stripped + '%')
+                        .limit(25);
+                    if (strippedData) {
+                        strippedData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
+                    }
+                } catch {}
+            }
+
+            // PRIORITY 3: If fewer than 25 results, search description
+            if (combined.size < 25) {
                 try {
                     const { data: descData } = await supabase
                         .from('products')
-                        .select('id,partNo,description,uom,weight,image_url,hsn_code')
+                        .select('id,partNo,description,uom,weight,hsn_code,prices')
                         .ilike('description', '%' + sanitized + '%')
-                        .limit(20);
+                        .limit(35);
 
                     if (descData) {
                         descData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
@@ -1093,25 +1102,24 @@ export async function searchProducts(term: string): Promise<Product[]> {
                 } catch (dErr) {
                     console.warn("Description search skipped:", dErr);
                 }
+
+                // If user typed OELFLEX or OLFLEX, check with ÖLFLEX too
+                if (/o/i.test(sanitized) && combined.size < 25) {
+                    const umlautTerm = sanitized.replace(/oe/gi, 'ö').replace(/o/gi, 'ö');
+                    try {
+                        const { data: umlautData } = await supabase
+                            .from('products')
+                            .select('id,partNo,description,uom,weight,hsn_code,prices')
+                            .ilike('description', '%' + umlautTerm + '%')
+                            .limit(35);
+                        if (umlautData) {
+                            umlautData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
+                        }
+                    } catch {}
+                }
             }
 
-            const lightList = Array.from(combined.values()).slice(0, 30);
-            // Fetch prices for items that don't have prices yet
-            const missingPriceIds = lightList.filter(p => !p.prices || p.prices.length === 0).map(p => p.id);
-            if (missingPriceIds.length > 0) {
-                const { data: priceData } = await supabase
-                    .from('products')
-                    .select('id,prices')
-                    .in('id', missingPriceIds);
-
-                const priceMap = new Map((priceData || []).map(p => [p.id, p.prices || []]));
-                lightList.forEach(p => {
-                    if (!p.prices || p.prices.length === 0) {
-                        p.prices = priceMap.get(p.id) || [];
-                    }
-                });
-            }
-
+            const lightList = Array.from(combined.values()).slice(0, 50);
             return lightList.map(item => mapFromSupabase('products', item));
         })();
 
