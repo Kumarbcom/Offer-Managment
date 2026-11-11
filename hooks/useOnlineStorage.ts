@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set, toSupabaseTableName, mapFromSupabase, liveQuotationSyncChannel } from '../supabase';
+import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, liveQuotationSyncChannel } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
@@ -250,13 +250,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             const syncTopQuotations = async () => {
                 if (!isMounted || document.visibilityState === 'hidden') return;
                 try {
-                    const { data, error } = await supabase
-                        .from('quotations')
-                        .select('id, status, comments, quotation_date, quotationDate, enquiry_date, enquiryDate, customer_id, customerId, sales_person_id, salesPersonId, contact_person, contactPerson, contact_number, contactNumber, other_terms, otherTerms, payment_terms, paymentTerms, prepared_by, preparedBy, products_brand, productsBrand, mode_of_enquiry, modeOfEnquiry, other_terms, otherTerms, payment_terms, paymentTerms, status, comments, details, gst_added, gstAdded')
-                        .order('id', { ascending: false })
-                        .limit(30);
-                    if (error) throw error;
-                    const freshTop = (data || []).map((q: any) => mapFromSupabase('quotations', q));
+                    const freshTop = await fetchLatestQuotations(30);
                     if (freshTop.length > 0 && isMounted) {
                         setState(prev => {
                             const list = prev || [];
