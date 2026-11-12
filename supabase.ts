@@ -121,32 +121,27 @@ const mapToSupabase = (tableName: TableName, item: any): any => {
         return payload;
     }
     if (tableName === 'products') {
-        let prices = item.prices || [];
-        if (item.imageUrl !== undefined) {
-            let cleanImageUrl = typeof item.imageUrl === 'string' ? item.imageUrl.trim() : '';
-            // Disallow saving local Windows paths (C:\...) as they cannot be loaded by web browsers
-            if (/^(?:[a-zA-Z]:[\\/]|file:\/\/|\\\\)/i.test(cleanImageUrl)) {
-                cleanImageUrl = '';
-            }
-            if (Array.isArray(prices) && prices.length > 0) {
-                prices = prices.map(p => {
-                    const updatedPrice = { ...p };
-                    if (cleanImageUrl) {
-                        updatedPrice.imageUrl = cleanImageUrl;
-                    } else {
-                        delete updatedPrice.imageUrl;
-                    }
-                    return updatedPrice;
-                });
+        let prices = Array.isArray(item.prices) ? [...item.prices] : [];
+        let cleanImageUrl = typeof item.imageUrl === 'string' ? item.imageUrl.trim() : '';
+        // Disallow saving local Windows paths (C:\...) as they cannot be loaded by web browsers
+        if (/^(?:[a-zA-Z]:[\\/]|file:\/\/|\\\\)/i.test(cleanImageUrl)) {
+            cleanImageUrl = '';
+        }
+        if (cleanImageUrl) {
+            if (prices.length === 0) {
+                prices = [{ lp: 0, sp: 0, validFrom: new Date().toISOString().split('T')[0], validTo: '9999-12-31', imageUrl: cleanImageUrl }];
+            } else {
+                prices = prices.map(p => ({ ...p, imageUrl: cleanImageUrl }));
             }
         }
         return {
             id: item.id,
-            partNo: item.partNo,
-            description: item.description,
-            hsn_code: item.hsnCode,
-            uom: item.uom,
-            weight: item.weight,
+            partNo: item.partNo || item.part_no || '',
+            description: item.description || '',
+            hsn_code: item.hsnCode !== undefined ? item.hsnCode : (item.hsn_code || ''),
+            uom: item.uom || 'Mtr',
+            plant: item.plant || null,
+            weight: Number(item.weight) || 0,
             prices: prices
         };
     }
@@ -269,18 +264,20 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
     }
 
     if (tableName === 'products') {
-        const prices = item.prices || [];
-        const latestPriceWithImage = Array.isArray(prices) ? prices.slice().reverse().find(p => p && p.imageUrl) : null;
-        const fallbackImageUrl = latestPriceWithImage ? latestPriceWithImage.imageUrl : '';
+        const prices = Array.isArray(item.prices) ? item.prices : [];
+        const latestPriceWithImage = prices.slice().reverse().find(p => p && (p.imageUrl || p.image_url));
+        const fallbackImageUrl = latestPriceWithImage ? (latestPriceWithImage.imageUrl || latestPriceWithImage.image_url) : '';
+        const rawImageUrl = get(['image_url', 'imageUrl'], fallbackImageUrl) || fallbackImageUrl;
         return {
             id: Number(item.id),
             partNo: get(['part_no', 'partNo'], ''),
             description: item.description || '',
             hsnCode: get(['hsn_code', 'hsnCode'], ''),
             uom: item.uom || 'Mtr',
+            plant: item.plant || '',
             weight: Number(item.weight) || 0,
             prices: prices,
-            imageUrl: get(['image_url', 'imageUrl'], fallbackImageUrl) || fallbackImageUrl
+            imageUrl: rawImageUrl || ''
         };
     }
 
@@ -673,10 +670,43 @@ export async function addCustomersBatch(customers: any[]) {
 }
 
 // Products
+export async function getNextProductId(): Promise<number> {
+    if (!supabase) return Date.now();
+    try {
+        const { data, error } = await supabase
+            .from('products')
+            .select('id')
+            .order('id', { ascending: false })
+            .limit(1);
+        if (error || !data || data.length === 0) {
+            return 1;
+        }
+        return (Number(data[0].id) || 0) + 1;
+    } catch {
+        return Date.now();
+    }
+}
+
+export async function getNextCustomerId(): Promise<number> {
+    if (!supabase) return Date.now();
+    try {
+        const { data, error } = await supabase
+            .from('customers')
+            .select('id')
+            .order('id', { ascending: false })
+            .limit(1);
+        if (error || !data || data.length === 0) return 1;
+        return (Number(data[0].id) || 0) + 1;
+    } catch {
+        return Date.now();
+    }
+}
+
 export async function getProductsPaginated(options: any) { 
     if (!supabase) throw new Error("Supabase client not initialized");
     const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
     const offset = startAfterDoc || 0;
+    const activeFilters = filters || {};
 
     let query = supabase
         .from('products')
@@ -684,16 +714,16 @@ export async function getProductsPaginated(options: any) {
         .order(sortBy === 'partNo' ? 'partNo' : (sortBy === 'hsnCode' ? 'hsn_code' : sortBy), { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageLimit - 1);
     
-    if (filters.universal) {
-        const pattern = `%${filters.universal.replace(/\*/g, '%').replace(/\./g, '_')}%`;
+    if (activeFilters.universal) {
+        const pattern = `%${activeFilters.universal.replace(/\*/g, '%').replace(/\./g, '_')}%`;
         query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
     } else {
-        if (filters.partNo) {
-            const pattern = `%${filters.partNo.replace(/\*/g, '%').replace(/\./g, '_')}%`;
+        if (activeFilters.partNo) {
+            const pattern = `%${activeFilters.partNo.replace(/\*/g, '%').replace(/\./g, '_')}%`;
             query = query.ilike('partNo', pattern);
         }
-        if (filters.description) {
-            const pattern = `%${filters.description.replace(/\*/g, '%').replace(/\./g, '_')}%`;
+        if (activeFilters.description) {
+            const pattern = `%${activeFilters.description.replace(/\*/g, '%').replace(/\./g, '_')}%`;
             query = query.ilike('description', pattern);
         }
     }
@@ -701,6 +731,7 @@ export async function getProductsPaginated(options: any) {
     const { data, error } = await query;
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch products"));
     const products = (data || []).map(p => mapFromSupabase('products', p));
+    products.forEach(p => cacheProductLocally(p, false));
     return { products, lastVisibleDoc: offset + products.length };
 }
 
@@ -726,12 +757,31 @@ export async function addProductsBatch(products: any[]) {
     const payloads = products.map(p => mapToSupabase('products', p));
     const { error } = await supabase.from('products').upsert(payloads, { onConflict: 'id' });
     if (error) throw new Error(parseSupabaseError(error, "Failed to add products batch"));
+    
+    // Immediately update local caches and clear search cache
+    products.forEach(p => {
+        if (p) {
+            if (p.id) productCacheById.set(Number(p.id), p);
+            if (p.partNo) productCacheByPartNo.set(p.partNo.trim().toLowerCase(), p);
+            cacheProductLocally(p, true);
+        }
+    });
+    productSearchCache.clear();
 }
 
 export async function deleteProductsBatch(ids: number[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const { error } = await supabase.from('products').delete().in('id', ids);
     if (error) throw new Error(parseSupabaseError(error, "Failed to delete products batch"));
+    
+    ids.forEach(id => {
+        const p = productCacheById.get(id);
+        if (p && p.partNo) {
+            productCacheByPartNo.delete(p.partNo.trim().toLowerCase());
+        }
+        productCacheById.delete(id);
+    });
+    productSearchCache.clear();
 }
 
 export async function updateProduct(product: any) {
@@ -740,6 +790,14 @@ export async function updateProduct(product: any) {
     const { id, ...productData } = payload;
     const { error } = await supabase.from('products').update(productData).eq('id', id);
     if (error) throw new Error(parseSupabaseError(error, "Failed to update product"));
+    
+    // Immediately update local caches and clear search cache
+    if (product) {
+        if (product.id) productCacheById.set(Number(product.id), product);
+        if (product.partNo) productCacheByPartNo.set(product.partNo.trim().toLowerCase(), product);
+        cacheProductLocally(product, true);
+    }
+    productSearchCache.clear();
 }
 
 export async function upsertQuotation(quotation: Quotation): Promise<Quotation> {
@@ -952,7 +1010,7 @@ export function cacheProductLocally(product: Product, persist = true) {
     let added = false;
     if (product.id && typeof product.id === 'number' && product.id > 0) {
         const existing = productCacheById.get(product.id);
-        if (!existing || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
+        if (!existing || (product.imageUrl && !existing.imageUrl) || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
             productCacheById.set(product.id, product);
             added = true;
         }
@@ -960,7 +1018,7 @@ export function cacheProductLocally(product: Product, persist = true) {
     if (product.partNo && typeof product.partNo === 'string' && product.partNo.trim()) {
         const key = product.partNo.trim().toLowerCase();
         const existing = productCacheByPartNo.get(key);
-        if (!existing || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
+        if (!existing || (product.imageUrl && !existing.imageUrl) || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
             productCacheByPartNo.set(key, product);
             added = true;
         }
@@ -995,10 +1053,13 @@ export function hydrateProductsFromQuotations(quotations: Quotation[]) {
                                 validTo: '9999-12-31',
                                 price: item.price,
                                 lp: item.price,
-                                sp: 0
+                                sp: 0,
+                                imageUrl: item.imageUrl || ''
                             } as any] : []
                         };
                         cacheProductLocally(p, false);
+                    } else if (!existing.imageUrl && item.imageUrl) {
+                        existing.imageUrl = item.imageUrl;
                     }
                 }
             });
@@ -1135,21 +1196,6 @@ export async function searchProducts(term: string): Promise<Product[]> {
             const maxResults = isDataSaverEnabled() ? 25 : 50;
             const lightList = Array.from(combined.values()).slice(0, maxResults);
 
-            // EGRESS OPTIMIZATION: Strip heavy base64 image strings from search result payloads
-            if (isDataSaverEnabled()) {
-                lightList.forEach(p => {
-                    if (p.prices && Array.isArray(p.prices)) {
-                        p.prices = p.prices.map((pr: any) => {
-                            if (pr && pr.imageUrl && pr.imageUrl.startsWith('data:')) {
-                                const { imageUrl, ...rest } = pr;
-                                return rest;
-                            }
-                            return pr;
-                        });
-                    }
-                });
-            }
-
             return lightList.map(item => mapFromSupabase('products', item));
         })();
 
@@ -1219,7 +1265,7 @@ export async function getProductsByIds(ids: number[]): Promise<Product[]> {
     for (const id of validIds) {
         if (productCacheById.has(id)) {
             const p = productCacheById.get(id)!;
-            if (p.prices && p.prices.length > 1) {
+            if (p.imageUrl || (p.prices && p.prices.length > 0)) {
                 cached.push(p);
             } else {
                 missing.push(id);
@@ -1254,7 +1300,7 @@ export async function getProductsByPartNos(partNos: string[]): Promise<Product[]
         const lower = pNo.toLowerCase();
         if (productCacheByPartNo.has(lower)) {
             const p = productCacheByPartNo.get(lower)!;
-            if (p.prices && p.prices.length > 1) {
+            if (p.imageUrl || (p.prices && p.prices.length > 0)) {
                 cached.push(p);
             } else {
                 missing.push(pNo);

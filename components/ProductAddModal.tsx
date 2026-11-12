@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
-import { getProductsPaginated } from '../supabase';
+import { getNextProductId } from '../supabase';
 
 interface ProductAddModalProps {
   isOpen: boolean;
@@ -171,9 +171,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
         if ('id' in formData && formData.id) {
           productToSave = formDataWithProcessedPrices as Product;
         } else {
-          const lastIdResult = await getProductsPaginated({ pageLimit: 1, startAfterDoc: 0, sortBy: 'id', sortOrder: 'desc', filters: {} });
-          const lastId = lastIdResult.products.length > 0 ? lastIdResult.products[0].id : 0;
-          const newId = lastId + 1;
+          const newId = await getNextProductId();
           productToSave = { ...formDataWithProcessedPrices, id: newId } as Product;
         }
 

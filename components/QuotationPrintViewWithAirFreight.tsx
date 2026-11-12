@@ -163,7 +163,15 @@ export const QuotationPrintViewWithAirFreight: React.FC<QuotationPrintViewProps>
                                 const freightAmount = freightPerUnit * item.moq;
                                 const totalWithFreight = amount + freightAmount;
                                 const partNoUrl = getPartNoLink(item.partNo);
-                                const effectiveImageUrl = item.imageUrl || (productImageMap && item.partNo ? productImageMap.get(item.partNo.trim()) : undefined);
+                                const cleanP = (item.partNo || '').trim();
+                                const unpadded = cleanP.replace(/^0+/, '');
+                                const effectiveImageUrl = item.imageUrl || (productImageMap ? (
+                                    (cleanP ? productImageMap.get(cleanP) : undefined) ||
+                                    (cleanP ? productImageMap.get(cleanP.toLowerCase()) : undefined) ||
+                                    (unpadded ? productImageMap.get(unpadded) : undefined) ||
+                                    (unpadded ? productImageMap.get(unpadded.toLowerCase()) : undefined) ||
+                                    (item.productId ? productImageMap.get(String(item.productId)) : undefined)
+                                ) : undefined);
 
                                 return (
                                     <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50 transition-colors">

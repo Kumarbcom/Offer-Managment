@@ -146,7 +146,15 @@ export const QuotationPrintView: React.FC<QuotationPrintViewProps> = ({ quotatio
                                 const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
                                 const amount = unitPrice * item.moq;
                                 const partNoUrl = getPartNoLink(item.partNo);
-                                const effectiveImageUrl = item.imageUrl || (productImageMap && item.partNo ? productImageMap.get(item.partNo.trim()) : undefined);
+                                const cleanP = (item.partNo || '').trim();
+                                const unpadded = cleanP.replace(/^0+/, '');
+                                const effectiveImageUrl = item.imageUrl || (productImageMap ? (
+                                    (cleanP ? productImageMap.get(cleanP) : undefined) ||
+                                    (cleanP ? productImageMap.get(cleanP.toLowerCase()) : undefined) ||
+                                    (unpadded ? productImageMap.get(unpadded) : undefined) ||
+                                    (unpadded ? productImageMap.get(unpadded.toLowerCase()) : undefined) ||
+                                    (item.productId ? productImageMap.get(String(item.productId)) : undefined)
+                                ) : undefined);
                                 return (
                                     <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50 transition-colors">
                                         <td className="p-2 text-center text-slate-500 font-medium">{index + 1}</td>

@@ -215,8 +215,19 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const productImageMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of fetchedProducts.values()) {
-      if (p.partNo && p.imageUrl) {
-        map.set(p.partNo.trim(), p.imageUrl);
+      const img = p.imageUrl || (p.prices && p.prices.find(pr => pr && (pr.imageUrl || pr.image_url))?.imageUrl);
+      if (img) {
+        if (p.id) map.set(String(p.id), img);
+        if (p.partNo) {
+          const cleanP = p.partNo.trim();
+          map.set(cleanP, img);
+          map.set(cleanP.toLowerCase(), img);
+          const unpadded = cleanP.replace(/^0+/, '');
+          if (unpadded) {
+            map.set(unpadded, img);
+            map.set(unpadded.toLowerCase(), img);
+          }
+        }
       }
     }
     return map;
@@ -985,8 +996,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             const targetDate = prevFormData.quotationDate || getTodayDateString();
             const priceEntry = getPriceForDate(product, targetDate);
             if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${targetDate ? new Date(targetDate).toLocaleDateString() : 'N/A'}. Please check product price validity.`);
+            const resolvedImg = product.imageUrl || (product.prices && product.prices.find(pr => pr && (pr.imageUrl || pr.image_url))?.imageUrl) || '';
             const newDetails = [...prevFormData.details];
-            newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, imageUrl: product.imageUrl || '', airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
+            newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, imageUrl: resolvedImg, airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
             return { ...prevFormData, details: newDetails };
         }
         return prevFormData;
@@ -1020,26 +1032,64 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   };
   const handleSaveProduct = async (newProduct: Product) => { 
+      const resolvedImg = newProduct.imageUrl || (newProduct.prices && newProduct.prices.find(pr => pr && (pr.imageUrl || pr.image_url))?.imageUrl) || '';
+      const fullProduct = { ...newProduct, imageUrl: resolvedImg };
+
       if (productToEdit) {
-          await updateProduct(newProduct);
-          setFetchedProducts(prev => new Map(prev).set(newProduct.id, newProduct));
+          await updateProduct(fullProduct);
+          setFetchedProducts(prev => new Map(prev).set(fullProduct.id, fullProduct));
           
           setFormData(prev => {
               if (!prev || !prev.details) return prev;
-              const priceEntry = getPriceForDate(newProduct, prev.quotationDate);
+              const priceEntry = getPriceForDate(fullProduct, prev.quotationDate);
               const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
               const priceSource = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
               
               const newDetails = prev.details.map(item => {
-                  if (item.productId === newProduct.id) {
-                      return { ...item, price: newPrice, priceSource, uom: newProduct.uom, description: newProduct.description, partNo: newProduct.partNo, imageUrl: newProduct.imageUrl || '' };
+                  if (item.productId === fullProduct.id) {
+                      return { ...item, price: newPrice, priceSource, uom: fullProduct.uom, description: fullProduct.description, partNo: fullProduct.partNo, imageUrl: resolvedImg };
                   }
                   return item;
               });
               return { ...prev, details: newDetails };
           });
       } else {
-          await addProductsBatch([newProduct]); 
+          await addProductsBatch([fullProduct]); 
+          setFetchedProducts(prev => new Map(prev).set(fullProduct.id, fullProduct));
+          setSearchedProducts(prev => [fullProduct, ...prev.filter(p => p.id !== fullProduct.id)]);
+          
+          // Automatically add or fill this new product into the quotation details
+          setFormData(prev => {
+              if (!prev) return null;
+              const targetDate = prev.quotationDate || getTodayDateString();
+              const priceEntry = getPriceForDate(fullProduct, targetDate);
+              const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
+              const priceSource = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
+              
+              const currentDetails = prev.details || [];
+              const lastIdx = currentDetails.length - 1;
+              const lastIsEmpty = lastIdx >= 0 && !currentDetails[lastIdx].productId && !currentDetails[lastIdx].partNo;
+              
+              const itemToInsert: QuotationItem = {
+                  ...(lastIsEmpty ? currentDetails[lastIdx] : createEmptyQuotationItem()),
+                  productId: fullProduct.id,
+                  partNo: fullProduct.partNo,
+                  description: fullProduct.description,
+                  price: newPrice,
+                  priceSource,
+                  uom: fullProduct.uom,
+                  imageUrl: resolvedImg,
+                  airFreightDetails: { ...((lastIsEmpty ? currentDetails[lastIdx].airFreightDetails : {}) || {}), weightPerMtr: fullProduct.weight }
+              };
+              
+              const newDetails = [...currentDetails];
+              if (lastIsEmpty) {
+                  newDetails[lastIdx] = itemToInsert;
+              } else {
+                  newDetails.push(itemToInsert);
+              }
+              return { ...prev, details: newDetails };
+          });
       }
       setIsProductModalOpen(false); 
       setProductToEdit(null);
@@ -1094,6 +1144,26 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       const safeQuotations = quotations || [];
       
       let quotationToSave = { ...formData };
+      
+      // Auto-enrich any items missing an imageUrl from productImageMap or fetchedProducts before saving
+      if (quotationToSave.details && quotationToSave.details.length > 0) {
+          quotationToSave.details = quotationToSave.details.map(d => {
+              if (d.imageUrl) return d;
+              const cleanP = (d.partNo || '').trim();
+              const unpadded = cleanP.replace(/^0+/, '');
+              const resolved = (d.productId ? productImageMap.get(String(d.productId)) : undefined) ||
+                               (cleanP ? productImageMap.get(cleanP) : undefined) ||
+                               (cleanP ? productImageMap.get(cleanP.toLowerCase()) : undefined) ||
+                               (unpadded ? productImageMap.get(unpadded) : undefined) ||
+                               (unpadded ? productImageMap.get(unpadded.toLowerCase()) : undefined) ||
+                               (d.productId ? fetchedProducts.get(d.productId)?.imageUrl : undefined);
+              if (resolved) {
+                  return { ...d, imageUrl: resolved };
+              }
+              return d;
+          });
+      }
+
       if (isNew) {
           quotationToSave.id = 0; // DB will auto-generate it
       }

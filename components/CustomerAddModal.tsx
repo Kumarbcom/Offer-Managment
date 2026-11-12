@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Customer, SalesPerson, User } from '../types';
-import { getCustomersPaginated } from '../supabase';
+import { getNextCustomerId } from '../supabase';
 
 interface CustomerAddModalProps {
   isOpen: boolean;
@@ -79,10 +79,7 @@ export const CustomerAddModal: React.FC<CustomerAddModalProps> = ({ isOpen, onCl
         if (customerToEdit) {
           customerToSave = formData as Customer;
         } else {
-          // Fetch last ID to generate a new one safely.
-          const lastIdResult = await getCustomersPaginated({ pageLimit: 1, startAfterDoc: 0, sortBy: 'id', sortOrder: 'desc', filters: {} });
-          const lastId = lastIdResult.customers.length > 0 ? lastIdResult.customers[0].id : 0;
-          const newId = lastId + 1;
+          const newId = await getNextCustomerId();
           customerToSave = { ...formData, id: newId } as Customer;
         }
         await onSave(customerToSave);

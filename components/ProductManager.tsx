@@ -10,7 +10,7 @@ import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { ProductAddModal } from './ProductAddModal';
 import { ImageZoomModal } from './ImageZoomModal';
-import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, fetchAllProductsForExport } from '../supabase';
+import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, fetchAllProductsForExport, getNextProductId } from '../supabase';
 
 declare var XLSX: any;
 
@@ -253,11 +253,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const handleSaveProduct = useCallback(async (product: Product) => {
     if (productToEdit) {
       await updateProduct(product);
+      setDisplayedProducts(prev => prev.map(p => p.id === product.id ? product : p));
     } else {
       await addProductsBatch([product]);
+      setSearchTerm(product.partNo);
+      setDisplayedProducts(prev => [product, ...prev.filter(p => p.id !== product.id)]);
     }
-    fetchProducts(false); // Refetch from page 1 to see changes
-  }, [productToEdit, fetchProducts]);
+  }, [productToEdit]);
   
   const handleCloseModal = useCallback(() => { setIsModalOpen(false); setProductToEdit(null); }, []);
   
@@ -684,9 +686,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           }
         });
 
-        const lastIdResult = await getProductsPaginated({ pageLimit: 1, startAfterDoc: 0, sortBy: 'id', sortOrder: 'desc', filters: {} });
-        const lastId = lastIdResult.products.length > 0 ? lastIdResult.products[0].id : 0;
-        let newId = lastId;
+        const nextId = await getNextProductId();
+        let newId = nextId - 1;
 
         const newProducts: Product[] = Object.values(productsByPartNo).map((rows): Product | null => {
           const firstRow = rows[0];
