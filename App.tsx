@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { View, SalesPerson, Customer, Product, Quotation, User, QuotationStatus } from './types';
 import { useOnlineStorage } from './hooks/useOnlineStorage';

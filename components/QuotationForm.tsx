@@ -1820,6 +1820,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // Define Grid Columns based on user request
   const gridColumns = ['SL No', 'Part No', 'Description', 'MOQ', 'REQ', 'Price', 'Discount%', 'Unit Price', 'Amount', 'Stock Status', 'Air per Unit', 'Air Freight Amt', 'Air Lead Time'];
   if (!isReadOnly) gridColumns.push('');
+
+  if (!formData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-2">
+          <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+          <span className="text-xs text-slate-500 font-medium">Loading Quotation...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-2 bg-slate-50 min-h-screen font-sans pb-14">
       <div className="bg-white rounded-lg shadow-lg">
@@ -2042,12 +2054,12 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 <div className="space-y-1">
                     <FormField label="Quotation No">
                         <div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center justify-between text-xs shadow-sm text-[11px]">
-                            <span className="truncate" title={formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : 'New offer (Latest offer number will be allocated on save)'}>
-                                {formData.id > 0 
+                            <span className="truncate" title={(formData?.id && formData.id > 0) ? generateFormattedQuotationNumber(formData, quotations || []) : 'New offer (Latest offer number will be allocated on save)'}>
+                                {(formData?.id && formData.id > 0) 
                                     ? generateFormattedQuotationNumber(formData, quotations || []) 
                                     : `New (Next: #${((quotations || []).reduce((max, q) => Math.max(max, q.id || 0), 0) + 1)})`}
                             </span>
-                            {formData.id > 0 && !isReadOnly && (
+                            {formData?.id && formData.id > 0 && !isReadOnly && (
                                 <button
                                     type="button"
                                     onClick={() => {
