@@ -960,7 +960,13 @@ export async function fetchSingleQuotation(id: number): Promise<Quotation | null
     }
 }
 
-export async function updateQuotationField(id: number, fields: { status?: string, comments?: string, salesPersonId?: number }): Promise<void> {
+export async function updateQuotationField(id: number, fields: { 
+    status?: string, 
+    comments?: string, 
+    salesPersonId?: number,
+    contactPerson?: string,
+    contactNumber?: string
+}): Promise<void> {
     if (!supabase || !id) return;
     try {
         const payload: any = {};
@@ -968,14 +974,33 @@ export async function updateQuotationField(id: number, fields: { status?: string
         if (fields.comments !== undefined) payload.comments = fields.comments;
         if (fields.salesPersonId !== undefined) {
             payload.sales_person_id = fields.salesPersonId;
-            payload.salesPersonId = fields.salesPersonId;
         }
-        await supabase
+        if (fields.contactPerson !== undefined) {
+            payload.contact_person = fields.contactPerson;
+        }
+        if (fields.contactNumber !== undefined) {
+            payload.contact_number = fields.contactNumber;
+        }
+
+        const { data, error } = await supabase
             .from('quotations')
             .update(payload)
-            .eq('id', id);
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("updateQuotationField error:", error);
+            throw new Error(parseSupabaseError(error, "Failed to update quotation field in cloud"));
+        }
+
+        if (data) {
+            const saved = mapFromSupabase('quotations', data);
+            broadcastQuotationUpdate(saved);
+        }
     } catch (e) {
-        console.warn("updateQuotationField error:", e);
+        console.error("updateQuotationField error:", e);
+        throw e;
     }
 }
 

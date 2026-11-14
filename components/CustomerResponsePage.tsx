@@ -82,7 +82,7 @@ export const CustomerResponsePage: React.FC<CustomerResponsePageProps> = ({ quot
         }
         // Fetch quotation details to show customer context
         if (!supabase) { setPageState('error'); setErrorMsg('Service unavailable.'); return; }
-        supabase.from('quotations').select('id, status, contactPerson').eq('id', quotationId).single()
+        supabase.from('quotations').select('id, status, contact_person').eq('id', quotationId).single()
             .then(({ data, error }) => {
                 if (error || !data) {
                     setPageState('error');
@@ -98,7 +98,7 @@ export const CustomerResponsePage: React.FC<CustomerResponsePageProps> = ({ quot
                     setPageState('already_done');
                     return;
                 }
-                setQuotationInfo(data);
+                setQuotationInfo({ id: data.id, status: data.status, contactPerson: data.contact_person || '' });
                 setPageState('confirm');
             });
     }, [quotationId, action, config]);

@@ -336,6 +336,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // This ensures that if we are drafting (editingQuotationId is null), we don't get reset by background updates.
   // Session ID will equal editingQuotationId (which can be null).
   const currentSessionIdRef = useRef<number | null | undefined>(undefined);
+  const lastLoadedIdRef = useRef<number | null | undefined>(undefined);
+  const formDataRef = useRef<Quotation | null>(formData);
+  formDataRef.current = formData;
   const lastEvaluatedDateKeyRef = useRef<string | null>(null);
   const [recheckMessage, setRecheckMessage] = useState<string | null>(null);
 
@@ -375,7 +378,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       // Sales Persons can use mobile to create new quotes, but checking ownership for existing.
       // We removed the blanket isMobile restriction so they can use the AI tool on mobile.
       
-      if (userRole === 'Admin') return false;
+      if (userRole === 'Admin' || userRole === 'Management') return false;
       if (userRole === 'Sales Person') {
           // If creating new, it's editable
           if (editingQuotationId === null) return false;
@@ -569,41 +572,34 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   useEffect(() => {
     setSelectedCustomerObj(null);
     setCustomerSearchTerm('');
-    // Also reset the session lock so the init effect runs fresh for this quotation.
-    currentSessionIdRef.current = undefined;
+    // Only reset the session lock when switching to a different quotation ID
+    if (lastLoadedIdRef.current !== editingQuotationId) {
+        lastLoadedIdRef.current = undefined;
+        currentSessionIdRef.current = undefined;
+    }
   }, [editingQuotationId]);
 
   useEffect(() => {
     // STRICT SESSION LOCK:
-    // If we are currently editing a session (editingQuotationId is set, or 0/null for draft),
-    // and we have local form data, we MUST ignore background updates from 'quotations' prop.
-    // This prevents other users' actions (like saving a new quote) from wiping out the current user's draft.
-    
-    // Start new session or update existing one
-    const isReturningToCurrentSession = currentSessionIdRef.current === editingQuotationId;
-    
-    // If we already have form data for this specific ID (including null/0 for new), 
-    // and the quotations list has updated, we only want to re-init if the data actually changed 
-    // AND we are not currently the ones who just saved it.
-    // NOTE: currentSessionIdRef is reset to `undefined` whenever editingQuotationId changes (above effect),
-    // so isReturningToCurrentSession will be FALSE on a fresh open, allowing re-initialization.
-    if (isReturningToCurrentSession && formData !== null) {
-        // If we are currently editing, don't let background sync overwrite our local changes
-        // unless it's a significant change or we specifically want to reload.
+    // If the quotation for this ID (whether null for new draft or number for existing)
+    // has ALREADY been loaded into form state, DO NOT touch formData!
+    // This completely prevents peer actions (Vandita or other users saving quotations)
+    // from wiping out the user's entered draft.
+    if (lastLoadedIdRef.current === editingQuotationId) {
         return;
     }
 
     const quotationToEdit = quotations.find(q => q.id === editingQuotationId);
     
     // CRITICAL FIX: If we are looking for a specific ID but it's not in the list yet, 
-    // WAIT. Do not fall back to createNewQuotation() as that wipes out the form state
-    // during the race condition between save and sync.
+    // WAIT. Do not fall back to createNewQuotation() as that wipes out the form state.
     if (editingQuotationId !== null && !quotationToEdit) {
         // Wait for the quotation to appear in the props list
         return;
     }
 
-    // Start new session
+    // Start new session and mark as loaded
+    lastLoadedIdRef.current = editingQuotationId;
     currentSessionIdRef.current = editingQuotationId;
 
     // Use structured clone or deep copy to avoid mutating state directly if objects are shared
@@ -1180,6 +1176,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
       setFormData(savedQuotation);
       currentSessionIdRef.current = savedQuotation.id; 
+      lastLoadedIdRef.current = savedQuotation.id; 
       
       if (isNew) {
           setEditingQuotationId(savedQuotation.id);
@@ -1282,6 +1279,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       if (isReadOnly && userRole !== 'Sales Person') return;
       setEditingQuotationId(null); 
       currentSessionIdRef.current = null;
+      lastLoadedIdRef.current = null;
       setSelectedCustomerObj(null);
       setCustomerSearchTerm('');
       setSearchedCustomers([]);
@@ -2044,8 +2042,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 <div className="space-y-1">
                     <FormField label="Quotation No">
                         <div className="px-2 py-1 bg-slate-50 font-bold text-black rounded-r-md border border-slate-300 h-full flex items-center justify-between text-xs shadow-sm text-[11px]">
-                            <span className="truncate" title={formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : 'New'}>
-                                {formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : 'New'}
+                            <span className="truncate" title={formData.id > 0 ? generateFormattedQuotationNumber(formData, quotations || []) : 'New offer (Latest offer number will be allocated on save)'}>
+                                {formData.id > 0 
+                                    ? generateFormattedQuotationNumber(formData, quotations || []) 
+                                    : `New (Next: #${((quotations || []).reduce((max, q) => Math.max(max, q.id || 0), 0) + 1)})`}
                             </span>
                             {formData.id > 0 && !isReadOnly && (
                                 <button

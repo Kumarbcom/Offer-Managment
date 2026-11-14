@@ -102,8 +102,10 @@ export const App = () => {
   }, [currentUser, view]);
 
   // Handle Deep Linking for Quotations
+  // Check URL deep link ONCE on initial load
+  const hasHandledDeepLinkRef = useRef(false);
   useEffect(() => {
-    if (!isLoadingData && currentUser) {
+    if (!isLoadingData && currentUser && !hasHandledDeepLinkRef.current) {
       const urlParams = new URLSearchParams(window.location.search);
       const quotationId = urlParams.get('id');
       if (quotationId) {
@@ -111,10 +113,13 @@ export const App = () => {
         if (!isNaN(id)) {
           const exists = quotations?.some(q => q.id === id);
           if (exists) {
+            hasHandledDeepLinkRef.current = true;
             setEditingQuotationId(id);
             setView('quotation-form');
           }
         }
+      } else {
+        hasHandledDeepLinkRef.current = true;
       }
     }
   }, [isLoadingData, currentUser, quotations]);
@@ -178,8 +183,8 @@ export const App = () => {
     if (newView === 'quotation-form') {
       setIsSidebarExpanded(false);
     }
-    // Clear deep link parameter when navigating away manually
-    if (newView === 'quotations') {
+    // Clear deep link parameter when navigating away manually or creating new quotation
+    if (newView === 'quotations' || (newView === 'quotation-form' && editingQuotationId === null)) {
       const url = new URL(window.location.href);
       if (!url.protocol.startsWith('blob')) {
         url.searchParams.delete('id');
@@ -414,7 +419,15 @@ export const App = () => {
           {/* Right: Actions & Profile */}
           <div className="flex items-center gap-4 shrink-0">
             <button 
-              onClick={() => { setEditingQuotationId(null); handleSetView('quotation-form'); }}
+              onClick={() => {
+                setEditingQuotationId(null);
+                const url = new URL(window.location.href);
+                if (!url.protocol.startsWith('blob')) {
+                  url.searchParams.delete('id');
+                  window.history.pushState({}, '', url);
+                }
+                handleSetView('quotation-form');
+              }}
               className="hidden md:flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>

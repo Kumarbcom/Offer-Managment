@@ -389,18 +389,22 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                     await supabase.from('quotations').delete().in('id', toDelete);
                 }
 
-                // Detect quick status/comment/salesPerson changes
+                // Detect quick status/comment/salesPerson/contact changes
                 for (const [id, newItem] of newMap.entries()) {
                     const prevItem = prevMap.get(id);
                     if (prevItem && typeof id === 'number' && id > 0) {
                         const statusChanged = prevItem.status !== newItem.status;
                         const commentChanged = prevItem.comments !== newItem.comments;
                         const spChanged = prevItem.salesPersonId !== newItem.salesPersonId;
-                        if (statusChanged || commentChanged || spChanged) {
+                        const cpChanged = prevItem.contactPerson !== newItem.contactPerson;
+                        const cnChanged = prevItem.contactNumber !== newItem.contactNumber;
+                        if (statusChanged || commentChanged || spChanged || cpChanged || cnChanged) {
                             await updateQuotationField(id, {
                                 status: newItem.status,
                                 comments: newItem.comments,
-                                salesPersonId: newItem.salesPersonId
+                                salesPersonId: newItem.salesPersonId,
+                                contactPerson: newItem.contactPerson,
+                                contactNumber: newItem.contactNumber
                             });
                         }
                     }
