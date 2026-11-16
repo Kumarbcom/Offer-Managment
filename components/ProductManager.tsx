@@ -82,18 +82,32 @@ const getEffectivePriceValue = (product: Product): number => {
     return price.lp > 0 ? price.lp : price.sp;
 };
 
-// Memoized ModernProductRow component
-const ModernProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete, onZoomImage }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; onZoomImage?: (p: Product) => void; }) => {
+// Memoized ModernProductRow component (Modern Stripe/Shopify-style Product Table)
+const ModernProductRow = React.memo(({ 
+    product, 
+    isSelected, 
+    onSelect, 
+    onEdit, 
+    onDelete, 
+    onZoomImage 
+}: { 
+    product: Product; 
+    isSelected: boolean; 
+    onSelect: (id: number) => void; 
+    onEdit: (product: Product) => void; 
+    onDelete: (id: number) => void; 
+    onZoomImage?: (p: Product) => void; 
+}) => {
     const currentPrice = getCurrentPrice(product);
     const lp = currentPrice?.lp || 0;
     const sp = currentPrice?.sp || 0;
     
     return (
-        <tr className={`border-b border-slate-100 hover:bg-indigo-50/25 transition-colors ${
-            isSelected ? 'bg-indigo-50/50' : 'bg-white'
+        <tr className={`border-b border-slate-100 hover:bg-gradient-to-r hover:from-indigo-50/40 hover:via-purple-50/20 hover:to-transparent transition-all group ${
+            isSelected ? 'bg-gradient-to-r from-indigo-50/80 to-purple-50/40' : 'bg-white'
         }`}>
             {/* Checkbox */}
-            <td className="px-3 py-2 text-center w-10">
+            <td className="px-3 py-3 text-center w-10">
                 <input 
                     type="checkbox" 
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
@@ -102,73 +116,149 @@ const ModernProductRow = React.memo(({ product, isSelected, onSelect, onEdit, on
                     aria-label={`Select product ${product.partNo}`}
                 />
             </td>
-            {/* ID */}
-            <td className="px-3 py-2 text-slate-400 font-mono text-xs w-14">#{product.id}</td>
-            {/* Part No - Always Clearly Visible & Bold */}
-            <td className="px-3 py-2 font-mono font-bold text-slate-900 text-sm whitespace-nowrap min-w-[130px]">
-                <span 
-                    className="hover:text-indigo-600 cursor-pointer transition-colors" 
-                    onClick={() => onEdit(product)}
-                    title="Click to edit product"
-                >
-                    {product.partNo}
-                </span>
+
+            {/* Product: Image on Left + Part No & Description Below */}
+            <td className="px-4 py-3 min-w-[280px]">
+                <div className="flex items-center gap-3.5">
+                    {/* Modern Image Container with subtle gradient border/shadow */}
+                    <div className="relative shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/80 border border-slate-200/90 shadow-2xs flex items-center justify-center overflow-hidden group/img">
+                        {product.imageUrl ? (
+                            <img 
+                                src={product.imageUrl} 
+                                alt={product.partNo} 
+                                onClick={() => onZoomImage?.(product)}
+                                className="w-full h-full object-contain p-0.5 cursor-zoom-in group-hover/img:scale-110 transition-transform duration-200" 
+                                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                title="Click to zoom image"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50/50 text-indigo-400">
+                                <svg className="w-5 h-5 text-indigo-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                                </svg>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Part No & Description */}
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span 
+                                className="font-mono font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer transition-colors tracking-tight" 
+                                onClick={() => onEdit(product)}
+                                title="Click to edit product"
+                            >
+                                {product.partNo}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400 bg-slate-100/90 px-1.5 py-0.2 rounded border border-slate-200/60 font-semibold">
+                                #{product.id}
+                            </span>
+                        </div>
+                        <div className="text-xs text-slate-500 font-medium truncate max-w-sm sm:max-w-md mt-0.5" title={product.description}>
+                            {product.description}
+                        </div>
+                    </div>
+                </div>
             </td>
-            {/* Image (Small, clean thumbnail - no empty placeholder box) */}
-            <td className="px-2 py-2 text-center w-12">
-                {product.imageUrl ? (
-                    <img 
-                        src={product.imageUrl} 
-                        alt={product.partNo} 
-                        onClick={() => onZoomImage?.(product)}
-                        className="w-7 h-7 object-contain rounded bg-white border border-slate-200 cursor-zoom-in hover:scale-125 transition-transform shadow-2xs mx-auto" 
-                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                        title="Click to zoom image"
-                    />
+
+            {/* HSN Code */}
+            <td className="px-3 py-3 text-center w-24">
+                {product.hsnCode ? (
+                    <span className="font-mono text-xs text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200/70 font-medium">
+                        {product.hsnCode}
+                    </span>
                 ) : (
                     <span className="text-slate-300 text-xs">—</span>
                 )}
             </td>
-            {/* Description */}
-            <td className="px-3 py-2 text-slate-700 max-w-sm truncate text-xs font-medium" title={product.description}>
-                {product.description}
-            </td>
-            {/* HSN Code */}
-            <td className="px-3 py-2 text-slate-500 font-mono text-xs text-center w-24">
-                {product.hsnCode || '—'}
-            </td>
+
             {/* List Price */}
-            <td className="px-3 py-2 text-slate-900 font-bold font-mono text-right text-xs w-28 whitespace-nowrap">
-                {lp > 0 ? `₹${lp.toFixed(2)}` : '—'}
-            </td>
-            {/* Selling Price */}
-            <td className="px-3 py-2 text-slate-500 font-mono text-right text-xs w-28 whitespace-nowrap">
-                {sp > 0 ? `₹${sp.toFixed(2)}` : '—'}
-            </td>
-            {/* UOM */}
-            <td className="px-2 py-2 text-slate-600 text-xs text-center w-14 font-mono">
-                {product.uom || '—'}
-            </td>
-            {/* Plant */}
-            <td className="px-2 py-2 text-slate-600 text-xs text-center w-16 font-mono">
-                {product.plant || '—'}
-            </td>
-            {/* Weight */}
-            <td className="px-3 py-2 text-right text-xs w-20 whitespace-nowrap">
-                {product.weight > 0 ? (
-                    <span className="text-slate-700 font-mono font-medium">{product.weight}{product.weight > 0 && product.weight < 100 ? ' g' : ''}</span>
+            <td className="px-3 py-3 text-right w-28 whitespace-nowrap">
+                {lp > 0 ? (
+                    <span className="font-mono font-bold text-slate-900 text-sm tracking-tight">
+                        ₹{lp.toFixed(2)}
+                    </span>
                 ) : (
-                    <span className="text-slate-300 font-mono">—</span>
+                    <span className="text-slate-300 text-xs font-mono">—</span>
                 )}
             </td>
-            {/* Actions */}
-            <td className="px-3 py-2 text-right space-x-1.5 w-20 whitespace-nowrap">
-                <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 rounded-lg hover:bg-indigo-50" title="Edit">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                </button>
-                <button onClick={() => onDelete(product.id)} className="text-slate-400 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50" title="Delete">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                </button>
+
+            {/* Selling Price */}
+            <td className="px-3 py-3 text-right w-28 whitespace-nowrap">
+                {sp > 0 ? (
+                    <span className="font-mono text-slate-600 text-xs tracking-tight">
+                        ₹{sp.toFixed(2)}
+                    </span>
+                ) : (
+                    <span className="text-slate-300 text-xs font-mono">—</span>
+                )}
+            </td>
+
+            {/* UOM */}
+            <td className="px-2 py-3 text-center w-16">
+                {product.uom ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-mono">
+                        {product.uom}
+                    </span>
+                ) : (
+                    <span className="text-slate-300 text-xs font-mono">—</span>
+                )}
+            </td>
+
+            {/* Plant */}
+            <td className="px-2 py-3 text-center w-20">
+                {product.plant ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-mono">
+                        {product.plant}
+                    </span>
+                ) : (
+                    <span className="text-slate-300 text-xs font-mono">—</span>
+                )}
+            </td>
+
+            {/* Weight */}
+            <td className="px-3 py-3 text-right w-20 whitespace-nowrap">
+                {product.weight > 0 ? (
+                    <span className="text-slate-700 font-mono text-xs font-medium">
+                        {product.weight}{product.weight > 0 && product.weight < 100 ? ' g' : ' kg/m'}
+                    </span>
+                ) : (
+                    <span className="text-slate-300 font-mono text-xs">—</span>
+                )}
+            </td>
+
+            {/* Actions (Attractive Modern SVG Buttons) */}
+            <td className="px-3 py-3 text-right w-24 whitespace-nowrap">
+                <div className="flex items-center justify-end gap-1.5">
+                    {/* Edit Button */}
+                    <button 
+                        onClick={() => onEdit(product)} 
+                        className="p-1.5 rounded-xl text-indigo-600 hover:text-white bg-indigo-50/80 hover:bg-gradient-to-r hover:from-indigo-600 hover:to-blue-600 border border-indigo-200/70 hover:border-transparent transition-all shadow-2xs hover:shadow-xs group/btn" 
+                        title="Edit Product"
+                    >
+                        <svg className="w-4 h-4 transition-transform group-hover/btn:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                        </svg>
+                    </button>
+                    
+                    {/* Delete Button */}
+                    <button 
+                        onClick={() => onDelete(product.id)} 
+                        className="p-1.5 rounded-xl text-rose-600 hover:text-white bg-rose-50/80 hover:bg-gradient-to-r hover:from-rose-600 hover:to-red-600 border border-rose-200/70 hover:border-transparent transition-all shadow-2xs hover:shadow-xs group/btn" 
+                        title="Delete Product"
+                    >
+                        <svg className="w-4 h-4 transition-transform group-hover/btn:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            <line x1="10" y1="11" x2="10" y2="17"/>
+                            <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
+                    </button>
+                </div>
             </td>
         </tr>
     );
@@ -272,21 +362,23 @@ const ExcelProductRow = React.memo(({
                 {product.weight > 0 ? `${product.weight}${product.weight > 0 && product.weight < 100 ? ' g' : ''}` : '—'}
             </td>
             {/* K: Actions */}
-            <td className="px-2 text-center w-20 space-x-1.5 whitespace-nowrap">
-                <button 
-                    onClick={() => onEdit(product)} 
-                    className="text-slate-400 hover:text-indigo-600 transition-colors p-1 rounded hover:bg-indigo-50" 
-                    title="Edit"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                </button>
-                <button 
-                    onClick={() => onDelete(product.id)} 
-                    className="text-slate-400 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50" 
-                    title="Delete"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                </button>
+            <td className="px-2 text-center w-20 whitespace-nowrap">
+                <div className="flex items-center justify-center gap-1.5">
+                    <button 
+                        onClick={() => onEdit(product)} 
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition-all shadow-2xs group/btn" 
+                        title="Edit Product"
+                    >
+                        <svg className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </button>
+                    <button 
+                        onClick={() => onDelete(product.id)} 
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all shadow-2xs group/btn" 
+                        title="Delete Product"
+                    >
+                        <svg className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                    </button>
+                </div>
             </td>
         </tr>
     );
@@ -1150,10 +1242,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                     <button 
                         onClick={handleAddNew} 
                         disabled={isUploading} 
-                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-1.5 px-3.5 rounded-xl shadow-xs hover:shadow transition-all disabled:opacity-50 text-xs"
+                        className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white font-bold py-2 px-4 rounded-xl shadow-md shadow-indigo-500/25 hover:shadow-lg hover:shadow-indigo-500/35 transition-all active:scale-[0.98] disabled:opacity-50 text-xs"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        <span>Add items (New)</span>
+                        <span className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                        </span>
+                        <span className="tracking-wide">Add items (New)</span>
                     </button>
                 )}
 
@@ -1513,22 +1610,19 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             <div className="hidden md:block border border-slate-200 rounded-xl shadow-xs bg-white overflow-hidden mt-3">
                 <div className="overflow-x-auto max-h-[72vh]">
                     <table className="min-w-full text-xs text-left border-collapse">
-                        <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-200">
+                        <thead className="bg-gradient-to-r from-slate-50 via-indigo-50/30 to-purple-50/20 text-slate-700 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-200/90 shadow-2xs">
                             <tr>
-                                <th className="px-3 py-2.5 text-center w-10">
+                                <th className="px-3 py-3 text-center w-10">
                                     <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
                                 </th>
-                                <th className="px-3 py-2.5 w-14">ID</th>
-                                <th className="px-3 py-2.5 min-w-[140px]">Part No</th>
-                                <th className="px-2 py-2.5 text-center w-12">Image</th>
-                                <th className="px-3 py-2.5 min-w-[220px]">Description</th>
-                                <th className="px-3 py-2.5 w-24 text-center">HSN Code</th>
-                                <th className="px-3 py-2.5 text-right w-28">List Price</th>
-                                <th className="px-3 py-2.5 text-right w-28">Selling Price</th>
-                                <th className="px-3 py-2.5 w-14 text-center">UOM</th>
-                                <th className="px-3 py-2.5 w-16 text-center">Plant</th>
-                                <th className="px-3 py-2.5 text-right w-20">Weight</th>
-                                <th className="px-3 py-2.5 text-right w-20">Actions</th>
+                                <th className="px-4 py-3 min-w-[280px]">Product Details (Part No & Description)</th>
+                                <th className="px-3 py-3 w-24 text-center">HSN Code</th>
+                                <th className="px-3 py-3 text-right w-28">List Price</th>
+                                <th className="px-3 py-3 text-right w-28">Selling Price</th>
+                                <th className="px-3 py-3 w-16 text-center">UOM</th>
+                                <th className="px-3 py-3 w-20 text-center">Plant</th>
+                                <th className="px-3 py-3 text-right w-20">Weight</th>
+                                <th className="px-3 py-3 text-right w-24">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
