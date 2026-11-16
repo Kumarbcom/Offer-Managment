@@ -1414,7 +1414,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         COMMENTS
                       </span>
                     </th>
-                    <th className="py-3.5 px-3 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider w-[100px] bg-[#f8fafc]">
+                    <th className="sticky right-0 z-30 bg-[#f8fafc] shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] py-3 px-3 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider w-[125px]">
                       ACTIONS
                     </th>
                   </tr>
@@ -1429,12 +1429,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                     return (
                       <tr
                         key={q.id}
+                        onDoubleClick={() => handleEdit(q.id)}
                         className={`group transition-colors ${
                           isSelected ? 'bg-blue-50/70' : rowIdx % 2 === 0 ? 'bg-white hover:bg-slate-50/70' : 'bg-slate-50/30 hover:bg-slate-50/70'
                         }`}
                       >
                         {/* Checkbox */}
-                        <td className="px-3 py-3.5 text-center">
+                        <td className="px-3 py-3 text-center">
                           <input 
                             type="checkbox" 
                             checked={isSelected} 
@@ -1443,28 +1444,40 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                           />
                         </td>
 
-                        {/* NO */}
-                        <td className="px-2 py-3.5 text-slate-700 text-xs font-semibold select-none">
-                          {actualRowNumber}
+                        {/* NO (Clickable to open) */}
+                        <td className="px-2 py-3 text-slate-700 text-xs font-semibold select-none">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(q.id)}
+                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-0.5"
+                            title="Open Quotation"
+                          >
+                            <span>#{actualRowNumber}</span>
+                          </button>
                         </td>
 
                         {/* DATE */}
-                        <td className="px-3 py-3.5 text-xs text-slate-700 whitespace-nowrap font-medium">
+                        <td className="px-3 py-3 text-xs text-slate-700 whitespace-nowrap font-medium">
                           {formatDisplayDate(q.quotationDate)}
                         </td>
 
-                        {/* CUSTOMER */}
-                        <td className="px-3 py-3.5 min-w-[190px] max-w-[260px]">
-                          <p className="text-xs font-bold text-slate-900 uppercase tracking-tight truncate" title={getCustomerName(q.customerId)}>
+                        {/* CUSTOMER (Clickable to open) */}
+                        <td className="px-3 py-3 min-w-[170px] max-w-[240px]">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(q.id)}
+                            className="text-left font-bold text-slate-900 hover:text-blue-600 transition-colors uppercase tracking-tight truncate block w-full cursor-pointer"
+                            title={`Open Quotation: ${getCustomerName(q.customerId)}`}
+                          >
                             {getCustomerName(q.customerId)}
-                          </p>
+                          </button>
                           <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
                             {getCustomerCity(q.customerId) || 'Karnataka, India'}
                           </p>
                         </td>
 
                         {/* CONTACT */}
-                        <td className="px-3 py-3.5 min-w-[140px] max-w-[190px]">
+                        <td className="px-3 py-3 min-w-[130px] max-w-[180px]">
                           <p className="text-xs font-semibold text-slate-800 truncate" title={q.contactPerson || ''}>
                             {q.contactPerson || '—'}
                           </p>
@@ -1474,27 +1487,27 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         </td>
 
                         {/* AMOUNT */}
-                        <td className="px-3 py-3.5 text-right whitespace-nowrap font-mono font-bold text-slate-900 text-xs">
+                        <td className="px-3 py-3 text-right whitespace-nowrap font-mono font-bold text-slate-900 text-xs">
                           ₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </td>
 
                         {/* STATUS */}
-                        <td className="px-3 py-3.5 text-center">
+                        <td className="px-2 py-3 text-center">
                           <StatusBadge status={q.status} onChange={s => handleStatusChange(q.id, s)} />
                         </td>
 
                         {/* VALIDITY */}
-                        <td className="px-3 py-3.5 text-center whitespace-nowrap text-xs text-slate-600 font-medium">
+                        <td className="px-3 py-3 text-center whitespace-nowrap text-xs text-slate-600 font-medium">
                           {getValidityDate(q.quotationDate)}
                         </td>
 
                         {/* ITEMS */}
-                        <td className="px-2 py-3.5 text-center text-xs font-semibold text-slate-700">
+                        <td className="px-2 py-3 text-center text-xs font-semibold text-slate-700">
                           {q.details?.length || 0}
                         </td>
 
                         {/* SALES PERSON */}
-                        <td className="px-3 py-3.5 min-w-[120px]">
+                        <td className="px-3 py-3 min-w-[110px]">
                           <p className="text-xs font-bold text-slate-900 truncate">
                             {getSalesPersonName(q.salesPersonId)}
                           </p>
@@ -1504,7 +1517,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         </td>
 
                         {/* COMMENTS */}
-                        <td className="px-3 py-3.5 min-w-[200px]">
+                        <td className="px-3 py-3 min-w-[160px] max-w-[210px]">
                           <div className="flex items-start gap-2">
                             <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 shadow-2xs">
                               {commentCount}
@@ -1524,10 +1537,25 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                           </div>
                         </td>
 
-                        {/* ACTIONS */}
-                        <td className="px-3 py-3.5 text-center whitespace-nowrap">
+                        {/* ACTIONS (Sticky so it is always visible on screen) */}
+                        <td className={`sticky right-0 z-10 px-3 py-3 text-center whitespace-nowrap shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] ${
+                          isSelected ? 'bg-blue-50' : rowIdx % 2 === 0 ? 'bg-white group-hover:bg-slate-50' : 'bg-[#fafbfe] group-hover:bg-slate-50'
+                        }`}>
                           <div className="flex items-center justify-center gap-1.5">
                             <button
+                              type="button"
+                              onClick={() => handleEdit(q.id)}
+                              title="Open Quotation"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white transition-all shadow-2xs hover:scale-105 cursor-pointer"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                              <span>Open</span>
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => setEmailModalQuotation(q)}
                               title="Share Quotation"
                               className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
@@ -1536,23 +1564,14 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                               </svg>
                             </button>
-                            <button
-                              onClick={() => handleEdit(q.id)}
-                              title="Edit Quotation"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                              </svg>
-                            </button>
                             {userRole === 'Admin' && (
                               <button
+                                type="button"
                                 onClick={() => handleDelete(q.id)}
                                 title="Delete Quotation"
                                 className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="3 6 5 6 21 6" />
                                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                 </svg>
