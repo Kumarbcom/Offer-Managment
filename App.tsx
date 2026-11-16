@@ -111,12 +111,9 @@ export const App = () => {
       if (quotationId) {
         const id = parseInt(quotationId, 10);
         if (!isNaN(id)) {
-          const exists = quotations?.some(q => q.id === id);
-          if (exists) {
-            hasHandledDeepLinkRef.current = true;
-            setEditingQuotationId(id);
-            setView('quotation-form');
-          }
+          hasHandledDeepLinkRef.current = true;
+          setEditingQuotationId(id);
+          setView('quotation-form');
         }
       } else {
         hasHandledDeepLinkRef.current = true;

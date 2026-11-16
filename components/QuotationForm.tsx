@@ -15,7 +15,7 @@ import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFre
 import { AIAssistantPanel } from './AIAssistantPanel';
 import { QuotationDiffModal } from './QuotationDiffModal';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, productCacheById, customerCache, cacheCustomerLocally, hydrateProductsFromQuotations } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, productCacheById, productSearchCache, customerCache, cacheCustomerLocally, hydrateProductsFromQuotations, fetchSingleQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
 import { getPriceForDate, isPriceOlderThanThreshold, isPriceEntryOlderThanThreshold, parseProductDate } from '../utils/priceUtils';
@@ -543,7 +543,12 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     // CRITICAL FIX: If we are looking for a specific ID but it's not in the list yet, 
     // WAIT. Do not fall back to createNewQuotation() as that wipes out the form state.
     if (editingQuotationId !== null && !quotationToEdit) {
-        // Wait for the quotation to appear in the props list
+        // Fetch from Supabase directly if deep-linked or not in initial memory list
+        fetchSingleQuotation(editingQuotationId).then(q => {
+            if (q) {
+                setQuotations(prev => [...(prev || []).filter(item => item.id !== q.id), q]);
+            }
+        });
         return;
     }
 
