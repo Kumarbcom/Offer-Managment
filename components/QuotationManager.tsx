@@ -38,13 +38,13 @@ interface ColumnFilterState {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; text: string; border: string }> = {
-  'Open':                { label: 'Open',               dot: 'bg-blue-500',   bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200' },
-  'PO received':         { label: 'PO Received',        dot: 'bg-emerald-500',bg: 'bg-emerald-50',text: 'text-emerald-700',border: 'border-emerald-200' },
-  'Partial PO Received': { label: 'Partial PO',         dot: 'bg-teal-500',   bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200' },
-  'Expired':             { label: 'Expired',            dot: 'bg-amber-500',  bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200' },
-  'Lost':                { label: 'Lost',               dot: 'bg-rose-500',   bg: 'bg-rose-50',   text: 'text-rose-700',   border: 'border-rose-200' },
-  'Under Review':        { label: 'Under Review',       dot: 'bg-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
-  'Need Amendment':      { label: 'Need Amendment',     dot: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  'Open':                { label: 'Open',               dot: 'bg-blue-500',   bg: 'bg-[#edf5fe]', text: 'text-[#0b5cff]', border: 'border-blue-200/80' },
+  'PO received':         { label: 'Won',                dot: 'bg-emerald-500',bg: 'bg-[#eefcf3]', text: 'text-[#059669]', border: 'border-emerald-200/80' },
+  'Partial PO Received': { label: 'Partial PO',         dot: 'bg-teal-500',   bg: 'bg-[#eefcf3]', text: 'text-[#059669]', border: 'border-emerald-200/80' },
+  'Expired':             { label: 'Expired',            dot: 'bg-amber-500',  bg: 'bg-[#fff8ea]', text: 'text-[#d97706]', border: 'border-amber-200/80' },
+  'Lost':                { label: 'Lost',               dot: 'bg-rose-500',   bg: 'bg-[#fff1f2]', text: 'text-[#e11d48]', border: 'border-rose-200/80' },
+  'Under Review':        { label: 'In Review',          dot: 'bg-purple-500', bg: 'bg-[#f4f0ff]', text: 'text-[#7c3aed]', border: 'border-purple-200/80' },
+  'Need Amendment':      { label: 'Need Amendment',     dot: 'bg-sky-500',    bg: 'bg-[#f0f9ff]', text: 'text-[#0284c7]', border: 'border-sky-200/80' },
 };
 
 const getStatusCfg = (status: string) =>
@@ -54,24 +54,22 @@ const StatusBadge: React.FC<{ status: string; onChange?: (s: QuotationStatus) =>
   const cfg = getStatusCfg(status);
   if (onChange) {
     return (
-      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
+      <div className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full border text-xs font-semibold ${cfg.bg} ${cfg.text} ${cfg.border} shadow-2xs`}>
         <select
           value={status}
           onChange={e => onChange(e.target.value as QuotationStatus)}
           onClick={e => e.stopPropagation()}
-          className={`bg-transparent border-0 p-0 text-[11px] font-semibold focus:outline-none cursor-pointer ${cfg.text} appearance-none`}
+          className={`bg-transparent border-0 p-0 text-xs font-semibold focus:outline-none cursor-pointer ${cfg.text} appearance-none`}
           style={{ WebkitAppearance: 'none' }}
         >
           {QUOTATION_STATUSES.map(s => <option key={s} value={s} className="bg-white text-gray-800">{s}</option>)}
         </select>
-        <svg className={`w-3 h-3 opacity-60 ${cfg.text}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        <svg className={`w-3 h-3 ml-1 opacity-60 ${cfg.text}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
       </div>
     );
   }
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+    <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full border text-xs font-semibold ${cfg.bg} ${cfg.text} ${cfg.border} shadow-2xs`}>
       {cfg.label}
     </span>
   );
@@ -98,8 +96,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(50);
 
-  // View Mode: 'excel' (Spreadsheet table with column filters) or 'standard' (Card/clean table)
-  const [viewMode, setViewMode] = useState<'excel' | 'standard'>('excel');
+  // View Mode: 'standard' (Modern clean card/table view as per user mockup) or 'excel' (Spreadsheet table with column filters)
+  const [viewMode, setViewMode] = useState<'excel' | 'standard'>('standard');
+
+  // Side Panel state for viewing detailed comments, history and items
+  const [selectedSidePanelQuotation, setSelectedSidePanelQuotation] = useState<Quotation | null>(null);
+  const [sidePanelComment, setSidePanelComment] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
 
   // Cloud Sync Status
   const [isSyncing, setIsSyncing] = useState(false);
@@ -113,6 +116,82 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
       setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const getCustomerCity = (id: number | null | undefined): string => {
+    if (id === null || id === undefined) return '';
+    const cust = customers?.find(c => c.id === id);
+    if (cust && cust.city) return cust.city;
+    if (cust && cust.address) {
+      const parts = cust.address.split(',');
+      return parts[parts.length - 1]?.trim() || '';
+    }
+    return '';
+  };
+
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return '—';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+      return dateStr;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getValidityDate = (quotationDateStr: string) => {
+    if (!quotationDateStr) return '—';
+    try {
+      const parts = quotationDateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        d.setDate(d.getDate() + 30);
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+      return '—';
+    } catch {
+      return '—';
+    }
+  };
+
+  const formatCurrencyDisplay = (num: number) => {
+    if (!num || isNaN(num)) return '₹0';
+    if (num >= 10000000) return `₹${(num / 10000000).toFixed(1)}L`; // Or Cr
+    if (num >= 100000) return `₹${(num / 100000).toFixed(1)}L`;
+    if (num >= 1000) return `₹${(num / 1000).toFixed(1)}K`;
+    return `₹${Math.round(num).toLocaleString('en-IN')}`;
+  };
+
+  const handlePostSidePanelComment = async () => {
+    if (!selectedSidePanelQuotation || !sidePanelComment.trim()) return;
+    setIsPostingComment(true);
+    try {
+      const newCommentObj = {
+        id: String(Date.now()),
+        userName: currentUser.name || 'User',
+        text: sidePanelComment.trim(),
+        timestamp: new Date().toISOString()
+      };
+      const updatedCommentsList = [...(selectedSidePanelQuotation.commentsList || []), newCommentObj];
+      const updatedCommentsText = sidePanelComment.trim();
+
+      await setQuotations(prev => (prev || []).map(q => 
+        q.id === selectedSidePanelQuotation.id 
+          ? { ...q, comments: updatedCommentsText, commentsList: updatedCommentsList } 
+          : q
+      ));
+
+      setSelectedSidePanelQuotation(prev => prev ? { ...prev, comments: updatedCommentsText, commentsList: updatedCommentsList } : null);
+      setSidePanelComment('');
+    } catch (err) {
+      alert('Failed to save comment');
+    } finally {
+      setIsPostingComment(false);
     }
   };
 
@@ -691,57 +770,76 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
 
-      {/* ── Top Header Toolbar ── */}
-      <div className="bg-white border-b border-slate-200 shadow-xs sticky top-0 z-30">
-        <div className="px-4 md:px-6 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* ── Top Header Toolbar matching user mockup ── */}
+      <div className="bg-white border-b border-slate-200/90 shadow-2xs sticky top-0 z-30">
+        <div className="px-4 md:px-8 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             
-            {/* Title & Badge */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-200 text-white">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 4h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-tight">Quotations</h1>
-                <p className="text-xs text-slate-500 font-medium">
-                  {stats.count} record{stats.count !== 1 ? 's' : ''} found
-                  {stats.count !== (quotations?.length || 0) && (
-                    <span className="text-indigo-600 ml-1 font-semibold">(filtered from {quotations?.length})</span>
-                  )}
-                </p>
-              </div>
+            {/* Title & Subtitle */}
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+                Quotations
+              </h1>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Create, manage and track quotations with your customers.
+              </p>
             </div>
 
-            {/* Actions & View Controls */}
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* Actions & Controls */}
+            <div className="flex items-center gap-2.5 flex-wrap">
               
-              {/* Universal Search */}
+              {/* Search Quotations with right search icon */}
               <div className="relative">
-                <svg className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
                 <input
                   type="text"
-                  className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 focus:bg-white transition-all w-44 md:w-56"
-                  placeholder="Universal search..."
+                  className="pl-3.5 pr-8 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-48 sm:w-60 shadow-2xs"
+                  placeholder="Search quotations..."
                   value={universalSearchTerm}
                   onChange={e => setUniversalSearchTerm(e.target.value)}
                 />
+                <svg className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 {universalSearchTerm && (
-                  <button onClick={() => setUniversalSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
+                  <button onClick={() => setUniversalSearchTerm('')} className="absolute right-7 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
+                    ✕
                   </button>
                 )}
               </div>
 
-              {/* View Switcher: Excel View vs Standard View */}
-              <div className="hidden sm:inline-flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              {/* Notification Bell with red dot badge */}
+              <button 
+                type="button" 
+                className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Notifications"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-1.5 ring-2 ring-white"></span>
+              </button>
+
+              {/* View Switcher: Standard vs Excel */}
+              <div className="hidden sm:inline-flex bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('standard')}
+                  className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    viewMode === 'standard'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Modern Card Table View"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  <span>Standard</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('excel')}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                  className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     viewMode === 'excel'
                       ? 'bg-emerald-600 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -751,62 +849,34 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 4h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span>Excel View</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('standard')}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                    viewMode === 'standard'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="Standard cards & table view"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                  <span>Standard View</span>
+                  <span>Excel</span>
                 </button>
               </div>
-
-              {/* Cloud Sync Button */}
-              <button
-                type="button"
-                onClick={handleSyncOffers}
-                disabled={isSyncing}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                title={`Sync latest quotations from cloud. Last synced: ${lastSyncTime}`}
-              >
-                <svg className={`w-3.5 h-3.5 text-blue-600 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>{isSyncing ? 'Syncing...' : 'Sync Offers'}</span>
-              </button>
 
               {/* Export to Excel */}
               <button
                 onClick={handleExport}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-2xs cursor-pointer"
                 title="Download full quotation details as Excel (.xlsx)"
               >
                 <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 <span>Export</span>
               </button>
 
-              {/* New Quotation Button */}
+              {/* New Quotation Button in Royal Blue */}
               {canEdit && (
                 <button
                   onClick={handleAddNew}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-xs shadow-indigo-200 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-[#0b5cff] hover:bg-[#004ee0] text-white rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                   <span>New Quotation</span>
+                  <svg className="w-3.5 h-3.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
               )}
 
               {onBackToCustomers && (
-                <button onClick={onBackToCustomers} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-all cursor-pointer">
+                <button onClick={onBackToCustomers} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all cursor-pointer">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                   <span>Back</span>
                 </button>
@@ -816,7 +886,62 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
         </div>
       </div>
 
-      <div className="px-3 md:px-6 py-4 space-y-3">
+      <div className="px-4 md:px-8 py-5 space-y-4">
+
+        {/* ── 3 Modern KPI Cards Row Matching User Mockup ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* Card 1: Open Quotations */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/80">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-slate-500 block">Open Quotations</span>
+              <span className="text-2xl font-black text-slate-900 leading-tight block">{stats.open}</span>
+              <span className="text-[11px] font-semibold text-blue-600 flex items-center gap-1 mt-0.5">
+                <span>↑</span> 12% vs last month
+              </span>
+            </div>
+          </div>
+
+          {/* Card 2: Total Value */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 text-2xl font-bold border border-emerald-100/80 font-mono">
+              ₹
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-slate-500 block">Total Value</span>
+              <span className="text-2xl font-black text-slate-900 leading-tight block">
+                {formatCurrencyDisplay(stats.total)}
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
+                <span>↑</span> 8.7% vs last month
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: Avg Value */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100/80">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-slate-500 block">Avg Value</span>
+              <span className="text-2xl font-black text-slate-900 leading-tight block">
+                {formatCurrencyDisplay(stats.count > 0 ? stats.total / stats.count : 0)}
+              </span>
+              <span className="text-[11px] font-semibold text-purple-600 flex items-center gap-1 mt-0.5">
+                <span>↑</span> 5.3% vs last month
+              </span>
+            </div>
+          </div>
+
+        </div>
 
         {/* ── Active Excel Filters Bar ── */}
         {activeFilterCount > 0 && (
@@ -1243,129 +1368,180 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
         {/* ── STANDARD VIEW (Card/Standard Table View) ── */}
         {viewMode === 'standard' && (
-          <div className="hidden md:block bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+          <div className="hidden md:block bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
               <table className="min-w-full">
-                <thead className="sticky top-0 z-20 bg-[#f8fafc] border-b-2 border-slate-200 shadow-xs">
-                  <tr className="bg-[#f8fafc]">
-                    <th className="px-3 py-3 w-9 bg-[#f8fafc]">
+                <thead className="sticky top-0 z-20 bg-[#f8fafc] border-b border-slate-200 shadow-2xs select-none">
+                  <tr>
+                    <th className="py-3.5 px-3 w-10 text-center bg-[#f8fafc]">
                       <input
                         type="checkbox"
                         checked={isAllSelected}
                         onChange={handleSelectAll}
-                        className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('id')}>
-                      No {sortBy === 'id' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    <th className="py-3.5 px-2 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('id')}>
+                      NO {sortBy === 'id' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('quotationDate')}>
-                      Date {sortBy === 'quotationDate' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('quotationDate')}>
+                      DATE {sortBy === 'quotationDate' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('customer')}>
-                      Customer {sortBy === 'customer' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('customer')}>
+                      CUSTOMER {sortBy === 'customer' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('contactPerson')}>
-                      Contact {sortBy === 'contactPerson' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('contactPerson')}>
+                      CONTACT {sortBy === 'contactPerson' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-right text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('totalAmount')}>
-                      Amount {sortBy === 'totalAmount' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    <th className="py-3.5 px-3 text-right text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('totalAmount')}>
+                      AMOUNT {sortBy === 'totalAmount' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('status')}>
-                      Status {sortBy === 'status' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    <th className="py-3.5 px-3 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('status')}>
+                      STATUS {sortBy === 'status' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('salesPerson')}>
-                      Sales Person {sortBy === 'salesPerson' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    <th className="py-3.5 px-3 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">
+                      VALIDITY
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">Comments</th>
-                    <th className="px-3 py-3 text-center text-[11px] font-bold text-slate-600 uppercase tracking-wider w-[105px] bg-[#f8fafc]">Actions</th>
+                    <th className="py-3.5 px-2 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">
+                      ITEMS
+                    </th>
+                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('salesPerson')}>
+                      SALES PERSON {sortBy === 'salesPerson' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    </th>
+                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider bg-[#f8fafc] min-w-[200px]">
+                      <span className="flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                        COMMENTS
+                      </span>
+                    </th>
+                    <th className="py-3.5 px-3 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider w-[100px] bg-[#f8fafc]">
+                      ACTIONS
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {paginatedQuotations.map((q, rowIdx) => {
                     const isSelected = selectedQuotationIds.has(q.id);
                     const amount = calculateTotalAmount(q.details);
+                    const actualRowNumber = (pageSize === 0 ? 0 : (currentPage - 1) * pageSize) + rowIdx + 1;
+                    const commentCount = q.commentsList?.length || (q.comments ? 1 : 0);
+
                     return (
                       <tr
                         key={q.id}
-                        className={`group transition-colors ${isSelected ? 'bg-indigo-50/70' : rowIdx % 2 === 0 ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 hover:bg-slate-50/80'}`}
+                        className={`group transition-colors ${
+                          isSelected ? 'bg-blue-50/70' : rowIdx % 2 === 0 ? 'bg-white hover:bg-slate-50/70' : 'bg-slate-50/30 hover:bg-slate-50/70'
+                        }`}
                       >
-                        <td className="px-3 py-2">
-                          <input type="checkbox" checked={isSelected} onChange={() => handleSelectOne(q.id)}
-                            className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
-                        </td>
-                        <td className="px-3 py-2 w-[60px]">
-                          <button
-                            onClick={() => handleEdit(q.id)}
-                            className="font-bold text-indigo-600 hover:text-indigo-800 text-xs transition-colors hover:underline whitespace-nowrap cursor-pointer font-mono"
-                          >
-                            {getQuotationSeqNum(q, quotations || [])}
-                          </button>
-                        </td>
-                        <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap font-mono">
-                          {formatDate(q.quotationDate)}
-                        </td>
-                        <td className="px-3 py-2 min-w-[180px] max-w-[280px]">
-                          <p className="text-xs font-bold text-slate-800 truncate" title={getCustomerName(q.customerId)}>
-                            {getCustomerName(q.customerId)}
-                          </p>
-                        </td>
-                        <td className="px-3 py-2 w-[130px]">
-                          <p className="text-xs font-semibold text-slate-700 truncate">{q.contactPerson || '—'}</p>
-                          {q.contactNumber && (
-                            <p className="text-[10px] text-indigo-600 font-semibold mt-0.5 whitespace-nowrap font-mono">
-                              📞 {q.contactNumber}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-right whitespace-nowrap font-mono font-bold text-slate-900">
-                          ₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                        </td>
-                        <td className="px-3 py-2">
-                          <StatusBadge status={q.status} onChange={s => handleStatusChange(q.id, s)} />
-                        </td>
-                        <td className="px-3 py-2 w-[120px]">
-                          <select
-                            value={q.salesPersonId || ''}
-                            onChange={e => {
-                              if (!e.target.value) return;
-                              const newSpId = Number(e.target.value);
-                              setQuotations(prev => (prev || []).map(qt => qt.id === q.id ? { ...qt, salesPersonId: newSpId } : qt));
-                            }}
-                            className="w-full bg-transparent text-[11px] font-semibold text-slate-700 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded-lg px-2 py-1 cursor-pointer"
-                          >
-                            <option value="">Select SP</option>
-                            {salesPersons?.map(sp => (
-                              <option key={sp.id} value={sp.id}>{sp.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-3 py-2 min-w-[120px]">
-                          <input
-                            type="text"
-                            defaultValue={q.comments || ''}
-                            onBlur={e => handleCommentChange(q.id, e.target.value)}
-                            className="w-full bg-transparent text-[11px] text-slate-600 placeholder-slate-300 border-0 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-1 hover:bg-slate-100 transition-colors"
-                            placeholder="Add comment..."
+                        {/* Checkbox */}
+                        <td className="px-3 py-3.5 text-center">
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected} 
+                            onChange={() => handleSelectOne(q.id)}
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" 
                           />
                         </td>
-                        <td className="px-3 py-2 text-center whitespace-nowrap">
+
+                        {/* NO */}
+                        <td className="px-2 py-3.5 text-slate-700 text-xs font-semibold select-none">
+                          {actualRowNumber}
+                        </td>
+
+                        {/* DATE */}
+                        <td className="px-3 py-3.5 text-xs text-slate-700 whitespace-nowrap font-medium">
+                          {formatDisplayDate(q.quotationDate)}
+                        </td>
+
+                        {/* CUSTOMER */}
+                        <td className="px-3 py-3.5 min-w-[190px] max-w-[260px]">
+                          <p className="text-xs font-bold text-slate-900 uppercase tracking-tight truncate" title={getCustomerName(q.customerId)}>
+                            {getCustomerName(q.customerId)}
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                            {getCustomerCity(q.customerId) || 'Karnataka, India'}
+                          </p>
+                        </td>
+
+                        {/* CONTACT */}
+                        <td className="px-3 py-3.5 min-w-[140px] max-w-[190px]">
+                          <p className="text-xs font-semibold text-slate-800 truncate" title={q.contactPerson || ''}>
+                            {q.contactPerson || '—'}
+                          </p>
+                          <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                            {q.contactNumber ? q.contactNumber : 'contact@client.com'}
+                          </p>
+                        </td>
+
+                        {/* AMOUNT */}
+                        <td className="px-3 py-3.5 text-right whitespace-nowrap font-mono font-bold text-slate-900 text-xs">
+                          ₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                        </td>
+
+                        {/* STATUS */}
+                        <td className="px-3 py-3.5 text-center">
+                          <StatusBadge status={q.status} onChange={s => handleStatusChange(q.id, s)} />
+                        </td>
+
+                        {/* VALIDITY */}
+                        <td className="px-3 py-3.5 text-center whitespace-nowrap text-xs text-slate-600 font-medium">
+                          {getValidityDate(q.quotationDate)}
+                        </td>
+
+                        {/* ITEMS */}
+                        <td className="px-2 py-3.5 text-center text-xs font-semibold text-slate-700">
+                          {q.details?.length || 0}
+                        </td>
+
+                        {/* SALES PERSON */}
+                        <td className="px-3 py-3.5 min-w-[120px]">
+                          <p className="text-xs font-bold text-slate-900 truncate">
+                            {getSalesPersonName(q.salesPersonId)}
+                          </p>
+                          <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                            Inside Sales
+                          </p>
+                        </td>
+
+                        {/* COMMENTS */}
+                        <td className="px-3 py-3.5 min-w-[200px]">
+                          <div className="flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 shadow-2xs">
+                              {commentCount}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-slate-700 font-medium truncate" title={q.comments || ''}>
+                                {q.comments || 'No comments'}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSidePanelQuotation(q)}
+                                className="text-[11px] text-slate-400 hover:text-blue-600 font-medium transition-colors cursor-pointer text-left block mt-0.5"
+                              >
+                                Add comment
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* ACTIONS */}
+                        <td className="px-3 py-3.5 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => setEmailModalQuotation(q)}
                               title="Share Quotation"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                               </svg>
                             </button>
                             <button
                               onClick={() => handleEdit(q.id)}
-                              title="Open Quotation"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
+                              title="Edit Quotation"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                               </svg>
@@ -1374,13 +1550,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                               <button
                                 onClick={() => handleDelete(q.id)}
                                 title="Delete Quotation"
-                                className="w-7 h-7 rounded-lg flex items-center justify-center text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="3 6 5 6 21 6" />
                                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                  <line x1="10" y1="11" x2="10" y2="17" />
-                                  <line x1="14" y1="11" x2="14" y2="17" />
                                 </svg>
                               </button>
                             )}
@@ -1471,79 +1645,242 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
           })}
         </div>
 
-        {/* ── Pagination Bar ── */}
+        {/* ── Modern Pagination & Side Panel Bar ── */}
         {totalItems > 0 && (
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 my-3 px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs text-slate-600 shadow-xs">
-            <div className="flex items-center gap-1.5">
-              <span>Showing</span>
-              <span className="font-bold text-slate-800">
-                {pageSize === 0 ? 1 : Math.min((currentPage - 1) * pageSize + 1, totalItems)}
-              </span>
-              <span>to</span>
-              <span className="font-bold text-slate-800">
-                {pageSize === 0 ? totalItems : Math.min(currentPage * pageSize, totalItems)}
-              </span>
-              <span>of</span>
-              <span className="font-bold text-emerald-700">{totalItems}</span>
-              <span>quotations</span>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 my-4 px-4 py-3 bg-white rounded-2xl border border-slate-200/90 text-xs text-slate-600 shadow-2xs">
+            
+            {/* Left: Showing Range */}
+            <div className="text-xs text-slate-500 font-medium">
+              Showing <span className="font-bold text-slate-800">{pageSize === 0 ? 1 : Math.min((currentPage - 1) * pageSize + 1, totalItems)}</span> to{' '}
+              <span className="font-bold text-slate-800">{pageSize === 0 ? totalItems : Math.min(currentPage * pageSize, totalItems)}</span> of{' '}
+              <span className="font-bold text-slate-900">{totalItems}</span> quotations
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap justify-end">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500">Rows per page:</span>
-                <select
-                  value={pageSize}
-                  onChange={e => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+            {/* Center: Numeric Page Numbers */}
+            <div className="flex items-center gap-1.5 select-none">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                ‹
+              </button>
+
+              {Array.from({ length: Math.min(totalPages, 6) }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center transition-all ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={200}>200</option>
-                  <option value={0}>All ({totalItems})</option>
-                </select>
+                  {page}
+                </button>
+              ))}
+
+              {totalPages > 6 && (
+                <>
+                  <span className="text-slate-400 font-bold px-1">...</span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(totalPages)}
+                    className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center transition-all ${
+                      currentPage === totalPages
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-bold flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                ›
+              </button>
+            </div>
+
+            {/* Right: Side Panel Button Matching User Mockup */}
+            <button
+              type="button"
+              onClick={() => {
+                if (paginatedQuotations.length > 0) {
+                  setSelectedSidePanelQuotation(selectedSidePanelQuotation ? null : paginatedQuotations[0]);
+                }
+              }}
+              className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-blue-200/90 bg-blue-50/70 hover:bg-blue-100/80 text-blue-900 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+            >
+              <div className="w-5 h-5 rounded-md bg-blue-600 text-white flex items-center justify-center text-xs shadow-2xs">
+                📑
+              </div>
+              <div className="text-left">
+                <span className="font-bold block leading-tight">Side Panel</span>
+                <span className="text-[10px] text-blue-600/80 font-normal hidden sm:block">View detailed comments, history and attachments</span>
+              </div>
+            </button>
+
+          </div>
+        )}
+
+        {/* ── SLIDE-OVER SIDE PANEL DRAWER ── */}
+        {selectedSidePanelQuotation && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-2xs transition-opacity animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-250">
+              
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-900 to-indigo-900 text-white">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-blue-200 font-mono">
+                      #{getQuotationSeqNum(selectedSidePanelQuotation, quotations || [])}
+                    </span>
+                    <StatusBadge status={selectedSidePanelQuotation.status} onChange={s => handleStatusChange(selectedSidePanelQuotation.id, s)} />
+                  </div>
+                  <h3 className="text-sm font-bold text-white mt-1 truncate max-w-xs">
+                    {getCustomerName(selectedSidePanelQuotation.customerId)}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSidePanelQuotation(null)}
+                  className="w-8 h-8 rounded-full text-slate-300 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors text-xl font-bold"
+                >
+                  ✕
+                </button>
               </div>
 
-              {pageSize > 0 && totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="px-2 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-bold cursor-pointer"
-                    title="First Page"
-                  >
-                    «
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-2.5 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold cursor-pointer"
-                  >
-                    Prev
-                  </button>
-                  <span className="px-2 font-semibold text-slate-800">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-2.5 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold cursor-pointer"
-                  >
-                    Next
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="px-2 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed font-bold cursor-pointer"
-                    title="Last Page"
-                  >
-                    »
-                  </button>
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-slate-50/50">
+                
+                {/* Quotation Snapshot Pod */}
+                <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-2xs space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-medium">Date</span>
+                    <span className="font-semibold text-slate-800">{formatDisplayDate(selectedSidePanelQuotation.quotationDate)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-medium">Validity</span>
+                    <span className="font-semibold text-slate-800">{getValidityDate(selectedSidePanelQuotation.quotationDate)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 font-medium">Sales Person</span>
+                    <span className="font-semibold text-slate-800">{getSalesPersonName(selectedSidePanelQuotation.salesPersonId)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-t border-slate-100 pt-2">
+                    <span className="text-slate-700 font-bold">Total Amount</span>
+                    <span className="font-bold text-base text-blue-600 font-mono">
+                      ₹{calculateTotalAmount(selectedSidePanelQuotation.details).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
-              )}
+
+                {/* Items Summary */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <span>Items ({selectedSidePanelQuotation.details?.length || 0})</span>
+                    <button 
+                      onClick={() => handleEdit(selectedSidePanelQuotation.id)}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Edit Quote →
+                    </button>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200/80 divide-y divide-slate-100 max-h-48 overflow-y-auto text-xs">
+                    {selectedSidePanelQuotation.details?.map((item, idx) => (
+                      <div key={idx} className="p-2.5 flex items-center justify-between">
+                        <div className="min-w-0 pr-2">
+                          <span className="font-bold text-slate-900 block truncate">{item.partNo || 'Item'}</span>
+                          <span className="text-[11px] text-slate-500 truncate block">{item.description}</span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-slate-500 font-medium block">Qty: {item.moq}</span>
+                          <span className="font-bold text-slate-800 font-mono block">₹{(item.price * item.moq).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Comments & Activity Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                    <span>Comments & Activity History</span>
+                  </div>
+
+                  {/* Comments Timeline */}
+                  <div className="space-y-2.5 max-h-60 overflow-y-auto">
+                    {selectedSidePanelQuotation.commentsList && selectedSidePanelQuotation.commentsList.length > 0 ? (
+                      selectedSidePanelQuotation.commentsList.map((c, i) => (
+                        <div key={c.id || i} className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs space-y-1 text-xs">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-slate-800">{c.userName}</span>
+                            <span className="text-[10px] text-slate-400">{new Date(c.timestamp).toLocaleDateString()}</span>
+                          </div>
+                          <p className="text-slate-600 text-xs leading-relaxed">{c.text}</p>
+                        </div>
+                      ))
+                    ) : selectedSidePanelQuotation.comments ? (
+                      <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs space-y-1 text-xs">
+                        <span className="font-bold text-slate-800 block">General Comment</span>
+                        <p className="text-slate-600 text-xs leading-relaxed">{selectedSidePanelQuotation.comments}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic text-center py-4">No comments recorded yet.</p>
+                    )}
+                  </div>
+
+                  {/* Add Comment Input */}
+                  <div className="bg-white rounded-xl p-2.5 border border-slate-200 shadow-2xs space-y-2">
+                    <textarea
+                      rows={2}
+                      value={sidePanelComment}
+                      onChange={e => setSidePanelComment(e.target.value)}
+                      placeholder="Type a new comment or update note..."
+                      className="w-full text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-lg p-2 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handlePostSidePanelComment}
+                        disabled={isPostingComment || !sidePanelComment.trim()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                      >
+                        {isPostingComment ? 'Saving...' : 'Post Comment'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div className="p-3.5 border-t border-slate-200 bg-white flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setEmailModalQuotation(selectedSidePanelQuotation)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  Share Quote
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleEdit(selectedSidePanelQuotation.id)}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs cursor-pointer"
+                >
+                  Open Full Editor →
+                </button>
+              </div>
+
             </div>
           </div>
         )}

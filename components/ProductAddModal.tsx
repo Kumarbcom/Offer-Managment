@@ -413,15 +413,15 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                     {/* Image (Left) + Part No / HSN / Description (Right) */}
                     <div className="flex flex-col sm:flex-row gap-4 items-start">
                       
-                      {/* Product Image Area */}
-                      <div className="w-full sm:w-44 shrink-0 flex flex-col items-center gap-2">
-                        <div className="relative group w-full h-32 bg-white border border-dashed border-blue-200 hover:border-blue-400 rounded-xl overflow-hidden flex items-center justify-center transition-all shadow-2xs">
+                      {/* Product Image Area - Bigger Image Size */}
+                      <div className="w-full sm:w-56 shrink-0 flex flex-col items-center gap-2">
+                        <div className="relative group w-full h-44 bg-white border border-dashed border-blue-200 hover:border-blue-400 rounded-xl overflow-hidden flex items-center justify-center transition-all shadow-2xs">
                           {formData.imageUrl ? (
                             <>
                               <img 
                                 src={formData.imageUrl} 
                                 alt="Product preview" 
-                                className="max-h-full max-w-full object-contain p-2 transition-transform duration-200 group-hover:scale-105"
+                                className="w-full h-full object-contain p-1 transition-transform duration-200 group-hover:scale-105"
                                 onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                               />
                               <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-2xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
@@ -440,8 +440,8 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                             </>
                           ) : (
                             <label className="cursor-pointer flex flex-col items-center justify-center w-full h-full p-2 text-center hover:bg-blue-50/30 transition-colors">
-                              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                              <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                               </div>
                               <span className="text-[11px] font-bold text-blue-900">Upload Photo</span>
                               <span className="text-[9px] text-slate-400">PNG, JPG, WebP</span>
@@ -473,12 +473,12 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                         )}
                       </div>
 
-                      {/* Right Part: Part No, HSN, Description */}
+                      {/* Right Part: Part No, HSN, Description (Not bold) */}
                       <div className="flex-1 space-y-3 w-full">
                         {/* Part No & HSN Code */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label htmlFor="partNo" className="block text-xs font-bold text-slate-800 mb-1">
+                            <label htmlFor="partNo" className="block text-xs font-semibold text-slate-800 mb-1">
                               Part No <span className="text-rose-500">*</span>
                             </label>
                             <input 
@@ -488,13 +488,13 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                               value={formData.partNo} 
                               onChange={handleGeneralChange} 
                               required 
-                              className="block w-full px-3 py-2 text-sm font-bold text-slate-900 bg-[#f8fafc] border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
+                              className="block w-full px-3 py-2 text-sm font-normal text-slate-800 bg-[#f8fafc] border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
                               placeholder="e.g. 221803"
                             />
                           </div>
 
                           <div>
-                            <label htmlFor="hsnCode" className="block text-xs font-bold text-slate-800 mb-1">
+                            <label htmlFor="hsnCode" className="block text-xs font-semibold text-slate-800 mb-1">
                               HSN Code
                             </label>
                             <input 
@@ -503,15 +503,15 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                               id="hsnCode" 
                               value={formData.hsnCode || ''} 
                               onChange={handleGeneralChange} 
-                              className="block w-full px-3 py-2 text-sm text-slate-800 bg-[#f8fafc] border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all placeholder:text-slate-400"
+                              className="block w-full px-3 py-2 text-sm font-normal text-slate-800 bg-[#f8fafc] border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all placeholder:text-slate-400"
                               placeholder="e.g. 85444990"
                             />
                           </div>
                         </div>
 
-                        {/* Description with Purple Document Icon */}
+                        {/* Description with Purple Document Icon (Not bold) */}
                         <div>
-                          <label htmlFor="description" className="block text-xs font-bold text-slate-800 mb-1">
+                          <label htmlFor="description" className="block text-xs font-semibold text-slate-800 mb-1">
                             Description <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative flex items-center">
@@ -525,7 +525,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                               value={formData.description} 
                               onChange={handleGeneralChange} 
                               required 
-                              className="block w-full pl-9 pr-3 py-2 text-sm font-bold text-slate-900 bg-[#f8fafc] border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all"
+                              className="block w-full pl-9 pr-3 py-2 text-sm font-normal text-slate-800 bg-[#f8fafc] border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all"
                               placeholder="e.g. ÖLFLEX® TRAY II 3G1 18/3C"
                             />
                           </div>
