@@ -82,7 +82,7 @@ const getEffectivePriceValue = (product: Product): number => {
     return price.lp > 0 ? price.lp : price.sp;
 };
 
-// Memoized ModernProductRow component (Modern Stripe/Shopify-style Product Table)
+// Memoized ModernProductRow component matching user mockup design
 const ModernProductRow = React.memo(({ 
     product, 
     isSelected, 
@@ -103,55 +103,55 @@ const ModernProductRow = React.memo(({
     const sp = currentPrice?.sp || 0;
     
     return (
-        <tr className={`border-b border-slate-100 hover:bg-gradient-to-r hover:from-indigo-50/40 hover:via-purple-50/20 hover:to-transparent transition-all group ${
-            isSelected ? 'bg-gradient-to-r from-indigo-50/80 to-purple-50/40' : 'bg-white'
+        <tr className={`border-b border-slate-100 hover:bg-blue-50/20 transition-colors group ${
+            isSelected ? 'bg-blue-50/60' : 'bg-white'
         }`}>
             {/* Checkbox */}
-            <td className="px-3 py-3 text-center w-12">
+            <td className="px-3 py-2.5 text-center w-12">
                 <input 
                     type="checkbox" 
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" 
                     checked={isSelected} 
                     onChange={() => onSelect(product.id)} 
                     aria-label={`Select product ${product.partNo}`}
                 />
             </td>
 
-            {/* Product: Image on Left + Part No & Description Below (ID removed) */}
-            <td className="px-4 py-3 w-[38%] min-w-[340px]">
-                <div className="flex items-center gap-3.5">
-                    {/* Modern Image Container with subtle gradient border/shadow */}
-                    <div className="relative shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/80 border border-slate-200/90 shadow-2xs flex items-center justify-center overflow-hidden group/img">
+            {/* Product: Image on Left + Part No & Description */}
+            <td className="px-4 py-2.5 w-[38%] min-w-[340px]">
+                <div className="flex items-center gap-3">
+                    {/* Modern Image Container */}
+                    <div className="relative shrink-0 w-12 h-9 rounded-lg bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center overflow-hidden group/img p-0.5">
                         {product.imageUrl ? (
                             <img 
                                 src={product.imageUrl} 
                                 alt={product.partNo} 
                                 onClick={() => onZoomImage?.(product)}
-                                className="w-full h-full object-contain p-0.5 cursor-zoom-in group-hover/img:scale-110 transition-transform duration-200" 
+                                className="w-full h-full object-contain cursor-zoom-in group-hover/img:scale-105 transition-transform duration-200" 
                                 onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                                 title="Click to zoom image"
                             />
                         ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50/50 text-indigo-400">
-                                <svg className="w-5 h-5 text-indigo-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
-                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                                    <circle cx="9" cy="9" r="2"/>
+                                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
                                 </svg>
                             </div>
                         )}
                     </div>
 
-                    {/* Part No & Description (Clean, bold, no ID badge) */}
+                    {/* Part No & Description */}
                     <div className="min-w-0 flex-1">
                         <span 
-                            className="font-mono font-extrabold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer transition-colors tracking-tight block" 
+                            className="font-mono font-bold text-slate-900 text-xs hover:text-blue-600 cursor-pointer transition-colors block" 
                             onClick={() => onEdit(product)}
                             title="Click to edit product"
                         >
                             {product.partNo}
                         </span>
-                        <div className="text-xs text-slate-500 font-medium truncate max-w-sm sm:max-w-md mt-0.5" title={product.description}>
+                        <div className="text-[11px] text-slate-500 font-medium truncate max-w-sm sm:max-w-md" title={product.description}>
                             {product.description}
                         </div>
                     </div>
@@ -159,9 +159,9 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* HSN Code */}
-            <td className="px-3 py-3 text-center w-[10%]">
+            <td className="px-3 py-2.5 text-center w-[10%]">
                 {product.hsnCode ? (
-                    <span className="font-mono text-xs text-slate-700 bg-slate-100/90 px-2 py-0.5 rounded-md border border-slate-200/70 font-medium">
+                    <span className="font-mono text-xs text-slate-700 font-medium">
                         {product.hsnCode}
                     </span>
                 ) : (
@@ -170,9 +170,9 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* List Price */}
-            <td className="px-4 py-3 text-right w-[13%] whitespace-nowrap">
+            <td className="px-4 py-2.5 text-right w-[13%] whitespace-nowrap">
                 {lp > 0 ? (
-                    <span className="font-mono font-black text-slate-900 text-sm tracking-tight">
+                    <span className="font-mono font-bold text-slate-900 text-xs">
                         ₹{lp.toFixed(2)}
                     </span>
                 ) : (
@@ -181,9 +181,9 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* Selling Price */}
-            <td className="px-4 py-3 text-right w-[11%] whitespace-nowrap">
+            <td className="px-4 py-2.5 text-right w-[11%] whitespace-nowrap">
                 {sp > 0 ? (
-                    <span className="font-mono text-slate-600 text-xs tracking-tight">
+                    <span className="font-mono text-slate-600 text-xs">
                         ₹{sp.toFixed(2)}
                     </span>
                 ) : (
@@ -191,10 +191,10 @@ const ModernProductRow = React.memo(({
                 )}
             </td>
 
-            {/* UOM */}
-            <td className="px-2 py-3 text-center w-[7%]">
+            {/* UOM - Soft blue circle/pill */}
+            <td className="px-2 py-2.5 text-center w-[7%]">
                 {product.uom ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-mono">
+                    <span className="inline-flex items-center justify-center min-w-[24px] px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 font-mono">
                         {product.uom}
                     </span>
                 ) : (
@@ -202,10 +202,10 @@ const ModernProductRow = React.memo(({
                 )}
             </td>
 
-            {/* Plant */}
-            <td className="px-2 py-3 text-center w-[9%]">
+            {/* Plant - Soft green circle/pill */}
+            <td className="px-2 py-2.5 text-center w-[9%]">
                 {product.plant ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-mono">
+                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 font-mono">
                         {product.plant}
                     </span>
                 ) : (
@@ -214,9 +214,9 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* Weight */}
-            <td className="px-3 py-3 text-right w-[8%] whitespace-nowrap">
+            <td className="px-3 py-2.5 text-right w-[8%] whitespace-nowrap">
                 {product.weight > 0 ? (
-                    <span className="text-slate-700 font-mono text-xs font-medium">
+                    <span className="text-slate-600 font-mono text-xs font-medium">
                         {product.weight}{product.weight > 0 && product.weight < 100 ? ' g' : ' kg/m'}
                     </span>
                 ) : (
@@ -224,28 +224,28 @@ const ModernProductRow = React.memo(({
                 )}
             </td>
 
-            {/* Actions (Attractive Modern SVG Buttons) */}
-            <td className="px-3 py-3 text-center w-[8%] min-w-[85px] whitespace-nowrap">
+            {/* Actions - Soft circular buttons */}
+            <td className="px-3 py-2.5 text-center w-[8%] min-w-[85px] whitespace-nowrap">
                 <div className="flex items-center justify-center gap-1.5">
-                    {/* Edit Button */}
+                    {/* Edit Button: Soft Blue Circle */}
                     <button 
                         onClick={() => onEdit(product)} 
-                        className="p-1.5 rounded-xl text-indigo-600 hover:text-white bg-indigo-50/80 hover:bg-gradient-to-r hover:from-indigo-600 hover:to-blue-600 border border-indigo-200/70 hover:border-transparent transition-all shadow-2xs hover:shadow-xs group/btn" 
+                        className="w-7 h-7 rounded-full text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-all shadow-2xs hover:scale-105 cursor-pointer" 
                         title="Edit Product"
                     >
-                        <svg className="w-4 h-4 transition-transform group-hover/btn:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 20h9"/>
                             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
                         </svg>
                     </button>
                     
-                    {/* Delete Button */}
+                    {/* Delete Button: Soft Pink/Red Circle */}
                     <button 
                         onClick={() => onDelete(product.id)} 
-                        className="p-1.5 rounded-xl text-rose-600 hover:text-white bg-rose-50/80 hover:bg-gradient-to-r hover:from-rose-600 hover:to-red-600 border border-rose-200/70 hover:border-transparent transition-all shadow-2xs hover:shadow-xs group/btn" 
+                        className="w-7 h-7 rounded-full text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 flex items-center justify-center transition-all shadow-2xs hover:scale-105 cursor-pointer" 
                         title="Delete Product"
                     >
-                        <svg className="w-4 h-4 transition-transform group-hover/btn:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M3 6h18"/>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
                             <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -1172,25 +1172,36 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/90">
-         {/* Top Header with Title, View Switcher, and Professional Grouped Action Buttons */}
-         <div className="flex flex-wrap gap-3 justify-between items-center mb-4 pb-3 border-b border-slate-100">
+      <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-slate-200/80">
+         {/* Top Header with 3D Cube Icon, Title, Subtitle, and Action Buttons */}
+         <div className="flex flex-wrap gap-4 justify-between items-center mb-6 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3.5 flex-wrap">
-               <div className="flex items-center gap-2">
-                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Products</h2>
-                 <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-200">
-                   {displayedProducts.length}
-                 </span>
+               {/* 3D Isometric Blue Cube Icon */}
+               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                     <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                     <line x1="12" y1="22.08" x2="12" y2="12"/>
+                  </svg>
+               </div>
+               <div>
+                  <div className="flex items-center gap-2">
+                     <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Products</h2>
+                     <span className="text-xs font-mono font-bold bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full border border-blue-100">
+                        {displayedProducts.length}
+                     </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-medium">Manage your product catalogue</p>
                </div>
 
                {/* View Mode Toggle Pill (Modern View vs Excel Grid View) */}
-               <div className="hidden sm:inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-semibold shadow-2xs">
+               <div className="hidden sm:inline-flex items-center bg-slate-100/80 p-0.5 rounded-xl border border-slate-200/80 text-xs font-semibold shadow-2xs ml-2">
                   <button
                      type="button"
                      onClick={() => { setViewMode('modern'); localStorage.setItem('products_view_mode', 'modern'); }}
                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
                         viewMode === 'modern' 
-                          ? 'bg-white text-indigo-700 shadow-xs font-bold' 
+                          ? 'bg-white text-blue-700 shadow-xs font-bold' 
                           : 'text-slate-600 hover:text-slate-900'
                      }`}
                   >
@@ -1230,17 +1241,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             </div>
             )}
             
-            {/* Desktop Actions: Strictly Ordered - 1. Add items (New) -> 2. Export -> 3. Update -> 4. Template */}
-            <div className="hidden md:flex flex-wrap gap-2.5 text-xs items-center">
+            {/* Desktop Actions matching User Mockup: 1. Add items (New) -> 2. Export -> 3. Update -> 4. Template */}
+            <div className="hidden md:flex flex-wrap gap-2 text-xs items-center">
                 {/* 1. Add items (New) */}
                 {canManageProducts && (
                     <button 
                         onClick={handleAddNew} 
                         disabled={isUploading} 
-                        className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white font-bold py-2 px-4 rounded-xl shadow-md shadow-indigo-500/25 hover:shadow-lg hover:shadow-indigo-500/35 transition-all active:scale-[0.98] disabled:opacity-50 text-xs"
+                        className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 px-4 rounded-xl shadow-md shadow-blue-500/25 hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 text-xs cursor-pointer"
                     >
-                        <span className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <span className="w-4 h-4 rounded-full bg-white/25 flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="5" x2="12" y2="19"/>
                                 <line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
@@ -1255,9 +1266,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                         type="button"
                         onClick={() => setActiveDropdown(prev => prev === 'export' ? null : 'export')}
                         disabled={isUploading} 
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
                     >
-                        <svg className="w-3.5 h-3.5 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <svg className="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         <span>Export</span>
                         <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
@@ -1291,9 +1302,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                             type="button"
                             onClick={() => setActiveDropdown(prev => prev === 'update' ? null : 'update')}
                             disabled={isUploading} 
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
                         >
-                            <svg className="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <svg className="w-3.5 h-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
                             <span>Update</span>
                             <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
@@ -1355,9 +1366,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                         type="button"
                         onClick={() => setActiveDropdown(prev => prev === 'template' ? null : 'template')}
                         disabled={isUploading} 
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
                     >
-                        <svg className="w-3.5 h-3.5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <svg className="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         <span>Template</span>
                         <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
@@ -1423,10 +1434,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
              </div>
          </div>
 
-         {/* Desktop Filters with Professional Polish */}
-         <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+         {/* Desktop Filters matching User Mockup with 4 Clean Input Pods */}
+         <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
             <div>
-                <label htmlFor="searchTerm" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="searchTerm" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Search Part No (use * for OR)
                 </label>
                 <div className="relative">
@@ -1435,14 +1446,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                         id="searchTerm" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
-                        className="block w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono" 
+                        className="block w-full pl-9 pr-3 py-2 bg-slate-50/70 border border-slate-200 rounded-2xl text-xs text-slate-900 shadow-2xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono transition-all" 
                         placeholder="e.g. OLFLEX*UNITRONIC" 
                     />
-                    <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <svg className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 </div>
             </div>
             <div>
-                <label htmlFor="searchDescription" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="searchDescription" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Search Description (use * for OR)
                 </label>
                 <div className="relative">
@@ -1451,40 +1462,46 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                         id="searchDescription" 
                         value={searchDescription} 
                         onChange={e => setSearchDescription(e.target.value)} 
-                        className="block w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                        className="block w-full pl-9 pr-3 py-2 bg-slate-50/70 border border-slate-200 rounded-2xl text-xs text-slate-900 shadow-2xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" 
                         placeholder="e.g. CABLE*POWER" 
                     />
-                    <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <svg className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 </div>
             </div>
             <div>
-                <label htmlFor="sortBy" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="sortBy" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Sort By
                 </label>
-                <select 
-                    id="sortBy" 
-                    value={sortBy} 
-                    onChange={e => setSortBy(e.target.value as SortByType)} 
-                    className="block w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                    <option value="price">Price (LP)</option>
-                    <option value="id">ID</option>
-                    <option value="partNo">Part No</option>
-                    <option value="description">Description</option>
-                    <option value="hsnCode">HSN Code</option>
-                </select>
+                <div className="relative">
+                    <select 
+                        id="sortBy" 
+                        value={sortBy} 
+                        onChange={e => setSortBy(e.target.value as SortByType)} 
+                        className="block w-full pl-9 pr-3 py-2 bg-slate-50/70 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 shadow-2xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                    >
+                        <option value="price">Price (LP)</option>
+                        <option value="id">ID</option>
+                        <option value="partNo">Part No</option>
+                        <option value="description">Description</option>
+                        <option value="hsnCode">HSN Code</option>
+                    </select>
+                    <span className="absolute left-3 top-2.5 text-xs pointer-events-none">🏷️</span>
+                </div>
             </div>
             <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Order
                 </label>
                 <button 
                     type="button" 
                     onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} 
-                    className="w-full bg-white hover:bg-slate-100 text-slate-800 font-semibold py-1.5 px-3 border border-slate-300 rounded-lg shadow-2xs flex items-center justify-between text-xs transition-colors"
+                    className="w-full bg-slate-50/70 hover:bg-white text-slate-800 font-semibold py-2 px-3.5 border border-slate-200 rounded-2xl shadow-2xs flex items-center justify-between text-xs transition-all cursor-pointer"
                 >
-                    <span>{sortOrder === 'asc' ? 'Ascending' : 'Descending'}</span>
-                    <span className="font-bold text-indigo-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                    <span className="flex items-center gap-1.5">
+                        <span className="text-slate-500 font-bold">⇅</span>
+                        <span>{sortOrder === 'asc' ? 'Ascending' : 'Descending'}</span>
+                    </span>
+                    <span className="font-bold text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
                 </button>
             </div>
          </div>
@@ -1602,22 +1619,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 </div>
             </div>
         ) : (
-            <div className="hidden md:block border border-slate-200/90 rounded-2xl shadow-sm bg-white overflow-hidden mt-3">
+            <div className="hidden md:block border border-slate-200/80 rounded-2xl shadow-sm bg-white overflow-hidden mt-3">
                 <div className="overflow-x-auto max-h-[72vh] relative">
                     <table className="min-w-full text-xs text-left border-collapse table-fixed">
-                        <thead className="bg-[#f8fafc] text-slate-800 font-extrabold uppercase text-[10px] tracking-wider sticky top-0 z-20 border-b-2 border-slate-200 shadow-xs select-none">
-                            <tr>
-                                <th className="px-3 py-3.5 text-center w-12 bg-[#f8fafc]">
-                                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
+                        <thead className="sticky top-0 z-20 shadow-md select-none bg-[#0866dc]">
+                            <tr className="bg-gradient-to-r from-[#0356c9] via-[#0866dc] to-[#044db9] text-white font-bold uppercase text-[10px] tracking-wider">
+                                <th className="px-3 py-3 text-center w-12 bg-transparent text-white">
+                                    <input type="checkbox" className="h-4 w-4 rounded border-white/60 text-blue-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-blue-600" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
                                 </th>
-                                <th className="px-4 py-3.5 w-[38%] min-w-[340px] bg-[#f8fafc]">Product Details (Part No & Description)</th>
-                                <th className="px-3 py-3.5 w-[10%] text-center bg-[#f8fafc]">HSN Code</th>
-                                <th className="px-4 py-3.5 w-[13%] text-right bg-[#f8fafc]">List Price</th>
-                                <th className="px-4 py-3.5 w-[11%] text-right bg-[#f8fafc]">Selling Price</th>
-                                <th className="px-2 py-3.5 w-[7%] text-center bg-[#f8fafc]">UOM</th>
-                                <th className="px-2 py-3.5 w-[9%] text-center bg-[#f8fafc]">Plant</th>
-                                <th className="px-3 py-3.5 w-[8%] text-right bg-[#f8fafc]">Weight</th>
-                                <th className="px-3 py-3.5 w-[8%] text-center min-w-[85px] bg-[#f8fafc]">Actions</th>
+                                <th className="px-4 py-3 w-[38%] min-w-[340px] bg-transparent text-white">PRODUCT DETAILS (PART NO & DESCRIPTION)</th>
+                                <th className="px-3 py-3 w-[10%] text-center bg-transparent text-white">HSN CODE</th>
+                                <th className="px-4 py-3 w-[13%] text-right bg-transparent text-white">LIST PRICE</th>
+                                <th className="px-4 py-3 w-[11%] text-right bg-transparent text-white">SELLING PRICE</th>
+                                <th className="px-2 py-3 w-[7%] text-center bg-transparent text-white">UOM</th>
+                                <th className="px-2 py-3 w-[9%] text-center bg-transparent text-white">PLANT</th>
+                                <th className="px-3 py-3 w-[8%] text-right bg-transparent text-white">WEIGHT</th>
+                                <th className="px-3 py-3 w-[8%] text-center min-w-[85px] bg-transparent text-white">ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
@@ -1643,17 +1660,66 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             No products match your search criteria.
         </p>
         )}
-        {!isLoading && hasMore && (
-            <div className="mt-4 text-center">
-                <button
-                    onClick={() => fetchProducts(true)}
-                    disabled={isLoadingMore}
-                    className="bg-slate-600 hover:bg-slate-700 text-white font-semibold py-2 px-4 rounded-md transition duration-300 disabled:opacity-50"
+
+        {/* Footer with Pill Stats & Circular Pagination matching Mockup */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 mt-3">
+            <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 shadow-2xs">
+                    <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">i</span>
+                    <span>Total Products : <strong className="font-mono">{displayedProducts.length}</strong></span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-2xs">
+                    <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                    <span>Showing 1-{displayedProducts.length} of {displayedProducts.length}</span>
+                </span>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center gap-1.5 text-xs">
+                <button 
+                    disabled 
+                    className="w-7 h-7 rounded-full border border-slate-200 text-slate-400 flex items-center justify-center font-bold disabled:opacity-40"
+                    title="First Page"
                 >
-                    {isLoadingMore ? 'Loading...' : 'Load More'}
+                    «
+                </button>
+                <button 
+                    disabled 
+                    className="w-7 h-7 rounded-full border border-slate-200 text-slate-400 flex items-center justify-center font-bold disabled:opacity-40"
+                    title="Previous Page"
+                >
+                    ‹
+                </button>
+                <span className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shadow-xs">
+                    1
+                </span>
+                {hasMore && (
+                    <button 
+                        onClick={() => fetchProducts(true)} 
+                        disabled={isLoadingMore}
+                        className="w-7 h-7 rounded-full text-slate-700 hover:bg-slate-100 font-bold flex items-center justify-center transition-colors"
+                    >
+                        2
+                    </button>
+                )}
+                <button 
+                    onClick={() => hasMore && fetchProducts(true)} 
+                    disabled={!hasMore || isLoadingMore}
+                    className="w-7 h-7 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold disabled:opacity-40 transition-colors"
+                    title="Next Page"
+                >
+                    ›
+                </button>
+                <button 
+                    onClick={() => hasMore && fetchProducts(true)} 
+                    disabled={!hasMore || isLoadingMore}
+                    className="w-7 h-7 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold disabled:opacity-40 transition-colors"
+                    title="Last Page"
+                >
+                    »
                 </button>
             </div>
-        )}
+        </div>
       </div>
 
       <ProductAddModal
