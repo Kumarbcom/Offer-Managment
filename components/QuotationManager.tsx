@@ -1160,12 +1160,12 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
                         {/* Actions */}
                         <td className="px-2 py-1 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
+                          <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => setEmailModalQuotation(q)}
                               title="Share Quotation"
-                              className="w-6 h-6 rounded flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -1175,10 +1175,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                               type="button"
                               onClick={() => handleEdit(q.id)}
                               title="Open Quotation"
-                              className="w-6 h-6 rounded flex items-center justify-center text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                               </svg>
                             </button>
                             {userRole === 'Admin' && (
@@ -1186,10 +1187,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                                 type="button"
                                 onClick={() => handleDelete(q.id)}
                                 title="Delete Quotation"
-                                className="w-6 h-6 rounded flex items-center justify-center text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
                               >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  <line x1="10" y1="11" x2="10" y2="17" />
+                                  <line x1="14" y1="11" x2="14" y2="17" />
                                 </svg>
                               </button>
                             )}
@@ -1239,12 +1243,12 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
         {/* ── STANDARD VIEW (Card/Standard Table View) ── */}
         {viewMode === 'standard' && (
-          <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
               <table className="min-w-full">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-3 py-3 w-9">
+                <thead className="sticky top-0 z-20 bg-[#f8fafc] border-b-2 border-slate-200 shadow-xs">
+                  <tr className="bg-[#f8fafc]">
+                    <th className="px-3 py-3 w-9 bg-[#f8fafc]">
                       <input
                         type="checkbox"
                         checked={isAllSelected}
@@ -1252,29 +1256,29 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => handleSort('id')}>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('id')}>
                       No {sortBy === 'id' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => handleSort('quotationDate')}>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('quotationDate')}>
                       Date {sortBy === 'quotationDate' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => handleSort('customer')}>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('customer')}>
                       Customer {sortBy === 'customer' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => handleSort('contactPerson')}>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('contactPerson')}>
                       Contact {sortBy === 'contactPerson' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => handleSort('totalAmount')}>
+                    <th className="px-3 py-3 text-right text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('totalAmount')}>
                       Amount {sortBy === 'totalAmount' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => handleSort('status')}>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('status')}>
                       Status {sortBy === 'status' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => handleSort('salesPerson')}>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none bg-[#f8fafc]" onClick={() => handleSort('salesPerson')}>
                       Sales Person {sortBy === 'salesPerson' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Comments</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[95px]">Actions</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">Comments</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-bold text-slate-600 uppercase tracking-wider w-[105px] bg-[#f8fafc]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
@@ -1286,41 +1290,41 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         key={q.id}
                         className={`group transition-colors ${isSelected ? 'bg-indigo-50/70' : rowIdx % 2 === 0 ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 hover:bg-slate-50/80'}`}
                       >
-                        <td className="px-3 py-1.5">
+                        <td className="px-3 py-2">
                           <input type="checkbox" checked={isSelected} onChange={() => handleSelectOne(q.id)}
                             className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
                         </td>
-                        <td className="px-3 py-1.5 w-[60px]">
+                        <td className="px-3 py-2 w-[60px]">
                           <button
                             onClick={() => handleEdit(q.id)}
-                            className="font-bold text-indigo-600 hover:text-indigo-800 text-xs transition-colors hover:underline whitespace-nowrap cursor-pointer"
+                            className="font-bold text-indigo-600 hover:text-indigo-800 text-xs transition-colors hover:underline whitespace-nowrap cursor-pointer font-mono"
                           >
                             {getQuotationSeqNum(q, quotations || [])}
                           </button>
                         </td>
-                        <td className="px-3 py-1.5 text-xs text-slate-600 whitespace-nowrap">
+                        <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap font-mono">
                           {formatDate(q.quotationDate)}
                         </td>
-                        <td className="px-3 py-1.5 min-w-[180px] max-w-[280px]">
-                          <p className="text-xs font-semibold text-slate-800 truncate" title={getCustomerName(q.customerId)}>
+                        <td className="px-3 py-2 min-w-[180px] max-w-[280px]">
+                          <p className="text-xs font-bold text-slate-800 truncate" title={getCustomerName(q.customerId)}>
                             {getCustomerName(q.customerId)}
                           </p>
                         </td>
-                        <td className="px-3 py-1.5 w-[130px]">
+                        <td className="px-3 py-2 w-[130px]">
                           <p className="text-xs font-semibold text-slate-700 truncate">{q.contactPerson || '—'}</p>
                           {q.contactNumber && (
-                            <p className="text-[10px] text-indigo-600 font-semibold mt-0.5 whitespace-nowrap">
+                            <p className="text-[10px] text-indigo-600 font-semibold mt-0.5 whitespace-nowrap font-mono">
                               📞 {q.contactNumber}
                             </p>
                           )}
                         </td>
-                        <td className="px-3 py-1.5 text-right whitespace-nowrap font-bold text-slate-900">
+                        <td className="px-3 py-2 text-right whitespace-nowrap font-mono font-bold text-slate-900">
                           ₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </td>
-                        <td className="px-3 py-1.5">
+                        <td className="px-3 py-2">
                           <StatusBadge status={q.status} onChange={s => handleStatusChange(q.id, s)} />
                         </td>
-                        <td className="px-3 py-1.5 w-[120px]">
+                        <td className="px-3 py-2 w-[120px]">
                           <select
                             value={q.salesPersonId || ''}
                             onChange={e => {
@@ -1328,7 +1332,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                               const newSpId = Number(e.target.value);
                               setQuotations(prev => (prev || []).map(qt => qt.id === q.id ? { ...qt, salesPersonId: newSpId } : qt));
                             }}
-                            className="w-full bg-transparent text-[11px] font-semibold text-slate-700 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1 py-0.5 cursor-pointer"
+                            className="w-full bg-transparent text-[11px] font-semibold text-slate-700 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded-lg px-2 py-1 cursor-pointer"
                           >
                             <option value="">Select SP</option>
                             {salesPersons?.map(sp => (
@@ -1336,43 +1340,47 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                             ))}
                           </select>
                         </td>
-                        <td className="px-3 py-1.5 min-w-[120px]">
+                        <td className="px-3 py-2 min-w-[120px]">
                           <input
                             type="text"
                             defaultValue={q.comments || ''}
                             onBlur={e => handleCommentChange(q.id, e.target.value)}
-                            className="w-full bg-transparent text-[11px] text-slate-600 placeholder-slate-300 border-0 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1 py-0.5 hover:bg-slate-100"
+                            className="w-full bg-transparent text-[11px] text-slate-600 placeholder-slate-300 border-0 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded px-1.5 py-1 hover:bg-slate-100 transition-colors"
                             placeholder="Add comment..."
                           />
                         </td>
-                        <td className="px-3 py-1.5 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                        <td className="px-3 py-2 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => setEmailModalQuotation(q)}
                               title="Share Quotation"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-600 hover:bg-emerald-50 cursor-pointer"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
                             >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                               </svg>
                             </button>
                             <button
                               onClick={() => handleEdit(q.id)}
                               title="Open Quotation"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-indigo-600 hover:bg-indigo-50 cursor-pointer"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                               </svg>
                             </button>
                             {userRole === 'Admin' && (
                               <button
                                 onClick={() => handleDelete(q.id)}
                                 title="Delete Quotation"
-                                className="w-7 h-7 rounded-lg flex items-center justify-center text-rose-500 hover:bg-rose-50 cursor-pointer"
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer"
                               >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  <line x1="10" y1="11" x2="10" y2="17" />
+                                  <line x1="14" y1="11" x2="14" y2="17" />
                                 </svg>
                               </button>
                             )}

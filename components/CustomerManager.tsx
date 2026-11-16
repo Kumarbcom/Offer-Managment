@@ -279,18 +279,28 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-50 p-2 rounded-lg border border-slate-200">
-        <h3 className="text-sm font-semibold text-slate-500 mb-2">Overall quotation summary</h3>
-        <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-thin">
+      {/* Overall Quotation Summary - Modern Gradient KPI Cards */}
+      <div className="bg-gradient-to-r from-slate-50 via-white to-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
+          <h3 className="text-xs font-extrabold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+            Overall Quotation Summary
+          </h3>
+          <span className="text-[11px] text-slate-400 font-medium">Click card to filter</span>
+        </div>
+        
+        <div className="flex overflow-x-auto gap-2.5 pb-1 scrollbar-thin">
+            {/* Total Enquiries Hero Card */}
             <div
                 onClick={() => onFilterQuotations({ })}
-                className="cursor-pointer bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm hover:shadow-md transition-shadow min-w-[140px] flex-shrink-0"
+                className="cursor-pointer bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-md shadow-indigo-950/20 hover:shadow-lg hover:scale-[1.02] transition-all min-w-[145px] flex-shrink-0"
                 title={`View all ${allQuotationStats.total.count} quotations`}
             >
-                <div className="text-slate-500 text-[11px] font-medium mb-0.5">Total enquiries</div>
-                <div className="text-lg font-bold text-slate-900 leading-tight">{allQuotationStats.total.count.toLocaleString()}</div>
-                <div className="text-[10px] text-slate-500">{formatCurrency(allQuotationStats.total.value)}</div>
+                <div className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider mb-0.5">Total enquiries</div>
+                <div className="text-xl font-black text-white font-mono leading-tight tracking-tight">{allQuotationStats.total.count.toLocaleString()}</div>
+                <div className="text-[11px] text-indigo-300 font-mono mt-0.5">{formatCurrency(allQuotationStats.total.value)}</div>
             </div>
+
             {QUOTATION_STATUSES.map(status => {
                 const stats = allQuotationStats.byStatus[status];
                 if (stats.count === 0) return null;
@@ -299,78 +309,83 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     <div
                         key={status}
                         onClick={() => onFilterQuotations({ status: status })}
-                        className={`cursor-pointer ${colors?.bg || 'bg-slate-50'} px-3 py-2 rounded-lg border border-slate-100/50 shadow-sm hover:shadow-md transition-shadow min-w-[140px] flex-shrink-0`}
+                        className={`cursor-pointer ${colors?.bg || 'bg-slate-50'} px-3.5 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all min-w-[140px] flex-shrink-0`}
                         title={`View ${stats.count} '${status}' quotations`}
                     >
-                        <div className={`${colors?.text || 'text-slate-600'} text-[11px] font-medium mb-0.5 whitespace-nowrap`}>{status}</div>
-                        <div className={`text-lg font-bold ${colors?.text || 'text-slate-900'} leading-tight`}>{stats.count.toLocaleString()}</div>
-                        <div className={`text-[10px] ${colors?.text || 'text-slate-500'}`}>{formatCurrency(stats.value)}</div>
+                        <div className={`${colors?.text || 'text-slate-600'} text-[10px] font-bold uppercase tracking-wider mb-0.5 whitespace-nowrap`}>{status}</div>
+                        <div className={`text-xl font-black ${colors?.text || 'text-slate-900'} font-mono leading-tight tracking-tight`}>{stats.count.toLocaleString()}</div>
+                        <div className={`text-[11px] font-mono font-medium ${colors?.text || 'text-slate-500'} opacity-80 mt-0.5`}>{formatCurrency(stats.value)}</div>
                     </div>
                 )
             })}
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-lg border border-slate-200">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
          <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-slate-900">Customers <span className="text-slate-500 font-normal">({totalCount.toLocaleString()})</span></h2>
-            <div className="flex flex-wrap gap-3 text-sm">
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Customers</h2>
+              <span className="bg-indigo-50 text-indigo-700 font-mono text-xs font-bold px-2.5 py-0.5 rounded-full border border-indigo-100">
+                {totalCount.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2.5 text-sm items-center">
                 <button
                     onClick={handleExport}
                     disabled={isUploading}
-                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 border border-slate-200 rounded-lg transition duration-300 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-3.5 border border-slate-200/90 rounded-xl shadow-2xs hover:border-slate-300 transition-all disabled:opacity-50 cursor-pointer"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                     Export
                 </button>
                 <button
                     onClick={handleDownloadTemplate}
                     disabled={isUploading}
-                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 border border-slate-200 rounded-lg transition duration-300 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-3.5 border border-slate-200/90 rounded-xl shadow-2xs hover:border-slate-300 transition-all disabled:opacity-50 cursor-pointer"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                     Template
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
                 <button
                     onClick={handleUploadClick}
                     disabled={isUploading}
-                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 border border-slate-200 rounded-lg transition duration-300 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 px-3.5 border border-slate-200/90 rounded-xl shadow-2xs hover:border-slate-300 transition-all disabled:opacity-50 cursor-pointer"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
                     {isUploading ? 'Uploading...' : 'Upload'}
                 </button>
                 <button
                     onClick={handleAddNew}
                     disabled={isUploading}
-                    className="flex items-center gap-2 bg-[#d97736] hover:bg-[#c2652a] text-white font-semibold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50 shadow-sm"
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-xl shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Add new
                 </button>
             </div>
          </div>
-         {isUploading && ( <div className="my-2 p-2 text-center text-sm font-semibold text-indigo-700 bg-indigo-100 rounded-md" role="status">{uploadProgress}</div> )}
+         {isUploading && ( <div className="my-2 p-2.5 text-center text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl" role="status">{uploadProgress}</div> )}
          
-         <div className="flex flex-wrap gap-3 mb-6">
-            <div className="relative flex-1 min-w-[200px]">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-300 focus:ring-0 text-sm text-slate-700" placeholder="Search by name, e.g. ABC" />
+                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs font-medium text-slate-800 transition-all shadow-2xs" placeholder="Search by name, e.g. ABC" />
             </div>
-            <div className="relative flex-1 min-w-[200px]">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                 </div>
-                <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-300 focus:ring-0 text-sm text-slate-700" placeholder="Search by city" />
+                <input type="text" id="searchCity" value={searchCity} onChange={e => setSearchCity(e.target.value)} className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs font-medium text-slate-800 transition-all shadow-2xs" placeholder="Search by city" />
             </div>
-            <div className="flex-1 min-w-[150px]">
+            <div>
                 <select 
                     id="salesPersonFilter" 
                     value={selectedSalesPersonId} 
                     onChange={e => setSelectedSalesPersonId(e.target.value === 'all' ? 'all' : Number(e.target.value))} 
-                    className="block w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-300 focus:ring-0 text-sm bg-white text-slate-700"
+                    className="block w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs font-semibold text-slate-700 transition-all shadow-2xs cursor-pointer"
                 >
                     <option value="all">All sales persons</option>
                     {salesPersons?.map(sp => (
@@ -378,13 +393,13 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     ))}
                 </select>
             </div>
-            <div className="flex-1 min-w-[150px]">
+            <div>
                 <select id="sortBy" value={sortBy} onChange={e => {
                     const val = e.target.value;
                     const isDesc = val.endsWith('_desc');
                     setSortOrder(isDesc ? 'desc' : 'asc');
                     setSortBy(val.replace('_desc', '') as SortByType);
-                }} className="block w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-300 focus:ring-0 text-sm bg-white text-slate-700">
+                }} className="block w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs font-semibold text-slate-700 transition-all shadow-2xs cursor-pointer">
                     <option value="id">Sort: ID, ascen</option>
                     <option value="id_desc">Sort: ID, descen</option>
                     <option value="name">Sort: Name, ascen</option>
@@ -397,50 +412,79 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
             <p className="text-black text-center py-8">Loading customers...</p>
         ) : displayedCustomers.length > 0 ? (
             <>
-                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white mt-2">
-                    <table className="min-w-full text-sm text-left">
-                    <thead className="bg-white border-b border-slate-200">
+                <div className="overflow-x-auto max-h-[72vh] overflow-y-auto border border-slate-200/90 rounded-xl bg-white shadow-xs">
+                    <table className="table-fixed w-full text-sm text-left">
+                    <thead className="sticky top-0 z-20 bg-[#f8fafc] border-b-2 border-slate-200 shadow-xs">
                         <tr>
-                          {['Customer', 'Address', 'Sales person', 'Quotations', 'Actions'].map(header => (
-                            <th key={header} scope="col" className={`px-4 py-4 text-xs font-bold text-slate-500 ${header === 'Actions' ? 'text-right' : ''}`}>
-                              {header}
+                            <th scope="col" className="w-[30%] min-w-[260px] px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">
+                                Customer
                             </th>
-                          ))}
+                            <th scope="col" className="w-[30%] min-w-[260px] px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">
+                                Address
+                            </th>
+                            <th scope="col" className="w-[16%] min-w-[140px] px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">
+                                Sales person
+                            </th>
+                            <th scope="col" className="w-[16%] min-w-[150px] px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">
+                                Quotations
+                            </th>
+                            <th scope="col" className="w-[8%] min-w-[90px] px-4 py-3 text-xs font-bold text-slate-600 uppercase tracking-wider text-center bg-[#f8fafc]">
+                                Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-100">
                         {displayedCustomers.map(customer => {
                             const initials = customer.name.substring(0, 2).toUpperCase();
                             return (
-                            <tr key={customer.id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-4 py-2">
+                            <tr key={customer.id} className="group hover:bg-indigo-50/30 transition-colors">
+                                <td className="px-4 py-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-[#fde9df] text-[#b35728] flex items-center justify-center font-bold text-sm shrink-0">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs tracking-wider">
                                             {initials}
                                         </div>
-                                        <div>
-                                            <div className="font-semibold text-blue-700">{customer.name}</div>
-                                            <div className="text-xs text-slate-400 mt-0.5">ID {customer.id}</div>
+                                        <div className="min-w-0">
+                                            <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors text-sm truncate" title={customer.name}>
+                                                {customer.name}
+                                            </div>
+                                            <div className="inline-flex items-center gap-1 mt-0.5">
+                                                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200/60">
+                                                    ID #{customer.id}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-4 py-2 max-w-[250px]">
-                                    <div className="bg-slate-50 border border-slate-200 rounded-md p-2">
-                                        <div className="text-slate-600 whitespace-pre-wrap leading-tight mb-1 text-[13px]">{customer.address}</div>
-                                        <div className="flex items-center gap-1.5 text-xs">
-                                            <span className="font-semibold text-slate-900">{customer.city}</span>
-                                            {customer.pincode && (
-                                                <>
-                                                    <span className="text-slate-300">•</span>
-                                                    <span className="text-slate-500 font-medium">{customer.pincode}</span>
-                                                </>
-                                            )}
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-col gap-1">
+                                        <div className="text-slate-700 text-xs font-normal leading-relaxed whitespace-pre-wrap">
+                                            {customer.address || '—'}
                                         </div>
+                                        {(customer.city || customer.pincode) && (
+                                            <div className="inline-flex items-center gap-1.5 flex-wrap mt-0.5">
+                                                {customer.city && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
+                                                        <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                                        {customer.city}
+                                                    </span>
+                                                )}
+                                                {customer.pincode && (
+                                                    <span className="text-[11px] font-mono text-slate-500">
+                                                        {customer.pincode}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </td>
-                                <td className="px-4 py-2 text-slate-600">{getSalesPersonName(customer.salesPersonId)}</td>
-                                <td className="px-4 py-2 text-slate-600">
-                                    <div className="flex flex-col items-start gap-1.5">
+                                <td className="px-4 py-3">
+                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/80 text-xs font-semibold text-slate-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                        <span className="truncate">{getSalesPersonName(customer.salesPersonId) || 'Unassigned'}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-col items-start gap-1">
                                         {QUOTATION_STATUSES.map(status => {
                                             const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
                                             if (relevantQuotes.length === 0) return null;
@@ -450,24 +494,37 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                                 <div
                                                     key={status}
                                                     onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
-                                                    className={`cursor-pointer flex items-center gap-1 ${colors?.bg || 'bg-slate-100'} ${colors?.text || 'text-slate-600'} rounded-full px-3 py-1 text-xs font-semibold hover:opacity-80 transition-opacity`}
+                                                    className={`cursor-pointer inline-flex items-center gap-1.5 ${colors?.bg || 'bg-slate-100'} ${colors?.text || 'text-slate-700'} border border-slate-200/60 rounded-lg px-2.5 py-0.5 text-[11px] font-bold shadow-2xs hover:shadow-xs hover:scale-[1.02] transition-all`}
                                                     title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
                                                 >
                                                     <span>{status}: {relevantQuotes.length}</span>
-                                                    <span>·</span>
-                                                    <span>{formatCurrency(totalValue)}</span>
+                                                    <span className="opacity-40">·</span>
+                                                    <span className="font-mono">{formatCurrency(totalValue)}</span>
                                                 </div>
                                             )
                                         })}
+                                        {quotations?.filter(q => q.customerId === customer.id).length === 0 && (
+                                            <span className="text-xs text-slate-400 italic">No quotations</span>
+                                        )}
                                     </div>
                                 </td>
-                                <td className="px-4 py-2 border-b border-slate-100 text-right space-x-4">
-                                    <button onClick={() => handleEdit(customer)} className="text-slate-400 hover:text-slate-600 transition-colors" title="Edit">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                                    </button>
-                                    <button onClick={() => handleDelete(customer.id)} className="text-rose-400 hover:text-rose-600 transition-colors" title="Delete">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                    </button>
+                                <td className="px-4 py-3 text-center">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                        <button 
+                                            onClick={() => handleEdit(customer)} 
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer" 
+                                            title="Edit Customer"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDelete(customer.id)} 
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100/80 transition-all shadow-2xs hover:scale-105 cursor-pointer" 
+                                            title="Delete Customer"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             )
@@ -475,17 +532,29 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                     </tbody>
                     </table>
                 </div>
-                <div className="flex justify-between items-center mt-4 text-sm">
-                    <p className="text-black">Showing {displayedCustomers.length} of {totalCount} customers</p>
+                <div className="flex flex-wrap justify-between items-center gap-3 mt-4 text-xs font-medium text-slate-600">
+                    <p>Showing <span className="font-bold text-slate-900 font-mono">{displayedCustomers.length}</span> of <span className="font-bold text-slate-900 font-mono">{totalCount.toLocaleString()}</span> customers</p>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded-md disabled:opacity-50 text-black">Previous</button>
-                        <span className="text-black">Page {currentPage} of {totalPages}</span>
-                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded-md disabled:opacity-50 text-black">Next</button>
+                        <button 
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                            disabled={currentPage === 1} 
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 transition-colors shadow-2xs cursor-pointer"
+                        >
+                            Previous
+                        </button>
+                        <span className="font-mono text-slate-600 px-1">Page {currentPage} of {totalPages}</span>
+                        <button 
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                            disabled={currentPage === totalPages} 
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 transition-colors shadow-2xs cursor-pointer"
+                        >
+                            Next
+                        </button>
                     </div>
                 </div>
             </>
         ) : (
-          <p className="text-black text-center py-8">
+          <p className="text-slate-500 text-center py-8">
             {totalCount > 0 ? 'No customers match your search criteria.' : 'No customers found. Add one to get started.'}
         </p>
         )}

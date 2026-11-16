@@ -107,7 +107,7 @@ const ModernProductRow = React.memo(({
             isSelected ? 'bg-gradient-to-r from-indigo-50/80 to-purple-50/40' : 'bg-white'
         }`}>
             {/* Checkbox */}
-            <td className="px-3 py-3 text-center w-10">
+            <td className="px-3 py-3 text-center w-12">
                 <input 
                     type="checkbox" 
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
@@ -117,8 +117,8 @@ const ModernProductRow = React.memo(({
                 />
             </td>
 
-            {/* Product: Image on Left + Part No & Description Below */}
-            <td className="px-4 py-3 min-w-[280px]">
+            {/* Product: Image on Left + Part No & Description Below (ID removed) */}
+            <td className="px-4 py-3 w-[38%] min-w-[340px]">
                 <div className="flex items-center gap-3.5">
                     {/* Modern Image Container with subtle gradient border/shadow */}
                     <div className="relative shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/80 border border-slate-200/90 shadow-2xs flex items-center justify-center overflow-hidden group/img">
@@ -142,20 +142,15 @@ const ModernProductRow = React.memo(({
                         )}
                     </div>
 
-                    {/* Part No & Description */}
+                    {/* Part No & Description (Clean, bold, no ID badge) */}
                     <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span 
-                                className="font-mono font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer transition-colors tracking-tight" 
-                                onClick={() => onEdit(product)}
-                                title="Click to edit product"
-                            >
-                                {product.partNo}
-                            </span>
-                            <span className="text-[10px] font-mono text-slate-400 bg-slate-100/90 px-1.5 py-0.2 rounded border border-slate-200/60 font-semibold">
-                                #{product.id}
-                            </span>
-                        </div>
+                        <span 
+                            className="font-mono font-extrabold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer transition-colors tracking-tight block" 
+                            onClick={() => onEdit(product)}
+                            title="Click to edit product"
+                        >
+                            {product.partNo}
+                        </span>
                         <div className="text-xs text-slate-500 font-medium truncate max-w-sm sm:max-w-md mt-0.5" title={product.description}>
                             {product.description}
                         </div>
@@ -164,9 +159,9 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* HSN Code */}
-            <td className="px-3 py-3 text-center w-24">
+            <td className="px-3 py-3 text-center w-[10%]">
                 {product.hsnCode ? (
-                    <span className="font-mono text-xs text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200/70 font-medium">
+                    <span className="font-mono text-xs text-slate-700 bg-slate-100/90 px-2 py-0.5 rounded-md border border-slate-200/70 font-medium">
                         {product.hsnCode}
                     </span>
                 ) : (
@@ -175,9 +170,9 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* List Price */}
-            <td className="px-3 py-3 text-right w-28 whitespace-nowrap">
+            <td className="px-4 py-3 text-right w-[13%] whitespace-nowrap">
                 {lp > 0 ? (
-                    <span className="font-mono font-bold text-slate-900 text-sm tracking-tight">
+                    <span className="font-mono font-black text-slate-900 text-sm tracking-tight">
                         ₹{lp.toFixed(2)}
                     </span>
                 ) : (
@@ -186,7 +181,7 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* Selling Price */}
-            <td className="px-3 py-3 text-right w-28 whitespace-nowrap">
+            <td className="px-4 py-3 text-right w-[11%] whitespace-nowrap">
                 {sp > 0 ? (
                     <span className="font-mono text-slate-600 text-xs tracking-tight">
                         ₹{sp.toFixed(2)}
@@ -197,7 +192,7 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* UOM */}
-            <td className="px-2 py-3 text-center w-16">
+            <td className="px-2 py-3 text-center w-[7%]">
                 {product.uom ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-mono">
                         {product.uom}
@@ -208,7 +203,7 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* Plant */}
-            <td className="px-2 py-3 text-center w-20">
+            <td className="px-2 py-3 text-center w-[9%]">
                 {product.plant ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-mono">
                         {product.plant}
@@ -219,7 +214,7 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* Weight */}
-            <td className="px-3 py-3 text-right w-20 whitespace-nowrap">
+            <td className="px-3 py-3 text-right w-[8%] whitespace-nowrap">
                 {product.weight > 0 ? (
                     <span className="text-slate-700 font-mono text-xs font-medium">
                         {product.weight}{product.weight > 0 && product.weight < 100 ? ' g' : ' kg/m'}
@@ -230,8 +225,8 @@ const ModernProductRow = React.memo(({
             </td>
 
             {/* Actions (Attractive Modern SVG Buttons) */}
-            <td className="px-3 py-3 text-right w-24 whitespace-nowrap">
-                <div className="flex items-center justify-end gap-1.5">
+            <td className="px-3 py-3 text-center w-[8%] min-w-[85px] whitespace-nowrap">
+                <div className="flex items-center justify-center gap-1.5">
                     {/* Edit Button */}
                     <button 
                         onClick={() => onEdit(product)} 
@@ -1568,25 +1563,25 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                     </span>
                 </div>
 
-                <div className="overflow-x-auto max-h-[72vh]">
+                <div className="overflow-x-auto max-h-[72vh] relative">
                     <table className="min-w-full border-collapse text-xs">
-                        <thead className="bg-[#f3f2f1] text-slate-700 font-bold uppercase text-[10px] sticky top-0 z-10 select-none">
+                        <thead className="bg-[#f3f2f1] text-slate-700 font-bold uppercase text-[10px] sticky top-0 z-20 select-none border-b border-slate-300 shadow-xs">
                             <tr className="border-b border-slate-300">
-                                <th className="py-1.5 px-1 text-center w-10 border-r border-slate-300 bg-[#e1dfdd] text-slate-700">#</th>
-                                <th className="py-1.5 px-2 text-center w-8 border-r border-slate-300">
+                                <th className="py-2 px-1 text-center w-10 border-r border-slate-300 bg-[#e1dfdd] text-slate-700">#</th>
+                                <th className="py-2 px-2 text-center w-8 border-r border-slate-300 bg-[#f3f2f1]">
                                     <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 text-[#107c41] focus:ring-[#107c41] cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
                                 </th>
-                                <th className="py-1.5 px-2 text-center border-r border-slate-300 w-14">A: ID</th>
-                                <th className="py-1.5 px-2 text-left border-r border-slate-300 min-w-[140px]">B: Part No</th>
-                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-12">C: Image</th>
-                                <th className="py-1.5 px-2 text-left border-r border-slate-300 min-w-[220px]">D: Description</th>
-                                <th className="py-1.5 px-2 text-center border-r border-slate-300 w-24">E: HSN Code</th>
-                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-28">F: List Price (₹)</th>
-                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-28">G: Selling Price (₹)</th>
-                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-14">H: UOM</th>
-                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-16">I: Plant</th>
-                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-20">J: Weight</th>
-                                <th className="py-1.5 px-1 text-center w-20">K: Actions</th>
+                                <th className="py-2 px-2 text-center border-r border-slate-300 w-14 bg-[#f3f2f1]">A: ID</th>
+                                <th className="py-2 px-2 text-left border-r border-slate-300 min-w-[140px] bg-[#f3f2f1]">B: Part No</th>
+                                <th className="py-2 px-1 text-center border-r border-slate-300 w-12 bg-[#f3f2f1]">C: Image</th>
+                                <th className="py-2 px-2 text-left border-r border-slate-300 min-w-[220px] bg-[#f3f2f1]">D: Description</th>
+                                <th className="py-2 px-2 text-center border-r border-slate-300 w-24 bg-[#f3f2f1]">E: HSN Code</th>
+                                <th className="py-2 px-2 text-right border-r border-slate-300 w-28 bg-[#f3f2f1]">F: List Price (₹)</th>
+                                <th className="py-2 px-2 text-right border-r border-slate-300 w-28 bg-[#f3f2f1]">G: Selling Price (₹)</th>
+                                <th className="py-2 px-1 text-center border-r border-slate-300 w-14 bg-[#f3f2f1]">H: UOM</th>
+                                <th className="py-2 px-1 text-center border-r border-slate-300 w-16 bg-[#f3f2f1]">I: Plant</th>
+                                <th className="py-2 px-2 text-right border-r border-slate-300 w-20 bg-[#f3f2f1]">J: Weight</th>
+                                <th className="py-2 px-1 text-center w-20 bg-[#f3f2f1]">K: Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
@@ -1607,22 +1602,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 </div>
             </div>
         ) : (
-            <div className="hidden md:block border border-slate-200 rounded-xl shadow-xs bg-white overflow-hidden mt-3">
-                <div className="overflow-x-auto max-h-[72vh]">
-                    <table className="min-w-full text-xs text-left border-collapse">
-                        <thead className="bg-gradient-to-r from-slate-50 via-indigo-50/30 to-purple-50/20 text-slate-700 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-200/90 shadow-2xs">
+            <div className="hidden md:block border border-slate-200/90 rounded-2xl shadow-sm bg-white overflow-hidden mt-3">
+                <div className="overflow-x-auto max-h-[72vh] relative">
+                    <table className="min-w-full text-xs text-left border-collapse table-fixed">
+                        <thead className="bg-[#f8fafc] text-slate-800 font-extrabold uppercase text-[10px] tracking-wider sticky top-0 z-20 border-b-2 border-slate-200 shadow-xs select-none">
                             <tr>
-                                <th className="px-3 py-3 text-center w-10">
+                                <th className="px-3 py-3.5 text-center w-12 bg-[#f8fafc]">
                                     <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
                                 </th>
-                                <th className="px-4 py-3 min-w-[280px]">Product Details (Part No & Description)</th>
-                                <th className="px-3 py-3 w-24 text-center">HSN Code</th>
-                                <th className="px-3 py-3 text-right w-28">List Price</th>
-                                <th className="px-3 py-3 text-right w-28">Selling Price</th>
-                                <th className="px-3 py-3 w-16 text-center">UOM</th>
-                                <th className="px-3 py-3 w-20 text-center">Plant</th>
-                                <th className="px-3 py-3 text-right w-20">Weight</th>
-                                <th className="px-3 py-3 text-right w-24">Actions</th>
+                                <th className="px-4 py-3.5 w-[38%] min-w-[340px] bg-[#f8fafc]">Product Details (Part No & Description)</th>
+                                <th className="px-3 py-3.5 w-[10%] text-center bg-[#f8fafc]">HSN Code</th>
+                                <th className="px-4 py-3.5 w-[13%] text-right bg-[#f8fafc]">List Price</th>
+                                <th className="px-4 py-3.5 w-[11%] text-right bg-[#f8fafc]">Selling Price</th>
+                                <th className="px-2 py-3.5 w-[7%] text-center bg-[#f8fafc]">UOM</th>
+                                <th className="px-2 py-3.5 w-[9%] text-center bg-[#f8fafc]">Plant</th>
+                                <th className="px-3 py-3.5 w-[8%] text-right bg-[#f8fafc]">Weight</th>
+                                <th className="px-3 py-3.5 w-[8%] text-center min-w-[85px] bg-[#f8fafc]">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
