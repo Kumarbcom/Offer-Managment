@@ -82,52 +82,205 @@ const getEffectivePriceValue = (product: Product): number => {
     return price.lp > 0 ? price.lp : price.sp;
 };
 
-// Memoized ProductRow component to prevent unnecessary re-renders
-const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete, onZoomImage }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; onZoomImage?: (p: Product) => void; }) => {
+// Memoized ModernProductRow component
+const ModernProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete, onZoomImage }: { product: Product; isSelected: boolean; onSelect: (id: number) => void; onEdit: (product: Product) => void; onDelete: (id: number) => void; onZoomImage?: (p: Product) => void; }) => {
     const currentPrice = getCurrentPrice(product);
     const lp = currentPrice?.lp || 0;
     const sp = currentPrice?.sp || 0;
     
     return (
-        <tr className="bg-white hover:bg-slate-50 transition-all duration-200 border-b-8 border-transparent shadow-sm rounded-xl">
-            <td className="px-4 py-3 first:rounded-l-xl border-y border-l border-slate-100">
-                <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer" checked={isSelected} onChange={() => onSelect(product.id)} aria-label={`Select product ${product.partNo}`}/>
+        <tr className={`border-b border-slate-100 hover:bg-indigo-50/25 transition-colors ${
+            isSelected ? 'bg-indigo-50/50' : 'bg-white'
+        }`}>
+            <td className="px-3 py-2.5 text-center w-10">
+                <input 
+                    type="checkbox" 
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
+                    checked={isSelected} 
+                    onChange={() => onSelect(product.id)} 
+                    aria-label={`Select product ${product.partNo}`}
+                />
             </td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.id}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-bold">
+            <td className="px-3 py-2.5 text-slate-400 font-mono text-xs w-14">#{product.id}</td>
+            <td className="px-3 py-2.5 text-slate-900 font-bold min-w-[140px]">
                 <div className="flex items-center gap-2">
                     {product.imageUrl ? (
                         <img 
                             src={product.imageUrl} 
                             alt={product.partNo} 
                             onClick={() => onZoomImage?.(product)}
-                            className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-200 cursor-zoom-in hover:scale-110 transition-transform" 
+                            className="w-8 h-8 object-contain rounded-lg bg-slate-50 border border-slate-200 cursor-zoom-in hover:scale-110 transition-transform shadow-2xs shrink-0" 
                             onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                             title="Click to zoom image"
                         />
-                    ) : null}
-                    <span>{product.partNo}</span>
+                    ) : (
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 shrink-0">
+                            —
+                        </div>
+                    )}
+                    <span 
+                        className="font-mono text-indigo-950 font-bold hover:text-indigo-600 cursor-pointer" 
+                        onClick={() => onEdit(product)}
+                        title="Click to edit product"
+                    >
+                        {product.partNo}
+                    </span>
                 </div>
             </td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-600 max-w-xs truncate text-sm">{product.description}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.hsnCode}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-semibold text-right">{lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-right">{sp > 0 ? `₹${sp.toFixed(2)}` : '—'}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.uom}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.plant}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-right">
+            <td className="px-3 py-2.5 text-slate-700 max-w-sm truncate text-xs font-medium" title={product.description}>
+                {product.description}
+            </td>
+            <td className="px-3 py-2.5 text-slate-500 font-mono text-xs text-center w-24">
+                {product.hsnCode || '—'}
+            </td>
+            <td className="px-3 py-2.5 text-slate-900 font-bold font-mono text-right text-xs w-28">
+                {lp > 0 ? `₹${lp.toFixed(2)}` : '—'}
+            </td>
+            <td className="px-3 py-2.5 text-slate-500 font-mono text-right text-xs w-28">
+                {sp > 0 ? `₹${sp.toFixed(2)}` : '—'}
+            </td>
+            <td className="px-3 py-2.5 text-slate-600 text-xs text-center w-14">
+                {product.uom ? (
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[11px] font-semibold text-slate-700">{product.uom}</span>
+                ) : '—'}
+            </td>
+            <td className="px-3 py-2.5 text-slate-600 text-xs text-center w-16">
+                {product.plant ? (
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[11px] font-semibold text-slate-700">{product.plant}</span>
+                ) : '—'}
+            </td>
+            <td className="px-3 py-2.5 text-right text-xs w-20">
                 {product.weight > 0 ? (
-                    <span className="text-slate-700 font-medium text-sm">{product.weight} {product.weight > 0 && product.weight < 100 ? 'g' : ''}</span>
+                    <span className="text-slate-700 font-mono font-medium">{product.weight} {product.weight > 0 && product.weight < 100 ? 'g' : ''}</span>
                 ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-amber-100 text-amber-700">missing</span>
+                    <span className="text-slate-300 font-mono">—</span>
                 )}
             </td>
-            <td className="px-4 py-3 last:rounded-r-xl border-y border-r border-slate-100 text-right space-x-3">
-                <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 hover:bg-indigo-50 p-1.5 rounded-lg" title="Edit">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <td className="px-3 py-2.5 text-right space-x-1.5 w-20">
+                <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 rounded-lg hover:bg-indigo-50" title="Edit">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                 </button>
-                <button onClick={() => onDelete(product.id)} className="text-slate-400 hover:text-red-600 transition-colors bg-slate-50 hover:bg-red-50 p-1.5 rounded-lg" title="Delete">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                <button onClick={() => onDelete(product.id)} className="text-slate-400 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50" title="Delete">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </td>
+        </tr>
+    );
+});
+
+// Memoized ExcelProductRow component (Authentic Microsoft Excel Look)
+const ExcelProductRow = React.memo(({ 
+    product, 
+    index, 
+    isSelected, 
+    onSelect, 
+    onEdit, 
+    onDelete, 
+    onZoomImage 
+}: { 
+    product: Product; 
+    index: number; 
+    isSelected: boolean; 
+    onSelect: (id: number) => void; 
+    onEdit: (product: Product) => void; 
+    onDelete: (id: number) => void; 
+    onZoomImage?: (p: Product) => void; 
+}) => {
+    const currentPrice = getCurrentPrice(product);
+    const lp = currentPrice?.lp || 0;
+    const sp = currentPrice?.sp || 0;
+    
+    return (
+        <tr className={`border-b border-slate-300 transition-colors h-7.5 text-xs ${
+            isSelected ? 'bg-emerald-100/70 font-semibold' : 'hover:bg-emerald-50/40 bg-white'
+        }`}>
+            {/* Excel Row Header # */}
+            <td className="px-1 text-center bg-[#f8f9fa] border-r border-slate-300 text-slate-600 font-mono text-[11px] font-bold select-none w-10">
+                {index + 1}
+            </td>
+            {/* Checkbox */}
+            <td className="px-2 text-center border-r border-slate-300 w-8">
+                <input 
+                    type="checkbox" 
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-[#107c41] focus:ring-[#107c41] cursor-pointer" 
+                    checked={isSelected} 
+                    onChange={() => onSelect(product.id)} 
+                    aria-label={`Select product ${product.partNo}`}
+                />
+            </td>
+            {/* A: ID */}
+            <td className="px-2 border-r border-slate-300 text-slate-500 font-mono text-center w-14">
+                #{product.id}
+            </td>
+            {/* B: Part No & Image */}
+            <td className="px-2 border-r border-slate-300 font-mono font-bold text-slate-900 min-w-[140px]">
+                <div className="flex items-center gap-1.5">
+                    {product.imageUrl ? (
+                        <img 
+                            src={product.imageUrl} 
+                            alt={product.partNo} 
+                            onClick={() => onZoomImage?.(product)}
+                            className="w-5.5 h-5.5 object-contain rounded bg-white border border-slate-300 cursor-zoom-in hover:scale-125 transition-transform shadow-2xs shrink-0" 
+                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            title="Click to zoom image"
+                        />
+                    ) : (
+                        <div className="w-5.5 h-5.5 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-[9px] text-slate-400 shrink-0">
+                            —
+                        </div>
+                    )}
+                    <span 
+                        className="truncate hover:text-[#107c41] cursor-pointer" 
+                        onClick={() => onEdit(product)}
+                        title="Click to edit product"
+                    >
+                        {product.partNo}
+                    </span>
+                </div>
+            </td>
+            {/* C: Description */}
+            <td className="px-2 border-r border-slate-300 text-slate-800 max-w-sm truncate" title={product.description}>
+                {product.description}
+            </td>
+            {/* D: HSN Code */}
+            <td className="px-2 border-r border-slate-300 text-slate-600 font-mono text-center w-24">
+                {product.hsnCode || '—'}
+            </td>
+            {/* E: List Price */}
+            <td className="px-2 border-r border-slate-300 text-right font-mono font-bold text-slate-900 w-28">
+                {lp > 0 ? `₹${lp.toFixed(2)}` : '—'}
+            </td>
+            {/* F: Selling Price */}
+            <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-28">
+                {sp > 0 ? `₹${sp.toFixed(2)}` : '—'}
+            </td>
+            {/* G: UOM */}
+            <td className="px-1 border-r border-slate-300 text-center font-mono text-slate-700 w-14">
+                {product.uom || '—'}
+            </td>
+            {/* H: Plant */}
+            <td className="px-1 border-r border-slate-300 text-center font-mono text-slate-700 w-16">
+                {product.plant || '—'}
+            </td>
+            {/* I: Weight */}
+            <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-20">
+                {product.weight > 0 ? `${product.weight}${product.weight > 0 && product.weight < 100 ? ' g' : ''}` : '—'}
+            </td>
+            {/* J: Actions */}
+            <td className="px-2 text-center w-20 space-x-1.5">
+                <button 
+                    onClick={() => onEdit(product)} 
+                    className="text-slate-400 hover:text-indigo-600 transition-colors p-1 rounded hover:bg-indigo-50" 
+                    title="Edit"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </button>
+                <button 
+                    onClick={() => onDelete(product.id)} 
+                    className="text-slate-400 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50" 
+                    title="Delete"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
             </td>
         </tr>
@@ -162,6 +315,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<'excel' | 'modern'>(() => {
+    return (localStorage.getItem('products_view_mode') as 'excel' | 'modern') || 'excel';
+  });
   const canManageProducts = currentUser.role !== 'Sales Person';
 
   useEffect(() => {
@@ -829,9 +985,46 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-         <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-black">Products</h2>
+      <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/90">
+         {/* Top Header with Title, View Switcher, and Professional Grouped Action Buttons */}
+         <div className="flex flex-wrap gap-3 justify-between items-center mb-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-3.5 flex-wrap">
+               <div className="flex items-center gap-2">
+                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Products</h2>
+                 <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-200">
+                   {displayedProducts.length}
+                 </span>
+               </div>
+
+               {/* View Mode Toggle Pill (Modern View vs Excel Grid View) */}
+               <div className="hidden sm:inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-semibold shadow-2xs">
+                  <button
+                     type="button"
+                     onClick={() => { setViewMode('modern'); localStorage.setItem('products_view_mode', 'modern'); }}
+                     className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
+                        viewMode === 'modern' 
+                          ? 'bg-white text-indigo-700 shadow-xs font-bold' 
+                          : 'text-slate-600 hover:text-slate-900'
+                     }`}
+                  >
+                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                     <span>Modern View</span>
+                  </button>
+                  <button
+                     type="button"
+                     onClick={() => { setViewMode('excel'); localStorage.setItem('products_view_mode', 'excel'); }}
+                     className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
+                        viewMode === 'excel' 
+                          ? 'bg-[#107c41] text-white shadow-xs font-bold' 
+                          : 'text-slate-600 hover:text-slate-900'
+                     }`}
+                  >
+                     <span className="font-sans font-black bg-white text-[#107c41] px-1 rounded text-[10px] leading-tight">X</span>
+                     <span>Excel Grid View</span>
+                  </button>
+               </div>
+            </div>
+
             {/* Mobile-only Upload/Add buttons compact row */}
             {canManageProducts && (
             <div className="flex md:hidden gap-1.5 flex-wrap">
@@ -843,42 +1036,108 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             </div>
             )}
             
-            {/* Desktop Buttons */}
-            <div className="hidden md:flex flex-wrap gap-2 text-sm">
+            {/* Desktop Professional Grouped Buttons */}
+            <div className="hidden md:flex flex-wrap gap-2 text-xs items-center">
                 {canManageProducts && (
                     <>
-                        <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
-                            <button onClick={handleExportPriceList} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300">
-                                Export Full Price List
+                        {/* Price Updates Group */}
+                        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
+                            <button 
+                                onClick={handleExportPriceList} 
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors"
+                                title="Export Full Price List to Excel"
+                            >
+                                <svg className="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                <span>Export Price List</span>
                             </button>
+                            <div className="w-px bg-slate-200 my-1"></div>
                             <input type="file" ref={priceUpdateInputRef} onChange={handlePriceUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
-                            <button onClick={handlePriceUpdateUploadClick} disabled={isUploading} className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">
-                                Import Price Updates
+                            <button 
+                                onClick={handlePriceUpdateUploadClick} 
+                                disabled={isUploading} 
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-orange-800 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
+                                title="Import Bulk Price Updates from Excel"
+                            >
+                                <svg className="w-3.5 h-3.5 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <span>Import Prices</span>
                             </button>
                         </div>
-                        <div className="flex gap-2 border-r border-slate-300 pr-2 mr-2">
-                            <button onClick={() => handleDownloadImageTemplate('all')} disabled={isUploading} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Download Excel template with ALL products in database to fill in image URLs">
-                                Image Template (All)
+
+                        {/* Image Tools Group */}
+                        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
+                            <button 
+                                onClick={() => handleDownloadImageTemplate('all')} 
+                                disabled={isUploading} 
+                                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50" 
+                                title="Download Excel template with ALL products in database to fill in image URLs"
+                            >
+                                <span className="text-purple-600 text-xs">🖼️</span>
+                                <span>Img Template</span>
                             </button>
+                            <div className="w-px bg-slate-200 my-1"></div>
                             <input type="file" ref={imageUpdateInputRef} onChange={handleImageUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
-                            <button onClick={handleImageUpdateUploadClick} disabled={isUploading} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Upload bulk image URLs via Excel sheet">
-                                Upload Images (Excel)
+                            <button 
+                                onClick={handleImageUpdateUploadClick} 
+                                disabled={isUploading} 
+                                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:text-fuchsia-800 hover:bg-fuchsia-50 rounded-lg transition-colors disabled:opacity-50" 
+                                title="Upload bulk image URLs via Excel sheet"
+                            >
+                                <span>Upload URLs</span>
                             </button>
+                            <div className="w-px bg-slate-200 my-1"></div>
                             <input type="file" ref={bulkImageFilesInputRef} onChange={handleBulkImageFilesUpload} className="hidden" accept="image/*" multiple />
-                            <button onClick={() => bulkImageFilesInputRef.current?.click()} disabled={isUploading} className="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50" title="Select multiple image files from your computer (auto-matches Part No)">
-                                Upload Image Files
+                            <button 
+                                onClick={() => bulkImageFilesInputRef.current?.click()} 
+                                disabled={isUploading} 
+                                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:text-pink-800 hover:bg-pink-50 rounded-lg transition-colors disabled:opacity-50" 
+                                title="Select multiple image files from your computer (auto-matches Part No)"
+                            >
+                                <span>Upload Files</span>
                             </button>
                         </div>
                     </>
                 )}
                 
-                <button onClick={handleExport} disabled={isUploading} className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Export Visible</button>
-                <button onClick={handleDownloadTemplate} disabled={isUploading} className="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Template</button>
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
-                <button onClick={handleUploadClick} disabled={isUploading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">
-                    {isUploading ? 'Uploading...' : 'Upload'}
-                </button>
-                <button onClick={handleAddNew} disabled={isUploading} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50">Add New</button>
+                {/* Export & Import Group */}
+                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
+                    <button 
+                        onClick={handleExport} 
+                        disabled={isUploading} 
+                        className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-teal-800 hover:bg-teal-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                        Export Visible
+                    </button>
+                    <div className="w-px bg-slate-200 my-1"></div>
+                    <button 
+                        onClick={handleDownloadTemplate} 
+                        disabled={isUploading} 
+                        className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-sky-800 hover:bg-sky-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                        Template
+                    </button>
+                    <div className="w-px bg-slate-200 my-1"></div>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
+                    <button 
+                        onClick={handleUploadClick} 
+                        disabled={isUploading} 
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                        <span className="font-bold text-[#107c41]">↑</span>
+                        <span>{isUploading ? 'Uploading...' : 'Upload Excel'}</span>
+                    </button>
+                </div>
+
+                {/* Primary Add Action */}
+                {canManageProducts && (
+                    <button 
+                        onClick={handleAddNew} 
+                        disabled={isUploading} 
+                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-1.5 px-3.5 rounded-xl shadow-xs hover:shadow transition-all disabled:opacity-50 text-xs"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Add New</span>
+                    </button>
+                )}
             </div>
          </div>
 
@@ -918,19 +1177,50 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
              </div>
          </div>
 
-         {/* Desktop Filters */}
-         <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 pb-3 border-b border-slate-200">
+         {/* Desktop Filters with Professional Polish */}
+         <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl">
             <div>
-                <label htmlFor="searchTerm" className="block text-xs font-medium text-black">Search Part No (use * for OR)</label>
-                <input type="text" id="searchTerm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. OLFLEX*UNITRONIC" />
-            </div>
-             <div>
-                <label htmlFor="searchDescription" className="block text-xs font-medium text-black">Search Description (use * for OR)</label>
-                <input type="text" id="searchDescription" value={searchDescription} onChange={e => setSearchDescription(e.target.value)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black" placeholder="e.g. CABLE*POWER" />
+                <label htmlFor="searchTerm" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Search Part No (use * for OR)
+                </label>
+                <div className="relative">
+                    <input 
+                        type="text" 
+                        id="searchTerm" 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        className="block w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono" 
+                        placeholder="e.g. OLFLEX*UNITRONIC" 
+                    />
+                    <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </div>
             </div>
             <div>
-                <label htmlFor="sortBy" className="block text-xs font-medium text-black">Sort By</label>
-                <select id="sortBy" value={sortBy} onChange={e => setSortBy(e.target.value as SortByType)} className="mt-1 block w-full px-3 py-1 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-black">
+                <label htmlFor="searchDescription" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Search Description (use * for OR)
+                </label>
+                <div className="relative">
+                    <input 
+                        type="text" 
+                        id="searchDescription" 
+                        value={searchDescription} 
+                        onChange={e => setSearchDescription(e.target.value)} 
+                        className="block w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                        placeholder="e.g. CABLE*POWER" 
+                    />
+                    <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </div>
+            </div>
+            <div>
+                <label htmlFor="sortBy" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Sort By
+                </label>
+                <select 
+                    id="sortBy" 
+                    value={sortBy} 
+                    onChange={e => setSortBy(e.target.value as SortByType)} 
+                    className="block w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
                     <option value="price">Price (LP)</option>
                     <option value="id">ID</option>
                     <option value="partNo">Part No</option>
@@ -939,9 +1229,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                 </select>
             </div>
             <div>
-                <label className="block text-xs font-medium text-black">Order</label>
-                <button type="button" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="mt-1 w-full bg-white hover:bg-slate-50 text-black font-semibold py-1 px-4 border border-slate-300 rounded-md shadow-sm flex items-center justify-center text-sm">
-                    {sortOrder === 'asc' ? 'Ascending ▲' : 'Descending ▼'}
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Order
+                </label>
+                <button 
+                    type="button" 
+                    onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} 
+                    className="w-full bg-white hover:bg-slate-100 text-slate-800 font-semibold py-1.5 px-3 border border-slate-300 rounded-lg shadow-2xs flex items-center justify-between text-xs transition-colors"
+                >
+                    <span>{sortOrder === 'asc' ? 'Ascending' : 'Descending'}</span>
+                    <span className="font-bold text-indigo-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
                 </button>
             </div>
          </div>
@@ -1002,32 +1299,99 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             })}
         </div>
 
-        {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto bg-transparent mt-4 mx-1">
-            <table className="min-w-full text-sm border-separate" style={{ borderSpacing: '0 0.5rem' }}>
-            <thead>
-                <tr>
-                    <th className="px-4 py-2 font-bold text-slate-400 uppercase tracking-wider text-[10px]"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/></th>
-                    {['ID', 'Part No', 'Description', 'HSN Code', 'List price', 'Selling price', 'UOM', 'Plant', 'Weight', 'Actions'].map(header => (
-                    <th key={header} scope="col" className={`px-4 py-2 text-left font-bold text-slate-400 uppercase tracking-wider text-[10px] ${['List price', 'Selling price', 'Weight', 'Actions'].includes(header) ? 'text-right' : ''}`}>{header}</th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody>
-                {displayedProducts.map(product => (
-                    <ProductRow
-                        key={product.id}
-                        product={product}
-                        isSelected={selectedProductIds.has(product.id)}
-                        onSelect={handleSelectOne}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onZoomImage={setZoomedProduct}
-                    />
-                ))}
-            </tbody>
-            </table>
-        </div>
+        {/* Desktop Table View (Supports Excel Grid View & Modern View) */}
+        {viewMode === 'excel' ? (
+            <div className="hidden md:block border border-slate-300 rounded shadow-xs bg-white overflow-hidden mt-3">
+                {/* Excel Formula & Status Bar */}
+                <div className="bg-[#f3f2f1] px-3 py-1.5 border-b border-slate-300 flex items-center justify-between text-xs text-slate-700 select-none font-mono">
+                    <div className="flex items-center gap-2">
+                        <span className="font-black text-[#107c41] text-sm">fx</span>
+                        <span className="text-slate-300">|</span>
+                        <span className="text-slate-700 font-sans text-xs">
+                            <strong>{displayedProducts.length}</strong> products displayed • Sorted by {sortBy} ({sortOrder})
+                            {selectedProductIds.size > 0 && <span className="ml-2 text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded">[{selectedProductIds.size} Selected]</span>}
+                        </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-200/70 px-2 py-0.5 rounded">
+                        Microsoft Excel Grid
+                    </span>
+                </div>
+
+                <div className="overflow-x-auto max-h-[72vh]">
+                    <table className="min-w-full border-collapse text-xs">
+                        <thead className="bg-[#f3f2f1] text-slate-700 font-bold uppercase text-[10px] sticky top-0 z-10 select-none">
+                            <tr className="border-b border-slate-300">
+                                <th className="py-1.5 px-1 text-center w-10 border-r border-slate-300 bg-[#e1dfdd] text-slate-700">#</th>
+                                <th className="py-1.5 px-2 text-center w-8 border-r border-slate-300">
+                                    <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 text-[#107c41] focus:ring-[#107c41] cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
+                                </th>
+                                <th className="py-1.5 px-2 text-center border-r border-slate-300 w-14">A: ID</th>
+                                <th className="py-1.5 px-2 text-left border-r border-slate-300 min-w-[140px]">B: Part No</th>
+                                <th className="py-1.5 px-2 text-left border-r border-slate-300 min-w-[220px]">C: Description</th>
+                                <th className="py-1.5 px-2 text-center border-r border-slate-300 w-24">D: HSN Code</th>
+                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-28">E: List Price (₹)</th>
+                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-28">F: Selling Price (₹)</th>
+                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-14">G: UOM</th>
+                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-16">H: Plant</th>
+                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-20">I: Weight</th>
+                                <th className="py-1.5 px-1 text-center w-20">J: Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                            {displayedProducts.map((product, index) => (
+                                <ExcelProductRow
+                                    key={product.id}
+                                    index={index}
+                                    product={product}
+                                    isSelected={selectedProductIds.has(product.id)}
+                                    onSelect={handleSelectOne}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                    onZoomImage={setZoomedProduct}
+                                />
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        ) : (
+            <div className="hidden md:block border border-slate-200 rounded-xl shadow-xs bg-white overflow-hidden mt-3">
+                <div className="overflow-x-auto max-h-[72vh]">
+                    <table className="min-w-full text-xs text-left border-collapse">
+                        <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-200">
+                            <tr>
+                                <th className="px-3 py-2.5 text-center w-10">
+                                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
+                                </th>
+                                <th className="px-3 py-2.5 w-14">ID</th>
+                                <th className="px-3 py-2.5 min-w-[140px]">Part No</th>
+                                <th className="px-3 py-2.5 min-w-[220px]">Description</th>
+                                <th className="px-3 py-2.5 w-24 text-center">HSN Code</th>
+                                <th className="px-3 py-2.5 text-right w-28">List Price</th>
+                                <th className="px-3 py-2.5 text-right w-28">Selling Price</th>
+                                <th className="px-3 py-2.5 w-14 text-center">UOM</th>
+                                <th className="px-3 py-2.5 w-16 text-center">Plant</th>
+                                <th className="px-3 py-2.5 text-right w-20">Weight</th>
+                                <th className="px-3 py-2.5 text-right w-20">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                            {displayedProducts.map(product => (
+                                <ModernProductRow
+                                    key={product.id}
+                                    product={product}
+                                    isSelected={selectedProductIds.has(product.id)}
+                                    onSelect={handleSelectOne}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                    onZoomImage={setZoomedProduct}
+                                />
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )}
         {isLoading && <p className="text-black text-center py-8">Loading products...</p>}
         {!isLoading && displayedProducts.length === 0 && (
           <p className="text-black text-center py-8">
