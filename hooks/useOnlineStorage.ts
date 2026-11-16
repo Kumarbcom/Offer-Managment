@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, fetchQuotationStatuses, fetchSingleQuotation, updateQuotationField, liveQuotationSyncChannel, isDataSaverEnabled } from '../supabase';
+import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, fetchQuotationStatuses, fetchSingleQuotation, updateQuotationField, liveQuotationSyncChannel, isDataSaverEnabled, cacheCustomerLocally } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
