@@ -138,6 +138,26 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                     data = await get(tableName);
                 } else {
                     data = memoryCache.get(tableName) || stateRef.current || [];
+                    // Background sync of newly added customers (e.g. created on other devices)
+                    if (tableName === 'customers' && supabase) {
+                        const maxId = (data || []).reduce((max: number, c: any) => Math.max(max, Number(c?.id) || 0), 0);
+                        supabase.from('customers').select('*').gt('id', maxId).order('id', { ascending: false }).then(({ data: recent }) => {
+                            if (recent && recent.length > 0 && isMounted) {
+                                const mappedRecent = recent.map((item: any) => mapFromSupabase('customers', item));
+                                setState(prev => {
+                                    const prevList = prev || [];
+                                    const existingIds = new Set(prevList.map((item: any) => item?.id));
+                                    const freshItems = mappedRecent.filter((item: any) => item && !existingIds.has(item.id));
+                                    if (freshItems.length === 0) return prevList;
+                                    const merged = [...freshItems, ...prevList];
+                                    memoryCache.set('customers', merged);
+                                    idbSet('cache_customers', merged);
+                                    freshItems.forEach((c: any) => cacheCustomerLocally(c));
+                                    return merged as T[];
+                                });
+                            }
+                        }).catch(() => {});
+                    }
                 }
 
                 if (data.length === 0 && !hasCachedCustomers && !seededTables.has(tableName)) {

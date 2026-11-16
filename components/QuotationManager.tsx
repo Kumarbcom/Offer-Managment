@@ -4,6 +4,7 @@ import { QUOTATION_STATUSES } from '../constants';
 import { generateFormattedQuotationNumber, getQuotationSeqNum } from '../utils/quotationNumber';
 import { ShareModal } from './ShareModal';
 import { ExcelTableColumnFilter, ChecklistOption } from './ExcelTableColumnFilter';
+import { customerCache, getCustomersByIds, cacheCustomerLocally } from '../supabase';
 
 declare var XLSX: any;
 
@@ -104,6 +105,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
   const [sidePanelComment, setSidePanelComment] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
 
+  // On-demand customer cache for quotations whose customer ID is not in initial memory list
+  const [extraCustomers, setExtraCustomers] = useState<Map<number, Customer>>(new Map());
+
   // Cloud Sync Status
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Live');
@@ -121,7 +125,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
   const getCustomerCity = (id: number | null | undefined): string => {
     if (id === null || id === undefined) return '';
-    const cust = customers?.find(c => c.id === id);
+    const numId = Number(id);
+    const cust = customers?.find(c => c.id === numId) || extraCustomers.get(numId) || customerCache.get(numId);
     if (cust && cust.city) return cust.city;
     if (cust && cust.address) {
       const parts = cust.address.split(',');
@@ -210,7 +215,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
   const userRole = currentUser.role;
 
-  // Build customer name map synchronously from the prop — handles both number & string IDs
+  // Build customer name map synchronously from props + on-demand cache + global cache
   const customerMap = useMemo(() => {
     const map = new Map<number | string, string>();
     if (customers && Array.isArray(customers)) {
@@ -224,8 +229,58 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
         }
       });
     }
+    // Include on-demand fetched customers
+    extraCustomers.forEach((c, id) => {
+      if (c && c.name) {
+        map.set(id, c.name);
+        map.set(Number(id), c.name);
+        map.set(String(id), c.name);
+      }
+    });
+    // Include global cache
+    customerCache.forEach((c, id) => {
+      if (c && c.name) {
+        map.set(id, c.name);
+        map.set(Number(id), c.name);
+        map.set(String(id), c.name);
+      }
+    });
     return map;
-  }, [customers]);
+  }, [customers, extraCustomers]);
+
+  // Eagerly resolve customer details for any quotations whose customer is missing from in-memory props
+  useEffect(() => {
+    if (!quotations || quotations.length === 0) return;
+    const missingIds = new Set<number>();
+    quotations.forEach(q => {
+      if (q.customerId && typeof q.customerId === 'number' && q.customerId > 0) {
+        const numId = Number(q.customerId);
+        const hasIt = (customers && customers.some(c => c.id === numId)) || extraCustomers.has(numId) || customerCache.has(numId);
+        if (!hasIt) {
+          missingIds.add(numId);
+        }
+      }
+    });
+
+    if (missingIds.size > 0) {
+      getCustomersByIds(Array.from(missingIds)).then(fetched => {
+        if (fetched && fetched.length > 0) {
+          setExtraCustomers(prev => {
+            const next = new Map(prev);
+            fetched.forEach(c => {
+              if (c && c.id) {
+                next.set(Number(c.id), c);
+                cacheCustomerLocally(c);
+              }
+            });
+            return next;
+          });
+        }
+      }).catch(err => {
+        console.warn("Could not fetch missing customers for quotations:", err);
+      });
+    }
+  }, [quotations, customers, extraCustomers]);
 
   const getCustomerName = (id: number | null | undefined, quotation?: Quotation): string => {
     if (quotation) {
@@ -235,7 +290,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
       }
     }
     if (id === null || id === undefined || id === 0) return '—';
-    return customerMap.get(id) || customerMap.get(Number(id)) || customerMap.get(String(id)) || '—';
+    const numId = Number(id);
+    return customerMap.get(id) || customerMap.get(numId) || customerMap.get(String(id)) || extraCustomers.get(numId)?.name || customerCache.get(numId)?.name || '—';
   };
 
   const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || '—';

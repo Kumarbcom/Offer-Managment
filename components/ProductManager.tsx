@@ -10,7 +10,7 @@ import type { Product, PriceEntry, User } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { ProductAddModal } from './ProductAddModal';
 import { ImageZoomModal } from './ImageZoomModal';
-import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, fetchAllProductsForExport, getNextProductId } from '../supabase';
+import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, getProductsByIds, fetchAllProductsForExport, getNextProductId } from '../supabase';
 
 declare var XLSX: any;
 
@@ -39,12 +39,13 @@ const parseProductDate = (dateStr: any): Date => {
 };
 
 const getCurrentPrice = (product: Product): PriceEntry | null => {
-    if (!product.prices || product.prices.length === 0) return null;
+    if (!product || !product.prices || !Array.isArray(product.prices) || product.prices.length === 0) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
   
     // 1. Check exact bracket
     for (const p of product.prices) {
+        if (!p) continue;
         const from = parseProductDate(p.validFrom);
         const to = parseProductDate(p.validTo);
         if (!isNaN(from.getTime()) && !isNaN(to.getTime())) {
@@ -58,6 +59,7 @@ const getCurrentPrice = (product: Product): PriceEntry | null => {
 
     // 2. Filter past or current, sort descending by validFrom
     const validPrices = product.prices
+        .filter(Boolean)
         .map(p => ({ p, from: parseProductDate(p.validFrom) }))
         .filter(item => !isNaN(item.from.getTime()));
 
@@ -73,7 +75,7 @@ const getCurrentPrice = (product: Product): PriceEntry | null => {
         return validPrices[0].p;
     }
     
-    return product.prices[product.prices.length - 1] || null;
+    return product.prices.filter(Boolean)[product.prices.length - 1] || null;
 };
 
 const getEffectivePriceValue = (product: Product): number => {
@@ -171,9 +173,9 @@ const ModernProductRow = React.memo(({
 
             {/* List Price */}
             <td className="px-4 py-2.5 text-right w-[13%] whitespace-nowrap">
-                {lp > 0 ? (
+                {Number(lp) > 0 ? (
                     <span className="font-mono font-bold text-slate-900 text-xs">
-                        ₹{lp.toFixed(2)}
+                        ₹{Number(lp).toFixed(2)}
                     </span>
                 ) : (
                     <span className="text-slate-300 text-xs font-mono">—</span>
@@ -182,9 +184,9 @@ const ModernProductRow = React.memo(({
 
             {/* Selling Price */}
             <td className="px-4 py-2.5 text-right w-[11%] whitespace-nowrap">
-                {sp > 0 ? (
+                {Number(sp) > 0 ? (
                     <span className="font-mono text-slate-600 text-xs">
-                        ₹{sp.toFixed(2)}
+                        ₹{Number(sp).toFixed(2)}
                     </span>
                 ) : (
                     <span className="text-slate-300 text-xs font-mono">—</span>
@@ -338,11 +340,11 @@ const ExcelProductRow = React.memo(({
             </td>
             {/* F: List Price */}
             <td className="px-2 border-r border-slate-300 text-right font-mono font-bold text-slate-900 w-28 whitespace-nowrap">
-                {lp > 0 ? `₹${lp.toFixed(2)}` : '—'}
+                {Number(lp) > 0 ? `₹${Number(lp).toFixed(2)}` : '—'}
             </td>
             {/* G: Selling Price */}
             <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-28 whitespace-nowrap">
-                {sp > 0 ? `₹${sp.toFixed(2)}` : '—'}
+                {Number(sp) > 0 ? `₹${Number(sp).toFixed(2)}` : '—'}
             </td>
             {/* H: UOM */}
             <td className="px-1 border-r border-slate-300 text-center font-mono text-slate-700 w-14">
@@ -408,7 +410,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [viewMode, setViewMode] = useState<'excel' | 'modern'>(() => {
-    return (localStorage.getItem('products_view_mode') as 'excel' | 'modern') || 'excel';
+    return (localStorage.getItem('products_view_mode') as 'excel' | 'modern') || 'modern';
   });
   const [activeDropdown, setActiveDropdown] = useState<'export' | 'update' | 'template' | null>(null);
   const canManageProducts = currentUser.role !== 'Sales Person';
@@ -518,6 +520,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     }
   }, []);
 
+  const handleCloseModal = useCallback(() => { setIsModalOpen(false); setProductToEdit(null); }, []);
+
   const handleSaveProduct = useCallback(async (product: Product) => {
     if (productToEdit) {
       await updateProduct(product);
@@ -529,8 +533,6 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     }
     handleCloseModal();
   }, [productToEdit, handleCloseModal]);
-  
-  const handleCloseModal = useCallback(() => { setIsModalOpen(false); setProductToEdit(null); }, []);
   
   // Download Template for adding new products to catalog
   const handleDownloadTemplate = () => {
