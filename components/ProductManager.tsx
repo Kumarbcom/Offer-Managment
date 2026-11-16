@@ -527,7 +527,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
       setSearchTerm(product.partNo);
       setDisplayedProducts(prev => [product, ...prev.filter(p => p.id !== product.id)]);
     }
-  }, [productToEdit]);
+    handleCloseModal();
+  }, [productToEdit, handleCloseModal]);
   
   const handleCloseModal = useCallback(() => { setIsModalOpen(false); setProductToEdit(null); }, []);
   

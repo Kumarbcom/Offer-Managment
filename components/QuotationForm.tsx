@@ -474,23 +474,26 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [quotations]);
 
   const handleProductOpen = useCallback(() => {
-      if (searchedProducts.length === 0) {
-          // Instantly populate top 50 products from cache (0ms!)
-          const cached = Array.from(productCacheByPartNo.values()).slice(0, 50);
-          if (cached.length > 0) {
-              setSearchedProducts(cached);
-          } else if (!isSearchingProducts) {
-              setIsSearchingProducts(true);
-              searchProducts('').then(results => {
-                  setSearchedProducts(results);
-                  setIsSearchingProducts(false);
-              }).catch(err => {
-                  console.error(err);
-                  setIsSearchingProducts(false);
-              });
-          }
+      // Re-populate searchedProducts to always include latest cached and newly added products
+      const cached = Array.from(productCacheByPartNo.values()).slice(0, 100);
+      if (cached.length > 0) {
+          setSearchedProducts(prev => {
+              const map = new Map<number | string, Product>();
+              cached.forEach(p => map.set(p.id || p.partNo, p));
+              prev.forEach(p => { if (!map.has(p.id || p.partNo)) map.set(p.id || p.partNo, p); });
+              return Array.from(map.values());
+          });
+      } else if (!isSearchingProducts) {
+          setIsSearchingProducts(true);
+          searchProducts('').then(results => {
+              setSearchedProducts(results);
+              setIsSearchingProducts(false);
+          }).catch(err => {
+              console.error(err);
+              setIsSearchingProducts(false);
+          });
       }
-  }, [searchedProducts.length, isSearchingProducts]);
+  }, [isSearchingProducts]);
 
   const handleProductSearch = useCallback((term: string) => {
       setProductSearchTerm(term);
@@ -978,13 +981,24 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       const resolvedImg = newProduct.imageUrl || (newProduct.prices && newProduct.prices.find(pr => pr && (pr.imageUrl || pr.image_url))?.imageUrl) || '';
       const fullProduct = { ...newProduct, imageUrl: resolvedImg };
 
+      // Ensure local caches are immediately populated
+      cacheProductLocally(fullProduct, true);
+      if (fullProduct.id) productCacheById.set(Number(fullProduct.id), fullProduct);
+      if (fullProduct.partNo) productCacheByPartNo.set(fullProduct.partNo.trim().toLowerCase(), fullProduct);
+      productSearchCache.clear();
+
       if (productToEdit) {
           await updateProduct(fullProduct);
           setFetchedProducts(prev => new Map(prev).set(fullProduct.id, fullProduct));
+          setSearchedProducts(prev => [fullProduct, ...prev.filter(p => p.id !== fullProduct.id)]);
           
           setFormData(prev => {
               if (!prev || !prev.details) return prev;
-              const priceEntry = getPriceForDate(fullProduct, prev.quotationDate);
+              const targetDate = prev.quotationDate || getTodayDateString();
+              let priceEntry = getPriceForDate(fullProduct, targetDate);
+              if (!priceEntry && fullProduct.prices && fullProduct.prices.length > 0) {
+                  priceEntry = fullProduct.prices[0];
+              }
               const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
               const priceSource = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
               
@@ -1005,7 +1019,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           setFormData(prev => {
               if (!prev) return null;
               const targetDate = prev.quotationDate || getTodayDateString();
-              const priceEntry = getPriceForDate(fullProduct, targetDate);
+              let priceEntry = getPriceForDate(fullProduct, targetDate);
+              if (!priceEntry && fullProduct.prices && fullProduct.prices.length > 0) {
+                  priceEntry = fullProduct.prices[0];
+              }
               const newPrice = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
               const priceSource = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
               
@@ -1955,7 +1972,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                            <ActionButton onClick={() => setIsCustomerSearchModalOpen(true)} title="Search Customer Directory" className="px-2 py-1 text-[11px] h-6">
                                <Icons.SearchProduct /><span>Search Customer</span>
                            </ActionButton>
-                           <ActionButton onClick={() => setIsProductModalOpen(true)} title="Add New Product" className="px-2 py-1 text-[11px] h-6">
+                           <ActionButton onClick={() => { setProductToEdit(null); setIsProductModalOpen(true); }} title="Add New Product" className="px-2 py-1 text-[11px] h-6">
                                <Icons.AddProduct /><span>+ Product</span>
                            </ActionButton>
                            <ActionButton onClick={() => setIsProductSearchModalOpen(true)} title="Search Product Catalogue" className="px-2 py-1 text-[11px] h-6">
@@ -2197,7 +2214,12 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             brand: (item as any).brand || 'Lapp'
                         } as any as Product : undefined);
                         const cleanProductTerm = (productSearchTerm || '').trim().toLowerCase();
-                        let optionsForSelect = [...searchedProducts];
+                        const candidateMap = new Map<number | string, Product>();
+                        searchedProducts.forEach(p => candidateMap.set(p.id || p.partNo, p));
+                        Array.from(productCacheByPartNo.values()).slice(0, 100).forEach(p => {
+                            if (!candidateMap.has(p.id || p.partNo)) candidateMap.set(p.id || p.partNo, p);
+                        });
+                        let optionsForSelect = Array.from(candidateMap.values());
                         if (!cleanProductTerm) {
                             if (currentProduct && !optionsForSelect.some(p => p.id === currentProduct.id || (p.partNo && p.partNo === currentProduct.partNo))) {
                                 optionsForSelect.unshift(currentProduct);

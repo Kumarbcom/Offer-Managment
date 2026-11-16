@@ -182,8 +182,37 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
     return true;
   };
 
-  const handlePrepareDraft = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDirectSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!validateProduct()) return;
+
+    setIsSaving(true);
+    try {
+      const sortedPrices = sortPricesLatestFirst([...formData.prices]);
+      let nextId = productToEdit ? productToEdit.id : 0;
+      if (!productToEdit) {
+        nextId = await getNextProductId();
+      }
+      const finalProduct: Product = {
+        ...formData,
+        prices: sortedPrices,
+        id: nextId,
+      };
+
+      await onSave(finalProduct);
+      setShowDraftPreview(false);
+      setDraftProduct(null);
+      onClose();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the product.');
+      console.error('Failed to save product:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePrepareDraft = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (!validateProduct()) return;
 
     const sortedPrices = sortPricesLatestFirst([...formData.prices]);
@@ -206,7 +235,10 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
         const nextId = await getNextProductId();
         finalProduct.id = nextId;
       }
-      onSave(finalProduct);
+      await onSave(finalProduct);
+      setShowDraftPreview(false);
+      setDraftProduct(null);
+      onClose();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the product.');
       console.error('Failed to save product:', error);
@@ -381,7 +413,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
             </div>
           ) : (
             /* EDIT FORM VIEW - COLORFUL & COMPACT SINGLE-VIEW */
-            <form id="productEditForm" onSubmit={handlePrepareDraft}>
+            <form id="productEditForm" onSubmit={handleDirectSave}>
               <fieldset disabled={isSaving}>
 
                 {/* Two-Column Single-View Grid Matching Mockup */}
@@ -748,7 +780,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                 type="button" 
                 onClick={() => setShowDraftPreview(false)} 
                 disabled={isSaving} 
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
               >
                 <span>← Back to Edit</span>
               </button>
@@ -757,7 +789,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                 type="button" 
                 onClick={handleConfirmSave} 
                 disabled={isSaving} 
-                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md shadow-emerald-600/25 hover:shadow-lg disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md shadow-emerald-600/25 hover:shadow-lg disabled:opacity-50 cursor-pointer"
               >
                 {isSaving ? (
                   <>
@@ -766,7 +798,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                   </>
                 ) : (
                   <>
-                    <span>✓ Confirm & Update Product</span>
+                    <span>✓ {productToEdit ? 'Confirm & Update Product' : 'Confirm & Save Product'}</span>
                   </>
                 )}
               </button>
@@ -777,20 +809,40 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                 type="button" 
                 onClick={onClose} 
                 disabled={isSaving} 
-                className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
               >
                 ✕ Cancel
               </button>
 
-              <button 
-                type="submit" 
-                form="productEditForm" 
-                disabled={isSaving} 
-                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl transition-all shadow-md shadow-indigo-600/30 hover:shadow-lg hover:scale-[1.01] disabled:opacity-50"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                <span>{productToEdit ? 'Review Draft & Update →' : 'Review Draft & Save →'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  type="button" 
+                  onClick={handlePrepareDraft} 
+                  disabled={isSaving} 
+                  className="px-4 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                >
+                  Preview Draft
+                </button>
+
+                <button 
+                  type="submit" 
+                  form="productEditForm" 
+                  disabled={isSaving} 
+                  className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl transition-all shadow-md shadow-indigo-600/30 hover:shadow-lg hover:scale-[1.01] disabled:opacity-50 cursor-pointer"
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 13l4 4L19 7"/></svg>
+                      <span>{productToEdit ? 'Update Product' : 'Add Product'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </>
           )}
         </div>
