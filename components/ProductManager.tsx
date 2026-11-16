@@ -92,7 +92,8 @@ const ModernProductRow = React.memo(({ product, isSelected, onSelect, onEdit, on
         <tr className={`border-b border-slate-100 hover:bg-indigo-50/25 transition-colors ${
             isSelected ? 'bg-indigo-50/50' : 'bg-white'
         }`}>
-            <td className="px-3 py-2.5 text-center w-10">
+            {/* Checkbox */}
+            <td className="px-3 py-2 text-center w-10">
                 <input 
                     type="checkbox" 
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
@@ -101,62 +102,67 @@ const ModernProductRow = React.memo(({ product, isSelected, onSelect, onEdit, on
                     aria-label={`Select product ${product.partNo}`}
                 />
             </td>
-            <td className="px-3 py-2.5 text-slate-400 font-mono text-xs w-14">#{product.id}</td>
-            <td className="px-3 py-2.5 text-slate-900 font-bold min-w-[140px]">
-                <div className="flex items-center gap-2">
-                    {product.imageUrl ? (
-                        <img 
-                            src={product.imageUrl} 
-                            alt={product.partNo} 
-                            onClick={() => onZoomImage?.(product)}
-                            className="w-8 h-8 object-contain rounded-lg bg-slate-50 border border-slate-200 cursor-zoom-in hover:scale-110 transition-transform shadow-2xs shrink-0" 
-                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                            title="Click to zoom image"
-                        />
-                    ) : (
-                        <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 shrink-0">
-                            —
-                        </div>
-                    )}
-                    <span 
-                        className="font-mono text-indigo-950 font-bold hover:text-indigo-600 cursor-pointer" 
-                        onClick={() => onEdit(product)}
-                        title="Click to edit product"
-                    >
-                        {product.partNo}
-                    </span>
-                </div>
+            {/* ID */}
+            <td className="px-3 py-2 text-slate-400 font-mono text-xs w-14">#{product.id}</td>
+            {/* Part No - Always Clearly Visible & Bold */}
+            <td className="px-3 py-2 font-mono font-bold text-slate-900 text-sm whitespace-nowrap min-w-[130px]">
+                <span 
+                    className="hover:text-indigo-600 cursor-pointer transition-colors" 
+                    onClick={() => onEdit(product)}
+                    title="Click to edit product"
+                >
+                    {product.partNo}
+                </span>
             </td>
-            <td className="px-3 py-2.5 text-slate-700 max-w-sm truncate text-xs font-medium" title={product.description}>
+            {/* Image (Small, clean thumbnail - no empty placeholder box) */}
+            <td className="px-2 py-2 text-center w-12">
+                {product.imageUrl ? (
+                    <img 
+                        src={product.imageUrl} 
+                        alt={product.partNo} 
+                        onClick={() => onZoomImage?.(product)}
+                        className="w-7 h-7 object-contain rounded bg-white border border-slate-200 cursor-zoom-in hover:scale-125 transition-transform shadow-2xs mx-auto" 
+                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        title="Click to zoom image"
+                    />
+                ) : (
+                    <span className="text-slate-300 text-xs">—</span>
+                )}
+            </td>
+            {/* Description */}
+            <td className="px-3 py-2 text-slate-700 max-w-sm truncate text-xs font-medium" title={product.description}>
                 {product.description}
             </td>
-            <td className="px-3 py-2.5 text-slate-500 font-mono text-xs text-center w-24">
+            {/* HSN Code */}
+            <td className="px-3 py-2 text-slate-500 font-mono text-xs text-center w-24">
                 {product.hsnCode || '—'}
             </td>
-            <td className="px-3 py-2.5 text-slate-900 font-bold font-mono text-right text-xs w-28">
+            {/* List Price */}
+            <td className="px-3 py-2 text-slate-900 font-bold font-mono text-right text-xs w-28 whitespace-nowrap">
                 {lp > 0 ? `₹${lp.toFixed(2)}` : '—'}
             </td>
-            <td className="px-3 py-2.5 text-slate-500 font-mono text-right text-xs w-28">
+            {/* Selling Price */}
+            <td className="px-3 py-2 text-slate-500 font-mono text-right text-xs w-28 whitespace-nowrap">
                 {sp > 0 ? `₹${sp.toFixed(2)}` : '—'}
             </td>
-            <td className="px-3 py-2.5 text-slate-600 text-xs text-center w-14">
-                {product.uom ? (
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[11px] font-semibold text-slate-700">{product.uom}</span>
-                ) : '—'}
+            {/* UOM */}
+            <td className="px-2 py-2 text-slate-600 text-xs text-center w-14 font-mono">
+                {product.uom || '—'}
             </td>
-            <td className="px-3 py-2.5 text-slate-600 text-xs text-center w-16">
-                {product.plant ? (
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[11px] font-semibold text-slate-700">{product.plant}</span>
-                ) : '—'}
+            {/* Plant */}
+            <td className="px-2 py-2 text-slate-600 text-xs text-center w-16 font-mono">
+                {product.plant || '—'}
             </td>
-            <td className="px-3 py-2.5 text-right text-xs w-20">
+            {/* Weight */}
+            <td className="px-3 py-2 text-right text-xs w-20 whitespace-nowrap">
                 {product.weight > 0 ? (
-                    <span className="text-slate-700 font-mono font-medium">{product.weight} {product.weight > 0 && product.weight < 100 ? 'g' : ''}</span>
+                    <span className="text-slate-700 font-mono font-medium">{product.weight}{product.weight > 0 && product.weight < 100 ? ' g' : ''}</span>
                 ) : (
                     <span className="text-slate-300 font-mono">—</span>
                 )}
             </td>
-            <td className="px-3 py-2.5 text-right space-x-1.5 w-20">
+            {/* Actions */}
+            <td className="px-3 py-2 text-right space-x-1.5 w-20 whitespace-nowrap">
                 <button onClick={() => onEdit(product)} className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 rounded-lg hover:bg-indigo-50" title="Edit">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                 </button>
@@ -212,62 +218,61 @@ const ExcelProductRow = React.memo(({
             <td className="px-2 border-r border-slate-300 text-slate-500 font-mono text-center w-14">
                 #{product.id}
             </td>
-            {/* B: Part No & Image */}
-            <td className="px-2 border-r border-slate-300 font-mono font-bold text-slate-900 min-w-[140px]">
-                <div className="flex items-center gap-1.5">
-                    {product.imageUrl ? (
-                        <img 
-                            src={product.imageUrl} 
-                            alt={product.partNo} 
-                            onClick={() => onZoomImage?.(product)}
-                            className="w-5.5 h-5.5 object-contain rounded bg-white border border-slate-300 cursor-zoom-in hover:scale-125 transition-transform shadow-2xs shrink-0" 
-                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                            title="Click to zoom image"
-                        />
-                    ) : (
-                        <div className="w-5.5 h-5.5 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-[9px] text-slate-400 shrink-0">
-                            —
-                        </div>
-                    )}
-                    <span 
-                        className="truncate hover:text-[#107c41] cursor-pointer" 
-                        onClick={() => onEdit(product)}
-                        title="Click to edit product"
-                    >
-                        {product.partNo}
-                    </span>
-                </div>
+            {/* B: Part No - Prominent, Bold, and Never Truncated */}
+            <td className="px-2 border-r border-slate-300 font-mono font-bold text-slate-900 text-xs sm:text-sm min-w-[130px] whitespace-nowrap">
+                <span 
+                    className="hover:text-[#107c41] cursor-pointer" 
+                    onClick={() => onEdit(product)}
+                    title="Click to edit product"
+                >
+                    {product.partNo}
+                </span>
             </td>
-            {/* C: Description */}
+            {/* C: Image (Compact Thumbnail if exists, or dash) */}
+            <td className="px-1 border-r border-slate-300 text-center w-12">
+                {product.imageUrl ? (
+                    <img 
+                        src={product.imageUrl} 
+                        alt={product.partNo} 
+                        onClick={() => onZoomImage?.(product)}
+                        className="w-6 h-6 object-contain rounded bg-white border border-slate-300 cursor-zoom-in hover:scale-125 transition-transform shadow-2xs mx-auto" 
+                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        title="Click to zoom image"
+                    />
+                ) : (
+                    <span className="text-slate-300 text-xs">—</span>
+                )}
+            </td>
+            {/* D: Description */}
             <td className="px-2 border-r border-slate-300 text-slate-800 max-w-sm truncate" title={product.description}>
                 {product.description}
             </td>
-            {/* D: HSN Code */}
+            {/* E: HSN Code */}
             <td className="px-2 border-r border-slate-300 text-slate-600 font-mono text-center w-24">
                 {product.hsnCode || '—'}
             </td>
-            {/* E: List Price */}
-            <td className="px-2 border-r border-slate-300 text-right font-mono font-bold text-slate-900 w-28">
+            {/* F: List Price */}
+            <td className="px-2 border-r border-slate-300 text-right font-mono font-bold text-slate-900 w-28 whitespace-nowrap">
                 {lp > 0 ? `₹${lp.toFixed(2)}` : '—'}
             </td>
-            {/* F: Selling Price */}
-            <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-28">
+            {/* G: Selling Price */}
+            <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-28 whitespace-nowrap">
                 {sp > 0 ? `₹${sp.toFixed(2)}` : '—'}
             </td>
-            {/* G: UOM */}
+            {/* H: UOM */}
             <td className="px-1 border-r border-slate-300 text-center font-mono text-slate-700 w-14">
                 {product.uom || '—'}
             </td>
-            {/* H: Plant */}
+            {/* I: Plant */}
             <td className="px-1 border-r border-slate-300 text-center font-mono text-slate-700 w-16">
                 {product.plant || '—'}
             </td>
-            {/* I: Weight */}
-            <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-20">
+            {/* J: Weight */}
+            <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-20 whitespace-nowrap">
                 {product.weight > 0 ? `${product.weight}${product.weight > 0 && product.weight < 100 ? ' g' : ''}` : '—'}
             </td>
-            {/* J: Actions */}
-            <td className="px-2 text-center w-20 space-x-1.5">
+            {/* K: Actions */}
+            <td className="px-2 text-center w-20 space-x-1.5 whitespace-nowrap">
                 <button 
                     onClick={() => onEdit(product)} 
                     className="text-slate-400 hover:text-indigo-600 transition-colors p-1 rounded hover:bg-indigo-50" 
@@ -318,12 +323,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const [viewMode, setViewMode] = useState<'excel' | 'modern'>(() => {
     return (localStorage.getItem('products_view_mode') as 'excel' | 'modern') || 'excel';
   });
+  const [activeDropdown, setActiveDropdown] = useState<'export' | 'update' | 'template' | null>(null);
   const canManageProducts = currentUser.role !== 'Sales Person';
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.toolbar-dropdown')) {
+        setActiveDropdown(null);
+      }
+    };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const fetchProducts = useCallback(async (isLoadMore = false) => {
@@ -429,45 +444,130 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   
   const handleCloseModal = useCallback(() => { setIsModalOpen(false); setProductToEdit(null); }, []);
   
+  // Download Template for adding new products to catalog
   const handleDownloadTemplate = () => {
-    const headers = ["PartNo", "Description", "HSNCode", "UOM", "Plant", "Weight", "LP", "SP", "ValidFrom", "ValidTo", "ImageURL"];
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    const templateData = [
+      {
+        "PartNo": "4510023U100",
+        "Description": "ÖLFLEX® UNIPLUS 1X1 BU",
+        "HSNCode": "85444990",
+        "UOM": "M",
+        "Plant": "MFGN",
+        "Weight": 0.025,
+        "LP": 33.04,
+        "SP": 0,
+        "ValidFrom": new Date().toISOString().split('T')[0],
+        "ValidTo": "9999-12-31",
+        "ImageURL": "https://example.com/sample.jpg"
+      },
+      {
+        "PartNo": "4520012U100",
+        "Description": "ÖLFLEX® UNIPLUS 1X2.5 BK",
+        "HSNCode": "85444990",
+        "UOM": "M",
+        "Plant": "TRDN",
+        "Weight": 0.045,
+        "LP": 77.47,
+        "SP": 0,
+        "ValidFrom": new Date().toISOString().split('T')[0],
+        "ValidTo": "9999-12-31",
+        "ImageURL": ""
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Products");
-    XLSX.writeFile(wb, "Product_Upload_Template.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "New_Products_Template");
+    XLSX.writeFile(wb, "New_Products_Template.xlsx");
   };
   
-  const handleExport = () => {
-    const dataToExport = displayedProducts.flatMap(product => {
-      if (product.prices.length === 0) {
-        return [{ PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: 0, SP: 0, ValidFrom: '', ValidTo: '', ImageURL: product.imageUrl || '' }];
+  // Helper to format products for export: ID, Image, Part No, Description, HSN Code, UOM, Plant, Weight, then Price table From date wise
+  const exportProductsToExcel = (productsToExport: Product[], filename: string) => {
+    const dataToExport = productsToExport.flatMap(product => {
+      // Sort price table From date wise (ascending by validFrom date)
+      const sortedPrices = [...(product.prices || [])].sort((a, b) => {
+        const dateA = new Date(a.validFrom).getTime() || 0;
+        const dateB = new Date(b.validFrom).getTime() || 0;
+        return dateA - dateB;
+      });
+
+      if (sortedPrices.length === 0) {
+        return [{
+          'ID': product.id,
+          'Image': product.imageUrl || '',
+          'Part No': product.partNo,
+          'Description': product.description,
+          'HSN Code': product.hsnCode || '',
+          'UOM': product.uom || '',
+          'Plant': product.plant || '',
+          'Weight': product.weight || 0,
+          'LP (List Price)': 0,
+          'SP (Special Price)': 0,
+          'Valid From': '',
+          'Valid To': ''
+        }];
       }
-      return product.prices.map(price => ({
-        PartNo: product.partNo, Description: product.description, HSNCode: product.hsnCode, UOM: product.uom, Plant: product.plant, Weight: product.weight, LP: price.lp, SP: price.sp, ValidFrom: price.validFrom, ValidTo: price.validTo, ImageURL: product.imageUrl || ''
+
+      return sortedPrices.map(price => ({
+        'ID': product.id,
+        'Image': product.imageUrl || '',
+        'Part No': product.partNo,
+        'Description': product.description,
+        'HSN Code': product.hsnCode || '',
+        'UOM': product.uom || '',
+        'Plant': product.plant || '',
+        'Weight': product.weight || 0,
+        'LP (List Price)': price.lp || 0,
+        'SP (Special Price)': price.sp || 0,
+        'Valid From': price.validFrom || '',
+        'Valid To': price.validTo || ''
       }));
     });
+
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Products");
-    XLSX.writeFile(wb, "Products_Export.xlsx");
+    XLSX.writeFile(wb, filename);
   };
 
+  const handleExportVisible = () => {
+    exportProductsToExcel(displayedProducts, "Products_Visible_Export.xlsx");
+  };
+
+  const handleExportAll = async () => {
+    setIsUploading(true);
+    setUploadProgress('Fetching all products for export...');
+    try {
+      const allProducts = await fetchAllProductsForExport();
+      exportProductsToExcel(allProducts, "Products_All_Catalog_Export.xlsx");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to export all products");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress('');
+    }
+  };
+
+  // Generate Price Update Template with existing price and updated date
   const handleExportPriceList = async () => {
       setIsUploading(true);
-      setUploadProgress('Fetching all products for export...');
+      setUploadProgress('Generating price update template with existing prices...');
       try {
           const allProducts = await fetchAllProductsForExport();
+          const todayDateStr = new Date().toISOString().split('T')[0];
           const dataToExport = allProducts.map(product => {
               const currentPrice = getCurrentPrice(product);
-              const nextValidFrom = new Date();
               return {
+                  'ID': product.id,
                   'Part No': product.partNo,
                   'Description': product.description,
+                  'UOM': product.uom || '',
+                  'Plant': product.plant || '',
                   'Current LP': currentPrice ? currentPrice.lp : 0,
                   'Current SP': currentPrice ? currentPrice.sp : 0,
+                  'Current Valid From': currentPrice ? currentPrice.validFrom : '',
                   'New LP': '',
                   'New SP': '',
-                  'New Valid From': nextValidFrom.toISOString().split('T')[0],
+                  'New Valid From': todayDateStr, // defaults to today's date
                   'New Valid To': '9999-12-31',
                   'ImageURL': product.imageUrl || ''
               };
@@ -475,7 +575,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           const ws = XLSX.utils.json_to_sheet(dataToExport);
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, "Price_Update_Template");
-          XLSX.writeFile(wb, "Full_Price_List_Update.xlsx");
+          XLSX.writeFile(wb, `Price_Update_Template_${todayDateStr}.xlsx`);
       } catch (error) {
           alert(error instanceof Error ? error.message : "Failed to export price list");
       } finally {
@@ -1025,109 +1125,27 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                </div>
             </div>
 
-            {/* Mobile-only Upload/Add buttons compact row */}
+            {/* Mobile Actions: strictly ordered sequence */}
             {canManageProducts && (
             <div className="flex md:hidden gap-1.5 flex-wrap">
-                <button onClick={handleAddNew} className="bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-bold">Add</button>
-                <button onClick={handleUploadClick} className="bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-bold">Upload</button>
-                <button onClick={() => handleDownloadImageTemplate('all')} className="bg-purple-600 text-white px-2.5 py-1 rounded text-xs font-bold" title="Download Excel template for all products">Img Temp</button>
-                <button onClick={handleImageUpdateUploadClick} className="bg-fuchsia-600 text-white px-2.5 py-1 rounded text-xs font-bold" title="Upload Excel image URLs">Img Up</button>
-                <button onClick={() => bulkImageFilesInputRef.current?.click()} className="bg-pink-600 text-white px-2.5 py-1 rounded text-xs font-bold" title="Upload multiple image files">Img Files</button>
+                <button onClick={handleAddNew} className="bg-blue-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold shadow-xs">
+                    + Add New
+                </button>
+                <button onClick={handleExportVisible} className="bg-teal-600 text-white px-2 py-1 rounded-lg text-xs font-semibold">
+                    Export
+                </button>
+                <button onClick={handleExportPriceList} className="bg-amber-600 text-white px-2 py-1 rounded-lg text-xs font-semibold">
+                    Update
+                </button>
+                <button onClick={handleDownloadTemplate} className="bg-sky-600 text-white px-2 py-1 rounded-lg text-xs font-semibold">
+                    Template
+                </button>
             </div>
             )}
             
-            {/* Desktop Professional Grouped Buttons */}
-            <div className="hidden md:flex flex-wrap gap-2 text-xs items-center">
-                {canManageProducts && (
-                    <>
-                        {/* Price Updates Group */}
-                        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
-                            <button 
-                                onClick={handleExportPriceList} 
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors"
-                                title="Export Full Price List to Excel"
-                            >
-                                <svg className="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                <span>Export Price List</span>
-                            </button>
-                            <div className="w-px bg-slate-200 my-1"></div>
-                            <input type="file" ref={priceUpdateInputRef} onChange={handlePriceUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
-                            <button 
-                                onClick={handlePriceUpdateUploadClick} 
-                                disabled={isUploading} 
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-orange-800 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
-                                title="Import Bulk Price Updates from Excel"
-                            >
-                                <svg className="w-3.5 h-3.5 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                <span>Import Prices</span>
-                            </button>
-                        </div>
-
-                        {/* Image Tools Group */}
-                        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
-                            <button 
-                                onClick={() => handleDownloadImageTemplate('all')} 
-                                disabled={isUploading} 
-                                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50" 
-                                title="Download Excel template with ALL products in database to fill in image URLs"
-                            >
-                                <span className="text-purple-600 text-xs">🖼️</span>
-                                <span>Img Template</span>
-                            </button>
-                            <div className="w-px bg-slate-200 my-1"></div>
-                            <input type="file" ref={imageUpdateInputRef} onChange={handleImageUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
-                            <button 
-                                onClick={handleImageUpdateUploadClick} 
-                                disabled={isUploading} 
-                                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:text-fuchsia-800 hover:bg-fuchsia-50 rounded-lg transition-colors disabled:opacity-50" 
-                                title="Upload bulk image URLs via Excel sheet"
-                            >
-                                <span>Upload URLs</span>
-                            </button>
-                            <div className="w-px bg-slate-200 my-1"></div>
-                            <input type="file" ref={bulkImageFilesInputRef} onChange={handleBulkImageFilesUpload} className="hidden" accept="image/*" multiple />
-                            <button 
-                                onClick={() => bulkImageFilesInputRef.current?.click()} 
-                                disabled={isUploading} 
-                                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:text-pink-800 hover:bg-pink-50 rounded-lg transition-colors disabled:opacity-50" 
-                                title="Select multiple image files from your computer (auto-matches Part No)"
-                            >
-                                <span>Upload Files</span>
-                            </button>
-                        </div>
-                    </>
-                )}
-                
-                {/* Export & Import Group */}
-                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
-                    <button 
-                        onClick={handleExport} 
-                        disabled={isUploading} 
-                        className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-teal-800 hover:bg-teal-50 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                        Export Visible
-                    </button>
-                    <div className="w-px bg-slate-200 my-1"></div>
-                    <button 
-                        onClick={handleDownloadTemplate} 
-                        disabled={isUploading} 
-                        className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-sky-800 hover:bg-sky-50 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                        Template
-                    </button>
-                    <div className="w-px bg-slate-200 my-1"></div>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
-                    <button 
-                        onClick={handleUploadClick} 
-                        disabled={isUploading} 
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                        <span className="font-bold text-[#107c41]">↑</span>
-                        <span>{isUploading ? 'Uploading...' : 'Upload Excel'}</span>
-                    </button>
-                </div>
-
-                {/* Primary Add Action */}
+            {/* Desktop Actions: Strictly Ordered - 1. Add items (New) -> 2. Export -> 3. Update -> 4. Template */}
+            <div className="hidden md:flex flex-wrap gap-2.5 text-xs items-center">
+                {/* 1. Add items (New) */}
                 {canManageProducts && (
                     <button 
                         onClick={handleAddNew} 
@@ -1135,9 +1153,145 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                         className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-1.5 px-3.5 rounded-xl shadow-xs hover:shadow transition-all disabled:opacity-50 text-xs"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        <span>Add New</span>
+                        <span>Add items (New)</span>
                     </button>
                 )}
+
+                {/* 2. Export (Dropdown with Date-Wise Options) */}
+                <div className="relative toolbar-dropdown">
+                    <button 
+                        type="button"
+                        onClick={() => setActiveDropdown(prev => prev === 'export' ? null : 'export')}
+                        disabled={isUploading} 
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+                    >
+                        <svg className="w-3.5 h-3.5 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export</span>
+                        <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    {activeDropdown === 'export' && (
+                        <div className="absolute right-0 mt-1.5 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1.5 text-xs animate-in fade-in zoom-in-95 duration-100">
+                            <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+                                Export Options (Date-Wise Prices)
+                            </div>
+                            <button 
+                                onClick={() => { setActiveDropdown(null); handleExportAll(); }} 
+                                className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-800 transition-colors flex flex-col"
+                            >
+                                <span className="font-semibold text-slate-900">📥 Export All Products (Date-wise)</span>
+                                <span className="text-[10px] text-slate-500">ID, Image, Specs, and full price history by date</span>
+                            </button>
+                            <button 
+                                onClick={() => { setActiveDropdown(null); handleExportVisible(); }} 
+                                className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-800 transition-colors flex flex-col border-t border-slate-50"
+                            >
+                                <span className="font-semibold text-slate-900">📄 Export Visible Products</span>
+                                <span className="text-[10px] text-slate-500">Only the currently filtered/searched products</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* 3. Update (Dropdown: Download Current Price Sheet & Upload Latest Prices) */}
+                {canManageProducts && (
+                    <div className="relative toolbar-dropdown">
+                        <button 
+                            type="button"
+                            onClick={() => setActiveDropdown(prev => prev === 'update' ? null : 'update')}
+                            disabled={isUploading} 
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+                        >
+                            <svg className="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span>Update</span>
+                            <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        {activeDropdown === 'update' && (
+                            <div className="absolute right-0 mt-1.5 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1.5 text-xs animate-in fade-in zoom-in-95 duration-100">
+                                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+                                    Price & Spec Updates
+                                </div>
+                                <button 
+                                    onClick={() => { setActiveDropdown(null); handleExportPriceList(); }} 
+                                    className="w-full text-left px-3 py-2 hover:bg-amber-50 text-slate-800 transition-colors flex flex-col"
+                                >
+                                    <span className="font-semibold text-slate-900">📥 1. Download Price Update Sheet</span>
+                                    <span className="text-[10px] text-slate-500">Outputs existing prices with today's effective date column</span>
+                                </button>
+                                <button 
+                                    onClick={() => { setActiveDropdown(null); handlePriceUpdateUploadClick(); }} 
+                                    className="w-full text-left px-3 py-2 hover:bg-amber-50 text-slate-800 transition-colors flex flex-col border-t border-slate-50"
+                                >
+                                    <span className="font-semibold text-slate-900">📤 2. Upload Price Updates</span>
+                                    <span className="text-[10px] text-slate-500">Applies latest prices starting from the updated date</span>
+                                </button>
+                                
+                                <div className="border-t border-slate-100 my-1 pt-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Bulk Image Tools
+                                </div>
+                                <button 
+                                    onClick={() => { setActiveDropdown(null); handleDownloadImageTemplate('all'); }} 
+                                    className="w-full text-left px-3 py-1.5 hover:bg-purple-50 text-slate-700 transition-colors flex items-center gap-1.5"
+                                >
+                                    <span>🖼️</span>
+                                    <span>Download Image URL Template</span>
+                                </button>
+                                <button 
+                                    onClick={() => { setActiveDropdown(null); handleImageUpdateUploadClick(); }} 
+                                    className="w-full text-left px-3 py-1.5 hover:bg-purple-50 text-slate-700 transition-colors flex items-center gap-1.5"
+                                >
+                                    <span>📤</span>
+                                    <span>Upload Image URLs Excel</span>
+                                </button>
+                                <button 
+                                    onClick={() => { setActiveDropdown(null); bulkImageFilesInputRef.current?.click(); }} 
+                                    className="w-full text-left px-3 py-1.5 hover:bg-purple-50 text-slate-700 transition-colors flex items-center gap-1.5"
+                                >
+                                    <span>📁</span>
+                                    <span>Upload Image Files (Auto-match)</span>
+                                </button>
+                            </div>
+                        )}
+                        <input type="file" ref={priceUpdateInputRef} onChange={handlePriceUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
+                        <input type="file" ref={imageUpdateInputRef} onChange={handleImageUpdateFileChange} className="hidden" accept=".xlsx, .xls"/>
+                        <input type="file" ref={bulkImageFilesInputRef} onChange={handleBulkImageFilesUpload} className="hidden" accept="image/*" multiple />
+                    </div>
+                )}
+
+                {/* 4. Template (Dropdown: Download New Items Template & Upload New Items) */}
+                <div className="relative toolbar-dropdown">
+                    <button 
+                        type="button"
+                        onClick={() => setActiveDropdown(prev => prev === 'template' ? null : 'template')}
+                        disabled={isUploading} 
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+                    >
+                        <svg className="w-3.5 h-3.5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <span>Template</span>
+                        <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    {activeDropdown === 'template' && (
+                        <div className="absolute right-0 mt-1.5 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1.5 text-xs animate-in fade-in zoom-in-95 duration-100">
+                            <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+                                Add New Items to Catalog
+                            </div>
+                            <button 
+                                onClick={() => { setActiveDropdown(null); handleDownloadTemplate(); }} 
+                                className="w-full text-left px-3 py-2 hover:bg-sky-50 text-slate-800 transition-colors flex flex-col"
+                            >
+                                <span className="font-semibold text-slate-900">📥 Download New Items Template</span>
+                                <span className="text-[10px] text-slate-500">Includes all required fields and sample items</span>
+                            </button>
+                            <button 
+                                onClick={() => { setActiveDropdown(null); handleUploadClick(); }} 
+                                className="w-full text-left px-3 py-2 hover:bg-sky-50 text-slate-800 transition-colors flex flex-col border-t border-slate-50"
+                            >
+                                <span className="font-semibold text-slate-900">📤 Upload New Items Excel</span>
+                                <span className="text-[10px] text-slate-500">Imports filled template to add items to catalog</span>
+                            </button>
+                        </div>
+                    )}
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls"/>
+                </div>
             </div>
          </div>
 
@@ -1327,14 +1481,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                 </th>
                                 <th className="py-1.5 px-2 text-center border-r border-slate-300 w-14">A: ID</th>
                                 <th className="py-1.5 px-2 text-left border-r border-slate-300 min-w-[140px]">B: Part No</th>
-                                <th className="py-1.5 px-2 text-left border-r border-slate-300 min-w-[220px]">C: Description</th>
-                                <th className="py-1.5 px-2 text-center border-r border-slate-300 w-24">D: HSN Code</th>
-                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-28">E: List Price (₹)</th>
-                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-28">F: Selling Price (₹)</th>
-                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-14">G: UOM</th>
-                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-16">H: Plant</th>
-                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-20">I: Weight</th>
-                                <th className="py-1.5 px-1 text-center w-20">J: Actions</th>
+                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-12">C: Image</th>
+                                <th className="py-1.5 px-2 text-left border-r border-slate-300 min-w-[220px]">D: Description</th>
+                                <th className="py-1.5 px-2 text-center border-r border-slate-300 w-24">E: HSN Code</th>
+                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-28">F: List Price (₹)</th>
+                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-28">G: Selling Price (₹)</th>
+                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-14">H: UOM</th>
+                                <th className="py-1.5 px-1 text-center border-r border-slate-300 w-16">I: Plant</th>
+                                <th className="py-1.5 px-2 text-right border-r border-slate-300 w-20">J: Weight</th>
+                                <th className="py-1.5 px-1 text-center w-20">K: Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
@@ -1365,6 +1520,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                 </th>
                                 <th className="px-3 py-2.5 w-14">ID</th>
                                 <th className="px-3 py-2.5 min-w-[140px]">Part No</th>
+                                <th className="px-2 py-2.5 text-center w-12">Image</th>
                                 <th className="px-3 py-2.5 min-w-[220px]">Description</th>
                                 <th className="px-3 py-2.5 w-24 text-center">HSN Code</th>
                                 <th className="px-3 py-2.5 text-right w-28">List Price</th>
