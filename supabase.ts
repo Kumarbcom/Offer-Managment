@@ -264,7 +264,15 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
     }
 
     if (tableName === 'products') {
-        const prices = Array.isArray(item.prices) ? item.prices : [];
+        let prices: PriceEntry[] = [];
+        if (Array.isArray(item.prices)) {
+            prices = item.prices;
+        } else if (typeof item.prices === 'string') {
+            try {
+                const parsed = JSON.parse(item.prices);
+                if (Array.isArray(parsed)) prices = parsed;
+            } catch (e) {}
+        }
         const latestPriceWithImage = prices.slice().reverse().find(p => p && (p.imageUrl || p.image_url));
         const fallbackImageUrl = latestPriceWithImage ? (latestPriceWithImage.imageUrl || latestPriceWithImage.image_url) : '';
         const rawImageUrl = get(['image_url', 'imageUrl'], fallbackImageUrl) || fallbackImageUrl;
@@ -1293,7 +1301,7 @@ export async function getProductsByIds(ids: number[]): Promise<Product[]> {
     for (const id of validIds) {
         if (productCacheById.has(id)) {
             const p = productCacheById.get(id)!;
-            if (p.imageUrl || (p.prices && p.prices.length > 0)) {
+            if (p.prices && Array.isArray(p.prices) && p.prices.length > 0) {
                 cached.push(p);
             } else {
                 missing.push(id);
@@ -1328,7 +1336,7 @@ export async function getProductsByPartNos(partNos: string[]): Promise<Product[]
         const lower = pNo.toLowerCase();
         if (productCacheByPartNo.has(lower)) {
             const p = productCacheByPartNo.get(lower)!;
-            if (p.imageUrl || (p.prices && p.prices.length > 0)) {
+            if (p.prices && Array.isArray(p.prices) && p.prices.length > 0) {
                 cached.push(p);
             } else {
                 missing.push(pNo);

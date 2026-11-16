@@ -1990,25 +1990,38 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                 </div>
             )}
 
-            {(formData?.details || []).some(item => {
-                const p = (item.productId && fetchedProducts.get(item.productId)) ||
-                          (item.partNo && Array.from(fetchedProducts.values()).find(fp => fp.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
-                          (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
-                return p && isPriceOlderThanThreshold(p);
-            }) && (
-                <div className="bg-amber-50 border-l-4 border-amber-500 p-2 mb-2 text-xs text-amber-900 flex items-center justify-between shadow-2xs">
-                    <div>
-                        <span className="font-bold">⚠️ Notice:</span> Some items have prices older than 11.09.2026. <span className="font-bold text-amber-950 underline">Older price Need to check</span>.
+            {(() => {
+                const olderItems = (formData?.details || []).filter(item => {
+                    const p = (item.productId && fetchedProducts.get(item.productId)) ||
+                              (item.partNo && Array.from(fetchedProducts.values()).find(fp => fp.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
+                              (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
+                    return p && p.prices && p.prices.length > 0 && isPriceOlderThanThreshold(p);
+                });
+
+                if (olderItems.length === 0) return null;
+
+                const partNos = olderItems.map(it => it.partNo).filter(Boolean).slice(0, 4).join(', ');
+
+                return (
+                    <div className="bg-amber-50 border-l-4 border-amber-500 p-2.5 mb-2 rounded-r-md text-xs text-amber-900 flex items-center justify-between shadow-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-amber-950 flex items-center gap-1">
+                                <span>⚠️</span> Older price Need to check:
+                            </span>
+                            <span className="text-amber-900">
+                                {partNos ? `Part ${partNos}${olderItems.length > 4 ? '...' : ''} has price older than 11.09.2026.` : 'Some items have prices older than 11.09.2026.'} <span className="text-amber-700 italic">(Notification only)</span>
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleRecheckPrices}
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 rounded text-xs transition-colors shadow-2xs"
+                        >
+                            Re-check Prices
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        onClick={handleRecheckPrices}
-                        className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1 rounded text-xs transition-colors"
-                    >
-                        Re-check Prices
-                    </button>
-                </div>
-            )}
+                );
+            })()}
             
             {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs text-yellow-700">
@@ -2293,19 +2306,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         <option value="LP">LP</option><option value="SP">SP</option>
                                     </select>
                                 </div>
-                                {(() => {
-                                    const p = (item.productId && fetchedProducts.get(item.productId)) ||
-                                              (item.partNo && Array.from(fetchedProducts.values()).find(fp => fp.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
-                                              (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
-                                    if (p && isPriceOlderThanThreshold(p)) {
-                                        return (
-                                            <div className="text-[8px] font-bold text-amber-800 bg-amber-100 border border-amber-300 rounded px-0.5 mt-0.5 whitespace-nowrap text-center leading-tight" title="Price is older than 11.09.2026">
-                                                Older price Need to check
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                })()}
                             </td>
                             
                             {/* Discount % */}
@@ -2420,14 +2420,17 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         <button type="button" onClick={() => handleInsertItem(index)} className="text-blue-500 hover:text-blue-700 hover:scale-110 transition-all p-0.5" title="Insert Below">
                                             <Icons.Insert />
                                         </button>
-                                        {item.productId > 0 && (
+                                        {(item.productId > 0 || Boolean(item.partNo && item.partNo.trim())) && (
                                             <button type="button" onClick={async () => {
-                                                let p = fetchedProducts.get(item.productId);
-                                                if (!p || !p.prices || p.prices.length <= 1) {
-                                                    const fresh = await getProductsByIds([item.productId]);
+                                                let p = (item.productId && fetchedProducts.get(item.productId)) ||
+                                                        (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
+                                                if (!p || !p.prices || !Array.isArray(p.prices) || p.prices.length === 0) {
+                                                    const fresh = item.productId > 0
+                                                        ? await getProductsByIds([item.productId])
+                                                        : (item.partNo ? await getProductsByPartNos([item.partNo.trim()]) : []);
                                                     if (fresh && fresh.length > 0) {
                                                         p = fresh[0];
-                                                        setFetchedProducts(prev => new Map(prev).set(p!.id, p!));
+                                                        if (p && p.id) setFetchedProducts(prev => new Map(prev).set(p.id, p));
                                                     }
                                                 }
                                                 if (p) {

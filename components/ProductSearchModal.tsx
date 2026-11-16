@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
 import { searchProducts, productCacheByPartNo } from '../supabase';
-import { getPriceForDate, isPriceOlderThanThreshold, parseProductDate } from '../utils/priceUtils';
+import { getPriceForDate } from '../utils/priceUtils';
 
 interface ProductSearchModalProps {
   isOpen: boolean;
@@ -136,7 +136,6 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
                 {searchResults.map(product => {
                     const targetDate = quotationDate || new Date().toISOString().split('T')[0];
                     const currentPrice = getPriceForDate(product, targetDate);
-                    const isOlder = isPriceOlderThanThreshold(product);
                     const discountValue = parseFloat(discount) || 0;
                     const priceToUse = currentPrice ? (currentPrice.lp > 0 ? currentPrice.lp : currentPrice.sp) : 0;
                     const discountPrice = priceToUse * (1 - discountValue / 100);
@@ -148,14 +147,7 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
                                     {product.imageUrl ? (
                                         <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-100" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                                     ) : null}
-                                    <div>
-                                      <span>{product.partNo}</span>
-                                      {isOlder && (
-                                        <div className="text-[10px] font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-1 rounded mt-0.5 inline-block">
-                                          Older price Need to check
-                                        </div>
-                                      )}
-                                    </div>
+                                    <span>{product.partNo}</span>
                                 </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{product.description}</td>

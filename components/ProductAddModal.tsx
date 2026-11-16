@@ -30,15 +30,20 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
   useEffect(() => {
     if (isOpen) {
       if (productToEdit) {
+        // Ensure price list always has entries (fallback to default tier if empty)
+        const rawPrices = (productToEdit.prices && Array.isArray(productToEdit.prices) && productToEdit.prices.length > 0)
+            ? productToEdit.prices
+            : [{ lp: 0, sp: 0, validFrom: new Date().toISOString().split('T')[0], validTo: '9999-12-31' }];
+
         // Sort prices on load so the latest price is on top as requested
         // Also round prices to 2 decimals to ensure clean display
         const sortedProduct = { 
             ...productToEdit, 
-            prices: sortPricesLatestFirst(productToEdit.prices)
+            prices: sortPricesLatestFirst(rawPrices)
                 .map(p => ({
                     ...p,
-                    lp: Math.round(p.lp * 100) / 100,
-                    sp: Math.round(p.sp * 100) / 100
+                    lp: Math.round((p.lp || 0) * 100) / 100,
+                    sp: Math.round((p.sp || 0) * 100) / 100
                 }))
         };
         setFormData(sortedProduct);

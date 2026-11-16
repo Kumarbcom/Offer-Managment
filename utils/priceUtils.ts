@@ -80,12 +80,13 @@ export function getPriceForDate(product: Product | { prices?: PriceEntry[] } | n
 
 /**
  * Checks if a product's newest price tier is older than 11.09.2026.
- * Returns true if the latest validFrom date is before 2026-09-11 or if no valid prices exist.
+ * Returns true ONLY if valid prices exist and the latest validFrom date is strictly before 2026-09-11.
+ * If prices are empty, missing, or not yet loaded, returns false to prevent false positives.
  */
 export function isPriceOlderThanThreshold(productOrPrices: Product | PriceEntry[] | null | undefined): boolean {
     if (!productOrPrices) return false;
     const prices = Array.isArray(productOrPrices) ? productOrPrices : productOrPrices.prices;
-    if (!prices || !Array.isArray(prices) || prices.length === 0) return true;
+    if (!prices || !Array.isArray(prices) || prices.length === 0) return false;
 
     let latestValidFromMs = -Infinity;
     for (const p of prices) {
@@ -98,17 +99,17 @@ export function isPriceOlderThanThreshold(productOrPrices: Product | PriceEntry[
         }
     }
 
-    if (latestValidFromMs === -Infinity) return true;
+    if (latestValidFromMs === -Infinity) return false;
     return latestValidFromMs < THRESHOLD_DATE.getTime();
 }
 
 /**
- * Checks if a specific price entry has validFrom before 11.09.2026.
+ * Checks if a specific price entry has validFrom strictly before 11.09.2026.
  */
 export function isPriceEntryOlderThanThreshold(priceEntry: PriceEntry | null | undefined): boolean {
-    if (!priceEntry || !priceEntry.validFrom) return true;
+    if (!priceEntry || !priceEntry.validFrom) return false;
     const d = parseProductDate(priceEntry.validFrom);
-    if (isNaN(d.getTime())) return true;
+    if (isNaN(d.getTime())) return false;
     d.setHours(0, 0, 0, 0);
     return d.getTime() < THRESHOLD_DATE.getTime();
 }
