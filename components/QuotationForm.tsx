@@ -18,6 +18,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, productCacheById, customerCache, cacheCustomerLocally, hydrateProductsFromQuotations } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
+import { getPriceForDate, isPriceOlderThanThreshold, isPriceEntryOlderThanThreshold, parseProductDate } from '../utils/priceUtils';
 
 declare var XLSX: any;
 
@@ -391,61 +392,6 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       return true; // Other roles are read-only
   }, [userRole, editingQuotationId, formData, salesPersons, currentUser, isMobile]);
 
-
-  const getPriceForDate = useCallback((product: Product, date: string): PriceEntry | null => {
-    if (!product || !product.prices || product.prices.length === 0) return null;
-
-    const parseDate = (dateStr: any): Date => {
-      if (!dateStr) return new Date(NaN);
-      if (dateStr instanceof Date) return dateStr;
-      const s = String(dateStr).trim();
-      if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) {
-        const [d, m, y] = s.split('.');
-        return new Date(Number(y), Number(m) - 1, Number(d));
-      }
-      if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
-        const [d, m, y] = s.split('-');
-        return new Date(Number(y), Number(m) - 1, Number(d));
-      }
-      return new Date(s);
-    };
-
-    const targetDate = parseDate(date);
-    targetDate.setHours(0, 0, 0, 0);
-
-    // 1. Check exact validity bracket
-    for (const p of product.prices) {
-      const from = parseDate(p.validFrom);
-      const to = parseDate(p.validTo);
-      if (!isNaN(from.getTime()) && !isNaN(to.getTime())) {
-        from.setHours(0, 0, 0, 0);
-        to.setHours(23, 59, 59, 999);
-        if (targetDate >= from && targetDate <= to) {
-          return p;
-        }
-      }
-    }
-
-    // 2. Filter past or current prices, sort DESCENDING by validFrom (latest first)
-    const validPrices = product.prices
-      .map(p => ({ p, from: parseDate(p.validFrom) }))
-      .filter(item => !isNaN(item.from.getTime()));
-
-    const past = validPrices.filter(item => item.from <= targetDate);
-    if (past.length > 0) {
-      past.sort((a, b) => b.from.getTime() - a.from.getTime());
-      return past[0].p;
-    }
-
-    // 3. Fallback to latest price
-    if (validPrices.length > 0) {
-      validPrices.sort((a, b) => b.from.getTime() - a.from.getTime());
-      return validPrices[0].p;
-    }
-
-    return product.prices[product.prices.length - 1] || null;
-  }, []);
-
   const createNewQuotation = useCallback((): Quotation => {
     // For NEW quotations, we set ID to 0 initially (Offline Mode).
     // Real ID is generated only on SAVE to prevent collisions and background reset issues.
@@ -777,7 +723,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     let wasUpdated = false;
     const newDetails = formData.details.map(item => {
         const product = (item.productId && fetchedProducts.get(item.productId)) ||
-                        (item.partNo && Array.from(fetchedProducts.values()).find(p => p.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase()));
+                        (item.partNo && Array.from(fetchedProducts.values()).find(p => p.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
+                        (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
         if (product && product.prices && product.prices.length > 0) {
             const priceEntry = getPriceForDate(product, targetDate);
             if (priceEntry) {
@@ -1295,7 +1242,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handleAddProductFromSearch = (product: Product, discount: number) => {
     setFormData(prev => {
         if (!prev) return null;
-        const priceEntry = getPriceForDate(product, prev.quotationDate);
+        const priceEntry = getPriceForDate(product, prev.quotationDate || getTodayDateString());
         if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return prev; }
         const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, imageUrl: product.imageUrl || '', airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
         const emptyItemIndex = prev.details.findIndex(item => !item.productId);
@@ -2042,6 +1989,26 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     <p className="font-bold">Discount more than approved limit Pls cross check before sending</p>
                 </div>
             )}
+
+            {(formData?.details || []).some(item => {
+                const p = (item.productId && fetchedProducts.get(item.productId)) ||
+                          (item.partNo && Array.from(fetchedProducts.values()).find(fp => fp.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
+                          (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
+                return p && isPriceOlderThanThreshold(p);
+            }) && (
+                <div className="bg-amber-50 border-l-4 border-amber-500 p-2 mb-2 text-xs text-amber-900 flex items-center justify-between shadow-2xs">
+                    <div>
+                        <span className="font-bold">⚠️ Notice:</span> Some items have prices older than 11.09.2026. <span className="font-bold text-amber-950 underline">Older price Need to check</span>.
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleRecheckPrices}
+                        className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1 rounded text-xs transition-colors"
+                    >
+                        Re-check Prices
+                    </button>
+                </div>
+            )}
             
             {(isReadOnly && (userRole === 'Sales Person' && !isMobile)) && formData.id !== 0 && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-2 text-xs text-yellow-700">
@@ -2326,6 +2293,19 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         <option value="LP">LP</option><option value="SP">SP</option>
                                     </select>
                                 </div>
+                                {(() => {
+                                    const p = (item.productId && fetchedProducts.get(item.productId)) ||
+                                              (item.partNo && Array.from(fetchedProducts.values()).find(fp => fp.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
+                                              (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
+                                    if (p && isPriceOlderThanThreshold(p)) {
+                                        return (
+                                            <div className="text-[8px] font-bold text-amber-800 bg-amber-100 border border-amber-300 rounded px-0.5 mt-0.5 whitespace-nowrap text-center leading-tight" title="Price is older than 11.09.2026">
+                                                Older price Need to check
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </td>
                             
                             {/* Discount % */}

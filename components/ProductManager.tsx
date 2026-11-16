@@ -11,6 +11,7 @@ import { UOMS, PLANTS } from '../constants';
 import { ProductAddModal } from './ProductAddModal';
 import { ImageZoomModal } from './ImageZoomModal';
 import { getProductsPaginated, addProductsBatch, deleteProductsBatch, updateProduct, getProductsByPartNos, fetchAllProductsForExport, getNextProductId } from '../supabase';
+import { isPriceOlderThanThreshold } from '../utils/priceUtils';
 
 declare var XLSX: any;
 
@@ -111,7 +112,14 @@ const ProductRow = React.memo(({ product, isSelected, onSelect, onEdit, onDelete
             </td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-600 max-w-xs truncate text-sm">{product.description}</td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.hsnCode}</td>
-            <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-semibold text-right">{lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</td>
+            <td className="px-4 py-3 border-y border-slate-100 text-slate-900 font-semibold text-right">
+                <div>{lp > 0 ? `₹${lp.toFixed(2)}` : '—'}</div>
+                {isPriceOlderThanThreshold(product) && (
+                    <span className="inline-block text-[9px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1 py-0.5 rounded mt-0.5 whitespace-nowrap" title="Price is older than 11.09.2026">
+                        Older price Need to check
+                    </span>
+                )}
+            </td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-right">{sp > 0 ? `₹${sp.toFixed(2)}` : '—'}</td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.uom}</td>
             <td className="px-4 py-3 border-y border-slate-100 text-slate-500 text-sm">{product.plant}</td>
@@ -969,9 +977,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2">
                             <div>
                                 <p className="text-[10px] text-black uppercase">Standard Price</p>
-                                <div className="flex gap-2 text-xs font-medium">
+                                <div className="flex gap-2 text-xs font-medium items-center flex-wrap">
                                     <span className={lp > 0 ? "text-black" : "text-slate-400"}>LP: {lp > 0 ? lp.toFixed(2) : '-'}</span>
                                     <span className={sp > 0 ? "text-black" : "text-slate-400"}>SP: {sp > 0 ? sp.toFixed(2) : '-'}</span>
+                                    {isPriceOlderThanThreshold(product) && (
+                                        <span className="text-[9px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1 py-0.5 rounded whitespace-nowrap">
+                                            Older price Need to check
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <div className="text-right">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { useDebounce } from '../hooks/useDebounce';
 import { searchProducts, productCacheByPartNo } from '../supabase';
+import { getPriceForDate, isPriceOlderThanThreshold, parseProductDate } from '../utils/priceUtils';
 
 interface ProductSearchModalProps {
   isOpen: boolean;
@@ -9,56 +10,6 @@ interface ProductSearchModalProps {
   onSelect: (product: Product, discount: number) => void;
   quotationDate?: string;
 }
-
-const parseProductDate = (dateStr: any): Date => {
-    if (!dateStr) return new Date(NaN);
-    if (dateStr instanceof Date) return dateStr;
-    const s = String(dateStr).trim();
-    if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) {
-        const [d, m, y] = s.split('.');
-        return new Date(Number(y), Number(m) - 1, Number(d));
-    }
-    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
-        const [d, m, y] = s.split('-');
-        return new Date(Number(y), Number(m) - 1, Number(d));
-    }
-    return new Date(s);
-};
-
-const getCurrentPriceForDate = (product: Product, date: string): PriceEntry | null => {
-    if (!product.prices || product.prices.length === 0) return null;
-    const targetDate = parseProductDate(date);
-    targetDate.setHours(0,0,0,0);
-    
-    for (const p of product.prices) {
-        const from = parseProductDate(p.validFrom);
-        const to = parseProductDate(p.validTo);
-        if (!isNaN(from.getTime()) && !isNaN(to.getTime())) {
-            from.setHours(0,0,0,0);
-            to.setHours(23,59,59,999);
-            if (targetDate >= from && targetDate <= to) {
-                return p;
-            }
-        }
-    }
-
-    const validPrices = product.prices
-        .map(p => ({ p, from: parseProductDate(p.validFrom) }))
-        .filter(item => !isNaN(item.from.getTime()));
-
-    const past = validPrices.filter(item => item.from <= targetDate);
-    if (past.length > 0) {
-        past.sort((a,b) => b.from.getTime() - a.from.getTime());
-        return past[0].p;
-    }
-    
-    if (validPrices.length > 0) {
-        validPrices.sort((a,b) => b.from.getTime() - a.from.getTime());
-        return validPrices[0].p;
-    }
-
-    return product.prices[product.prices.length - 1] || null;
-};
 
 export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, onClose, onSelect, quotationDate }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -184,7 +135,8 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
               <tbody className="bg-white divide-y divide-gray-200">
                 {searchResults.map(product => {
                     const targetDate = quotationDate || new Date().toISOString().split('T')[0];
-                    const currentPrice = getCurrentPriceForDate(product, targetDate);
+                    const currentPrice = getPriceForDate(product, targetDate);
+                    const isOlder = isPriceOlderThanThreshold(product);
                     const discountValue = parseFloat(discount) || 0;
                     const priceToUse = currentPrice ? (currentPrice.lp > 0 ? currentPrice.lp : currentPrice.sp) : 0;
                     const discountPrice = priceToUse * (1 - discountValue / 100);
@@ -196,7 +148,14 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({ isOpen, 
                                     {product.imageUrl ? (
                                         <img src={product.imageUrl} alt={product.partNo} className="w-8 h-8 object-contain rounded bg-slate-50 border border-slate-100" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                                     ) : null}
-                                    <span>{product.partNo}</span>
+                                    <div>
+                                      <span>{product.partNo}</span>
+                                      {isOlder && (
+                                        <div className="text-[10px] font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-1 rounded mt-0.5 inline-block">
+                                          Older price Need to check
+                                        </div>
+                                      )}
+                                    </div>
                                 </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{product.description}</td>

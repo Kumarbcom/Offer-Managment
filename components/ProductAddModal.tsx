@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { getNextProductId } from '../supabase';
+import { isPriceOlderThanThreshold, sortPricesLatestFirst } from '../utils/priceUtils';
 
 interface ProductAddModalProps {
   isOpen: boolean;
@@ -29,12 +30,11 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
   useEffect(() => {
     if (isOpen) {
       if (productToEdit) {
-        // Sort prices on load to ensure they are in chronological order for editing
+        // Sort prices on load so the latest price is on top as requested
         // Also round prices to 2 decimals to ensure clean display
         const sortedProduct = { 
             ...productToEdit, 
-            prices: [...productToEdit.prices]
-                .sort((a,b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime())
+            prices: sortPricesLatestFirst(productToEdit.prices)
                 .map(p => ({
                     ...p,
                     lp: Math.round(p.lp * 100) / 100,
@@ -90,7 +90,8 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
   const handleAddPriceRow = () => {
     const today = new Date().toISOString().split('T')[0];
     const newPrice: PriceEntry = { lp: 0, sp: 0, validFrom: today, validTo: '9999-12-31' };
-    setFormData(prev => ({ ...prev, prices: [...prev.prices, newPrice] }));
+    // Add new price entry at the top so latest stays on top
+    setFormData(prev => ({ ...prev, prices: [newPrice, ...prev.prices] }));
   };
   
   const handleRemovePriceRow = (index: number) => {
@@ -294,7 +295,18 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
             
             <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-4">
                 <fieldset className="border p-4 rounded-md">
-                    <legend className="text-lg font-medium text-gray-800 px-2">Price Details</legend>
+                    <div className="flex items-center justify-between px-2 mb-2">
+                        <legend className="text-lg font-medium text-gray-800">Price Details</legend>
+                        <span className="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Latest on Top</span>
+                    </div>
+
+                    {isPriceOlderThanThreshold(formData.prices) && (
+                        <div className="mb-3 p-2.5 bg-amber-50 border border-amber-300 rounded-md text-amber-900 text-xs font-bold flex items-center gap-2">
+                            <span className="text-base">⚠️</span>
+                            <span>Older price Need to check (Latest price is older than 11.09.2026)</span>
+                        </div>
+                    )}
+
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                         {formData.prices.map((price, index) => (
                             <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end p-2 border-b last:border-b-0">

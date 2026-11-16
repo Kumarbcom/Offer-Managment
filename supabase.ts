@@ -1013,7 +1013,12 @@ export const productSearchCache = new Map<string, Product[]>();
 if (typeof window !== 'undefined') {
     idbGet<Product[]>('cache_products_catalog').then(cached => {
         if (cached && Array.isArray(cached) && cached.length > 0) {
-            cached.forEach(p => cacheProductLocally(p, false));
+            cached.forEach(p => {
+                if (p && p.prices && Array.isArray(p.prices)) {
+                    p.prices = p.prices.filter(pr => !(pr.validFrom === '2000-01-01' && pr.validTo === '9999-12-31'));
+                }
+                cacheProductLocally(p, false);
+            });
         }
     }).catch(() => {});
 }
@@ -1073,18 +1078,16 @@ export function hydrateProductsFromQuotations(quotations: Quotation[]) {
                             uom: item.uom || 'M',
                             weight: item.airFreightDetails?.weightPerMtr || 0,
                             imageUrl: item.imageUrl || '',
-                            prices: item.price ? [{
-                                validFrom: '2000-01-01',
-                                validTo: '9999-12-31',
-                                price: item.price,
-                                lp: item.price,
-                                sp: 0,
-                                imageUrl: item.imageUrl || ''
-                            } as any] : []
+                            prices: []
                         };
                         cacheProductLocally(p, false);
-                    } else if (!existing.imageUrl && item.imageUrl) {
-                        existing.imageUrl = item.imageUrl;
+                    } else {
+                        if (!existing.imageUrl && item.imageUrl) {
+                            existing.imageUrl = item.imageUrl;
+                        }
+                        if (existing.prices && existing.prices.some(pr => pr.validFrom === '2000-01-01' && pr.validTo === '9999-12-31')) {
+                            existing.prices = existing.prices.filter(pr => !(pr.validFrom === '2000-01-01' && pr.validTo === '9999-12-31'));
+                        }
                     }
                 }
             });
