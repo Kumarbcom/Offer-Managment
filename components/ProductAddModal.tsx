@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { getNextProductId } from '../supabase';
-import { isPriceOlderThanThreshold, sortPricesLatestFirst } from '../utils/priceUtils';
+import { isPriceOlderThanThreshold, sortPricesLatestFirst, parseProductDate } from '../utils/priceUtils';
 
 interface ProductAddModalProps {
   isOpen: boolean;
@@ -26,9 +25,16 @@ const emptyProductData: Omit<Product, 'id'> = {
 export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClose, onSave, productToEdit }) => {
   const [formData, setFormData] = useState<Omit<Product, 'id'> | Product>(emptyProductData);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDraftPreview, setShowDraftPreview] = useState(false);
+  const [draftProduct, setDraftProduct] = useState<Product | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setShowDraftPreview(false);
+      setDraftProduct(null);
+      setShowUrlInput(false);
+
       if (productToEdit) {
         // Ensure price list always has entries (fallback to default tier if empty)
         const rawPrices = (productToEdit.prices && Array.isArray(productToEdit.prices) && productToEdit.prices.length > 0)
@@ -36,7 +42,6 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
             : [{ lp: 0, sp: 0, validFrom: new Date().toISOString().split('T')[0], validTo: '9999-12-31' }];
 
         // Sort prices on load so the latest price is on top as requested
-        // Also round prices to 2 decimals to ensure clean display
         const sortedProduct = { 
             ...productToEdit, 
             prices: sortPricesLatestFirst(rawPrices)
@@ -73,7 +78,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
         if (field === 'lp' && numValue > 0) {
             priceEntry.sp = 0; // If LP has a value, SP must be 0
         }
-         if (field === 'sp' && numValue > 0) {
+        if (field === 'sp' && numValue > 0) {
             priceEntry.lp = 0; // If SP has a value, LP must be 0
         }
     } else {
@@ -87,15 +92,14 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
   const handlePriceBlur = (index: number, field: 'lp' | 'sp') => {
       const newPrices = [...formData.prices];
       const val = newPrices[index][field];
-      // Round to 2 decimals on blur to keep it clean
-      newPrices[index][field] = Math.round(val * 100) / 100;
+      newPrices[index][field] = Math.round(Number(val || 0) * 100) / 100;
       setFormData(prev => ({ ...prev, prices: newPrices }));
   };
 
   const handleAddPriceRow = () => {
     const today = new Date().toISOString().split('T')[0];
     const newPrice: PriceEntry = { lp: 0, sp: 0, validFrom: today, validTo: '9999-12-31' };
-    // Add new price entry at the top so latest stays on top
+    // Insert at the top so the latest tier stays on top
     setFormData(prev => ({ ...prev, prices: [newPrice, ...prev.prices] }));
   };
   
@@ -117,7 +121,6 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        // Resize image to max 250x250 to keep storage very small and fast (~5-15 KB)
         const maxDim = 250;
         let width = img.width;
         let height = img.height;
@@ -147,98 +150,331 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
     e.target.value = '';
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Step 1: Prepare draft and show preview before updating
+  const handlePrepareDraft = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.partNo || !formData.description) {
+    if (!formData.partNo?.trim() || !formData.description?.trim()) {
       alert('Part No and Description are required.');
       return;
     }
 
+    // Process prices chronologically to compute contiguous validTo boundaries
+    let processedPrices = [...formData.prices]
+      .sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
+
+    for (let i = 0; i < processedPrices.length - 1; i++) {
+        const nextValidFrom = new Date(processedPrices[i + 1].validFrom);
+        nextValidFrom.setDate(nextValidFrom.getDate() - 1);
+        processedPrices[i].validTo = nextValidFrom.toISOString().split('T')[0];
+    }
+    if (processedPrices.length > 0) {
+       processedPrices[processedPrices.length - 1].validTo = '9999-12-31';
+    }
+
+    // Keep draft sorted latest first for display
+    const finalPrices = sortPricesLatestFirst(processedPrices);
+    const draft: Product = {
+      ...formData,
+      id: ('id' in formData && formData.id) ? formData.id : 0,
+      partNo: formData.partNo.trim(),
+      description: formData.description.trim(),
+      prices: finalPrices
+    };
+
+    setDraftProduct(draft);
+    setShowDraftPreview(true);
+  };
+
+  // Step 2: Final confirm and persist to Supabase
+  const handleConfirmSave = async () => {
+    if (!draftProduct) return;
     setIsSaving(true);
-    
     try {
-        // Process prices before saving to set validTo dates correctly
-        let processedPrices = [...formData.prices]
-          .sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
-
-        for (let i = 0; i < processedPrices.length - 1; i++) {
-            const nextValidFrom = new Date(processedPrices[i + 1].validFrom);
-            nextValidFrom.setDate(nextValidFrom.getDate() - 1);
-            processedPrices[i].validTo = nextValidFrom.toISOString().split('T')[0];
-        }
-        if (processedPrices.length > 0) {
-           processedPrices[processedPrices.length - 1].validTo = '9999-12-31';
-        }
-    
-        const formDataWithProcessedPrices = { ...formData, prices: processedPrices };
-        
-        let productToSave: Product;
-
-        if ('id' in formData && formData.id) {
-          productToSave = formDataWithProcessedPrices as Product;
-        } else {
-          const newId = await getNextProductId();
-          productToSave = { ...formDataWithProcessedPrices, id: newId } as Product;
-        }
-
-        await onSave(productToSave);
-        onClose();
-
+      let productToSave = { ...draftProduct };
+      if (!productToSave.id) {
+        const newId = await getNextProductId();
+        productToSave.id = newId;
+      }
+      await onSave(productToSave);
+      onClose();
     } catch (error) {
-        alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the product.');
-        console.error('Failed to save product:', error);
+      alert(error instanceof Error ? error.message : 'An unknown error occurred while saving the product.');
+      console.error('Failed to save product:', error);
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
+  const isOlderPriceDetected = isPriceOlderThanThreshold(formData.prices);
+  const latestPrice = formData.prices[0];
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-5xl max-h-full flex flex-col">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">{productToEdit ? 'Edit Product' : 'Add New Product'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4 flex-grow overflow-y-auto pr-2">
-          <fieldset disabled={isSaving}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                  <label htmlFor="partNo" className="block text-sm font-medium text-gray-700">Part No</label>
-                  <input type="text" name="partNo" id="partNo" value={formData.partNo} onChange={handleGeneralChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex justify-center items-center p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col border border-slate-200 overflow-hidden">
+        
+        {/* Header */}
+        <div className="px-6 py-4 bg-linear-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                {productToEdit ? 'Edit Product' : 'Add New Product'}
+                {productToEdit && (
+                  <span className="text-[11px] font-semibold bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded-full border border-indigo-400/30">
+                    ID #{productToEdit.id}
+                  </span>
+                )}
+              </h2>
+              <p className="text-xs text-slate-300">
+                {showDraftPreview ? 'Review changes carefully before applying updates' : 'Manage product specifications, pricing tiers, and image'}
+              </p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors text-lg"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-grow overflow-y-auto p-5 sm:p-6 space-y-4">
+
+          {/* DRAFT REVIEW VIEW */}
+          {showDraftPreview && draftProduct ? (
+            <div className="space-y-4 animate-in fade-in-50 duration-150">
+              {/* Draft Notice Banner */}
+              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                    ✓
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wider">Draft Preview Ready</h4>
+                    <p className="text-xs text-indigo-800">
+                      Check all values below. Click <strong>"Confirm & Update"</strong> to save to database or <strong>"Back to Edit"</strong> to make changes.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-semibold text-indigo-700 bg-white border border-indigo-200 px-2.5 py-1 rounded-lg shadow-2xs">
+                  {draftProduct.prices.length} Price Tier{draftProduct.prices.length > 1 ? 's' : ''}
+                </span>
               </div>
-               <div>
-                  <label htmlFor="hsnCode" className="block text-sm font-medium text-gray-700">HSN Code</label>
-                  <input type="text" name="hsnCode" id="hsnCode" value={formData.hsnCode || ''} onChange={handleGeneralChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+
+              {/* Product Info Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-4 text-xs">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Part No</span>
+                  <span className="text-sm font-black text-slate-900 font-mono mt-0.5 block">{draftProduct.partNo}</span>
+                </div>
+                <div className="col-span-2 sm:col-span-3">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Description</span>
+                  <span className="text-sm font-semibold text-slate-800 mt-0.5 block truncate" title={draftProduct.description}>{draftProduct.description}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">HSN Code</span>
+                  <span className="font-semibold text-slate-800 mt-0.5 block">{draftProduct.hsnCode || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">UOM</span>
+                  <span className="font-semibold text-slate-800 mt-0.5 block">{draftProduct.uom || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Plant</span>
+                  <span className="font-semibold text-slate-800 mt-0.5 block">{draftProduct.plant || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Weight</span>
+                  <span className="font-semibold text-slate-800 mt-0.5 block">{draftProduct.weight || 0} kg/m</span>
+                </div>
               </div>
-              <div className="md:col-span-2 lg:col-span-1">
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-                  <input type="text" name="description" id="description" value={formData.description} onChange={handleGeneralChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+
+              {/* Draft Price Table */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Pricing Tiers Draft (Latest on Top)</span>
+                  </h4>
+                  {isPriceOlderThanThreshold(draftProduct.prices) && (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
+                      Older price Need to check
+                    </span>
+                  )}
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                  <table className="min-w-full divide-y divide-slate-200 text-xs">
+                    <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="py-2.5 px-3 text-center w-12">#</th>
+                        <th className="py-2.5 px-3 text-left">LP (List Price)</th>
+                        <th className="py-2.5 px-3 text-left">SP (Special Price)</th>
+                        <th className="py-2.5 px-3 text-left">Valid From</th>
+                        <th className="py-2.5 px-3 text-left">Valid To</th>
+                        <th className="py-2.5 px-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {draftProduct.prices.map((price, idx) => (
+                        <tr key={idx} className={idx === 0 ? 'bg-indigo-50/40 font-semibold' : ''}>
+                          <td className="py-2 px-3 text-center text-slate-500 font-mono text-[11px]">{idx + 1}</td>
+                          <td className="py-2 px-3 font-bold text-slate-900">₹{(price.lp || 0).toFixed(2)}</td>
+                          <td className="py-2 px-3 text-slate-600">₹{(price.sp || 0).toFixed(2)}</td>
+                          <td className="py-2 px-3 text-slate-700">{price.validFrom}</td>
+                          <td className="py-2 px-3 text-slate-500">{price.validTo}</td>
+                          <td className="py-2 px-3 text-center">
+                            {idx === 0 ? (
+                              <span className="inline-block text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded">
+                                Active Latest
+                              </span>
+                            ) : (
+                              <span className="inline-block text-[9px] text-slate-400">Past Tier</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div>
-                  <label htmlFor="uom" className="block text-sm font-medium text-gray-700">UOM</label>
-                  <select name="uom" id="uom" value={formData.uom} onChange={handleGeneralChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+          ) : (
+            /* EDIT FORM VIEW */
+            <form id="productEditForm" onSubmit={handlePrepareDraft} className="space-y-4">
+              <fieldset disabled={isSaving} className="space-y-4">
+
+                {/* Primary Specs Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div>
+                    <label htmlFor="partNo" className="block text-xs font-bold text-slate-700 mb-1">
+                      Part No <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      name="partNo" 
+                      id="partNo" 
+                      value={formData.partNo} 
+                      onChange={handleGeneralChange} 
+                      required 
+                      className="block w-full px-3 py-1.5 text-xs font-semibold text-slate-900 border border-slate-300 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                      placeholder="e.g. 1119304"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="hsnCode" className="block text-xs font-bold text-slate-700 mb-1">HSN Code</label>
+                    <input 
+                      type="text" 
+                      name="hsnCode" 
+                      id="hsnCode" 
+                      value={formData.hsnCode || ''} 
+                      onChange={handleGeneralChange} 
+                      className="block w-full px-3 py-1.5 text-xs text-slate-900 border border-slate-300 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                      placeholder="e.g. 85444990"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <label htmlFor="description" className="block text-xs font-bold text-slate-700 mb-1">
+                      Description <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      name="description" 
+                      id="description" 
+                      value={formData.description} 
+                      onChange={handleGeneralChange} 
+                      required 
+                      className="block w-full px-3 py-1.5 text-xs font-semibold text-slate-900 border border-slate-300 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                      placeholder="e.g. ÖLFLEX® CLASSIC 110 4G1,5"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="uom" className="block text-xs font-bold text-slate-700 mb-1">UOM</label>
+                    <select 
+                      name="uom" 
+                      id="uom" 
+                      value={formData.uom} 
+                      onChange={handleGeneralChange} 
+                      className="block w-full px-3 py-1.5 text-xs text-slate-900 border border-slate-300 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    >
                       <option value="">Select UOM</option>
                       {UOMS.map(uom => <option key={uom} value={uom}>{uom}</option>)}
-                  </select>
-              </div>
-              <div>
-                  <label htmlFor="plant" className="block text-sm font-medium text-gray-700">Plant</label>
-                  <select name="plant" id="plant" value={formData.plant} onChange={handleGeneralChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="plant" className="block text-xs font-bold text-slate-700 mb-1">Plant</label>
+                    <select 
+                      name="plant" 
+                      id="plant" 
+                      value={formData.plant} 
+                      onChange={handleGeneralChange} 
+                      className="block w-full px-3 py-1.5 text-xs text-slate-900 border border-slate-300 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    >
                       <option value="">Select Plant</option>
                       {PLANTS.map(plant => <option key={plant} value={plant}>{plant}</option>)}
-                  </select>
-              </div>
-              <div>
-                  <label htmlFor="weight" className="block text-sm font-medium text-gray-700">Weight (kg/m)</label>
-                  <input type="number" step="0.001" name="weight" id="weight" value={formData.weight} onChange={handleGeneralChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-              </div>
-              <div className="md:col-span-2 lg:col-span-3 border border-slate-200 rounded-lg p-3 bg-slate-50">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Product Image <span className="text-gray-400 font-normal">(Optional)</span>
-                  </label>
-                  
-                  <div className="flex flex-wrap items-center gap-4">
-                    {/* Choose File Button */}
-                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-indigo-400 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                      <span>Choose Image File...</span>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="weight" className="block text-xs font-bold text-slate-700 mb-1">Weight (kg/m)</label>
+                    <input 
+                      type="number" 
+                      step="0.001" 
+                      name="weight" 
+                      id="weight" 
+                      value={formData.weight} 
+                      onChange={handleGeneralChange} 
+                      className="block w-full px-3 py-1.5 text-xs text-slate-900 border border-slate-300 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                      placeholder="0.000"
+                    />
+                  </div>
+                </div>
+
+                {/* Compact Image Section */}
+                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    {/* Thumbnail preview if exists */}
+                    {formData.imageUrl ? (
+                      <div className="relative group w-11 h-11 bg-white rounded-lg border border-slate-200 p-0.5 shadow-2xs shrink-0 flex items-center justify-center">
+                        <img 
+                          src={formData.imageUrl} 
+                          alt="Product" 
+                          className="max-w-full max-h-full object-contain rounded"
+                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-bold shadow-xs hover:bg-rose-600 transition-colors"
+                          title="Remove image"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-11 h-11 rounded-lg border border-dashed border-slate-300 bg-white flex items-center justify-center text-slate-400 shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-bold text-slate-800 block text-xs">Product Image</span>
+                      <span className="text-[11px] text-slate-500 block">
+                        {formData.imageUrl ? 'Image attached (optimized)' : 'Optional. Attach a photo or drawing'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:border-indigo-400 transition-all shadow-2xs">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      <span>{formData.imageUrl ? 'Replace Image' : 'Upload Image'}</span>
                       <input 
                         type="file" 
                         accept="image/*" 
@@ -247,129 +483,210 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                       />
                     </label>
 
-                    {/* Image Preview & Remove button if present */}
-                    {formData.imageUrl && (
-                      <div className="flex items-center gap-2 bg-white p-1.5 rounded-md border border-gray-200 shadow-xs">
-                        <img 
-                          src={formData.imageUrl} 
-                          alt="Product preview" 
-                          className="w-12 h-12 object-contain rounded bg-slate-50 border border-slate-100" 
-                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
-                          className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded font-medium transition-colors"
-                          title="Remove image"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(!showUrlInput)}
+                      className="px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 bg-white border border-slate-300 rounded-lg transition-colors shadow-2xs"
+                    >
+                      {showUrlInput ? 'Hide URL' : 'Paste URL'}
+                    </button>
                   </div>
 
-                  {/* Or enter Image URL */}
-                  <div className="mt-2">
-                    <label htmlFor="imageUrl" className="block text-xs font-medium text-gray-500 mb-1">
-                      Or paste an Image Web URL (e.g. https://...):
-                    </label>
-                    <input 
-                      type="text" 
-                      name="imageUrl" 
-                      id="imageUrl" 
-                      value={formData.imageUrl || ''} 
-                      onChange={handleGeneralChange} 
-                      placeholder="https://example.com/image.jpg (Optional)" 
-                      className="block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-                    />
-                  </div>
+                  {/* Optional URL Input */}
+                  {showUrlInput && (
+                    <div className="w-full pt-2 border-t border-slate-200">
+                      <input 
+                        type="text" 
+                        name="imageUrl" 
+                        id="imageUrl" 
+                        value={formData.imageUrl && !formData.imageUrl.startsWith('data:image/') ? formData.imageUrl : ''} 
+                        onChange={handleGeneralChange} 
+                        placeholder="https://example.com/product-image.jpg" 
+                        className="block w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-indigo-500 bg-white"
+                      />
+                    </div>
+                  )}
+                </div>
 
-                  {/* Warning if user typed a local Windows or file path */}
-                  {formData.imageUrl && /^(?:[a-zA-Z]:[\\/]|file:\/\/|\\\\)/i.test(formData.imageUrl) && (
-                    <div className="mt-2 p-2.5 bg-amber-50 border border-amber-300 rounded-md text-xs text-amber-800 flex items-start gap-2">
-                      <span className="text-base leading-none">⚠️</span>
-                      <span>
-                        <strong>Local computer path detected:</strong> Web browsers cannot display images directly from local paths like <code>C:\...</code> due to browser security restrictions. Please click <strong>"Choose Image File..."</strong> above to upload the image directly!
+                {/* Price Details Table Section */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Price Details
+                      </h3>
+                      <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                        Latest on Top
                       </span>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={handleAddPriceRow} 
+                      className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-2.5 text-xs rounded-lg transition-colors shadow-2xs"
+                    >
+                      <span>+ Add Price Row</span>
+                    </button>
+                  </div>
+
+                  {/* Warning if older price */}
+                  {isOlderPriceDetected && (
+                    <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-lg text-amber-900 text-xs font-semibold flex items-center gap-2">
+                      <span className="text-sm">⚠️</span>
+                      <span>Older price Need to check (Latest price is older than 11.09.2026)</span>
                     </div>
                   )}
 
-                  <p className="mt-1 text-xs text-gray-500">Products can be saved without an image. You can leave this blank.</p>
-              </div>
-            </div>
-            
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-4">
-                <fieldset className="border p-4 rounded-md">
-                    <div className="flex items-center justify-between px-2 mb-2">
-                        <legend className="text-lg font-medium text-gray-800">Price Details</legend>
-                        <span className="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Latest on Top</span>
+                  {/* Modern Compact Table */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
+                    <div className="max-h-56 overflow-y-auto">
+                      <table className="min-w-full divide-y divide-slate-200 text-xs">
+                        <thead className="bg-slate-50 sticky top-0 z-10 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                          <tr>
+                            <th className="py-2 px-3 text-center w-12">#</th>
+                            <th className="py-2 px-3 text-left">LP (List Price ₹)</th>
+                            <th className="py-2 px-3 text-left">SP (Special Price ₹)</th>
+                            <th className="py-2 px-3 text-left w-36">Valid From</th>
+                            <th className="py-2 px-3 text-left w-36">Valid To</th>
+                            <th className="py-2 px-3 text-center w-14">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {formData.prices.map((price, index) => (
+                            <tr key={index} className={`hover:bg-slate-50/80 transition-colors ${index === 0 ? 'bg-indigo-50/20' : ''}`}>
+                              <td className="py-1.5 px-3 text-center font-semibold text-slate-500">
+                                {index === 0 ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700" title="Latest / Current Price">
+                                    Latest
+                                  </span>
+                                ) : (
+                                  index + 1
+                                )}
+                              </td>
+                              <td className="py-1.5 px-3">
+                                <div className="relative">
+                                  <span className="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400 text-xs">₹</span>
+                                  <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={price.lp} 
+                                    onChange={(e) => handlePriceChange(index, 'lp', e.target.value)} 
+                                    onBlur={() => handlePriceBlur(index, 'lp')}
+                                    className="w-full pl-6 pr-2 py-1 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 font-semibold bg-white"
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </td>
+                              <td className="py-1.5 px-3">
+                                <div className="relative">
+                                  <span className="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400 text-xs">₹</span>
+                                  <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={price.sp} 
+                                    onChange={(e) => handlePriceChange(index, 'sp', e.target.value)} 
+                                    onBlur={() => handlePriceBlur(index, 'sp')}
+                                    disabled={price.lp > 0} 
+                                    className="w-full pl-6 pr-2 py-1 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 font-semibold disabled:bg-slate-100 disabled:text-slate-400 bg-white"
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </td>
+                              <td className="py-1.5 px-3">
+                                <input 
+                                  type="date" 
+                                  value={price.validFrom} 
+                                  onChange={(e) => handlePriceChange(index, 'validFrom', e.target.value)} 
+                                  className="w-full px-2 py-1 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-800 bg-white"
+                                />
+                              </td>
+                              <td className="py-1.5 px-3">
+                                <input 
+                                  type="date" 
+                                  value={price.validTo} 
+                                  disabled 
+                                  className="w-full px-2 py-1 text-xs bg-slate-100 border border-slate-200 rounded-md text-slate-500 cursor-not-allowed"
+                                />
+                              </td>
+                              <td className="py-1.5 px-3 text-center">
+                                <button 
+                                  type="button" 
+                                  onClick={() => handleRemovePriceRow(index)} 
+                                  disabled={formData.prices.length <= 1} 
+                                  className="text-slate-400 hover:text-rose-600 disabled:opacity-20 disabled:hover:text-slate-400 p-1 rounded hover:bg-rose-50 transition-colors"
+                                  title="Delete Price Tier"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
+                  </div>
+                </div>
 
-                    {isPriceOlderThanThreshold(formData.prices) && (
-                        <div className="mb-3 p-2.5 bg-amber-50 border border-amber-300 rounded-md text-amber-900 text-xs font-bold flex items-center gap-2">
-                            <span className="text-base">⚠️</span>
-                            <span>Older price Need to check (Latest price is older than 11.09.2026)</span>
-                        </div>
-                    )}
+              </fieldset>
+            </form>
+          )}
 
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {formData.prices.map((price, index) => (
-                            <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end p-2 border-b last:border-b-0">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">LP (List Price)</label>
-                                    <input 
-                                        type="number" 
-                                        step="0.01" 
-                                        value={price.lp} 
-                                        onChange={(e) => handlePriceChange(index, 'lp', e.target.value)} 
-                                        onBlur={() => handlePriceBlur(index, 'lp')}
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">SP (Special Price)</label>
-                                    <input 
-                                        type="number" 
-                                        step="0.01" 
-                                        value={price.sp} 
-                                        onChange={(e) => handlePriceChange(index, 'sp', e.target.value)} 
-                                        onBlur={() => handlePriceBlur(index, 'sp')}
-                                        disabled={price.lp > 0} 
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Valid From</label>
-                                    <input type="date" value={price.validFrom} onChange={(e) => handlePriceChange(index, 'validFrom', e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Valid To</label>
-                                    <input type="date" value={price.validTo} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm"/>
-                                </div>
-                                <div className="flex justify-center">
-                                    <button type="button" onClick={() => handleRemovePriceRow(index)} disabled={formData.prices.length <= 1} className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xl">
-                                      &times;
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <button type="button" onClick={handleAddPriceRow} className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 text-sm rounded">
-                        + Add New Price Entry
-                    </button>
-                </fieldset>
-            </div>
-
-          </fieldset>
-        </form>
-        <div className="flex justify-end space-x-4 mt-auto pt-4">
-            <button type="button" onClick={onClose} disabled={isSaving} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md transition duration-300 disabled:opacity-50">
-              Cancel
-            </button>
-            <button type="submit" onClick={handleSubmit} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 disabled:opacity-50">
-              {isSaving ? 'Saving...' : productToEdit ? 'Update Product' : 'Save Product'}
-            </button>
         </div>
+
+        {/* Footer Actions */}
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+          {showDraftPreview ? (
+            <>
+              <button 
+                type="button" 
+                onClick={() => setShowDraftPreview(false)} 
+                disabled={isSaving} 
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors shadow-2xs disabled:opacity-50"
+              >
+                <span>← Back to Edit</span>
+              </button>
+
+              <button 
+                type="button" 
+                onClick={handleConfirmSave} 
+                disabled={isSaving} 
+                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>Saving to Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✓ Confirm & Update Product</span>
+                  </>
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              <button 
+                type="button" 
+                onClick={onClose} 
+                disabled={isSaving} 
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors shadow-2xs disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button 
+                type="submit" 
+                form="productEditForm" 
+                disabled={isSaving} 
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50"
+              >
+                <span>{productToEdit ? 'Review Draft & Update →' : 'Review Draft & Save →'}</span>
+              </button>
+            </>
+          )}
+        </div>
+
       </div>
     </div>
   );
