@@ -60,7 +60,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
     setDraftProduct(null);
   }, [productToEdit, isOpen]);
 
-  const handleGeneralChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleGeneralChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -129,7 +129,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        const maxDim = 400;
+        const maxDim = 450;
         let width = img.width;
         let height = img.height;
         if (width > maxDim || height > maxDim) {
@@ -220,18 +220,18 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex justify-center items-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col border border-slate-200 overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex justify-center items-center p-2 sm:p-3 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[96vh] flex flex-col border border-slate-200 overflow-hidden">
         
-        {/* Modern Enterprise Header */}
-        <div className="px-6 py-3.5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0 shadow-md">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shadow-inner">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        {/* Modern Colorful Header */}
+        <div className="px-5 py-2.5 bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white flex items-center justify-between shrink-0 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             </div>
             <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base font-bold text-white tracking-wide">
                   {formData.partNo ? formData.partNo : (productToEdit ? 'Edit Product' : 'Add New Product')}
                 </h2>
                 {formData.description && (
@@ -240,63 +240,58 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                   </span>
                 )}
                 {productToEdit && (
-                  <span className="text-[11px] font-bold bg-indigo-500/30 text-indigo-200 px-2.5 py-0.5 rounded-full border border-indigo-400/40 font-mono shadow-xs">
+                  <span className="text-[10px] font-bold bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded-full border border-indigo-400/40 font-mono">
                     ID #{productToEdit.id}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5">
-                {showDraftPreview ? 'Review draft specifications and pricing schedule before database commit' : 'Product specifications, high-res photo, and Excel pricing schedule'}
+              <p className="text-[11px] text-slate-300">
+                {showDraftPreview ? 'Review draft details before database commit' : 'Single-view product master, image, and Excel price validity schedule'}
               </p>
             </div>
           </div>
           <button 
             type="button" 
             onClick={onClose} 
-            className="w-9 h-9 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors text-2xl font-bold"
+            className="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors text-2xl font-bold"
             title="Close"
           >
             &times;
           </button>
         </div>
 
-        {/* Content Area with attractive subtle backdrop */}
-        <div className="flex-grow overflow-y-auto p-4 sm:p-5 bg-gradient-to-br from-slate-50 via-slate-100/40 to-indigo-50/20">
+        {/* Content Area - Designed for SINGLE VIEW (Zero Unnecessary Scrolling) */}
+        <div className="flex-grow overflow-y-auto p-3 sm:p-4 bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20">
 
           {/* DRAFT REVIEW VIEW */}
           {showDraftPreview && draftProduct ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Draft Notice Banner */}
-              <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 border border-emerald-300 rounded-xl p-4 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base font-bold shadow-sm shrink-0">
+              <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 border border-emerald-300 rounded-xl p-2.5 px-4 flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
                     ✓
                   </span>
                   <div>
                     <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Draft Preview Ready</h4>
-                    <p className="text-xs text-emerald-900 mt-0.5">
-                      Verify product details and pricing table below. Click <strong>"Confirm & Update Product"</strong> to save to database.
+                    <p className="text-[11px] text-emerald-900">
+                      Verify specifications and pricing below, then confirm to save to live catalog.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-emerald-800 bg-white border border-emerald-200 px-3 py-1 rounded-lg shadow-sm">
-                    {draftProduct.prices.length} Price Tier{draftProduct.prices.length > 1 ? 's' : ''}
-                  </span>
-                </div>
+                <span className="text-xs font-bold text-emerald-800 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-lg shadow-2xs">
+                  {draftProduct.prices.length} Price Tier{draftProduct.prices.length > 1 ? 's' : ''}
+                </span>
               </div>
 
-              {/* Two Column Layout for Draft Review */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Two Column Single View Layout for Draft */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
                 
-                {/* Left Side: Image & Specs */}
-                <div className="lg:col-span-5 space-y-4">
-                  {/* Image Card */}
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block mb-2">
-                      Product Image
-                    </span>
-                    <div className="flex items-center justify-center bg-gradient-to-b from-slate-50 to-blue-50/30 border border-slate-200 rounded-xl p-3 h-48">
+                {/* Left Side: Image & Specs (7 cols) */}
+                <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {/* Big Image */}
+                    <div className="w-full sm:w-48 h-40 bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200 rounded-xl p-2 flex items-center justify-center shrink-0">
                       {draftProduct.imageUrl ? (
                         <img 
                           src={draftProduct.imageUrl} 
@@ -304,114 +299,84 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                           className="max-h-full max-w-full object-contain rounded-lg drop-shadow-sm"
                         />
                       ) : (
-                        <div className="text-center text-slate-400">
-                          <svg className="w-10 h-10 mx-auto mb-1 opacity-50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                          <span className="text-xs">No Image Attached</span>
-                        </div>
+                        <span className="text-xs text-slate-400">No Image</span>
                       )}
+                    </div>
+
+                    {/* Primary Specs */}
+                    <div className="flex-1 space-y-2 text-xs">
+                      <div className="p-2 rounded-lg bg-indigo-50/40 border border-indigo-100">
+                        <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Part No</span>
+                        <span className="text-sm font-black text-slate-900 font-mono block">{draftProduct.partNo}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-teal-50/40 border border-teal-100">
+                        <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider block">HSN Code</span>
+                        <span className="font-semibold text-slate-800 block">{draftProduct.hsnCode || '—'}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-purple-50/40 border border-purple-100">
+                        <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider block">Description</span>
+                        <span className="font-semibold text-slate-800 block truncate" title={draftProduct.description}>{draftProduct.description}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Specifications Card */}
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm space-y-2.5">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
-                      Product Specifications
-                    </span>
-                    <div className="grid grid-cols-2 gap-2.5 text-xs">
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Part No</span>
-                        <span className="text-xs font-black text-slate-900 font-mono mt-0.5 block">{draftProduct.partNo}</span>
-                      </div>
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">HSN Code</span>
-                        <span className="font-semibold text-slate-800 mt-0.5 block">{draftProduct.hsnCode || '—'}</span>
-                      </div>
-                      <div className="col-span-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Description</span>
-                        <span className="text-xs font-semibold text-slate-800 mt-0.5 block" title={draftProduct.description}>{draftProduct.description}</span>
-                      </div>
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">UOM / Plant</span>
-                        <span className="font-semibold text-slate-800 mt-0.5 block">{draftProduct.uom || '—'} / {draftProduct.plant || '—'}</span>
-                      </div>
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Weight</span>
-                        <span className="font-semibold text-slate-800 mt-0.5 block">{draftProduct.weight || 0} kg/m</span>
-                      </div>
+                  {/* Secondary Specs Row */}
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="p-2 rounded-lg bg-amber-50/40 border border-amber-100">
+                      <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">UOM</span>
+                      <span className="font-semibold text-slate-800 block">{draftProduct.uom || '—'}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-emerald-50/40 border border-emerald-100">
+                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Plant</span>
+                      <span className="font-semibold text-slate-800 block">{draftProduct.plant || '—'}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-sky-50/40 border border-sky-100">
+                      <span className="text-[10px] font-bold text-sky-700 uppercase tracking-wider block">Weight</span>
+                      <span className="font-semibold text-slate-800 block">{draftProduct.weight || 0} kg/m</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Right Side: Finalized Excel Price Grid */}
-                <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-[#107c41] text-white flex items-center justify-center font-bold text-xs shadow-xs font-sans">
-                          X
-                        </div>
-                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                          Price Validity Schedule (Excel Grid)
-                        </h4>
+                {/* Right Side: Compact Excel Price Table (5 cols) */}
+                <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded bg-[#107c41] text-white flex items-center justify-center font-bold text-[11px]">
+                        X
                       </div>
-                      {isPriceOlderThanThreshold(draftProduct.prices) && (
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full">
-                          Older price Need to check
-                        </span>
-                      )}
+                      <span className="text-xs font-bold text-slate-900 uppercase">Excel Pricing</span>
                     </div>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                      Active: ₹{(draftProduct.prices[0]?.lp || 0).toFixed(2)}
+                    </span>
+                  </div>
 
-                    <div className="border border-slate-300 rounded-sm overflow-hidden shadow-2xs bg-white">
-                      <div className="bg-[#f8f9fa] px-3 py-1.5 border-b border-slate-300 flex items-center justify-between text-xs text-slate-600 select-none font-mono">
-                        <span className="text-slate-700 font-sans font-medium text-[11px]">
-                          <strong className="text-[#107c41] font-mono font-bold">fx</strong> | Active LP: <strong className="text-emerald-700 font-mono">₹{(draftProduct.prices[0]?.lp || 0).toFixed(2)}</strong>
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-200/70 px-2 py-0.5 rounded">
-                          Grid Preview
-                        </span>
-                      </div>
-                      <div className="max-h-[380px] overflow-y-auto">
-                        <table className="min-w-full border-collapse text-xs">
-                          <thead className="bg-[#f3f2f1] text-slate-700 font-bold uppercase text-[10px] select-none sticky top-0 z-10">
-                            <tr className="border-b border-slate-300">
-                              <th className="py-1 px-2 text-center w-10 border-r border-slate-300 bg-[#e1dfdd] text-slate-700">#</th>
-                              <th className="py-1.5 px-3 text-right border-r border-slate-300">LP (List Price ₹)</th>
-                              <th className="py-1.5 px-3 text-right border-r border-slate-300">SP (Special Price ₹)</th>
-                              <th className="py-1.5 px-2 text-center border-r border-slate-300 w-28">Valid From</th>
-                              <th className="py-1.5 px-2 text-center border-r border-slate-300 w-28">Valid To</th>
-                              <th className="py-1.5 px-2 text-center w-20">Status</th>
+                  <div className="border border-slate-300 rounded overflow-hidden">
+                    <div className="max-h-[260px] overflow-y-auto">
+                      <table className="min-w-full border-collapse text-xs">
+                        <thead className="bg-[#f3f2f1] text-slate-700 font-bold uppercase text-[9px] sticky top-0">
+                          <tr className="border-b border-slate-300">
+                            <th className="py-1 px-1 text-center w-8 bg-[#e1dfdd] border-r border-slate-300">#</th>
+                            <th className="py-1 px-2 text-right border-r border-slate-300">LP (₹)</th>
+                            <th className="py-1 px-2 text-right border-r border-slate-300">SP (₹)</th>
+                            <th className="py-1 px-2 text-center border-r border-slate-300">From</th>
+                            <th className="py-1 px-2 text-center">To</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                          {draftProduct.prices.map((price, idx) => (
+                            <tr key={idx} className={`border-b border-slate-200 ${idx === 0 ? 'bg-emerald-50/40 font-semibold' : ''}`}>
+                              <td className="py-1 px-1 text-center bg-[#f8f9fa] border-r border-slate-300 text-slate-600 font-mono text-[10px]">
+                                {idx === 0 ? '1★' : idx + 1}
+                              </td>
+                              <td className="py-1 px-2 text-right font-mono font-bold text-slate-900 border-r border-slate-300">₹{(price.lp || 0).toFixed(2)}</td>
+                              <td className="py-1 px-2 text-right font-mono text-slate-600 border-r border-slate-300">₹{(price.sp || 0).toFixed(2)}</td>
+                              <td className="py-1 px-2 text-center font-mono text-slate-700 border-r border-slate-300">{price.validFrom}</td>
+                              <td className="py-1 px-2 text-center font-mono text-slate-500">{price.validTo}</td>
                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-200 bg-white">
-                            {draftProduct.prices.map((price, idx) => (
-                              <tr key={idx} className={`border-b border-slate-200 ${idx === 0 ? 'bg-emerald-50/40 font-semibold' : 'hover:bg-slate-50'}`}>
-                                <td className="py-1 px-1 text-center bg-[#f8f9fa] border-r border-slate-300 text-slate-600 font-mono font-bold text-[11px] select-none h-7">
-                                  {idx === 0 ? (
-                                    <span className="inline-flex items-center px-1 rounded text-[9px] font-bold bg-[#107c41] text-white">
-                                      1★
-                                    </span>
-                                  ) : (
-                                    idx + 1
-                                  )}
-                                </td>
-                                <td className="py-1 px-3 text-right font-mono font-bold text-slate-900 border-r border-slate-300">₹{(price.lp || 0).toFixed(2)}</td>
-                                <td className="py-1 px-3 text-right font-mono text-slate-600 border-r border-slate-300">₹{(price.sp || 0).toFixed(2)}</td>
-                                <td className="py-1 px-2 text-center font-mono text-slate-700 border-r border-slate-300">{price.validFrom}</td>
-                                <td className="py-1 px-2 text-center font-mono text-slate-500 border-r border-slate-300">{price.validTo}</td>
-                                <td className="py-1 px-2 text-center">
-                                  {idx === 0 ? (
-                                    <span className="inline-block text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded">
-                                      Active
-                                    </span>
-                                  ) : (
-                                    <span className="inline-block text-[9px] text-slate-400">Past</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -419,114 +384,112 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
               </div>
             </div>
           ) : (
-            /* EDIT FORM VIEW */
+            /* EDIT FORM VIEW - COLORFUL & COMPACT SINGLE-VIEW */
             <form id="productEditForm" onSubmit={handlePrepareDraft}>
               <fieldset disabled={isSaving}>
 
-                {/* Two-Column Responsive Grid Layout: Left has Image & Specifications, Right has Excel Price Table */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                {/* Two-Column Responsive Grid: 
+                    Left (7 cols): Spacious Colorful Image & Product Specifications
+                    Right (5 cols): Compact Excel Price Schedule Table */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
                   
-                  {/* LEFT COLUMN: Product Image on top, Product Specifications below (5 cols) */}
-                  <div className="lg:col-span-5 space-y-4">
+                  {/* LEFT AREA (7 COLS): More Space for Image & Specifications */}
+                  <div className="lg:col-span-7 bg-white/95 rounded-2xl border border-slate-200/90 p-3 sm:p-3.5 shadow-xs flex flex-col justify-between space-y-3">
                     
-                    {/* 1. Product Image Card */}
-                    <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
-                        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                          Product Image
-                        </span>
-                        {formData.imageUrl ? (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            Attached
+                    {/* Top Row: Big Image (Left) + Core Specs (Right) */}
+                    <div className="flex flex-col sm:flex-row gap-3 items-start">
+                      
+                      {/* Product Image Card (Big, prominent, colorful dropzone) */}
+                      <div className="w-full sm:w-52 shrink-0 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1">
+                            <svg className="text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            Image Preview
                           </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400">
-                            Optional
-                          </span>
-                        )}
-                      </div>
+                          {formData.imageUrl ? (
+                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                              Attached
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-slate-400">Optional</span>
+                          )}
+                        </div>
 
-                      {/* Attractive Image Container */}
-                      <div className="relative group w-full h-44 bg-gradient-to-b from-slate-50 via-slate-50/80 to-blue-50/20 border-2 border-dashed border-slate-200 rounded-xl overflow-hidden flex items-center justify-center transition-all hover:border-indigo-400">
-                        {formData.imageUrl ? (
-                          <>
-                            <img 
-                              src={formData.imageUrl} 
-                              alt="Product preview" 
-                              className="max-h-full max-w-full object-contain p-2 transition-transform duration-200 group-hover:scale-105 drop-shadow-sm"
-                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                            />
-                            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-2xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                              <label className="cursor-pointer bg-white text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md hover:bg-slate-50 transition-colors">
-                                Replace
-                                <input type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
-                                className="bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-md hover:bg-rose-700 transition-colors"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <label className="cursor-pointer flex flex-col items-center justify-center w-full h-full p-4 text-center hover:bg-slate-100/50 transition-colors">
-                            <div className="w-11 h-11 rounded-full bg-indigo-50 border border-indigo-200/80 flex items-center justify-center text-indigo-600 mb-1.5 shadow-xs">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            </div>
-                            <span className="text-xs font-bold text-slate-800">Click to Upload Image</span>
-                            <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, WebP supported</span>
-                            <input type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
-                          </label>
-                        )}
-                      </div>
+                        {/* Bigger Featured Image Box */}
+                        <div className="relative group w-full h-44 bg-gradient-to-br from-indigo-50/40 via-purple-50/20 to-blue-50/30 border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-xl overflow-hidden flex items-center justify-center transition-all shadow-inner">
+                          {formData.imageUrl ? (
+                            <>
+                              <img 
+                                src={formData.imageUrl} 
+                                alt="Product preview" 
+                                className="max-h-full max-w-full object-contain p-2 transition-transform duration-200 group-hover:scale-105 drop-shadow-sm"
+                                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                              />
+                              <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-2xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <label className="cursor-pointer bg-white text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-md hover:bg-slate-50 transition-colors">
+                                  Replace
+                                  <input type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                                  className="bg-rose-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-md hover:bg-rose-700 transition-colors"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <label className="cursor-pointer flex flex-col items-center justify-center w-full h-full p-2 text-center hover:bg-indigo-50/50 transition-colors">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white mb-1 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                              </div>
+                              <span className="text-[11px] font-bold text-indigo-900">Upload Photo</span>
+                              <span className="text-[10px] text-slate-400">PNG, JPG, WebP</span>
+                              <input type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
+                            </label>
+                          )}
+                        </div>
 
-                      {/* Image URL Toggle */}
-                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <button
-                          type="button"
-                          onClick={() => setShowUrlInput(!showUrlInput)}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                          <span>{showUrlInput ? 'Hide URL input' : 'Paste Image Web URL'}</span>
-                        </button>
-                        <span className="text-[10px] text-slate-400">Web links</span>
-                      </div>
-
-                      {showUrlInput && (
-                        <div className="mt-2">
+                        {/* Collapsible Image URL */}
+                        <div className="flex items-center justify-between text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => setShowUrlInput(!showUrlInput)}
+                            className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 transition-colors"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            <span>{showUrlInput ? 'Hide URL' : 'Paste Web URL'}</span>
+                          </button>
+                        </div>
+                        {showUrlInput && (
                           <input 
                             type="text" 
                             name="imageUrl" 
                             id="imageUrl" 
                             value={formData.imageUrl && !formData.imageUrl.startsWith('data:image/') ? formData.imageUrl : ''} 
                             onChange={handleGeneralChange} 
-                            placeholder="https://example.com/product.jpg" 
-                            className="block w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
+                            placeholder="https://.../product.jpg" 
+                            className="block w-full px-2 py-1 text-xs border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
                           />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 2. Product Specifications (Moved directly below the image) */}
-                    <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs space-y-3">
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                          Product Specifications
-                        </span>
-                        <span className="text-[11px] text-slate-400">* Required</span>
+                        )}
                       </div>
 
-                      <div className="space-y-3">
-                        {/* Part No & HSN Code */}
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div>
-                            <label htmlFor="partNo" className="block text-xs font-bold text-slate-700 mb-1">
-                              Part No <span className="text-red-500">*</span>
+                      {/* Core Product Specifications (Right of image) */}
+                      <div className="flex-1 space-y-2.5 w-full">
+                        <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                          <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-indigo-600 inline-block"></span>
+                            Product Specifications
+                          </span>
+                          <span className="text-[10px] text-rose-500 font-medium">* Required</span>
+                        </div>
+
+                        {/* Part No & HSN Code (Colorful Cards) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="bg-gradient-to-br from-indigo-50/50 to-blue-50/30 p-2 rounded-xl border border-indigo-100 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                            <label htmlFor="partNo" className="block text-[10px] font-bold text-indigo-900 uppercase tracking-wider mb-0.5">
+                              Part No <span className="text-rose-500">*</span>
                             </label>
                             <input 
                               type="text" 
@@ -535,166 +498,176 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                               value={formData.partNo} 
                               onChange={handleGeneralChange} 
                               required 
-                              className="block w-full px-3 py-1.5 text-xs font-mono font-bold text-slate-900 border border-slate-300 rounded-xl shadow-2xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white hover:border-slate-400 transition-colors"
-                              placeholder="e.g. 1119304"
+                              className="block w-full px-2 py-1 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-200 rounded-lg shadow-2xs focus:outline-none focus:border-indigo-500"
+                              placeholder="e.g. 4510023U100"
                             />
                           </div>
-                          <div>
-                            <label htmlFor="hsnCode" className="block text-xs font-bold text-slate-700 mb-1">HSN Code</label>
+
+                          <div className="bg-gradient-to-br from-teal-50/50 to-emerald-50/30 p-2 rounded-xl border border-teal-100 focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-100 transition-all">
+                            <label htmlFor="hsnCode" className="block text-[10px] font-bold text-teal-900 uppercase tracking-wider mb-0.5">
+                              HSN Code
+                            </label>
                             <input 
                               type="text" 
                               name="hsnCode" 
                               id="hsnCode" 
                               value={formData.hsnCode || ''} 
                               onChange={handleGeneralChange} 
-                              className="block w-full px-3 py-1.5 text-xs text-slate-900 border border-slate-300 rounded-xl shadow-2xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white hover:border-slate-400 transition-colors"
+                              className="block w-full px-2 py-1 text-xs text-slate-900 bg-white border border-slate-200 rounded-lg shadow-2xs focus:outline-none focus:border-teal-500"
                               placeholder="e.g. 85444990"
                             />
                           </div>
                         </div>
 
-                        {/* Description */}
-                        <div>
-                          <label htmlFor="description" className="block text-xs font-bold text-slate-700 mb-1">
-                            Description <span className="text-red-500">*</span>
+                        {/* Description (Colorful Purple Card) */}
+                        <div className="bg-gradient-to-br from-purple-50/50 to-pink-50/30 p-2 rounded-xl border border-purple-100 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
+                          <label htmlFor="description" className="block text-[10px] font-bold text-purple-900 uppercase tracking-wider mb-0.5">
+                            Description <span className="text-rose-500">*</span>
                           </label>
-                          <input 
-                            type="text" 
+                          <textarea 
                             name="description" 
                             id="description" 
+                            rows={2}
                             value={formData.description} 
                             onChange={handleGeneralChange} 
                             required 
-                            className="block w-full px-3 py-1.5 text-xs font-semibold text-slate-900 border border-slate-300 rounded-xl shadow-2xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white hover:border-slate-400 transition-colors"
-                            placeholder="e.g. ÖLFLEX® CLASSIC 110 4G1,5"
+                            className="block w-full px-2 py-1 text-xs font-medium text-slate-900 bg-white border border-slate-200 rounded-lg shadow-2xs focus:outline-none focus:border-purple-500 resize-none"
+                            placeholder="e.g. ÖLFLEX® UNIPLUS 1X1 BU"
                           />
                         </div>
+                      </div>
 
-                        {/* UOM & Plant */}
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div>
-                            <label htmlFor="uom" className="block text-xs font-bold text-slate-700 mb-1">UOM</label>
-                            <select 
-                              name="uom" 
-                              id="uom" 
-                              value={formData.uom} 
-                              onChange={handleGeneralChange} 
-                              className="block w-full px-3 py-1.5 text-xs text-slate-900 border border-slate-300 rounded-xl shadow-2xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white hover:border-slate-400 transition-colors"
-                            >
-                              <option value="">Select UOM</option>
-                              {UOMS.map(uom => <option key={uom} value={uom}>{uom}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label htmlFor="plant" className="block text-xs font-bold text-slate-700 mb-1">Plant</label>
-                            <select 
-                              name="plant" 
-                              id="plant" 
-                              value={formData.plant} 
-                              onChange={handleGeneralChange} 
-                              className="block w-full px-3 py-1.5 text-xs text-slate-900 border border-slate-300 rounded-xl shadow-2xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white hover:border-slate-400 transition-colors"
-                            >
-                              <option value="">Select Plant</option>
-                              {PLANTS.map(plant => <option key={plant} value={plant}>{plant}</option>)}
-                            </select>
-                          </div>
-                        </div>
+                    </div>
 
-                        {/* Weight */}
-                        <div>
-                          <label htmlFor="weight" className="block text-xs font-bold text-slate-700 mb-1">Weight (kg/m)</label>
-                          <input 
-                            type="number" 
-                            step="0.001" 
-                            name="weight" 
-                            id="weight" 
-                            value={formData.weight} 
-                            onChange={handleGeneralChange} 
-                            className="block w-full px-3 py-1.5 text-xs text-slate-900 border border-slate-300 rounded-xl shadow-2xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white hover:border-slate-400 transition-colors"
-                            placeholder="0.000"
-                          />
-                        </div>
+                    {/* Bottom Row: Additional Specs (UOM, Plant, Weight - Colorful 3-col Grid) */}
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
+                      {/* UOM */}
+                      <div className="bg-gradient-to-br from-amber-50/60 to-orange-50/30 p-2 rounded-xl border border-amber-200/80 focus-within:border-amber-500 transition-all">
+                        <label htmlFor="uom" className="block text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-0.5">
+                          UOM
+                        </label>
+                        <select 
+                          name="uom" 
+                          id="uom" 
+                          value={formData.uom} 
+                          onChange={handleGeneralChange} 
+                          className="block w-full px-2 py-1 text-xs font-medium text-slate-900 bg-white border border-slate-200 rounded-lg shadow-2xs focus:outline-none focus:border-amber-500"
+                        >
+                          <option value="">Select UOM</option>
+                          {UOMS.map(uom => <option key={uom} value={uom}>{uom}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Plant */}
+                      <div className="bg-gradient-to-br from-emerald-50/60 to-teal-50/30 p-2 rounded-xl border border-emerald-200/80 focus-within:border-emerald-500 transition-all">
+                        <label htmlFor="plant" className="block text-[10px] font-bold text-emerald-900 uppercase tracking-wider mb-0.5">
+                          Plant
+                        </label>
+                        <select 
+                          name="plant" 
+                          id="plant" 
+                          value={formData.plant} 
+                          onChange={handleGeneralChange} 
+                          className="block w-full px-2 py-1 text-xs font-medium text-slate-900 bg-white border border-slate-200 rounded-lg shadow-2xs focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="">Select Plant</option>
+                          {PLANTS.map(plant => <option key={plant} value={plant}>{plant}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Weight */}
+                      <div className="bg-gradient-to-br from-sky-50/60 to-blue-50/30 p-2 rounded-xl border border-sky-200/80 focus-within:border-sky-500 transition-all">
+                        <label htmlFor="weight" className="block text-[10px] font-bold text-sky-900 uppercase tracking-wider mb-0.5">
+                          Weight (kg/m)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.001" 
+                          name="weight" 
+                          id="weight" 
+                          value={formData.weight} 
+                          onChange={handleGeneralChange} 
+                          className="block w-full px-2 py-1 text-xs font-mono font-medium text-slate-900 bg-white border border-slate-200 rounded-lg shadow-2xs focus:outline-none focus:border-sky-500"
+                          placeholder="0.000"
+                        />
                       </div>
                     </div>
 
                   </div>
 
-                  {/* RIGHT COLUMN: Excel Price Validity Schedule (7 cols, side-by-side with image & specs) */}
-                  <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
+                  {/* RIGHT AREA (5 COLS): Compact, Space-Optimized Excel Price Schedule Table */}
+                  <div className="lg:col-span-5 bg-white/95 rounded-2xl border border-slate-200/90 p-3 sm:p-3.5 shadow-xs flex flex-col justify-between space-y-2">
                     <div>
-                      {/* Section Header */}
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded bg-[#107c41] text-white flex items-center justify-center font-bold text-xs shadow-xs font-sans">
+                      {/* Compact Table Header */}
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded bg-[#107c41] text-white flex items-center justify-center font-bold text-[11px] shadow-xs">
                             X
                           </div>
                           <div>
                             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                              Price Validity Schedule
+                              Price Schedule
                             </h3>
-                            <span className="text-[10px] text-slate-400">Microsoft Excel Style Grid</span>
+                            <span className="text-[9px] text-slate-400 block -mt-0.5">Excel Grid View</span>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-[#107c41] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full hidden sm:inline">
-                            Latest on Top
-                          </span>
+                        <div className="flex items-center gap-1.5">
                           <button 
                             type="button" 
                             onClick={handleAddPriceRow} 
-                            className="inline-flex items-center gap-1.5 bg-[#107c41] hover:bg-[#0b5c30] text-white font-bold py-1.5 px-3 text-xs rounded-lg transition-all shadow-xs hover:shadow-sm"
+                            className="inline-flex items-center gap-1 bg-[#107c41] hover:bg-[#0b5c30] text-white font-bold py-1 px-2.5 text-xs rounded-lg transition-all shadow-2xs"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            <span>+ Insert Row</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>+ Row</span>
                           </button>
                         </div>
                       </div>
 
                       {/* Older Price Notification Banner */}
                       {isOlderPriceDetected && (
-                        <div className="p-2.5 mb-2.5 bg-amber-50/90 border border-amber-300 rounded-xl text-amber-900 text-xs font-semibold flex items-center gap-2">
-                          <span className="text-sm">⚠️</span>
-                          <span>Older price Need to check (Latest price is older than 11.09.2026)</span>
+                        <div className="p-2 my-1.5 bg-amber-50/90 border border-amber-300 rounded-lg text-amber-900 text-[11px] font-semibold flex items-center gap-1.5">
+                          <span>⚠️</span>
+                          <span>Older price: check validity date</span>
                         </div>
                       )}
 
-                      {/* Excel Spreadsheet Table Container */}
-                      <div className="border border-slate-300 rounded-sm shadow-2xs bg-white overflow-hidden">
-                        {/* Excel Formula & Status Bar */}
-                        <div className="bg-[#f8f9fa] px-3 py-1.5 border-b border-slate-300 flex items-center justify-between text-xs text-slate-600 select-none">
-                          <div className="flex items-center gap-2 font-mono">
+                      {/* Compact Excel Spreadsheet Grid */}
+                      <div className="border border-slate-300 rounded overflow-hidden shadow-2xs bg-white mt-1.5">
+                        {/* Excel Formula Bar */}
+                        <div className="bg-[#f8f9fa] px-2.5 py-1 border-b border-slate-300 flex items-center justify-between text-[11px] text-slate-600 select-none">
+                          <div className="flex items-center gap-1.5 font-mono">
                             <span className="font-black text-[#107c41]">fx</span>
                             <span className="text-slate-300">|</span>
-                            <span className="text-slate-700 font-sans font-medium text-[11px]">
-                              <strong>{formData.prices.length}</strong> Tier{formData.prices.length > 1 ? 's' : ''} defined • Row 1 is Active Latest
+                            <span className="text-slate-700 font-sans text-[10px]">
+                              <strong>{formData.prices.length}</strong> Tiers • Row 1 Active
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-200/70 px-2 py-0.5 rounded">
-                            Spreadsheet Grid
+                          <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/70 px-1.5 py-0.2 rounded">
+                            Latest on Top
                           </span>
                         </div>
 
-                        {/* Excel Grid Body */}
-                        <div className="max-h-[460px] overflow-y-auto overflow-x-auto">
+                        {/* Excel Table Body - Reduced Column Widths */}
+                        <div className="max-h-[300px] overflow-y-auto overflow-x-auto">
                           <table className="min-w-full border-collapse text-xs">
-                            <thead className="bg-[#f3f2f1] text-slate-700 font-bold uppercase text-[10px] sticky top-0 z-10 select-none">
+                            <thead className="bg-[#f3f2f1] text-slate-700 font-bold uppercase text-[9px] sticky top-0 z-10 select-none">
                               <tr className="border-b border-slate-300">
-                                <th className="py-1 px-1.5 text-center w-10 border-r border-slate-300 bg-[#e1dfdd] text-slate-700">#</th>
-                                <th className="py-1.5 px-2 text-right border-r border-slate-300 min-w-[110px]">LP (List Price ₹)</th>
-                                <th className="py-1.5 px-2 text-right border-r border-slate-300 min-w-[105px]">SP (Special Price ₹)</th>
-                                <th className="py-1.5 px-2 text-center border-r border-slate-300 w-28">Valid From</th>
-                                <th className="py-1.5 px-2 text-center border-r border-slate-300 w-28">Valid To</th>
-                                <th className="py-1 px-1 text-center w-10 text-slate-600">Action</th>
+                                <th className="py-1 px-1 text-center w-7 border-r border-slate-300 bg-[#e1dfdd] text-slate-700">#</th>
+                                <th className="py-1 px-1.5 text-right border-r border-slate-300 min-w-[85px]">LP (₹)</th>
+                                <th className="py-1 px-1.5 text-right border-r border-slate-300 min-w-[75px]">SP (₹)</th>
+                                <th className="py-1 px-1 text-center border-r border-slate-300 min-w-[95px]">Valid From</th>
+                                <th className="py-1 px-1 text-center border-r border-slate-300 min-w-[95px]">Valid To</th>
+                                <th className="py-1 px-1 text-center w-7 text-slate-600">Del</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 bg-white">
                               {formData.prices.map((price, index) => (
-                                <tr key={index} className={`hover:bg-emerald-50/30 transition-colors border-b border-slate-200 ${index === 0 ? 'bg-emerald-50/20' : ''}`}>
-                                  {/* Excel Row Header (#) */}
-                                  <td className="py-0 px-1 text-center bg-[#f8f9fa] border-r border-slate-300 text-slate-600 font-mono font-bold text-[11px] select-none h-8">
+                                <tr key={index} className={`hover:bg-emerald-50/30 transition-colors border-b border-slate-200 ${index === 0 ? 'bg-emerald-50/25' : ''}`}>
+                                  {/* Row Number Column */}
+                                  <td className="py-0 px-0.5 text-center bg-[#f8f9fa] border-r border-slate-300 text-slate-600 font-mono font-bold text-[10px] select-none h-7">
                                     {index === 0 ? (
-                                      <span className="inline-flex items-center px-1 rounded text-[9px] font-bold bg-[#107c41] text-white" title="Latest Active Price">
+                                      <span className="inline-flex items-center px-1 rounded text-[8px] font-bold bg-[#107c41] text-white" title="Latest Active Price">
                                         1★
                                       </span>
                                     ) : (
@@ -703,25 +676,25 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                                   </td>
 
                                   {/* LP Cell */}
-                                  <td className="p-0 border-r border-slate-300 h-8 bg-white focus-within:ring-2 focus-within:ring-[#107c41] focus-within:z-10">
+                                  <td className="p-0 border-r border-slate-300 h-7 bg-white focus-within:ring-2 focus-within:ring-[#107c41] focus-within:z-10">
                                     <div className="flex items-center h-full">
-                                      <span className="pl-1.5 text-slate-400 text-xs font-mono select-none">₹</span>
+                                      <span className="pl-1 text-slate-400 text-[10px] font-mono select-none">₹</span>
                                       <input 
                                         type="number" 
                                         step="0.01" 
                                         value={price.lp} 
                                         onChange={(e) => handlePriceChange(index, 'lp', e.target.value)} 
                                         onBlur={() => handlePriceBlur(index, 'lp')}
-                                        className="w-full h-full px-1.5 text-right text-xs font-mono font-bold text-slate-900 bg-transparent border-none outline-none focus:bg-white"
+                                        className="w-full h-full px-1 text-right text-xs font-mono font-bold text-slate-900 bg-transparent border-none outline-none focus:bg-white"
                                         placeholder="0.00"
                                       />
                                     </div>
                                   </td>
 
                                   {/* SP Cell */}
-                                  <td className="p-0 border-r border-slate-300 h-8 bg-white focus-within:ring-2 focus-within:ring-[#107c41] focus-within:z-10">
+                                  <td className="p-0 border-r border-slate-300 h-7 bg-white focus-within:ring-2 focus-within:ring-[#107c41] focus-within:z-10">
                                     <div className="flex items-center h-full">
-                                      <span className="pl-1.5 text-slate-400 text-xs font-mono select-none">₹</span>
+                                      <span className="pl-1 text-slate-400 text-[10px] font-mono select-none">₹</span>
                                       <input 
                                         type="number" 
                                         step="0.01" 
@@ -729,34 +702,34 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                                         onChange={(e) => handlePriceChange(index, 'sp', e.target.value)} 
                                         onBlur={() => handlePriceBlur(index, 'sp')}
                                         disabled={price.lp > 0} 
-                                        className="w-full h-full px-1.5 text-right text-xs font-mono font-bold text-slate-900 bg-transparent border-none outline-none disabled:bg-[#f3f2f1] disabled:text-slate-400 focus:bg-white"
+                                        className="w-full h-full px-1 text-right text-xs font-mono font-bold text-slate-900 bg-transparent border-none outline-none disabled:bg-[#f3f2f1] disabled:text-slate-400 focus:bg-white"
                                         placeholder="0.00"
                                       />
                                     </div>
                                   </td>
 
                                   {/* Valid From Cell */}
-                                  <td className="p-0 border-r border-slate-300 h-8 bg-white focus-within:ring-2 focus-within:ring-[#107c41] focus-within:z-10">
+                                  <td className="p-0 border-r border-slate-300 h-7 bg-white focus-within:ring-2 focus-within:ring-[#107c41] focus-within:z-10">
                                     <input 
                                       type="date" 
                                       value={price.validFrom} 
                                       onChange={(e) => handlePriceChange(index, 'validFrom', e.target.value)} 
-                                      className="w-full h-full px-1.5 text-center text-xs font-mono text-slate-800 bg-transparent border-none outline-none focus:bg-white"
+                                      className="w-full h-full px-1 text-center text-[11px] font-mono text-slate-800 bg-transparent border-none outline-none focus:bg-white"
                                     />
                                   </td>
 
                                   {/* Valid To Cell */}
-                                  <td className="p-0 border-r border-slate-300 h-8 bg-[#fbfbfa]">
+                                  <td className="p-0 border-r border-slate-300 h-7 bg-[#fbfbfa]">
                                     <input 
                                       type="date" 
                                       value={price.validTo} 
                                       disabled 
-                                      className="w-full h-full px-1.5 text-center text-xs font-mono text-slate-500 bg-transparent border-none outline-none cursor-not-allowed"
+                                      className="w-full h-full px-1 text-center text-[11px] font-mono text-slate-500 bg-transparent border-none outline-none cursor-not-allowed"
                                     />
                                   </td>
 
-                                  {/* Delete Action Cell */}
-                                  <td className="p-0 text-center h-8 bg-white">
+                                  {/* Delete Cell */}
+                                  <td className="p-0 text-center h-7 bg-white">
                                     <button 
                                       type="button" 
                                       onClick={() => handleRemovePriceRow(index)} 
@@ -764,7 +737,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                                       className="w-full h-full flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-20 disabled:hover:text-slate-400 transition-colors"
                                       title="Delete Row"
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                     </button>
                                   </td>
                                 </tr>
@@ -784,15 +757,15 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
 
         </div>
 
-        {/* Modern Footer Actions */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0 shadow-xs">
+        {/* Modern Colorful Footer Actions */}
+        <div className="px-5 py-2.5 bg-slate-50/90 border-t border-slate-200 flex items-center justify-between shrink-0 shadow-xs">
           {showDraftPreview ? (
             <>
               <button 
                 type="button" 
                 onClick={() => setShowDraftPreview(false)} 
                 disabled={isSaving} 
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors shadow-xs disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors shadow-2xs disabled:opacity-50"
               >
                 <span>← Back to Edit</span>
               </button>
@@ -801,12 +774,12 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                 type="button" 
                 onClick={handleConfirmSave} 
                 disabled={isSaving} 
-                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md shadow-emerald-600/25 hover:shadow-lg hover:shadow-emerald-600/30 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md shadow-emerald-600/25 hover:shadow-lg disabled:opacity-50"
               >
                 {isSaving ? (
                   <>
                     <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span>Saving to Database...</span>
+                    <span>Saving...</span>
                   </>
                 ) : (
                   <>
@@ -821,7 +794,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                 type="button" 
                 onClick={onClose} 
                 disabled={isSaving} 
-                className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors shadow-xs disabled:opacity-50"
+                className="px-4 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors shadow-2xs disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -830,7 +803,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                 type="submit" 
                 form="productEditForm" 
                 disabled={isSaving} 
-                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 rounded-xl transition-all shadow-md shadow-indigo-600/30 hover:shadow-lg hover:shadow-indigo-600/35 hover:-translate-y-0.5 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-700 hover:to-purple-800 rounded-xl transition-all shadow-md shadow-indigo-600/30 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50"
               >
                 <span>{productToEdit ? 'Review Draft & Update →' : 'Review Draft & Save →'}</span>
               </button>
