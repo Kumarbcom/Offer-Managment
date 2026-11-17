@@ -306,9 +306,19 @@ export const QuotationDiffModal: React.FC<QuotationDiffModalProps> = ({
 
                         {/* Part No & Description */}
                         <td className="p-1.5 border-r border-slate-200 max-w-[220px]">
-                          <div className="font-bold text-slate-900 truncate" title={item.partNo}>
+                          {item.hasPartNoChanged && item.initialPartNo && (
+                            <div className="text-[10px] text-red-600 font-bold line-through truncate" title={`Initial Part No: ${item.initialPartNo}`}>
+                              {item.initialPartNo}
+                            </div>
+                          )}
+                          <div className={`font-bold ${item.hasPartNoChanged ? 'text-indigo-700' : 'text-slate-900'} truncate`} title={item.partNo}>
                             {item.partNo || '—'}
                           </div>
+                          {item.hasDescChanged && item.initialDescription && (
+                            <div className="text-[9px] text-red-500 line-through line-clamp-1 truncate" title={`Initial Description: ${item.initialDescription}`}>
+                              {item.initialDescription}
+                            </div>
+                          )}
                           <div className="text-[10px] text-slate-500 line-clamp-1 truncate" title={item.description}>
                             {item.description}
                           </div>

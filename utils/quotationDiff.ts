@@ -11,6 +11,10 @@ export interface QuotationItemDiff {
   status: 'added' | 'removed' | 'modified' | 'unchanged';
   partNo: string;
   description: string;
+  initialPartNo?: string;
+  initialDescription?: string;
+  hasPartNoChanged?: boolean;
+  hasDescChanged?: boolean;
   uom: string;
   stockStatus: string;
   imageUrl?: string;
@@ -176,6 +180,89 @@ export function calculateQuotationDiff(
         status: isModified ? 'modified' : 'unchanged',
         partNo: cItem.partNo || iItem.partNo || '',
         description: cItem.description || iItem.description || '',
+        uom: cItem.uom || iItem.uom || '',
+        stockStatus: cItem.stockStatus || '',
+        imageUrl: cItem.imageUrl || iItem.imageUrl,
+
+        initialMoq: iItem.moq || 0,
+        initialReq: iItem.req || 0,
+        initialPrice: iItem.price || 0,
+        initialDiscount: iItem.discount ?? 0,
+        initialNetRate: iNet,
+        initialAmount: iAmt,
+        initialAirFreight: Boolean(iItem.airFreight),
+        initialStockStatus: iItem.stockStatus || '',
+
+        finalMoq: cItem.moq || 0,
+        finalReq: cItem.req || 0,
+        finalPrice: cItem.price || 0,
+        finalDiscount: cItem.discount ?? 0,
+        finalNetRate: fNet,
+        finalAmount: fAmt,
+        finalAirFreight: Boolean(cItem.airFreight),
+        finalStockStatus: cItem.stockStatus || '',
+
+        moqDelta: (cItem.moq || 0) - (iItem.moq || 0),
+        reqDelta: (cItem.req || 0) - (iItem.req || 0),
+        priceDelta: (cItem.price || 0) - (iItem.price || 0),
+        discountDelta: fDisc - iDisc,
+        netRateDelta: fNet - iNet,
+        amountDelta: fAmt - iAmt,
+
+        hasMoqChanged: hasMoq,
+        hasReqChanged: hasReq,
+        hasPriceChanged: hasPrice,
+        hasDiscountChanged: hasDisc,
+        hasNetRateChanged: hasNet,
+        hasAmountChanged: hasAmt,
+        hasAirFreightChanged: hasAir,
+        hasStockStatusChanged: hasStock,
+      });
+    }
+  });
+
+  // Pass 1.5: Match remaining unmatched items that occupy the exact same line position (e.g. user replaced Part No on line N)
+  currentItems.forEach((cItem, cIdx) => {
+    if (!matchedCurrentIndices.has(cIdx) && !matchedInitialIndices.has(cIdx) && initialItems[cIdx]) {
+      const iItem = initialItems[cIdx];
+      matchedInitialIndices.add(cIdx);
+      matchedCurrentIndices.add(cIdx);
+
+      const iNet = calcNetRate(iItem.price, iItem.discount);
+      const fNet = calcNetRate(cItem.price, cItem.discount);
+      const iAmt = calcAmount(iNet, iItem.moq);
+      const fAmt = calcAmount(fNet, cItem.moq);
+
+      const cleanIPNo = (iItem.partNo || '').trim().toLowerCase();
+      const cleanCPNo = (cItem.partNo || '').trim().toLowerCase();
+      const hasPartNo = cleanIPNo !== cleanCPNo;
+
+      const cleanIDesc = (iItem.description || '').trim().toLowerCase();
+      const cleanCDesc = (cItem.description || '').trim().toLowerCase();
+      const hasDesc = cleanIDesc !== cleanCDesc;
+
+      const hasMoq = (iItem.moq || 0) !== (cItem.moq || 0);
+      const hasReq = (iItem.req || 0) !== (cItem.req || 0);
+      const hasPrice = Math.abs((iItem.price || 0) - (cItem.price || 0)) > 0.001;
+      const iDisc = parseFloat(String(iItem.discount)) || 0;
+      const fDisc = parseFloat(String(cItem.discount)) || 0;
+      const hasDisc = Math.abs(iDisc - fDisc) > 0.001;
+      const hasNet = Math.abs(iNet - fNet) > 0.01;
+      const hasAmt = Math.abs(iAmt - fAmt) > 0.01;
+      const hasAir = Boolean(iItem.airFreight) !== Boolean(cItem.airFreight);
+      const hasStock = (iItem.stockStatus || '') !== (cItem.stockStatus || '');
+
+      const isModified = hasPartNo || hasDesc || hasMoq || hasReq || hasPrice || hasDisc || hasAir || hasStock;
+
+      diffItems.push({
+        key: `replace_${cIdx}`,
+        status: isModified ? 'modified' : 'unchanged',
+        partNo: cItem.partNo || iItem.partNo || '',
+        description: cItem.description || iItem.description || '',
+        initialPartNo: iItem.partNo,
+        initialDescription: iItem.description,
+        hasPartNoChanged: hasPartNo,
+        hasDescChanged: hasDesc,
         uom: cItem.uom || iItem.uom || '',
         stockStatus: cItem.stockStatus || '',
         imageUrl: cItem.imageUrl || iItem.imageUrl,

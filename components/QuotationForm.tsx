@@ -339,6 +339,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   // Session ID will equal editingQuotationId (which can be null).
   const currentSessionIdRef = useRef<number | null | undefined>(undefined);
   const lastLoadedIdRef = useRef<number | null | undefined>(undefined);
+  const originalQuotationOnLoadRef = useRef<Quotation | null>(null);
   const formDataRef = useRef<Quotation | null>(formData);
   formDataRef.current = formData;
   const lastEvaluatedDateKeyRef = useRef<string | null>(null);
@@ -573,6 +574,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
     // Use structured clone or deep copy to avoid mutating state directly if objects are shared
     let initialQuotation = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : createNewQuotation();
+    originalQuotationOnLoadRef.current = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : null;
     
     // Sanitize and patch missing fields for legacy data
     if (initialQuotation.details) {
@@ -1201,6 +1203,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       const safeQuotations = quotations || [];
       
       let quotationToSave = { ...formData };
+
+      // Ensure initialSnapshot is preserved or derived from pristine loaded state if revision > 0
+      if ((quotationToSave.revisionNumber || 0) > 0 && !quotationToSave.initialSnapshot) {
+          const orig = originalQuotationOnLoadRef.current;
+          if (orig && orig.details && orig.details.length > 0) {
+              quotationToSave.initialSnapshot = orig.initialSnapshot || {
+                  quotationDate: orig.quotationDate,
+                  details: JSON.parse(JSON.stringify(orig.details)),
+                  otherTerms: orig.otherTerms,
+                  paymentTerms: orig.paymentTerms,
+                  gstAdded: orig.gstAdded
+              };
+          }
+      }
       
       // Auto-enrich any items missing an imageUrl from productImageMap or fetchedProducts before saving
       if (quotationToSave.details && quotationToSave.details.length > 0) {
@@ -1333,6 +1349,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       setEditingQuotationId(null); 
       currentSessionIdRef.current = null;
       lastLoadedIdRef.current = null;
+      originalQuotationOnLoadRef.current = null;
       setSelectedCustomerObj(null);
       setCustomerSearchTerm('');
       setSearchedCustomers([]);
@@ -2203,14 +2220,21 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         setFormData(prev => {
                                             if (!prev) return null;
                                             const newRev = (prev.revisionNumber || 0) + 1;
-                                            // Snapshot the current state as Initial Rev 0 if not already snapshotted
-                                            const snap = prev.initialSnapshot || {
+                                            // Snapshot the pristine state as Initial Rev 0 if not already snapshotted
+                                            const orig = originalQuotationOnLoadRef.current;
+                                            const snap = prev.initialSnapshot || (orig && orig.details && orig.details.length > 0 ? {
+                                                quotationDate: orig.quotationDate,
+                                                details: JSON.parse(JSON.stringify(orig.details)),
+                                                otherTerms: orig.otherTerms,
+                                                paymentTerms: orig.paymentTerms,
+                                                gstAdded: orig.gstAdded
+                                            } : {
                                                 quotationDate: prev.quotationDate,
                                                 details: JSON.parse(JSON.stringify(prev.details)),
                                                 otherTerms: prev.otherTerms,
                                                 paymentTerms: prev.paymentTerms,
                                                 gstAdded: prev.gstAdded
-                                            };
+                                            });
                                             return { ...prev, revisionNumber: newRev, initialSnapshot: snap };
                                         });
                                     }}
@@ -2377,11 +2401,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         // In-Line Diff Calculation
                         const isRev = Boolean(formData && formData.id > 0 && (formData.revisionNumber > 0 || formData.initialSnapshot));
                         const initialItem = isRev ? (
+                            initialDetailsLookup.get(`idx_${index}`) ||
                             (item.productId > 0 ? initialDetailsLookup.get(`prod_${item.productId}`) : undefined) ||
-                            (item.partNo ? initialDetailsLookup.get(`part_${item.partNo.trim().toLowerCase()}`) : undefined) ||
-                            initialDetailsLookup.get(`idx_${index}`)
+                            (item.partNo ? initialDetailsLookup.get(`part_${item.partNo.trim().toLowerCase()}`) : undefined)
                         ) : undefined;
                         const canDiff = isRev && viewingVersion === 'current' && showInlineDiff && Boolean(initialItem);
+
+                        const cleanInitialPartNo = (initialItem?.partNo || '').trim().toLowerCase();
+                        const cleanCurrentPartNo = (item.partNo || '').trim().toLowerCase();
+                        const hasPartNoDiff = Boolean(canDiff && initialItem && cleanInitialPartNo && cleanCurrentPartNo && cleanInitialPartNo !== cleanCurrentPartNo);
+
+                        const cleanInitialDesc = (initialItem?.description || '').trim().toLowerCase();
+                        const cleanCurrentDesc = (item.description || '').trim().toLowerCase();
+                        const hasDescDiff = Boolean(canDiff && initialItem && cleanInitialDesc && cleanCurrentDesc && cleanInitialDesc !== cleanCurrentDesc);
+
                         const hasMoqDiff = Boolean(canDiff && initialItem && (initialItem.moq || 0) !== (item.moq || 0));
                         const hasReqDiff = Boolean(canDiff && initialItem && (initialItem.req || 0) !== (item.req || 0));
                         const hasPriceDiff = Boolean(canDiff && initialItem && Math.abs((initialItem.price || 0) - (item.price || 0)) > 0.01);
@@ -2393,25 +2426,50 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         const initialAmount = initialItem ? initialUnitPrice * (initialItem.moq || 0) : 0;
                         const hasAmountDiff = Boolean(canDiff && initialItem && Math.abs(initialAmount - amount) > 0.01);
                         const isNewlyAdded = Boolean(isRev && viewingVersion === 'current' && showInlineDiff && !initialItem);
+                        const hasAnyChange = hasPartNoDiff || hasDescDiff || hasMoqDiff || hasReqDiff || hasPriceDiff || hasDiscountDiff;
                         return (
-                        <tr key={index} className="divide-x divide-slate-200 hover:bg-slate-50">
+                        <tr key={index} className={`divide-x divide-slate-200 transition-colors ${isNewlyAdded ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : hasAnyChange ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50'}`}>
                             {/* SL No */}
-                            <td className="border-t border-slate-300 p-1 text-center bg-slate-50 text-black">{index + 1}</td>
+                            <td className={`border-t border-slate-300 p-1 text-center align-top ${isNewlyAdded ? 'bg-emerald-100 text-emerald-950 font-black' : hasAnyChange ? 'bg-amber-100 text-amber-950 font-black' : 'bg-slate-50 text-black'}`}>
+                                <div className="flex flex-col items-center justify-center">
+                                    <span>{index + 1}</span>
+                                    {isNewlyAdded && (
+                                        <span className="text-[8px] bg-emerald-600 text-white font-black px-1 rounded-xs uppercase leading-tight mt-0.5 shadow-2xs">NEW</span>
+                                    )}
+                                    {hasAnyChange && !isNewlyAdded && (
+                                        <span className="text-[8px] bg-amber-600 text-white font-black px-1 rounded-xs uppercase leading-tight mt-0.5 shadow-2xs" title="Amended in Revision">REV</span>
+                                    )}
+                                </div>
+                            </td>
                             
                             {/* Part No */}
-                            <td className="border-t border-slate-300 w-44 align-top">
+                            <td className={`border-t border-slate-300 w-44 align-top p-1 ${hasPartNoDiff ? 'bg-amber-50/70' : ''}`}>
+                                {hasPartNoDiff && initialItem && initialItem.partNo && (
+                                    <div className="text-[9px] text-red-600 font-bold line-through px-1 leading-none pb-0.5 truncate" title={`Initial Part No: ${initialItem.partNo}`}>
+                                        {initialItem.partNo}
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-1">
                                     {item.imageUrl && (
                                         <img src={item.imageUrl} alt="" className="w-5 h-5 object-contain rounded shrink-0 border border-slate-200 bg-white" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                                     )}
-                                    <div className={`h-6 flex-1 ${isReadOnly ? 'bg-slate-100' : ''} text-black`}>
+                                    <div className={`h-6 flex-1 ${isReadOnly ? 'bg-slate-100' : ''} ${hasPartNoDiff ? 'ring-1 ring-amber-400 bg-amber-50 rounded' : ''} text-black`}>
                                         <SearchableSelect<Product> options={optionsForSelect} value={item.productId || (currentProduct ? currentProduct.id : null)} fallbackDisplayValue={item.partNo} onChange={val => { if(!isReadOnly) handleProductSelect(index, val); }} idKey="id" displayKey="partNo" placeholder="Search..." onSearch={handleProductSearch} isLoading={isSearchingProducts && optionsForSelect.length === 0} onOpen={handleProductOpen} />
                                     </div>
                                 </div>
                             </td>
                             
                             {/* Description */}
-                            <td className="border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-black truncate" title={item.description}>{item.description}</td>
+                            <td className={`border-t border-slate-300 p-1 min-w-[160px] max-w-[250px] align-top text-black ${hasDescDiff ? 'bg-amber-50/70' : ''}`} title={item.description}>
+                                {hasDescDiff && initialItem && initialItem.description && (
+                                    <div className="text-[9px] text-red-600 font-bold line-through leading-none pb-0.5 truncate" title={`Initial Description: ${initialItem.description}`}>
+                                        {initialItem.description}
+                                    </div>
+                                )}
+                                <div className={`truncate ${hasDescDiff ? 'font-bold text-indigo-950' : ''}`}>
+                                    {item.description}
+                                </div>
+                            </td>
                             
                             {/* MOQ */}
                             <td className="border-t border-slate-300 align-top">
