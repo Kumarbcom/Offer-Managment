@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Quotation, SalesPerson, QuotationStatus, User, Customer } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { generateFormattedQuotationNumber, getQuotationSeqNum } from '../utils/quotationNumber';
+import { calculateTotalAmount } from '../utils/calc';
 import { ShareModal } from './ShareModal';
 import { ExcelTableColumnFilter, ChecklistOption } from './ExcelTableColumnFilter';
 import { customerCache, getCustomersByIds, cacheCustomerLocally, fetchQuotationsBatch, searchQuotationsRemote } from '../supabase';
@@ -348,13 +349,6 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
   const getSalesPersonName = (id: number | null) => salesPersons?.find(sp => sp.id === id)?.name || '—';
 
-  const calculateTotalAmount = (details: Quotation['details'] | undefined): number => {
-    if (!details || !Array.isArray(details)) return 0;
-    return details.reduce((total, item) => {
-      const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-      return total + (unitPrice * item.moq);
-    }, 0);
-  };
 
   const handleSort = (newSortBy: SortByType, forcedOrder?: SortOrderType) => {
     setSortBy(newSortBy);
@@ -497,7 +491,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
         }
 
         if (columnFilters.amountMin !== undefined || columnFilters.amountMax !== undefined) {
-          const amt = calculateTotalAmount(q.details);
+          const amt = calculateTotalAmount(q);
           if (columnFilters.amountMin !== undefined && amt < columnFilters.amountMin) return false;
           if (columnFilters.amountMax !== undefined && amt > columnFilters.amountMax) return false;
         }
@@ -543,7 +537,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
           case 'customer': comparison = getCustomerName(a.customerId).localeCompare(getCustomerName(b.customerId)); break;
           case 'contactPerson': comparison = a.contactPerson.localeCompare(b.contactPerson); break;
           case 'salesPerson': comparison = getSalesPersonName(a.salesPersonId).localeCompare(getSalesPersonName(b.salesPersonId)); break;
-          case 'totalAmount': comparison = calculateTotalAmount(a.details) - calculateTotalAmount(b.details); break;
+          case 'totalAmount': comparison = calculateTotalAmount(a) - calculateTotalAmount(b); break;
           case 'status': comparison = a.status.localeCompare(b.status); break;
           case 'comments': comparison = (a.comments || '').localeCompare(b.comments || ''); break;
         }
@@ -573,7 +567,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
     const list = filteredAndSortedQuotations;
     const selectedList = list.filter(q => selectedQuotationIds.has(q.id));
     const targetList = selectedList.length > 0 ? selectedList : list;
-    const sum = targetList.reduce((acc, q) => acc + calculateTotalAmount(q.details), 0);
+    const sum = targetList.reduce((acc, q) => acc + calculateTotalAmount(q), 0);
     const avg = targetList.length > 0 ? sum / targetList.length : 0;
     return {
       selectedCount: selectedList.length,
@@ -744,7 +738,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
     };
 
     list.forEach(q => {
-      const amt = calculateTotalAmount(q.details);
+      const amt = calculateTotalAmount(q);
       counts.total.count += 1;
       counts.total.amount += amt;
 
@@ -1528,7 +1522,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                     </tr>
                   ) : paginatedQuotations.map((q, rowIdx) => {
                     const isSelected = selectedQuotationIds.has(q.id);
-                    const amount = calculateTotalAmount(q.details);
+                    const amount = calculateTotalAmount(q);
                     const actualRowNumber = (pageSize === 0 ? 0 : (currentPage - 1) * pageSize) + rowIdx + 1;
 
                     return (
@@ -1771,7 +1765,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {paginatedQuotations.map((q, rowIdx) => {
                     const isSelected = selectedQuotationIds.has(q.id);
-                    const amount = calculateTotalAmount(q.details);
+                    const amount = calculateTotalAmount(q);
                     const actualRowNumber = (pageSize === 0 ? 0 : (currentPage - 1) * pageSize) + rowIdx + 1;
                     const commentCount = q.commentsList?.length || (q.comments ? 1 : 0);
 
@@ -1942,7 +1936,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
           {paginatedQuotations.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">No quotations found</div>
           ) : paginatedQuotations.map(q => {
-            const amount = calculateTotalAmount(q.details);
+            const amount = calculateTotalAmount(q);
             const cfg = getStatusCfg(q.status);
             return (
               <div key={q.id} className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
@@ -2171,7 +2165,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                   <div className="flex justify-between items-center text-xs border-t border-slate-100 pt-2">
                     <span className="text-slate-700 font-bold">Total Amount</span>
                     <span className="font-bold text-base text-blue-600 font-mono">
-                      ₹{calculateTotalAmount(selectedSidePanelQuotation.details).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      ₹{calculateTotalAmount(selectedSidePanelQuotation).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>

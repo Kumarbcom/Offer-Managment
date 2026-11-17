@@ -12,6 +12,7 @@ import { SearchableSelect } from './common/SearchableSelect';
 import { QuotationPrintView } from './QuotationPrintView';
 import { QuotationPrintViewDiscounted } from './QuotationPrintViewDiscounted';
 import { QuotationPrintViewWithAirFreight } from './QuotationPrintViewWithAirFreight';
+import { calculateTotalAmount } from '../utils/calc';
 import { AIAssistantPanel } from './AIAssistantPanel';
 import { QuotationDiffModal } from './QuotationDiffModal';
 import { useDebounce } from '../hooks/useDebounce';
@@ -1184,15 +1185,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     if (saved && isNew && newTab) {
        const sp = salesPersons?.find(s => s.id === saved.salesPersonId);
        if (sp && sp.mobile) {
-           const calculateTotal = (details: any[]) => {
-               if (!details || !Array.isArray(details)) return 0;
-               return details.reduce((sum, item) => {
-                   const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-                   return sum + (unitPrice * item.moq);
-               }, 0);
-           };
-           
-           const totalValue = calculateTotal(saved.details);
+           const totalValue = calculateTotalAmount(saved);
            const appUrl = `${window.location.origin}${window.location.pathname}?view_pdf=${saved.id}&format=standard`;
            
            const qtnNoStr = generateFormattedQuotationNumber(saved, quotations || []);

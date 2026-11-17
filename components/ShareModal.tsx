@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Quotation, SalesPerson } from '../types';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
-import { calculateTotalAmount } from '../utils/calc';
+import { calculateTotalAmount, calculateQuotationTotals } from '../utils/calc';
 import { calculateQuotationDiff } from '../utils/quotationDiff';
 import { DEFAULT_LOGO_BASE64 } from '../constants';
 
@@ -76,11 +76,21 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   const spFirstName = creatorName.split(' ')[0];
 
-  const totalValue = calculateTotalAmount(quotation.details);
+  const totals = calculateQuotationTotals(quotation);
+  const totalValue = totals.grandTotal;
   const totalFormatted = '₹' + totalValue.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+
+  let amountQualifier = '';
+  if (totals.airFreightAmount > 0 && totals.gstAmount > 0) {
+    amountQualifier = ' (Incl. Air Freight & GST)';
+  } else if (totals.gstAmount > 0) {
+    amountQualifier = ' (Incl. 18% GST)';
+  } else if (totals.airFreightAmount > 0) {
+    amountQualifier = ' (Incl. Air Freight)';
+  }
 
   const formatCurrency = (val: number) => {
     return '₹' + Math.abs(val).toLocaleString('en-IN', {
@@ -154,7 +164,7 @@ Thank you for your enquiry.
 We are pleased to submit our offer as per your requirement:
 • Quotation Ref: ${qtnNoStr}
 • Date: ${quotation.quotationDate}
-• Quoted Amount: ${totalFormatted}
+• Quoted Amount${amountQualifier}: ${totalFormatted}
 
 👇 Please Click Below to View & Download Your Quotation:
 ${appUrl}
@@ -236,7 +246,7 @@ Greeting of the day.
 
 We would like to thank you for your enquiry. Herewith we are submitting the offer for your requirement:
 • Quotation Ref: ${qtnNoStr}
-• Quoted Amount: ${totalFormatted}
+• Quoted Amount${amountQualifier}: ${totalFormatted}
 
 👇 *Please Click to View Quotation:*
 ${appUrl}
@@ -474,7 +484,7 @@ Thank you for your enquiry.
 We are pleased to submit our offer as per your requirement:
 • Quotation Ref: ${qtnNoStr}
 • Date: ${quotation.quotationDate}
-• Quoted Amount: ${totalFormatted}
+• Quoted Amount${amountQualifier}: ${totalFormatted}
 
 👇 Please Click Below to View & Download Your Quotation:
 ${appUrl}
@@ -603,8 +613,24 @@ Looking forward to your valuable orders.`}
                   <td style={{ color: '#64748b', fontWeight: 'bold' }}>Customer:</td>
                   <td style={{ color: '#0f172a', fontWeight: 'bold' }}>{customerName || 'Customer'}</td>
                 </tr>
-                <tr>
-                  <td style={{ color: '#64748b', fontWeight: 'bold' }}>Quoted Amount:</td>
+                {totals.airFreightAmount > 0 && (
+                  <tr>
+                    <td style={{ color: '#64748b', fontWeight: 'bold' }}>Air Freight:</td>
+                    <td style={{ color: '#0f172a', fontWeight: 'bold' }}>
+                      ₹{totals.airFreightAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
+                {totals.gstAmount > 0 && (
+                  <tr>
+                    <td style={{ color: '#64748b', fontWeight: 'bold' }}>GST (18%):</td>
+                    <td style={{ color: '#0f172a', fontWeight: 'bold' }}>
+                      ₹{totals.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
+                <tr style={{ backgroundColor: '#eff6ff' }}>
+                  <td style={{ color: '#1e40af', fontWeight: 'bold' }}>Total Quoted Amount{amountQualifier}:</td>
                   <td style={{ color: '#1e40af', fontWeight: 'bold', fontSize: '15px' }}>{totalFormatted}</td>
                 </tr>
               </tbody>

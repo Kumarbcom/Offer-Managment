@@ -5,6 +5,7 @@ import { CustomerAddModal } from './CustomerAddModal';
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersPaginated, upsertCustomer, deleteCustomer, addCustomersBatch } from '../supabase';
 import { useDebounce } from '../hooks/useDebounce';
+import { calculateTotalAmount } from '../utils/calc';
 
 declare var XLSX: any;
 
@@ -19,14 +20,6 @@ type SortByType = 'id' | 'name' | 'city' | 'pincode' | 'salesPerson';
 type SortOrderType = 'asc' | 'desc';
 
 const PAGE_LIMIT = 50;
-
-const calculateTotalAmount = (details: Quotation['details'] | undefined): number => {
-    if (!details || !Array.isArray(details)) return 0;
-    return details.reduce((total, item) => {
-        const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-        return total + (unitPrice * item.moq);
-    }, 0);
-}
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 const statusColors: Record<string, { bg: string, text: string }> = {
@@ -114,7 +107,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
     if (!quotations) return initialStats;
 
     return quotations.reduce((stats, q) => {
-      const value = calculateTotalAmount(q.details);
+      const value = calculateTotalAmount(q);
       stats.total.count++;
       stats.total.value += value;
       if (stats.byStatus[q.status]) {
@@ -617,7 +610,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                                       {QUOTATION_STATUSES.map(status => {
                                           const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
                                           if (relevantQuotes.length === 0) return null;
-                                          const totalValue = relevantQuotes.reduce((sum, q) => sum + calculateTotalAmount(q.details), 0);
+                                          const totalValue = relevantQuotes.reduce((sum, q) => sum + calculateTotalAmount(q), 0);
                                           
                                           // Color styling matching Mockup pills
                                           let pillColors = 'bg-blue-50 text-blue-700 border-blue-200/70';

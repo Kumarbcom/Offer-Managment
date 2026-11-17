@@ -5,6 +5,7 @@ import type { Quotation, SalesPerson, QuotationStatus, User, Customer } from '..
 import { QUOTATION_STATUSES } from '../constants';
 import { getCustomersByIds } from '../supabase';
 import { generateFormattedQuotationNumber, getFinancialYear } from '../utils/quotationNumber';
+import { calculateTotalAmount } from '../utils/calc';
 import { MonthlyTargets } from './MonthlyTargets';
 import { ManagementReportModal } from './ManagementReportModal';
 
@@ -112,15 +113,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         }
     };
 
-    const calculateTotalAmount = (details: Quotation['details'] | undefined): number => {
-        if (!details || !Array.isArray(details)) return 0;
-        return details.reduce((total, item) => {
-            const unitPrice = item.price * (1 - (parseFloat(String(item.discount)) || 0) / 100);
-            return total + (unitPrice * item.moq);
-        }, 0);
-    }
-
-    // Filter quotations based on slicers
     const filteredQuotations = useMemo(() => {
         if (!quotations) return [];
         const today = new Date();
@@ -251,7 +243,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         });
 
         return filteredQuotations.reduce((acc, q) => {
-            const totalValue = calculateTotalAmount(q.details);
+            const totalValue = calculateTotalAmount(q);
             acc.total.count += 1;
             acc.total.value += totalValue;
             if (acc[q.status]) {
@@ -290,7 +282,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         return salesPersons.map(sp => {
             const personQuotations = filteredQuotations.filter(q => q.salesPersonId === sp.id);
             const personStats = personQuotations.reduce((acc, q) => {
-                const totalValue = calculateTotalAmount(q.details);
+                const totalValue = calculateTotalAmount(q);
                 acc.total.count += 1;
                 acc.total.value += totalValue;
                 if (acc[q.status]) {
@@ -352,8 +344,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             });
         } else { // 'highestValue'
             sortedQuotations.sort((a, b) => {
-                const valueA = calculateTotalAmount(a.details);
-                const valueB = calculateTotalAmount(b.details);
+                const valueA = calculateTotalAmount(a);
+                const valueB = calculateTotalAmount(b);
                 return valueB - valueA;
             });
         }
@@ -383,7 +375,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             if (d.getFullYear() !== currentYear) return;
 
             const monthIndex = d.getMonth();
-            const amount = calculateTotalAmount(q.details);
+            const amount = calculateTotalAmount(q);
 
             if (q.status === 'PO received' || q.status === 'Partial PO Received') {
                 dataByMonth.won[monthIndex] += amount;
@@ -504,7 +496,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
             const monthStr = q.quotationDate.substring(0, 7); // YYYY-MM
             const spName = salesPersons.find(sp => sp.id === q.salesPersonId)?.name || 'Unknown';
             if (!acc[monthStr]) acc[monthStr] = {};
-            const valueToAdd = barChartMode === 'count' ? 1 : calculateTotalAmount(q.details);
+            const valueToAdd = barChartMode === 'count' ? 1 : calculateTotalAmount(q);
             acc[monthStr][spName] = (acc[monthStr][spName] || 0) + valueToAdd;
             return acc;
         }, {} as Record<string, Record<string, number>>);
@@ -1116,7 +1108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                                                 <div className="font-bold text-slate-800">{q.customerId ? customerMap.get(q.customerId) || '—' : '—'}</div>
                                             </td>
                                             <td className="px-4 py-4 border-y border-slate-100 group-hover:border-transparent font-bold text-slate-700">
-                                                {formatCurrency(calculateTotalAmount(q.details))}
+                                                {formatCurrency(calculateTotalAmount(q))}
                                             </td>
                                             <td className="px-4 py-4 border-y border-slate-100 group-hover:border-transparent">
                                                 <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${cfg.bg} ${cfg.text}`}>

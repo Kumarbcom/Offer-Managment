@@ -326,22 +326,44 @@ export function calculateQuotationDiff(
   // Totals calculation
   const initialSubtotal = initialItems.reduce((acc, item) => {
     const net = calcNetRate(item.price, item.discount);
-    return acc + calcAmount(net, item.moq);
+    const qty = (item.moq !== undefined && item.moq !== null && Number(item.moq) > 0) ? Number(item.moq) : (Number(item.req) || 0);
+    return acc + calcAmount(net, qty);
   }, 0);
 
   const finalSubtotal = currentItems.reduce((acc, item) => {
     const net = calcNetRate(item.price, item.discount);
-    return acc + calcAmount(net, item.moq);
+    const qty = (item.moq !== undefined && item.moq !== null && Number(item.moq) > 0) ? Number(item.moq) : (Number(item.req) || 0);
+    return acc + calcAmount(net, qty);
   }, 0);
 
-  const initialGstAdded = initialSnap.gstAdded ?? current.gstAdded ?? true;
-  const finalGstAdded = current.gstAdded ?? true;
+  const initialAirFreightRate = (initialSnap.quotationDate && new Date(initialSnap.quotationDate) >= new Date('2026-05-25')) ? 180 : 150;
+  const finalAirFreightRate = (current.quotationDate && new Date(current.quotationDate) >= new Date('2026-05-25')) ? 180 : 150;
 
-  const initialGst = initialGstAdded ? initialSubtotal * 0.18 : 0;
-  const finalGst = finalGstAdded ? finalSubtotal * 0.18 : 0;
+  const initialAirFreight = initialItems.reduce((acc, item) => {
+    if (!item.airFreight) return acc;
+    const weight = item.airFreightDetails?.weightPerMtr || 0;
+    const qty = (item.moq !== undefined && item.moq !== null && Number(item.moq) > 0) ? Number(item.moq) : (Number(item.req) || 0);
+    return acc + ((weight / 1000 * initialAirFreightRate) * qty);
+  }, 0);
 
-  const initialGrandTotal = Math.round(initialSubtotal + initialGst);
-  const finalGrandTotal = Math.round(finalSubtotal + finalGst);
+  const finalAirFreight = currentItems.reduce((acc, item) => {
+    if (!item.airFreight) return acc;
+    const weight = item.airFreightDetails?.weightPerMtr || 0;
+    const qty = (item.moq !== undefined && item.moq !== null && Number(item.moq) > 0) ? Number(item.moq) : (Number(item.req) || 0);
+    return acc + ((weight / 1000 * finalAirFreightRate) * qty);
+  }, 0);
+
+  const initialCombinedSubtotal = initialSubtotal + initialAirFreight;
+  const finalCombinedSubtotal = finalSubtotal + finalAirFreight;
+
+  const initialGstAdded = initialSnap.gstAdded ?? current.gstAdded ?? false;
+  const finalGstAdded = current.gstAdded ?? false;
+
+  const initialGst = initialGstAdded ? initialCombinedSubtotal * 0.18 : 0;
+  const finalGst = finalGstAdded ? finalCombinedSubtotal * 0.18 : 0;
+
+  const initialGrandTotal = Math.round((initialCombinedSubtotal + initialGst) * 100) / 100;
+  const finalGrandTotal = Math.round((finalCombinedSubtotal + finalGst) * 100) / 100;
 
   const grandTotalDelta = finalGrandTotal - initialGrandTotal;
   const percentageChange = initialGrandTotal > 0 ? (grandTotalDelta / initialGrandTotal) * 100 : 0;
