@@ -9,19 +9,44 @@ export const THRESHOLD_DATE = new Date(2026, 8, 11); // 11.09.2026 (September 11
 export function parseProductDate(dateStr: any): Date {
     if (!dateStr) return new Date(NaN);
     if (dateStr instanceof Date) return new Date(dateStr.getFullYear(), dateStr.getMonth(), dateStr.getDate());
+    if (typeof dateStr === 'number') {
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? new Date(NaN) : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
     const s = String(dateStr).trim();
-    if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) {
+    if (!s) return new Date(NaN);
+
+    // Matches DD.MM.YYYY or D.M.YYYY
+    if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(s)) {
         const [d, m, y] = s.split('.').map(Number);
         return new Date(y, m - 1, d);
     }
-    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+    // Matches DD-MM-YYYY or D-M-YYYY
+    if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(s)) {
         const [d, m, y] = s.split('-').map(Number);
         return new Date(y, m - 1, d);
     }
-    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    // Matches DD/MM/YYYY or D/M/YYYY
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+        const [d, m, y] = s.split('/').map(Number);
+        return new Date(y, m - 1, d);
+    }
+    // Matches YYYY-MM-DD
+    if (/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) {
         const parts = s.split('T')[0].split('-').map(Number);
         return new Date(parts[0], parts[1] - 1, parts[2]);
     }
+    // Matches YYYY/MM/DD
+    if (/^\d{4}\/\d{1,2}\/\d{1,2}/.test(s)) {
+        const parts = s.split('T')[0].split('/').map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+    // Matches YYYY.MM.DD
+    if (/^\d{4}\.\d{1,2}\.\d{1,2}/.test(s)) {
+        const parts = s.split('T')[0].split('.').map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
     const d = new Date(s);
     return isNaN(d.getTime()) ? new Date(NaN) : new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -31,14 +56,12 @@ export function parseProductDate(dateStr: any): Date {
  * - Exact bracket match (from <= date <= to)
  * - Past or current tier (latest tier with from <= date)
  * - Earliest tier if date is before all available tiers
+ * - Fallback to latest tier if date is beyond available tiers
  */
 export function getPriceForDate(product: Product | { prices?: PriceEntry[] } | null | undefined, date: string | Date): PriceEntry | null {
     if (!product || !product.prices || !Array.isArray(product.prices) || product.prices.length === 0) return null;
 
     const targetDate = parseProductDate(date);
-    if (isNaN(targetDate.getTime())) return product.prices[0] || null;
-    targetDate.setHours(0, 0, 0, 0);
-
     const validPrices = product.prices
         .map(p => ({
             p,
@@ -47,7 +70,14 @@ export function getPriceForDate(product: Product | { prices?: PriceEntry[] } | n
         }))
         .filter(item => !isNaN(item.from.getTime()));
 
-    if (validPrices.length === 0) return product.prices[0] || null;
+    if (validPrices.length === 0) return product.prices[product.prices.length - 1] || product.prices[0] || null;
+
+    if (isNaN(targetDate.getTime())) {
+        validPrices.sort((a, b) => b.from.getTime() - a.from.getTime());
+        return validPrices[0].p;
+    }
+
+    targetDate.setHours(0, 0, 0, 0);
 
     // 1. Exact validity bracket match (from <= targetDate <= to)
     for (const item of validPrices) {

@@ -1148,6 +1148,7 @@ export function hydrateProductsFromQuotations(quotations: Quotation[]) {
                     const cleanPartNo = item.partNo.trim();
                     const existing = productCacheByPartNo.get(cleanPartNo.toLowerCase());
                     if (!existing) {
+                        const priceVal = Number(item.price) || 0;
                         const p: Product = {
                             id: item.productId || 0,
                             partNo: cleanPartNo,
@@ -1155,12 +1156,26 @@ export function hydrateProductsFromQuotations(quotations: Quotation[]) {
                             uom: item.uom || 'M',
                             weight: item.airFreightDetails?.weightPerMtr || 0,
                             imageUrl: item.imageUrl || '',
-                            prices: []
+                            prices: priceVal > 0 ? [{
+                                lp: item.priceSource === 'LP' ? priceVal : 0,
+                                sp: item.priceSource === 'SP' ? priceVal : priceVal,
+                                validFrom: '2026-09-11',
+                                validTo: '9999-12-31'
+                            }] : []
                         };
                         cacheProductLocally(p, false);
                     } else {
                         if (!existing.imageUrl && item.imageUrl) {
                             existing.imageUrl = item.imageUrl;
+                        }
+                        if ((!existing.prices || existing.prices.length === 0) && Number(item.price) > 0) {
+                            const priceVal = Number(item.price);
+                            existing.prices = [{
+                                lp: item.priceSource === 'LP' ? priceVal : 0,
+                                sp: item.priceSource === 'SP' ? priceVal : priceVal,
+                                validFrom: '2026-09-11',
+                                validTo: '9999-12-31'
+                            }];
                         }
                         if (existing.prices && existing.prices.some(pr => pr.validFrom === '2000-01-01' && pr.validTo === '9999-12-31')) {
                             existing.prices = existing.prices.filter(pr => !(pr.validFrom === '2000-01-01' && pr.validTo === '9999-12-31'));

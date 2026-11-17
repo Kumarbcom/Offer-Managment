@@ -515,6 +515,20 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           }
       }
       setSearchedProducts(instantMatches);
+
+      // Trigger asynchronous remote search if query >= 2 chars to load full products with latest price tiers
+      if (clean.length >= 2) {
+          searchProducts(clean).then(results => {
+              if (results && results.length > 0) {
+                  setSearchedProducts(prev => {
+                      const map = new Map<number | string, Product>();
+                      results.forEach(p => map.set(p.id || p.partNo, p));
+                      prev.forEach(p => { if (!map.has(p.id || p.partNo)) map.set(p.id || p.partNo, p); });
+                      return Array.from(map.values());
+                  });
+              }
+          }).catch(() => {});
+      }
   }, []);
 
   // Reset customer object whenever the quotation being edited changes.
@@ -936,26 +950,103 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         });
         return;
     }
+
+    const numericProductId = Number(productId);
+    let product = searchedProducts.find(p => p.id === numericProductId) || 
+                  fetchedProducts.get(numericProductId) || 
+                  productCacheById.get(numericProductId) ||
+                  (numericProductId ? Array.from(productCacheByPartNo.values()).find(p => p.id === numericProductId) : undefined);
+
+    if (!product && typeof productId === 'string') {
+        const clean = productId.trim().toLowerCase();
+        product = productCacheByPartNo.get(clean) || searchedProducts.find(p => p.partNo?.trim().toLowerCase() === clean);
+    }
+
+    // Set immediate row details into state
     setFormData(prevFormData => {
         if (!prevFormData) return null;
-        const numericProductId = Number(productId);
-        const product = searchedProducts.find(p => p.id === numericProductId) || 
-                        fetchedProducts.get(numericProductId) || 
-                        productCacheById.get(numericProductId) ||
-                        (numericProductId ? Array.from(productCacheByPartNo.values()).find(p => p.id === numericProductId) : undefined);
-        if (product) {
-            setFetchedProducts(prev => new Map(prev).set(product.id, product));
-            const targetDate = prevFormData.quotationDate || getTodayDateString();
-            const priceEntry = getPriceForDate(product, targetDate);
-            if (!priceEntry) alert(`No valid price found for product ${product.partNo} on date ${targetDate ? new Date(targetDate).toLocaleDateString() : 'N/A'}. Please check product price validity.`);
-            const resolvedImg = product.imageUrl || (product.prices && product.prices.find(pr => pr && (pr.imageUrl || pr.image_url))?.imageUrl) || '';
-            const newDetails = [...prevFormData.details];
-            newDetails[index] = { ...newDetails[index], productId: product.id, partNo: product.partNo, description: product.description, price: priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0, priceSource: priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP', uom: product.uom, imageUrl: resolvedImg, airFreightDetails: { ...newDetails[index].airFreightDetails, weightPerMtr: product.weight }};
-            return { ...prevFormData, details: newDetails };
-        }
-        return prevFormData;
+        const targetDate = prevFormData.quotationDate || getTodayDateString();
+        const priceEntry = product ? (getPriceForDate(product, targetDate) || (product.prices && product.prices.length > 0 ? product.prices[product.prices.length - 1] : null)) : null;
+        const priceVal = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
+        const priceSource: 'LP' | 'SP' = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
+        const resolvedImg = product ? (product.imageUrl || (product.prices && product.prices.find(pr => pr && (pr.imageUrl || pr.image_url))?.imageUrl) || '') : '';
+
+        const newDetails = [...prevFormData.details];
+        newDetails[index] = {
+            ...newDetails[index],
+            productId: product?.id || (numericProductId > 0 ? numericProductId : 0),
+            partNo: product?.partNo || (typeof productId === 'string' ? productId : newDetails[index]?.partNo || ''),
+            description: product?.description || newDetails[index]?.description || '',
+            price: priceVal > 0 ? priceVal : newDetails[index]?.price || 0,
+            priceSource: priceVal > 0 ? priceSource : (newDetails[index]?.priceSource || 'LP'),
+            uom: product?.uom || newDetails[index]?.uom || 'M',
+            imageUrl: resolvedImg || newDetails[index]?.imageUrl || '',
+            airFreightDetails: {
+                ...newDetails[index]?.airFreightDetails,
+                weightPerMtr: product?.weight || newDetails[index]?.airFreightDetails?.weightPerMtr || 0
+            }
+        };
+        return { ...prevFormData, details: newDetails };
     });
-  }
+
+    if (product && product.id) {
+        setFetchedProducts(prev => new Map(prev).set(product!.id, product!));
+    }
+
+    // If product has missing or empty prices (e.g. from hydration stub or cache), auto-fetch full product asynchronously
+    const needsFetch = !product || !product.prices || product.prices.length === 0;
+    if (needsFetch) {
+        const fetchP = (product && product.id > 0)
+            ? getProductsByIds([product.id])
+            : (product?.partNo
+                ? getProductsByPartNos([product.partNo])
+                : (numericProductId > 0 ? getProductsByIds([numericProductId]) : (typeof productId === 'string' ? getProductsByPartNos([productId]) : Promise.resolve([]))));
+
+        fetchP.then(prods => {
+            if (prods && prods.length > 0) {
+                const fullProd = prods[0];
+                if (fullProd) {
+                    if (fullProd.id) {
+                        setFetchedProducts(prev => new Map(prev).set(fullProd.id, fullProd));
+                        productCacheById.set(fullProd.id, fullProd);
+                    }
+                    if (fullProd.partNo) {
+                        productCacheByPartNo.set(fullProd.partNo.trim().toLowerCase(), fullProd);
+                    }
+                    cacheProductLocally(fullProd, true);
+
+                    setFormData(latestForm => {
+                        if (!latestForm || !latestForm.details || !latestForm.details[index]) return latestForm;
+                        const tDate = latestForm.quotationDate || getTodayDateString();
+                        const pe = getPriceForDate(fullProd, tDate) || (fullProd.prices && fullProd.prices.length > 0 ? fullProd.prices[fullProd.prices.length - 1] : null);
+                        const pVal = pe ? (pe.lp > 0 ? pe.lp : pe.sp) : 0;
+                        const pSource: 'LP' | 'SP' = pe ? (pe.lp > 0 ? 'LP' : 'SP') : 'LP';
+                        const fullImg = fullProd.imageUrl || (fullProd.prices && fullProd.prices.find(pr => pr && (pr.imageUrl || pr.image_url))?.imageUrl) || '';
+
+                        const updatedDetails = [...latestForm.details];
+                        updatedDetails[index] = {
+                            ...updatedDetails[index],
+                            productId: fullProd.id || updatedDetails[index].productId,
+                            partNo: fullProd.partNo || updatedDetails[index].partNo,
+                            description: fullProd.description || updatedDetails[index].description,
+                            price: pVal > 0 ? pVal : updatedDetails[index].price,
+                            priceSource: pVal > 0 ? pSource : updatedDetails[index].priceSource,
+                            uom: fullProd.uom || updatedDetails[index].uom,
+                            imageUrl: fullImg || updatedDetails[index].imageUrl,
+                            airFreightDetails: {
+                                ...updatedDetails[index].airFreightDetails,
+                                weightPerMtr: fullProd.weight || updatedDetails[index].airFreightDetails?.weightPerMtr || 0
+                            }
+                        };
+                        return { ...latestForm, details: updatedDetails };
+                    });
+                }
+            }
+        }).catch(err => {
+            console.warn("Could not background-fetch full product info:", err);
+        });
+    }
+  };
 
   const handleAddItem = (count: number = 1) => { 
     setFormData(prev => {
@@ -1257,15 +1348,64 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const handleAddProductFromSearch = (product: Product, discount: number) => {
     setFormData(prev => {
         if (!prev) return null;
-        const priceEntry = getPriceForDate(product, prev.quotationDate || getTodayDateString());
-        if (!priceEntry) { alert(`No valid price found for product ${product.partNo}. Cannot add.`); return prev; }
-        const newQuotationItem: QuotationItem = { productId: product.id, partNo: product.partNo, description: product.description, moq: 1, req: 1, price: priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp, priceSource: priceEntry.lp > 0 ? 'LP' : 'SP', discount: discount, stockStatus: 'Ex-Stock', uom: product.uom, imageUrl: product.imageUrl || '', airFreight: false, airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }};
+        const targetDate = prev.quotationDate || getTodayDateString();
+        const priceEntry = getPriceForDate(product, targetDate) || (product.prices && product.prices.length > 0 ? product.prices[product.prices.length - 1] : null);
+        const priceVal = priceEntry ? (priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp) : 0;
+        const priceSource: 'LP' | 'SP' = priceEntry ? (priceEntry.lp > 0 ? 'LP' : 'SP') : 'LP';
+        const newQuotationItem: QuotationItem = {
+            productId: product.id,
+            partNo: product.partNo,
+            description: product.description,
+            moq: 1,
+            req: 1,
+            price: priceVal,
+            priceSource: priceSource,
+            discount: discount,
+            stockStatus: 'Ex-Stock',
+            uom: product.uom,
+            imageUrl: product.imageUrl || '',
+            airFreight: false,
+            airFreightDetails: { weightPerMtr: product.weight, airFreightLeadTime: '' }
+        };
         const emptyItemIndex = prev.details.findIndex(item => !item.productId);
         const newDetails = [...prev.details];
-        if (emptyItemIndex !== -1) newDetails[emptyItemIndex] = newQuotationItem;
-        else newDetails.push(newQuotationItem);
+        let targetIndex = emptyItemIndex;
+        if (emptyItemIndex !== -1) {
+            newDetails[emptyItemIndex] = newQuotationItem;
+        } else {
+            targetIndex = newDetails.length;
+            newDetails.push(newQuotationItem);
+        }
         setFetchedProducts(new Map(fetchedProducts).set(product.id, product));
         setIsProductSearchModalOpen(false);
+
+        if (!product.prices || product.prices.length === 0) {
+            const fetchPromise = product.id > 0 ? getProductsByIds([product.id]) : (product.partNo ? getProductsByPartNos([product.partNo]) : Promise.resolve([]));
+            fetchPromise.then(prods => {
+                if (prods && prods.length > 0) {
+                    const fullProd = prods[0];
+                    if (fullProd && fullProd.prices && fullProd.prices.length > 0) {
+                        setFetchedProducts(prevFp => new Map(prevFp).set(fullProd.id, fullProd));
+                        cacheProductLocally(fullProd, true);
+                        setFormData(latest => {
+                            if (!latest || !latest.details || !latest.details[targetIndex]) return latest;
+                            const pe = getPriceForDate(fullProd, latest.quotationDate || getTodayDateString()) || fullProd.prices[fullProd.prices.length - 1];
+                            const pv = pe ? (pe.lp > 0 ? pe.lp : pe.sp) : 0;
+                            const ps: 'LP' | 'SP' = pe ? (pe.lp > 0 ? 'LP' : 'SP') : 'LP';
+                            const updated = [...latest.details];
+                            updated[targetIndex] = {
+                                ...updated[targetIndex],
+                                price: pv > 0 ? pv : updated[targetIndex].price,
+                                priceSource: pv > 0 ? ps : updated[targetIndex].priceSource,
+                                imageUrl: fullProd.imageUrl || updated[targetIndex].imageUrl
+                            };
+                            return { ...latest, details: updated };
+                        });
+                    }
+                }
+            }).catch(() => {});
+        }
+
         return { ...prev, details: newDetails };
     });
   };
