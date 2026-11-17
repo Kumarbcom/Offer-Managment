@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, SetStateAction, useRef } from 'react';
-import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, fetchQuotationStatuses, fetchSingleQuotation, updateQuotationField, liveQuotationSyncChannel, isDataSaverEnabled, cacheCustomerLocally } from '../supabase';
+import { get, set, toSupabaseTableName, mapFromSupabase, fetchLatestQuotations, fetchQuotationsBatch, fetchQuotationStatuses, fetchSingleQuotation, updateQuotationField, liveQuotationSyncChannel, isDataSaverEnabled, cacheCustomerLocally } from '../supabase';
 import { INITIAL_DATA } from '../initialData';
 import { supabase, supabaseConfig } from '../supabaseClient';
 import { useLocalStorage } from './useLocalStorage';
@@ -101,6 +101,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
             // 3. Keep older quotations in IndexedDB so historical offers remain accessible
             if (tableName === 'quotations') {
                 try {
+                    // 1. First fetch latest 150 offers for sub-2s initial render & latest updates
                     const latest = await fetchLatestQuotations(150);
                     if (latest && latest.length > 0 && isMounted) {
                         setState(prev => {
@@ -116,6 +117,40 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                             return merged as T[];
                         });
                     }
+
+                    // 2. Progressive background stream: load all remaining historical quotations in batches of 150
+                    // This brings in all ~4,045 historical offers cleanly without timing out PostgreSQL
+                    const streamAllQuotations = async () => {
+                        let offset = 150;
+                        const batchSize = 150;
+                        while (isMounted) {
+                            try {
+                                const olderBatch = await fetchQuotationsBatch(offset, batchSize);
+                                if (!olderBatch || olderBatch.length === 0 || !isMounted) break;
+                                
+                                setState(prev => {
+                                    const current = prev || [];
+                                    const map = new Map<number, any>();
+                                    current.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                                    olderBatch.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                                    const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
+                                    memoryCache.set(tableName, merged);
+                                    idbSet(`cache_${tableName}`, merged);
+                                    return merged as T[];
+                                });
+
+                                if (olderBatch.length < batchSize) break;
+                                offset += olderBatch.length;
+                                // 350ms delay between batches so UI stays silky smooth
+                                await new Promise(r => setTimeout(r, 350));
+                            } catch (streamErr) {
+                                console.warn("Background stream batch error:", streamErr);
+                                break;
+                            }
+                        }
+                    };
+                    // Launch background stream
+                    setTimeout(streamAllQuotations, 600);
                 } catch (fastErr) {
                     console.warn("Quotations sync error:", fastErr);
                 } finally {
@@ -123,7 +158,7 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                         setIsLoading(false);
                     }
                 }
-                return; // Stop here! Do not fall through to get('quotations') table scan
+                return; // Finished quotation loading
             }
             try {
                 // EGRESS OPTIMIZATION FOR CUSTOMERS:
