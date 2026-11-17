@@ -196,8 +196,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
   const formatCurrencyDisplay = (num: number) => {
     if (!num || isNaN(num)) return '₹0';
-    if (num >= 10000000) return `₹${(num / 10000000).toFixed(1)}L`; // Or Cr
-    if (num >= 100000) return `₹${(num / 100000).toFixed(1)}L`;
+    if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)}Cr`;
+    if (num >= 100000) return `₹${(num / 100000).toFixed(2)}L`;
     if (num >= 1000) return `₹${(num / 1000).toFixed(1)}K`;
     return `₹${Math.round(num).toLocaleString('en-IN')}`;
   };
@@ -721,15 +721,97 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
   const isAllSelected = paginatedQuotations.length > 0 && paginatedQuotations.every(q => selectedQuotationIds.has(q.id));
   const canEdit = userRole === 'Admin' || userRole === 'Sales Person';
 
-  // Summary stats
-  const stats = useMemo(() => {
-    const list = filteredAndSortedQuotations;
-    const total = list.reduce((s, q) => s + calculateTotalAmount(q.details), 0);
-    const open = list.filter(q => q.status === 'Open').length;
-    const won = list.filter(q => q.status === 'PO received' || q.status === 'Partial PO Received').length;
-    const lost = list.filter(q => q.status === 'Lost').length;
-    return { count: list.length, total, open, won, lost };
-  }, [filteredAndSortedQuotations]);
+  // Status Breakdown calculation for KPI Cards Row
+  const statusBreakdown = useMemo(() => {
+    let list = quotations || [];
+    if (userRole === 'Sales Person') {
+      const currentSalesPersonId = salesPersons?.find(sp => sp.name === currentUser.name)?.id;
+      if (currentSalesPersonId !== undefined) {
+        list = list.filter(q => q.salesPersonId === currentSalesPersonId);
+      }
+    }
+    if (quotationFilter?.customerIds && quotationFilter.customerIds.length > 0) {
+      list = list.filter(q => q.customerId !== null && quotationFilter.customerIds?.includes(q.customerId));
+    }
+
+    const counts = {
+      total: { count: 0, amount: 0 },
+      open: { count: 0, amount: 0 },
+      poReceived: { count: 0, amount: 0 },
+      invoiced: { count: 0, amount: 0 },
+      lost: { count: 0, amount: 0 },
+      amendment: { count: 0, amount: 0 },
+    };
+
+    list.forEach(q => {
+      const amt = calculateTotalAmount(q.details);
+      counts.total.count += 1;
+      counts.total.amount += amt;
+
+      const st = q.status;
+      if (st === 'Open') {
+        counts.open.count += 1;
+        counts.open.amount += amt;
+      } else if (st === 'PO received') {
+        counts.poReceived.count += 1;
+        counts.poReceived.amount += amt;
+      } else if (st === 'Partial PO Received') {
+        counts.invoiced.count += 1;
+        counts.invoiced.amount += amt;
+      } else if (st === 'Lost' || st === 'Expired') {
+        counts.lost.count += 1;
+        counts.lost.amount += amt;
+      } else if (st === 'Need Amendment' || st === 'Under Review') {
+        counts.amendment.count += 1;
+        counts.amendment.amount += amt;
+      }
+    });
+
+    return counts;
+  }, [quotations, userRole, currentUser, salesPersons, quotationFilter]);
+
+  const handleStatusCardClick = (category: 'all' | 'Open' | 'PO received' | 'Partial PO Received' | 'Lost' | 'Need Amendment') => {
+    if (category === 'all') {
+      setColumnFilters(prev => {
+        const next = { ...prev };
+        delete next.statuses;
+        return next;
+      });
+      return;
+    }
+
+    let targetStatuses: QuotationStatus[] = [];
+    if (category === 'Open') targetStatuses = ['Open'];
+    else if (category === 'PO received') targetStatuses = ['PO received'];
+    else if (category === 'Partial PO Received') targetStatuses = ['Partial PO Received'];
+    else if (category === 'Lost') targetStatuses = ['Lost', 'Expired'];
+    else if (category === 'Need Amendment') targetStatuses = ['Need Amendment', 'Under Review'];
+
+    setColumnFilters(prev => {
+      const current = prev.statuses || [];
+      const isSame = current.length === targetStatuses.length && targetStatuses.every(s => current.includes(s));
+      if (isSame) {
+        const next = { ...prev };
+        delete next.statuses;
+        return next;
+      }
+      return { ...prev, statuses: targetStatuses };
+    });
+  };
+
+  const isStatusCardActive = (category: 'all' | 'Open' | 'PO received' | 'Partial PO Received' | 'Lost' | 'Need Amendment') => {
+    const current = columnFilters.statuses;
+    if (category === 'all') {
+      return !current || current.length === 0;
+    }
+    if (!current || current.length === 0) return false;
+    if (category === 'Open') return current.length === 1 && current[0] === 'Open';
+    if (category === 'PO received') return current.length === 1 && current[0] === 'PO received';
+    if (category === 'Partial PO Received') return current.length === 1 && current[0] === 'Partial PO Received';
+    if (category === 'Lost') return current.includes('Lost') || current.includes('Expired');
+    if (category === 'Need Amendment') return current.includes('Need Amendment') || current.includes('Under Review');
+    return false;
+  };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '—';
@@ -996,56 +1078,215 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
       <div className="px-4 md:px-8 py-5 space-y-4">
 
-        {/* ── 3 Modern KPI Cards Row Matching User Mockup ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ── Status-Wise Breakup KPI Cards Row ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           
-          {/* Card 1: Open Quotations */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/80">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-slate-500 block">Open Quotations</span>
-              <span className="text-2xl font-black text-slate-900 leading-tight block">{stats.open}</span>
-              <span className="text-[11px] font-semibold text-blue-600 flex items-center gap-1 mt-0.5">
-                <span>↑</span> 12% vs last month
+          {/* Card 1: Total Offers (Dark Navy Card) */}
+          <div
+            onClick={() => handleStatusCardClick('all')}
+            className={`p-3.5 rounded-2xl shadow-2xs relative overflow-hidden flex flex-col justify-between cursor-pointer transition-all ${
+              isStatusCardActive('all')
+                ? 'bg-[#0f233d] text-white ring-2 ring-blue-500 shadow-md scale-[1.01]'
+                : 'bg-[#0f233d]/90 text-white/90 hover:bg-[#0f233d] hover:shadow-xs hover:-translate-y-0.5'
+            }`}
+            title="Click to view all offers"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-300">
+                <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                <span>Total Offers</span>
+              </div>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                isStatusCardActive('all') ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
+              }`}>
+                All
               </span>
+            </div>
+            <div className="mt-2.5">
+              <div className="text-2xl font-black font-mono text-white leading-none">
+                {statusBreakdown.total.count.toLocaleString()}
+              </div>
+              <div className="text-[11px] font-semibold text-blue-300 mt-1.5 flex items-center gap-1 truncate">
+                <span className="opacity-80">Value:</span>
+                <span className="font-mono font-bold text-white">{formatCurrencyDisplay(statusBreakdown.total.amount)}</span>
+              </div>
+            </div>
+            {/* Background watermark */}
+            <div className="absolute right-2 bottom-1 opacity-10 pointer-events-none text-white">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
             </div>
           </div>
 
-          {/* Card 2: Total Value */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 text-2xl font-bold border border-emerald-100/80 font-mono">
-              ₹
+          {/* Card 2: Open (Soft Blue Card) */}
+          <div
+            onClick={() => handleStatusCardClick('Open')}
+            className={`p-3.5 rounded-2xl shadow-2xs relative flex flex-col justify-between cursor-pointer transition-all ${
+              isStatusCardActive('Open')
+                ? 'bg-blue-100 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.01]'
+                : 'bg-blue-50/85 border border-blue-200/80 hover:bg-blue-100/70 hover:shadow-xs hover:-translate-y-0.5'
+            }`}
+            title="Click to filter by Open quotations"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-800">
+                <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] leading-none">✓</span>
+                <span>Open</span>
+              </div>
+              <div className="w-5 h-5 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+              </div>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-slate-500 block">Total Value</span>
-              <span className="text-2xl font-black text-slate-900 leading-tight block">
-                {formatCurrencyDisplay(stats.total)}
-              </span>
-              <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
-                <span>↑</span> 8.7% vs last month
-              </span>
+            <div className="mt-2.5">
+              <div className="text-2xl font-black font-mono text-slate-900 leading-none">
+                {statusBreakdown.open.count.toLocaleString()}
+              </div>
+              <div className="text-[11px] font-semibold text-blue-700 mt-1.5 flex items-center gap-1 truncate">
+                <span className="text-slate-500 font-normal">Value:</span>
+                <span className="font-mono font-bold">{formatCurrencyDisplay(statusBreakdown.open.amount)}</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 3: Avg Value */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100/80">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
+          {/* Card 3: PO Received (Soft Emerald Card) */}
+          <div
+            onClick={() => handleStatusCardClick('PO received')}
+            className={`p-3.5 rounded-2xl shadow-2xs relative flex flex-col justify-between cursor-pointer transition-all ${
+              isStatusCardActive('PO received')
+                ? 'bg-emerald-100 border-2 border-emerald-600 shadow-md ring-2 ring-emerald-400/40 scale-[1.01]'
+                : 'bg-emerald-50/85 border border-emerald-200/80 hover:bg-emerald-100/70 hover:shadow-xs hover:-translate-y-0.5'
+            }`}
+            title="Click to filter by PO Received quotations"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800">
+                <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] leading-none">✓</span>
+                <span>PO Received</span>
+              </div>
+              <div className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              </div>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-slate-500 block">Avg Value</span>
-              <span className="text-2xl font-black text-slate-900 leading-tight block">
-                {formatCurrencyDisplay(stats.count > 0 ? stats.total / stats.count : 0)}
-              </span>
-              <span className="text-[11px] font-semibold text-purple-600 flex items-center gap-1 mt-0.5">
-                <span>↑</span> 5.3% vs last month
-              </span>
+            <div className="mt-2.5">
+              <div className="text-2xl font-black font-mono text-slate-900 leading-none">
+                {statusBreakdown.poReceived.count.toLocaleString()}
+              </div>
+              <div className="text-[11px] font-semibold text-emerald-700 mt-1.5 flex items-center gap-1 truncate">
+                <span className="text-slate-500 font-normal">Value:</span>
+                <span className="font-mono font-bold">{formatCurrencyDisplay(statusBreakdown.poReceived.amount)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Invoiced / Partial PO (Soft Amber Card) */}
+          <div
+            onClick={() => handleStatusCardClick('Partial PO Received')}
+            className={`p-3.5 rounded-2xl shadow-2xs relative flex flex-col justify-between cursor-pointer transition-all ${
+              isStatusCardActive('Partial PO Received')
+                ? 'bg-amber-100 border-2 border-amber-600 shadow-md ring-2 ring-amber-400/40 scale-[1.01]'
+                : 'bg-amber-50/85 border border-amber-200/80 hover:bg-amber-100/70 hover:shadow-xs hover:-translate-y-0.5'
+            }`}
+            title="Click to filter by Partial PO Received"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800">
+                <span className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-mono leading-none">₹</span>
+                <span>Invoiced / Part</span>
+              </div>
+              <div className="w-5 h-5 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <rect width="20" height="14" x="2" y="5" rx="2" />
+                  <line x1="2" x2="22" y1="10" y2="10" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-2.5">
+              <div className="text-2xl font-black font-mono text-slate-900 leading-none">
+                {statusBreakdown.invoiced.count.toLocaleString()}
+              </div>
+              <div className="text-[11px] font-semibold text-amber-700 mt-1.5 flex items-center gap-1 truncate">
+                <span className="text-slate-500 font-normal">Value:</span>
+                <span className="font-mono font-bold">{formatCurrencyDisplay(statusBreakdown.invoiced.amount)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: Lost / Expired (Soft Rose Card) */}
+          <div
+            onClick={() => handleStatusCardClick('Lost')}
+            className={`p-3.5 rounded-2xl shadow-2xs relative flex flex-col justify-between cursor-pointer transition-all ${
+              isStatusCardActive('Lost')
+                ? 'bg-rose-100 border-2 border-rose-600 shadow-md ring-2 ring-rose-400/40 scale-[1.01]'
+                : 'bg-rose-50/85 border border-rose-200/80 hover:bg-rose-100/70 hover:shadow-xs hover:-translate-y-0.5'
+            }`}
+            title="Click to filter by Lost or Expired"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-800">
+                <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] leading-none">!</span>
+                <span>Lost / Expired</span>
+              </div>
+              <div className="w-5 h-5 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-2.5">
+              <div className="text-2xl font-black font-mono text-slate-900 leading-none">
+                {statusBreakdown.lost.count.toLocaleString()}
+              </div>
+              <div className="text-[11px] font-semibold text-rose-700 mt-1.5 flex items-center gap-1 truncate">
+                <span className="text-slate-500 font-normal">Value:</span>
+                <span className="font-mono font-bold">{formatCurrencyDisplay(statusBreakdown.lost.amount)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 6: Need Amendment / Under Review (Soft Purple Card) */}
+          <div
+            onClick={() => handleStatusCardClick('Need Amendment')}
+            className={`p-3.5 rounded-2xl shadow-2xs relative flex flex-col justify-between cursor-pointer transition-all ${
+              isStatusCardActive('Need Amendment')
+                ? 'bg-purple-100 border-2 border-purple-600 shadow-md ring-2 ring-purple-400/40 scale-[1.01]'
+                : 'bg-purple-50/85 border border-purple-200/80 hover:bg-purple-100/70 hover:shadow-xs hover:-translate-y-0.5'
+            }`}
+            title="Click to filter by Need Amendment or Under Review"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-purple-800">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+                <span>Amendment</span>
+              </div>
+              <div className="w-5 h-5 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-2.5">
+              <div className="text-2xl font-black font-mono text-slate-900 leading-none">
+                {statusBreakdown.amendment.count.toLocaleString()}
+              </div>
+              <div className="text-[11px] font-semibold text-purple-700 mt-1.5 flex items-center gap-1 truncate">
+                <span className="text-slate-500 font-normal">Value:</span>
+                <span className="font-mono font-bold">{formatCurrencyDisplay(statusBreakdown.amendment.amount)}</span>
+              </div>
             </div>
           </div>
 
