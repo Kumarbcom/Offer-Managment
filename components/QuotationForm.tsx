@@ -19,7 +19,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, productCacheById, productSearchCache, customerCache, cacheCustomerLocally, hydrateProductsFromQuotations, fetchSingleQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
-import { getPriceForDate, isPriceOlderThanThreshold, isPriceEntryOlderThanThreshold, parseProductDate } from '../utils/priceUtils';
+import { getPriceForDate, isPriceOlderThanThreshold, isItemPriceOlderThanThreshold, isPriceEntryOlderThanThreshold, parseProductDate } from '../utils/priceUtils';
 
 declare var XLSX: any;
 
@@ -2006,11 +2006,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             )}
 
             {(() => {
+                const targetDate = formData?.quotationDate || getTodayDateString();
                 const olderItems = (formData?.details || []).filter(item => {
+                    if (!item || !item.partNo) return false;
                     const p = (item.productId && fetchedProducts.get(item.productId)) ||
                               (item.partNo && Array.from(fetchedProducts.values()).find(fp => fp.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
                               (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
-                    return p && p.prices && p.prices.length > 0 && isPriceOlderThanThreshold(p);
+                    return p && p.prices && p.prices.length > 0 && isItemPriceOlderThanThreshold(item, p, targetDate);
                 });
 
                 if (olderItems.length === 0) return null;
