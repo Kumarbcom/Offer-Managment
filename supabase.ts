@@ -916,7 +916,7 @@ export function setDataSaverEnabled(enabled: boolean) {
 
 export async function fetchLatestQuotations(limit?: number): Promise<Quotation[]> {
     if (!supabase) return [];
-    const effectiveLimit = limit !== undefined ? limit : (isDataSaverEnabled() ? 20 : 40);
+    const effectiveLimit = limit !== undefined ? limit : (isDataSaverEnabled() ? 40 : 150);
     try {
         const { data, error } = await supabase
             .from('quotations')
@@ -930,6 +930,75 @@ export async function fetchLatestQuotations(limit?: number): Promise<Quotation[]
         return (data || []).map(q => mapFromSupabase('quotations', q));
     } catch (e) {
         console.warn("fetchLatestQuotations error:", e);
+        return [];
+    }
+}
+
+export async function fetchQuotationsBatch(offset: number, limit: number = 100): Promise<Quotation[]> {
+    if (!supabase) return [];
+    try {
+        const { data, error } = await supabase
+            .from('quotations')
+            .select('*')
+            .order('id', { ascending: false })
+            .range(offset, offset + limit - 1);
+        if (error) {
+            console.warn("fetchQuotationsBatch query error:", error);
+            return [];
+        }
+        return (data || []).map(q => mapFromSupabase('quotations', q));
+    } catch (e) {
+        console.warn("fetchQuotationsBatch error:", e);
+        return [];
+    }
+}
+
+export async function searchQuotationsRemote(term: string): Promise<Quotation[]> {
+    if (!supabase || !term || !term.trim()) return [];
+    const clean = term.trim();
+    try {
+        const resultsMap = new Map<number, Quotation>();
+        
+        // 1. If numeric or sequence number, search direct ID or sequence offset
+        const num = parseInt(clean.replace(/\D/g, ''), 10);
+        if (!isNaN(num) && num > 0) {
+            const { data: directId } = await supabase.from('quotations').select('*').eq('id', num).limit(10);
+            (directId || []).forEach(q => resultsMap.set(q.id, mapFromSupabase('quotations', q)));
+
+            const possibleId = num + 2362;
+            const { data: seqData } = await supabase.from('quotations').select('*').eq('id', possibleId).limit(5);
+            (seqData || []).forEach(q => resultsMap.set(q.id, mapFromSupabase('quotations', q)));
+        }
+
+        // 2. Search contact person or contact number
+        const { data: contactData } = await supabase
+            .from('quotations')
+            .select('*')
+            .or(`contact_person.ilike.%${clean}%,contact_number.ilike.%${clean}%`)
+            .order('id', { ascending: false })
+            .limit(30);
+        (contactData || []).forEach(q => resultsMap.set(q.id, mapFromSupabase('quotations', q)));
+
+        // 3. Search customer name: find customer IDs first then find quotations
+        const { data: matchedCustomers } = await supabase
+            .from('customers')
+            .select('id')
+            .ilike('name', `%${clean}%`)
+            .limit(20);
+        if (matchedCustomers && matchedCustomers.length > 0) {
+            const cIds = matchedCustomers.map(c => c.id);
+            const { data: custQuotations } = await supabase
+                .from('quotations')
+                .select('*')
+                .in('customer_id', cIds)
+                .order('id', { ascending: false })
+                .limit(40);
+            (custQuotations || []).forEach(q => resultsMap.set(q.id, mapFromSupabase('quotations', q)));
+        }
+
+        return Array.from(resultsMap.values());
+    } catch (e) {
+        console.warn("searchQuotationsRemote error:", e);
         return [];
     }
 }

@@ -97,11 +97,11 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
 
             // EGRESS OPTIMIZATION FOR QUOTATIONS:
             // 1. Immediately hydrate from IndexedDB (sub-50ms render, 0 network bytes)
-            // 2. Fetch only the latest 50 quotations to sync recent additions/modifications
-            // 3. NEVER perform a table scan over all historical quotations!
+            // 2. Fetch recent batch (150 quotations) to sync recent additions/modifications
+            // 3. Keep older quotations in IndexedDB so historical offers remain accessible
             if (tableName === 'quotations') {
                 try {
-                    const latest = await fetchLatestQuotations(50);
+                    const latest = await fetchLatestQuotations(150);
                     if (latest && latest.length > 0 && isMounted) {
                         setState(prev => {
                             const current = prev || [];

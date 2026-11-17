@@ -4,7 +4,7 @@ import { QUOTATION_STATUSES } from '../constants';
 import { generateFormattedQuotationNumber, getQuotationSeqNum } from '../utils/quotationNumber';
 import { ShareModal } from './ShareModal';
 import { ExcelTableColumnFilter, ChecklistOption } from './ExcelTableColumnFilter';
-import { customerCache, getCustomersByIds, cacheCustomerLocally } from '../supabase';
+import { customerCache, getCustomersByIds, cacheCustomerLocally, fetchQuotationsBatch, searchQuotationsRemote } from '../supabase';
 
 declare var XLSX: any;
 
@@ -123,6 +123,36 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
     }
   };
 
+  // State for loading older quotations from cloud
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [hasReachedEnd, setHasReachedEnd] = useState(false);
+
+  const handleLoadOlderOffers = async () => {
+    if (isLoadingOlder || hasReachedEnd) return;
+    setIsLoadingOlder(true);
+    try {
+      const currentCount = quotations?.length || 0;
+      const olderBatch = await fetchQuotationsBatch(currentCount, 100);
+      if (olderBatch && olderBatch.length > 0) {
+        await setQuotations(prev => {
+          const map = new Map<number, Quotation>();
+          (prev || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
+          olderBatch.forEach(item => { if (item && item.id) map.set(item.id, item); });
+          return Array.from(map.values()).sort((a, b) => b.id - a.id);
+        });
+        if (olderBatch.length < 100) {
+          setHasReachedEnd(true);
+        }
+      } else {
+        setHasReachedEnd(true);
+      }
+    } catch (err) {
+      console.error("Failed to load older offers:", err);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  };
+
   const getCustomerCity = (id: number | null | undefined): string => {
     if (id === null || id === undefined) return '';
     const numId = Number(id);
@@ -212,6 +242,28 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
       }
     }
   }, [globalSearch, onClearGlobalSearch]);
+
+  // Debounced remote search on Supabase to automatically retrieve older matching quotations
+  useEffect(() => {
+    const term = universalSearchTerm.trim();
+    if (!term || term.length < 2) return;
+    const timer = setTimeout(async () => {
+      try {
+        const remoteResults = await searchQuotationsRemote(term);
+        if (remoteResults && remoteResults.length > 0) {
+          await setQuotations(prev => {
+            const map = new Map<number, Quotation>();
+            (prev || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
+            remoteResults.forEach(item => { if (item && item.id) map.set(item.id, item); });
+            return Array.from(map.values()).sort((a, b) => b.id - a.id);
+          });
+        }
+      } catch (err) {
+        console.warn("Remote quotation search error:", err);
+      }
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [universalSearchTerm]);
 
   const userRole = currentUser.role;
 
@@ -1437,8 +1489,8 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                     </th>
-                    <th className="py-3.5 px-2 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('id')}>
-                      NO {sortBy === 'id' && (sortOrder === 'asc' ? '▲' : '▼')}
+                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] whitespace-nowrap" onClick={() => handleSort('id')}>
+                      QUOTATION NO {sortBy === 'id' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
                     <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('quotationDate')}>
                       DATE {sortBy === 'quotationDate' && (sortOrder === 'asc' ? '▲' : '▼')}
@@ -1500,15 +1552,15 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                           />
                         </td>
 
-                        {/* NO (Clickable to open) */}
-                        <td className="px-2 py-3 text-slate-700 text-xs font-semibold select-none">
+                        {/* QUOTATION NO (Clickable to open) */}
+                        <td className="px-3 py-3 text-slate-700 text-xs font-semibold whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => handleEdit(q.id)}
-                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-0.5"
-                            title="Open Quotation"
+                            className="font-mono font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1"
+                            title={`Open Quotation ${generateFormattedQuotationNumber(q, quotations || [])}`}
                           >
-                            <span>#{actualRowNumber}</span>
+                            <span>{generateFormattedQuotationNumber(q, quotations || [])}</span>
                           </button>
                         </td>
 
@@ -1724,11 +1776,36 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
         {totalItems > 0 && (
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 my-4 px-4 py-3 bg-white rounded-2xl border border-slate-200/90 text-xs text-slate-600 shadow-2xs">
             
-            {/* Left: Showing Range */}
-            <div className="text-xs text-slate-500 font-medium">
-              Showing <span className="font-bold text-slate-800">{pageSize === 0 ? 1 : Math.min((currentPage - 1) * pageSize + 1, totalItems)}</span> to{' '}
-              <span className="font-bold text-slate-800">{pageSize === 0 ? totalItems : Math.min(currentPage * pageSize, totalItems)}</span> of{' '}
-              <span className="font-bold text-slate-900">{totalItems}</span> quotations
+            {/* Left: Showing Range & Load Older Button */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="text-xs text-slate-500 font-medium">
+                Showing <span className="font-bold text-slate-800">{pageSize === 0 ? 1 : Math.min((currentPage - 1) * pageSize + 1, totalItems)}</span> to{' '}
+                <span className="font-bold text-slate-800">{pageSize === 0 ? totalItems : Math.min(currentPage * pageSize, totalItems)}</span> of{' '}
+                <span className="font-bold text-slate-900">{totalItems}</span> quotations
+              </div>
+              <button
+                type="button"
+                onClick={handleLoadOlderOffers}
+                disabled={isLoadingOlder || hasReachedEnd}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+                title="Load 100 more historical quotations from cloud database"
+              >
+                {isLoadingOlder ? (
+                  <>
+                    <div className="w-3 h-3 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+                    <span>Loading older offers...</span>
+                  </>
+                ) : hasReachedEnd ? (
+                  <span>✓ All offers loaded ({quotations?.length || 0})</span>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span>Load Older Offers (+100)</span>
+                  </>
+                )}
+              </button>
             </div>
 
             {/* Center: Numeric Page Numbers */}
