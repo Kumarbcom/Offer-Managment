@@ -19,6 +19,17 @@ if (isStudioSite) {
   document.head.appendChild(description);
 }
 
+// Auto-reload seamlessly when a new Vercel deployment causes dynamic chunk hash changes
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  const lastReload = sessionStorage.getItem('last_chunk_reload');
+  const now = Date.now();
+  if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+    sessionStorage.setItem('last_chunk_reload', String(now));
+    window.location.reload();
+  }
+});
+
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
@@ -26,6 +37,17 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 
   static getDerivedStateFromError(error: any) {
+    const msg = error?.message || String(error);
+    const isChunkError = /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk/i.test(msg);
+    if (isChunkError) {
+      const lastReload = sessionStorage.getItem('last_chunk_reload');
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+        sessionStorage.setItem('last_chunk_reload', String(now));
+        window.location.reload();
+        return { hasError: false, error: null };
+      }
+    }
     return { hasError: true, error };
   }
 

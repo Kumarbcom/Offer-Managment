@@ -369,7 +369,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                     </div>
                     <div className="p-2 rounded-lg bg-sky-50/40 border border-sky-100">
                       <span className="text-[10px] font-bold text-sky-700 uppercase tracking-wider block">Weight</span>
-                      <span className="font-semibold text-slate-800 block">{draftProduct.weight || 0} kg/m</span>
+                      <span className="font-semibold text-slate-800 block">{draftProduct.weight || 0} Kg/KM</span>
                     </div>
                   </div>
                 </div>
@@ -614,7 +614,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                       {/* ⚖️ Weight */}
                       <div className="bg-[#edf5ff] border border-[#d3e5fc] rounded-xl p-2.5">
                         <label htmlFor="weight" className="text-blue-800 font-bold text-xs flex items-center gap-1">
-                          <span>⚖️</span> Weight (KG/M)
+                          <span>⚖️</span> Weight (Kg/KM)
                         </label>
                         <input 
                           type="number" 

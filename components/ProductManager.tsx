@@ -169,7 +169,7 @@ const ModernProductRow = React.memo(({
             <td className="px-3 py-2.5 text-right w-[8%] whitespace-nowrap">
                 {product.weight > 0 ? (
                     <span className="text-slate-600 font-mono text-xs font-medium">
-                        {product.weight}{product.weight > 0 && product.weight < 100 ? ' g' : ' kg/m'}
+                        {product.weight} Kg/KM
                     </span>
                 ) : (
                     <span className="text-slate-300 font-mono text-xs">—</span>
@@ -306,7 +306,7 @@ const ExcelProductRow = React.memo(({
             </td>
             {/* J: Weight */}
             <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-20 whitespace-nowrap">
-                {product.weight > 0 ? `${product.weight}${product.weight > 0 && product.weight < 100 ? ' g' : ''}` : '—'}
+                {product.weight > 0 ? `${product.weight} Kg/KM` : '—'}
             </td>
             {/* K: Actions */}
             <td className="px-2 text-center w-20 whitespace-nowrap">
@@ -1607,7 +1607,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                 <th className="py-2 px-2 text-right border-r border-slate-300 w-28 bg-[#f3f2f1]">G: Selling Price (₹)</th>
                                 <th className="py-2 px-1 text-center border-r border-slate-300 w-14 bg-[#f3f2f1]">H: UOM</th>
                                 <th className="py-2 px-1 text-center border-r border-slate-300 w-16 bg-[#f3f2f1]">I: Plant</th>
-                                <th className="py-2 px-2 text-right border-r border-slate-300 w-20 bg-[#f3f2f1]">J: Weight</th>
+                                <th className="py-2 px-2 text-right border-r border-slate-300 w-20 bg-[#f3f2f1]">J: Weight (Kg/KM)</th>
                                 <th className="py-2 px-1 text-center w-20 bg-[#f3f2f1]">K: Actions</th>
                             </tr>
                         </thead>
@@ -1643,7 +1643,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                 <th className="px-4 py-3 w-[11%] text-right bg-transparent text-white">SELLING PRICE</th>
                                 <th className="px-2 py-3 w-[7%] text-center bg-transparent text-white">UOM</th>
                                 <th className="px-2 py-3 w-[9%] text-center bg-transparent text-white">PLANT</th>
-                                <th className="px-3 py-3 w-[8%] text-right bg-transparent text-white">WEIGHT</th>
+                                <th className="px-3 py-3 w-[8%] text-right bg-transparent text-white">WEIGHT (Kg/KM)</th>
                                 <th className="px-3 py-3 w-[8%] text-center min-w-[85px] bg-transparent text-white">ACTIONS</th>
                             </tr>
                         </thead>

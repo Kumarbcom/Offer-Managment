@@ -71,99 +71,138 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
     }, [state]);
 
     useEffect(() => {
-        // Hydrate from IndexedDB immediately for instant render (<50ms)
         let isMounted = true;
-        idbGet<T[]>(`cache_${tableName}`).then(idbData => {
-            if (isMounted && idbData && Array.isArray(idbData) && idbData.length > 0) {
-                let cleaned = idbData;
-                if (tableName === 'quotations') {
-                    cleaned = idbData.filter((item: any) => !(item && item.id === 1 && String(item.quotationDate || item.quotation_date || '').startsWith('2026-11-18')));
-                    
-                    // Auto-sync any recent offers (>= #6448, like #6571) from local browser cache to cloud
-                    if (supabase) {
-                        const missingOffers = cleaned.filter((item: any) => item && Number(item.id) >= 6448);
-                        if (missingOffers.length > 0) {
-                            console.log(`Auto-syncing ${missingOffers.length} recent offers from IndexedDB to Supabase...`);
-                            const mapped = missingOffers.map((item: any) => {
-                                const p = mapToSupabase('quotations', item);
-                                if (Array.isArray(p.details)) {
-                                    p.details.forEach((d: any) => {
-                                        if (d && d.imageUrl && String(d.imageUrl).startsWith('data:image')) {
-                                            delete d.imageUrl;
-                                        }
-                                    });
-                                }
-                                return p;
-                            });
-                            for (let i = 0; i < mapped.length; i += 25) {
-                                supabase.from('quotations').upsert(mapped.slice(i, i + 25), { onConflict: 'id' }).catch(() => {});
-                            }
-                        }
+
+        const syncTableData = async () => {
+            // 1. Instantly retrieve from memory cache or IndexedDB (sub-50ms)
+            let cached: any[] | null = memoryCache.get(tableName) || null;
+            if (!cached || !Array.isArray(cached) || cached.length === 0) {
+                try {
+                    const idbData = await idbGet<T[]>(`cache_${tableName}`);
+                    if (idbData && Array.isArray(idbData) && idbData.length > 0) {
+                        cached = idbData;
+                        memoryCache.set(tableName, cached);
                     }
-                }
-                memoryCache.set(tableName, cleaned);
-                setState(prev => prev ?? cleaned);
+                } catch (_) {}
+            }
+
+            if (tableName === 'quotations' && cached) {
+                cached = cached.filter((item: any) => !(item && item.id === 1 && String(item.quotationDate || item.quotation_date || '').startsWith('2026-11-18')));
+            }
+
+            // Immediately display cached data (instant render, zero loading delay)
+            if (cached && cached.length > 0 && isMounted) {
+                setState(cached as T[]);
                 setIsLoading(false);
             }
-        });
 
-        // --- NO SUPABASE: use local fallbacks ---
-        if (!isSupabaseConfigured) {
-            setState(useInMemoryFallback ? inMemoryData : localData);
-            setIsLoading(false);
-            return () => { isMounted = false; };
-        }
-
-        // --- SUPABASE CONFIGURED: fetch from cloud ---
-        const fetchData = async () => {
-            if (!stateRef.current) {
-                setIsLoading(true);
+            // If Supabase is not configured, fall back to local/in-memory
+            if (!isSupabaseConfigured) {
+                if (!cached) {
+                    setState(useInMemoryFallback ? inMemoryData : localData);
+                }
+                setIsLoading(false);
+                return;
             }
-            setError(null);
 
-            // EGRESS OPTIMIZATION FOR QUOTATIONS:
-            // 1. Immediately hydrate from IndexedDB (sub-50ms render, 0 network bytes)
-            // 2. Fetch recent batch (150 quotations) to sync recent additions/modifications
-            // 3. Keep older quotations in IndexedDB so historical offers remain accessible
-            if (tableName === 'quotations') {
-                try {
-                    // 1. First fetch latest 150 offers for sub-2s initial render & latest updates
+            // Supabase is configured: perform ultra-lean delta synchronization
+            try {
+                if (!supabase) return;
+
+                // --- QUOTATIONS EGRESS OPTIMIZATION ---
+                if (tableName === 'quotations') {
+                    const cachedQuotes = (cached as any[]) || [];
+                    const maxCachedId = cachedQuotes.reduce((m, q) => Math.max(m, Number(q?.id) || 0), 0);
+
+                    // If browser already has quotation history cached (1000+ quotes)
+                    if (cachedQuotes.length >= 1000 && maxCachedId > 0) {
+                        // 1. Ultra-lean check: check highest quotation ID in DB (80 bytes egress!)
+                        const { data: topRow } = await supabase.from('quotations')
+                            .select('id')
+                            .order('id', { ascending: false })
+                            .limit(1);
+
+                        const highestRemoteId = topRow?.[0]?.id || 0;
+
+                        // Only download if new quotations were created!
+                        if (highestRemoteId > maxCachedId) {
+                            const { data: newQuotes } = await supabase.from('quotations')
+                                .select('*')
+                                .gt('id', maxCachedId)
+                                .order('id', { ascending: false });
+
+                            if (newQuotes && newQuotes.length > 0 && isMounted) {
+                                const mappedNew = newQuotes.map(q => mapFromSupabase('quotations', q));
+                                setState(prev => {
+                                    const current = prev || [];
+                                    const map = new Map<number, any>();
+                                    current.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                                    mappedNew.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                                    const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
+                                    memoryCache.set(tableName, merged);
+                                    idbSet(`cache_${tableName}`, merged);
+                                    return merged as T[];
+                                });
+                            }
+                        }
+
+                        // 2. Ultra-lean status sync: only check top 25 recent items (id, status, updated_at) ~ 1 KB
+                        const { data: recentStatuses } = await supabase.from('quotations')
+                            .select('id, status, updated_at')
+                            .order('id', { ascending: false })
+                            .limit(25);
+
+                        if (recentStatuses && recentStatuses.length > 0 && isMounted) {
+                            let statusChanged = false;
+                            const statusMap = new Map<number, string>();
+                            recentStatuses.forEach((r: any) => statusMap.set(r.id, r.status));
+
+                            setState(prev => {
+                                if (!prev) return prev;
+                                const updated = prev.map((q: any) => {
+                                    if (statusMap.has(q.id) && q.status !== statusMap.get(q.id)) {
+                                        statusChanged = true;
+                                        return { ...q, status: statusMap.get(q.id) };
+                                    }
+                                    return q;
+                                });
+                                if (statusChanged) {
+                                    memoryCache.set(tableName, updated);
+                                    idbSet(`cache_${tableName}`, updated);
+                                    return updated as T[];
+                                }
+                                return prev;
+                            });
+                        }
+
+                        if (isMounted) setIsLoading(false);
+                        return; // Finished! Over 99.9% egress saved!
+                    }
+
+                    // If local cache doesn't have quotation history yet (first time browser visits):
                     const latest = await fetchLatestQuotations(150);
                     if (latest && latest.length > 0 && isMounted) {
                         setState(prev => {
                             const current = prev || [];
                             const map = new Map<number, any>();
-                            // Keep any existing items from local cache
-                            current.forEach((item: any) => {
-                                if (item && item.id === 1 && String(item.quotationDate || item.quotation_date || '').startsWith('2026-11-18')) {
-                                    return; // Drop the temporary 0001 offer
-                                }
-                                if (item && item.id) map.set(item.id, item);
-                            });
-                            // Overwrite/insert with latest fresh items from DB
+                            current.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
                             latest.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
                             const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
                             memoryCache.set(tableName, merged);
                             idbSet(`cache_${tableName}`, merged);
                             return merged as T[];
                         });
+                        setIsLoading(false);
                     }
 
-                    // 2. Progressive background stream: ONLY download older historical quotes if not already cached in IndexedDB
-                    // If the browser already has 1,000+ quotations cached locally, DO NOT waste egress re-downloading them!
-                    const streamAllQuotations = async () => {
-                        const cachedCount = (stateRef.current?.length || memoryCache.get('quotations')?.length || 0);
-                        if (cachedCount >= 1000) {
-                            // Historical archive already cached in browser, zero egress wasted
-                            return;
-                        }
+                    // Background stream remainder once to populate local cache
+                    setTimeout(async () => {
                         let offset = 150;
                         const batchSize = 150;
                         while (isMounted) {
                             try {
                                 const olderBatch = await fetchQuotationsBatch(offset, batchSize);
                                 if (!olderBatch || olderBatch.length === 0 || !isMounted) break;
-                                
                                 setState(prev => {
                                     const current = prev || [];
                                     const map = new Map<number, any>();
@@ -174,119 +213,73 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                                     idbSet(`cache_${tableName}`, merged);
                                     return merged as T[];
                                 });
-
                                 if (olderBatch.length < batchSize) break;
                                 offset += olderBatch.length;
-                                // 500ms delay between batches
-                                await new Promise(r => setTimeout(r, 500));
-                            } catch (streamErr) {
-                                console.warn("Background stream batch error:", streamErr);
+                                await new Promise(r => setTimeout(r, 600));
+                            } catch (_) {
                                 break;
                             }
                         }
-                    };
-                    // Launch background stream
-                    setTimeout(streamAllQuotations, 600);
-                } catch (fastErr) {
-                    console.warn("Quotations sync error:", fastErr);
-                } finally {
-                    if (isMounted) {
+                    }, 1000);
+
+                    return;
+                }
+
+                // --- CUSTOMERS EGRESS OPTIMIZATION ---
+                if (tableName === 'customers') {
+                    const cachedCustomers = (cached as any[]) || [];
+                    if (cachedCustomers.length > 0) {
+                        // Check customer count via HEAD request (0 bytes body payload!)
+                        const { count: remoteCount } = await supabase.from('customers').select('id', { count: 'exact', head: true });
+                        const maxCachedId = cachedCustomers.reduce((m, c) => Math.max(m, Number(c?.id) || 0), 0);
+
+                        // Only download if new customers were added!
+                        if (remoteCount && remoteCount > cachedCustomers.length) {
+                            const { data: newCusts } = await supabase.from('customers')
+                                .select('*')
+                                .gt('id', maxCachedId)
+                                .order('id', { ascending: false });
+
+                            if (newCusts && newCusts.length > 0 && isMounted) {
+                                const mapped = newCusts.map(c => mapFromSupabase('customers', c));
+                                const merged = [...mapped, ...cachedCustomers];
+                                memoryCache.set('customers', merged);
+                                idbSet('cache_customers', merged);
+                                setState(merged as T[]);
+                            }
+                        }
+                        if (isMounted) setIsLoading(false);
+                        return; // Finished! Zero egress wasted!
+                    }
+
+                    // First time loading customers: fetch and cache locally
+                    const data = await get('customers');
+                    if (isMounted && data.length > 0) {
+                        setState(data as T[]);
+                        memoryCache.set('customers', data);
+                        idbSet('cache_customers', data);
                         setIsLoading(false);
                     }
-                }
-                return; // Finished quotation loading
-            }
-            try {
-                // EGRESS OPTIMIZATION FOR CUSTOMERS:
-                // If customers are already available in IndexedDB / in-memory cache, skip redundant full-table download
-                const hasCachedCustomers = tableName === 'customers' && (
-                    (stateRef.current && stateRef.current.length > 0) ||
-                    (memoryCache.has('customers') && (memoryCache.get('customers')?.length || 0) > 0)
-                );
-
-                let data: any[] = [];
-                if (!hasCachedCustomers) {
-                    data = await get(tableName);
-                } else {
-                    data = memoryCache.get(tableName) || stateRef.current || [];
-                    // Background sync of newly added customers (e.g. created on other devices)
-                    if (tableName === 'customers' && supabase) {
-                        // Check if cloud table is empty (e.g. fresh project migration)
-                        supabase.from('customers').select('id', { count: 'exact', head: true }).then(({ count }) => {
-                            if (count === 0 && data && data.length > 0) {
-                                console.log(`Cloud customers table is empty. Syncing ${data.length} cached customers to new Supabase project...`);
-                                const mapped = data.map(c => mapToSupabase('customers', c));
-                                for (let i = 0; i < mapped.length; i += 100) {
-                                    supabase.from('customers').upsert(mapped.slice(i, i + 100), { onConflict: 'id' }).catch(() => {});
-                                }
-                            }
-                        }).catch(() => {});
-
-                        const maxId = (data || []).reduce((max: number, c: any) => Math.max(max, Number(c?.id) || 0), 0);
-                        supabase.from('customers').select('*').gt('id', maxId).order('id', { ascending: false }).then(({ data: recent }) => {
-                            if (recent && recent.length > 0 && isMounted) {
-                                const mappedRecent = recent.map((item: any) => mapFromSupabase('customers', item));
-                                setState(prev => {
-                                    const prevList = prev || [];
-                                    const existingIds = new Set(prevList.map((item: any) => item?.id));
-                                    const freshItems = mappedRecent.filter((item: any) => item && !existingIds.has(item.id));
-                                    if (freshItems.length === 0) return prevList;
-                                    const merged = [...freshItems, ...prevList];
-                                    memoryCache.set('customers', merged);
-                                    idbSet('cache_customers', merged);
-                                    freshItems.forEach((c: any) => cacheCustomerLocally(c));
-                                    return merged as T[];
-                                });
-                            }
-                        }).catch(() => {});
-                    }
+                    return;
                 }
 
-                if (data.length === 0 && !hasCachedCustomers && !seededTables.has(tableName)) {
-                    if (tableName !== 'stockStatements' && tableName !== 'pendingSOs') {
-                        console.log(`Supabase table '${tableName}' is empty. Seeding with initial data.`);
-                        await set(tableName, [], initialData);
-                        seededTables.add(tableName);
-                        data = await get(tableName);
-                    }
-                }
-                if (isMounted && data.length > 0 && !hasCachedCustomers) {
+                // --- OTHER SMALL TABLES (users, salesPersons) ---
+                const data = await get(tableName);
+                if (isMounted && data.length > 0) {
                     setState(data as T[]);
                     memoryCache.set(tableName, data);
                     idbSet(`cache_${tableName}`, data);
-                }
-                // Do not write quotations or products to sessionStorage to prevent QuotaExceededError (5MB limit)
-                if (tableName !== 'quotations' && tableName !== 'products') {
-                    try {
-                        sessionStorage.setItem(`cache_${tableName}`, JSON.stringify(data));
-                    } catch (_) {}
-                }
-            } catch (e) {
-                console.warn(`Supabase error loading '${tableName}', retaining local/cached fallback.`, e);
-                setError(e as Error);
-                // When Supabase fails (e.g. quota limit/timeout), NEVER wipe out existing data!
-                // Attempt to hydrate from IndexedDB/sessionStorage if state is currently empty
-                if (isMounted) {
-                    if (!stateRef.current || (Array.isArray(stateRef.current) && stateRef.current.length === 0)) {
-                        idbGet<T[]>(`cache_${tableName}`).then(idbData => {
-                            if (isMounted && idbData && Array.isArray(idbData) && idbData.length > 0) {
-                                setState(idbData);
-                                memoryCache.set(tableName, idbData);
-                            } else if (tableName === 'users') {
-                                setState(localData);
-                            }
-                        }).catch(() => {
-                            if (isMounted && tableName === 'users') setState(localData);
-                        });
-                    }
-                }
-            } finally {
-                if (isMounted) {
+                    try { sessionStorage.setItem(`cache_${tableName}`, JSON.stringify(data)); } catch (_) {}
                     setIsLoading(false);
                 }
+            } catch (e) {
+                console.warn(`Supabase error syncing '${tableName}', retaining local cache:`, e);
+                setError(e as Error);
+                if (isMounted) setIsLoading(false);
             }
         };
-        fetchData();
+
+        syncTableData();
 
         // --- REAL-TIME BROADCAST & POSTGRES_CHANGES ---
         if (!supabase) return;
