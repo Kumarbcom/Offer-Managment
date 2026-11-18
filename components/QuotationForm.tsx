@@ -430,6 +430,8 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     if (userRole === 'Sales Person') {
         const me = salesPersons.find(sp => sp.name === currentUser.name);
         if (me) defaultSalesPersonId = me.id;
+    } else {
+        defaultSalesPersonId = 4; // Default to Office (ID 4) for Admin/Management so new quotes are never unallocated
     }
 
     return {
@@ -722,12 +724,14 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   }, [formData?.customerId, selectedCustomerObj, customers]);
 
   useEffect(() => {
-    if (selectedCustomerObj && selectedCustomerObj.salesPersonId && editingQuotationId === null) {
-        // Only auto-update sales person on NEW quotations when a customer is selected
-        // For existing quotations, we preserve the original sales person
-        setFormData(prev => prev ? {...prev, salesPersonId: selectedCustomerObj.salesPersonId} : null);
+    if (selectedCustomerObj && editingQuotationId === null) {
+        if (userRole !== 'Sales Person') {
+            const latestQuote = (quotations || []).find(q => q.customerId === selectedCustomerObj.id && q.salesPersonId);
+            const targetSpId = selectedCustomerObj.salesPersonId || latestQuote?.salesPersonId || 4;
+            setFormData(prev => (prev && (!prev.salesPersonId || prev.salesPersonId === 0)) ? {...prev, salesPersonId: targetSpId} : prev);
+        }
     }
-  }, [selectedCustomerObj, editingQuotationId]);
+  }, [selectedCustomerObj, editingQuotationId, userRole, quotations]);
 
   const handleRecheckPrices = useCallback(() => {
     if (!formData || !formData.details || formData.details.length === 0) return;
@@ -1356,15 +1360,29 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       setCustomerSearchTerm('');
     } else {
       cacheCustomerLocally(customer);
-      setFormData(prev => prev ? { 
-        ...prev, 
-        customerId: customer.id,
-        salesPersonId: (editingQuotationId === null && customer.salesPersonId) ? customer.salesPersonId : prev.salesPersonId
-      } : null);
+      setFormData(prev => {
+        if (!prev) return null;
+        let newSpId = prev.salesPersonId;
+        if (editingQuotationId === null) {
+          if (userRole === 'Sales Person') {
+            const me = salesPersons.find(sp => sp.name === currentUser.name);
+            newSpId = me ? me.id : (customer.salesPersonId || prev.salesPersonId);
+          } else {
+            // Find salesperson from customer or historical quotation
+            const latestQuote = (quotations || []).find(q => q.customerId === customer.id && q.salesPersonId);
+            newSpId = customer.salesPersonId || latestQuote?.salesPersonId || prev.salesPersonId || 4;
+          }
+        }
+        return {
+          ...prev,
+          customerId: customer.id,
+          salesPersonId: newSpId
+        };
+      });
       setSelectedCustomerObj(customer);
       setCustomerSearchTerm('');
     }
-  }, [isReadOnly, editingQuotationId]);
+  }, [isReadOnly, editingQuotationId, userRole, currentUser, salesPersons, quotations]);
 
   const handleNewButtonClick = () => { 
       if (isReadOnly && userRole !== 'Sales Person') return;

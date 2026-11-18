@@ -218,7 +218,17 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                       address: String(row.address || ''),
                       city: String(row.city || ''),
                       pincode: String(row.pincode || ''),
-                      salesPersonId: row.salesPersonId ? parseInt(String(row.salesPersonId), 10) : null,
+                      salesPersonId: (() => {
+                          const spRaw = row.salesPersonId ?? row.sales_person_id ?? row['Sales Person'] ?? row['salesPerson'] ?? row['SalesPersonId'];
+                          if (spRaw !== undefined && spRaw !== null && spRaw !== '') {
+                              const num = parseInt(String(spRaw), 10);
+                              if (!isNaN(num) && num > 0) return num;
+                              const str = String(spRaw).trim().toLowerCase();
+                              const found = salesPersons?.find(sp => sp.name.toLowerCase() === str || sp.name.toLowerCase().includes(str));
+                              if (found) return found.id;
+                          }
+                          return null;
+                      })(),
                       discountStructure: {
                           singleCore: parseFloat(String(row.singleCoreDiscount)) || 0,
                           multiCore: parseFloat(String(row.multiCoreDiscount)) || 0,
