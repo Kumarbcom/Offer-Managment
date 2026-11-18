@@ -78,6 +78,28 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                 let cleaned = idbData;
                 if (tableName === 'quotations') {
                     cleaned = idbData.filter((item: any) => !(item && item.id === 1 && String(item.quotationDate || item.quotation_date || '').startsWith('2026-11-18')));
+                    
+                    // Auto-sync any recent offers (>= #6448, like #6571) from local browser cache to cloud
+                    if (supabase) {
+                        const missingOffers = cleaned.filter((item: any) => item && Number(item.id) >= 6448);
+                        if (missingOffers.length > 0) {
+                            console.log(`Auto-syncing ${missingOffers.length} recent offers from IndexedDB to Supabase...`);
+                            const mapped = missingOffers.map((item: any) => {
+                                const p = mapToSupabase('quotations', item);
+                                if (Array.isArray(p.details)) {
+                                    p.details.forEach((d: any) => {
+                                        if (d && d.imageUrl && String(d.imageUrl).startsWith('data:image')) {
+                                            delete d.imageUrl;
+                                        }
+                                    });
+                                }
+                                return p;
+                            });
+                            for (let i = 0; i < mapped.length; i += 25) {
+                                supabase.from('quotations').upsert(mapped.slice(i, i + 25), { onConflict: 'id' }).catch(() => {});
+                            }
+                        }
+                    }
                 }
                 memoryCache.set(tableName, cleaned);
                 setState(prev => prev ?? cleaned);

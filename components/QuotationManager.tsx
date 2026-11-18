@@ -5,7 +5,9 @@ import { generateFormattedQuotationNumber, getQuotationSeqNum } from '../utils/q
 import { calculateTotalAmount } from '../utils/calc';
 import { ShareModal } from './ShareModal';
 import { ExcelTableColumnFilter, ChecklistOption } from './ExcelTableColumnFilter';
-import { customerCache, getCustomersByIds, cacheCustomerLocally, fetchQuotationsBatch, searchQuotationsRemote } from '../supabase';
+import { customerCache, getCustomersByIds, cacheCustomerLocally, fetchQuotationsBatch, searchQuotationsRemote, mapToSupabase } from '../supabase';
+import { supabase } from '../supabaseClient';
+import { idbGet } from '../utils/idbStorage';
 
 declare var XLSX: any;
 
@@ -604,6 +606,50 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
       alert(error instanceof Error ? error.message : 'Failed to update status.');
     }
   };
+  const [isSyncingRecent, setIsSyncingRecent] = useState(false);
+  const handleSyncRecentOffers = async () => {
+    if (!supabase) {
+      alert("Database connection not ready.");
+      return;
+    }
+    setIsSyncingRecent(true);
+    try {
+      const idbQuotes = await idbGet<Quotation[]>('cache_quotations');
+      if (!idbQuotes || idbQuotes.length === 0) {
+        alert("No local browser cache found.");
+        return;
+      }
+      const recent = idbQuotes.filter(q => q && Number(q.id) >= 6448);
+      if (recent.length === 0) {
+        alert(`Found ${idbQuotes.length} offers in browser cache, but none >= #6448.`);
+        return;
+      }
+      const mapped = recent.map(q => {
+        const p = mapToSupabase('quotations', q);
+        if (Array.isArray(p.details)) {
+          p.details.forEach((d: any) => {
+            if (d && d.imageUrl && String(d.imageUrl).startsWith('data:image')) {
+              delete d.imageUrl;
+            }
+          });
+        }
+        return p;
+      });
+      let count = 0;
+      for (let i = 0; i < mapped.length; i += 25) {
+        const batch = mapped.slice(i, i + 25);
+        const { error } = await supabase.from('quotations').upsert(batch, { onConflict: 'id' });
+        if (!error) count += batch.length;
+      }
+      alert(`🎉 Successfully synced ${count} recent offers (including #6571) directly to cloud!`);
+      window.location.reload();
+    } catch (err: any) {
+      alert("Sync error: " + (err.message || String(err)));
+    } finally {
+      setIsSyncingRecent(false);
+    }
+  };
+
   const handleExport = async () => {
     if (!filteredAndSortedQuotations || filteredAndSortedQuotations.length === 0) { alert("No data to export."); return; }
 
@@ -1045,6 +1091,17 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
               >
                 <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 <span>Export</span>
+              </button>
+
+              {/* Sync Offline Offers Button */}
+              <button
+                onClick={handleSyncRecentOffers}
+                disabled={isSyncingRecent}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                title="Sync recent offline offers (#6448 - #6571) from this computer to cloud"
+              >
+                <span className={isSyncingRecent ? "animate-spin" : ""}>🔄</span>
+                <span>{isSyncingRecent ? "Syncing..." : "Sync Recent Offers"}</span>
               </button>
 
               {/* New Quotation Button in Royal Blue */}

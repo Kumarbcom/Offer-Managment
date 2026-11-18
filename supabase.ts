@@ -56,7 +56,7 @@ const isUuid = (id: unknown): boolean => {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 };
 
-const mapToSupabase = (tableName: TableName, item: any): any => {
+export const mapToSupabase = (tableName: TableName, item: any): any => {
     if (!item) return null;
     
     // Default pass-through for tables without specific mapping
