@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
-import { getNextProductId } from '../supabase';
+import { getNextProductId, uploadProductImageToStorage } from '../supabase';
 import { isPriceOlderThanThreshold, sortPricesLatestFirst } from '../utils/priceUtils';
 
 interface ProductAddModalProps {
@@ -147,8 +147,17 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
-          setFormData(prev => ({ ...prev, imageUrl: compressedDataUrl }));
+          canvas.toBlob(async (blob) => {
+            if (blob) {
+              const url = await uploadProductImageToStorage(blob, formData.partNo || 'product');
+              if (url) {
+                setFormData(prev => ({ ...prev, imageUrl: url }));
+                return;
+              }
+            }
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            setFormData(prev => ({ ...prev, imageUrl: compressedDataUrl }));
+          }, 'image/jpeg', 0.85);
         }
       };
       img.src = event.target?.result as string;

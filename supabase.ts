@@ -926,6 +926,28 @@ export async function upsertQuotation(quotation: Quotation): Promise<Quotation> 
     }
 }
 
+// Upload product image directly to Supabase Storage Bucket to prevent base64 bloat in database
+export async function uploadProductImageToStorage(fileOrBlob: Blob | File, partNo: string): Promise<string> {
+    if (!supabase) return '';
+    try {
+        const cleanPartNo = (partNo || 'product').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const fileName = `${cleanPartNo}_${Date.now()}.jpg`;
+        const { data, error } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, fileOrBlob, { contentType: 'image/jpeg', upsert: true });
+
+        if (error) {
+            console.warn('Supabase storage upload failed:', error.message);
+            return '';
+        }
+        const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        return urlData.publicUrl || '';
+    } catch (err) {
+        console.warn('Storage upload error:', err);
+        return '';
+    }
+}
+
 // Global broadcast channel for instant multi-user synchronization across devices & browsers
 export const liveQuotationSyncChannel = supabase ? supabase.channel('shared-live-quotations') : null;
 if (liveQuotationSyncChannel) {

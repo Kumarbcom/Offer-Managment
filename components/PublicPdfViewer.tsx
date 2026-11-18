@@ -107,15 +107,20 @@ export const PublicPdfViewer: React.FC<PublicPdfViewerProps> = ({
             try {
                 if (!supabase) throw new Error("Supabase client not initialized");
 
-                // Fetch requested Quotation
+                // Fetch requested Quotation using maybeSingle to prevent PGRST116 crash
                 const { data: qData, error: qError } = await supabase
                     .from('quotations')
                     .select('*')
                     .eq('id', quotationId)
-                    .single();
+                    .maybeSingle();
 
                 if (qError) throw qError;
-                if (!qData) throw new Error(`Quotation #${quotationId} not found.`);
+                if (!qData) {
+                    if (initialQ) {
+                        return; // Keep showing the locally hydrated quotation
+                    }
+                    throw new Error(`Quotation #${quotationId} could not be found. Please check the quotation link.`);
+                }
 
                 const fetchedQuotation = mapFromSupabase('quotations', qData) as Quotation;
 
