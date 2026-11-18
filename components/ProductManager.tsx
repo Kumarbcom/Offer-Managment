@@ -332,6 +332,42 @@ const ExcelProductRow = React.memo(({
 });
 
 
+const formatToDDMMYYYY = (val: any): string => {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const [y, m, d] = s.split('T')[0].split('-');
+    return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+  }
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return s;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+const parseToYYYYMMDD = (val: any): string => {
+  if (!val) return '';
+  if (typeof val === 'number' && val > 1) {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+  }
+  const s = String(val).trim();
+  const ddmmyyyyMatch = s.match(/^(\d{1,2})[-\/\.](\d{1,2})[-\/\.](\d{4})$/);
+  if (ddmmyyyyMatch) {
+    const day = ddmmyyyyMatch[1].padStart(2, '0');
+    const month = ddmmyyyyMatch[2].padStart(2, '0');
+    const year = ddmmyyyyMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  return s;
+};
+
 export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) => {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -523,11 +559,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   // Helper to format products for export: ID, Image, Part No, Description, HSN Code, UOM, Plant, Weight, then Price table From date wise
   const exportProductsToExcel = (productsToExport: Product[], filename: string) => {
     const dataToExport = productsToExport.flatMap(product => {
-      // Sort price table From date wise (ascending by validFrom date)
+      // Sort price table From date wise: LATEST DATE 1ST (descending by validFrom date)
       const sortedPrices = [...(product.prices || [])].sort((a, b) => {
         const dateA = new Date(a.validFrom).getTime() || 0;
         const dateB = new Date(b.validFrom).getTime() || 0;
-        return dateA - dateB;
+        return dateB - dateA;
       });
 
       if (sortedPrices.length === 0) {
@@ -543,7 +579,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           'LP (List Price)': 0,
           'SP (Special Price)': 0,
           'Valid From': '',
-          'Valid To': ''
+          'Valid Upto': ''
         }];
       }
 
@@ -558,8 +594,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         'Weight': product.weight || 0,
         'LP (List Price)': price.lp || 0,
         'SP (Special Price)': price.sp || 0,
-        'Valid From': price.validFrom || '',
-        'Valid To': price.validTo || ''
+        'Valid From': formatToDDMMYYYY(price.validFrom),
+        'Valid Upto': formatToDDMMYYYY(price.validTo)
       }));
     });
 
@@ -590,32 +626,32 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   // Generate Price Update Template with existing price and updated date
   const handleExportPriceList = async () => {
       setIsUploading(true);
-      setUploadProgress('Generating price update template with existing prices...');
+      setUploadProgress('Generating update template with existing products...');
       try {
           const allProducts = await fetchAllProductsForExport();
-          const todayDateStr = new Date().toISOString().split('T')[0];
+          const todayDateStr = formatToDDMMYYYY(new Date().toISOString().split('T')[0]);
           const dataToExport = allProducts.map(product => {
               const currentPrice = getCurrentPrice(product);
               return {
                   'ID': product.id,
+                  'Image': product.imageUrl || '',
                   'Part No': product.partNo,
                   'Description': product.description,
+                  'HSN Code': product.hsnCode || '',
                   'UOM': product.uom || '',
                   'Plant': product.plant || '',
-                  'Current LP': currentPrice ? currentPrice.lp : 0,
-                  'Current SP': currentPrice ? currentPrice.sp : 0,
-                  'Current Valid From': currentPrice ? currentPrice.validFrom : '',
-                  'New LP': '',
-                  'New SP': '',
-                  'New Valid From': todayDateStr, // defaults to today's date
-                  'New Valid To': '9999-12-31',
-                  'ImageURL': product.imageUrl || ''
+                  'Weight': product.weight || 0,
+                  'LP (List Price)': currentPrice ? currentPrice.lp : 0,
+                  'SP (Special Price)': currentPrice ? currentPrice.sp : 0,
+                  'Valid From': currentPrice && currentPrice.validFrom ? formatToDDMMYYYY(currentPrice.validFrom) : todayDateStr,
+                  'Valid Upto': currentPrice && currentPrice.validTo ? formatToDDMMYYYY(currentPrice.validTo) : '31-12-9999'
               };
           });
           const ws = XLSX.utils.json_to_sheet(dataToExport);
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, "Price_Update_Template");
-          XLSX.writeFile(wb, `Price_Update_Template_${todayDateStr}.xlsx`);
+          const dateTag = new Date().toISOString().split('T')[0];
+          XLSX.writeFile(wb, `Price_Update_Template_${dateTag}.xlsx`);
       } catch (error) {
           alert(error instanceof Error ? error.message : "Failed to export price list");
       } finally {
@@ -854,28 +890,34 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
               const worksheet = workbook.Sheets[sheetName];
               const json: any[] = XLSX.utils.sheet_to_json(worksheet);
               
-              // Identify rows with price updates or image updates
+              // Identify rows with price updates, validity updates, or image updates
               const rowsWithUpdates = json.filter(row => {
                   const desc = String(row['Description'] || '').toLowerCase();
                   if (desc.includes('cutting charge') || desc.includes('not in range')) {
                       return false;
                   }
-                  const newLP = parseFloat(row['New LP']);
-                  const newSP = parseFloat(row['New SP']);
-                  const hasPriceUpdate = (!isNaN(newLP) && newLP > 0) || (!isNaN(newSP) && newSP > 0);
-                  const hasImageUpdate = !!row['ImageURL'];
-                  return hasPriceUpdate || hasImageUpdate;
+                  const rawLP = row['LP (List Price)'] ?? row['LP'] ?? row['List Price'] ?? row['New LP'];
+                  const rawSP = row['SP (Special Price)'] ?? row['SP'] ?? row['Special Price'] ?? row['New SP'];
+                  const rawFrom = row['Valid From'] ?? row['ValidFrom'] ?? row['New Valid From'];
+                  const rawTo = row['Valid Upto'] ?? row['ValidUpto'] ?? row['Valid To'] ?? row['ValidTo'] ?? row['New Valid To'] ?? row['New Valid Upto'];
+                  const rawImg = row['Image'] ?? row['ImageURL'] ?? row['imageUrl'];
+
+                  const hasPriceUpdate = (rawLP !== undefined && rawLP !== '') || (rawSP !== undefined && rawSP !== '');
+                  const hasDateUpdate = Boolean((rawFrom !== undefined && String(rawFrom).trim()) || (rawTo !== undefined && String(rawTo).trim()));
+                  const hasImageUpdate = Boolean(rawImg !== undefined && String(rawImg).trim());
+
+                  return hasPriceUpdate || hasDateUpdate || hasImageUpdate;
               });
               
               if (rowsWithUpdates.length === 0) {
-                  alert("No valid updates found in the file. Please ensure 'New LP', 'New SP', or 'ImageURL' columns are filled.");
+                  alert("No valid rows found in the file. Please ensure 'Valid From', 'Valid Upto', 'LP', or 'SP' columns are filled.");
                   setIsUploading(false);
                   setUploadProgress('');
                   return;
               }
 
               // Collect PartNos to fetch existing products
-              const partNos = rowsWithUpdates.map(row => String(row['Part No']).trim()).filter(Boolean);
+              const partNos = rowsWithUpdates.map(row => String(row['Part No'] || row['PartNo'] || '').trim()).filter(Boolean);
               
               // Chunk requests to avoid query limits
               const CHUNK_SIZE = 100;
@@ -889,39 +931,37 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                   const productsToUpdate: Product[] = [];
                   
                   for (const product of products) {
-                      const row = rowsWithUpdates.find(r => String(r['Part No']).trim() === product.partNo);
+                      const row = rowsWithUpdates.find(r => {
+                        const pNo = String(r['Part No'] || r['PartNo'] || '').trim().toLowerCase();
+                        return pNo === product.partNo.toLowerCase() || (r['ID'] && Number(r['ID']) === product.id);
+                      });
                       if (!row) continue;
                       
-                      const newLP = parseFloat(row['New LP']) || 0;
-                      const newSP = parseFloat(row['New SP']) || 0;
-                      let validFrom = row['New Valid From'];
-                      let validTo = row['New Valid To'] || '9999-12-31';
-                      
-                      // Date parsing logic for Excel formats
-                      const parseExcelDate = (excelDate: any): string => {
-                        if (!excelDate) return '';
-                        if (typeof excelDate === 'number' && excelDate > 1) {
-                          const date = new Date(Date.UTC(1900, 0, excelDate - 1));
-                          return date.toISOString().split('T')[0];
-                        }
-                        if (typeof excelDate === 'string') {
-                          const parsedDate = new Date(excelDate);
-                          if (!isNaN(parsedDate.getTime())) return parsedDate.toISOString().split('T')[0];
-                          return excelDate;
-                        }
-                        return '';
-                      };
-                      
-                      validFrom = parseExcelDate(validFrom);
-                      validTo = parseExcelDate(validTo);
-                      
-                      if (!validFrom) validFrom = new Date().toISOString().split('T')[0];
+                      const rawLP = row['LP (List Price)'] ?? row['LP'] ?? row['List Price'] ?? row['New LP'];
+                      const rawSP = row['SP (Special Price)'] ?? row['SP'] ?? row['Special Price'] ?? row['New SP'];
+                      const rawFrom = row['Valid From'] ?? row['ValidFrom'] ?? row['New Valid From'];
+                      const rawTo = row['Valid Upto'] ?? row['ValidUpto'] ?? row['Valid To'] ?? row['ValidTo'] ?? row['New Valid To'] ?? row['New Valid Upto'];
+                      const rawImg = row['Image'] ?? row['ImageURL'] ?? row['imageUrl'];
 
-                      let newPrices = product.prices;
-                      const hasPriceUpdate = (!isNaN(newLP) && newLP > 0) || (!isNaN(newSP) && newSP > 0);
+                      const parsedFrom = parseToYYYYMMDD(rawFrom);
+                      const parsedTo = parseToYYYYMMDD(rawTo);
+                      
+                      const lpNum = rawLP !== undefined && rawLP !== '' ? parseFloat(String(rawLP).replace(/,/g, '')) : NaN;
+                      const spNum = rawSP !== undefined && rawSP !== '' ? parseFloat(String(rawSP).replace(/,/g, '')) : NaN;
+
+                      let newPrices = [...(product.prices || [])];
+                      const hasPriceUpdate = (!isNaN(lpNum) && lpNum > 0) || (!isNaN(spNum) && spNum > 0);
+
                       if (hasPriceUpdate) {
-                          const newPriceEntry: PriceEntry = { lp: newLP, sp: newSP, validFrom, validTo };
-                          newPrices = [...product.prices, newPriceEntry];
+                          const validFrom = parsedFrom || new Date().toISOString().split('T')[0];
+                          const validTo = parsedTo || '9999-12-31';
+                          const newPriceEntry: PriceEntry = { 
+                            lp: !isNaN(lpNum) ? lpNum : 0, 
+                            sp: !isNaN(spNum) ? spNum : 0, 
+                            validFrom, 
+                            validTo 
+                          };
+                          newPrices.push(newPriceEntry);
                           
                           // Sort and adjust dates
                           newPrices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
@@ -932,11 +972,28 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                               newPrices[j].validTo = nextDate.toISOString().split('T')[0];
                           }
                           newPrices[newPrices.length - 1].validTo = '9999-12-31';
+                      } else if (parsedFrom || parsedTo) {
+                          // Update ONLY validity dates of the latest price entry
+                          if (newPrices.length > 0) {
+                              const lastIdx = newPrices.length - 1;
+                              newPrices[lastIdx] = {
+                                  ...newPrices[lastIdx],
+                                  validFrom: parsedFrom || newPrices[lastIdx].validFrom,
+                                  validTo: parsedTo || newPrices[lastIdx].validTo
+                              };
+                          } else {
+                              newPrices = [{
+                                  lp: 0,
+                                  sp: 0,
+                                  validFrom: parsedFrom || new Date().toISOString().split('T')[0],
+                                  validTo: parsedTo || '9999-12-31'
+                              }];
+                          }
                       }
                       
                       let imageUrl = product.imageUrl;
-                      if (row['ImageURL'] !== undefined) {
-                          imageUrl = String(row['ImageURL']).trim();
+                      if (rawImg !== undefined && String(rawImg).trim()) {
+                          imageUrl = String(rawImg).trim();
                       }
                       
                       productsToUpdate.push({ ...product, prices: newPrices, imageUrl });
