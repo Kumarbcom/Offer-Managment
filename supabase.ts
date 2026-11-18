@@ -1294,7 +1294,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
             if (!sanitized) {
                 const { data } = await supabase
                     .from('products')
-                    .select('id,partNo,description,uom,weight,hsn_code,prices')
+                    .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
                     .order('id', { ascending: false })
                     .limit(30);
                 return (data || []).map(item => mapFromSupabase('products', item));
@@ -1312,7 +1312,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
 
             const { data: exactData, error: exactErr } = await supabase
                 .from('products')
-                .select('id,partNo,description,uom,weight,hsn_code,prices')
+                .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
                 .in('partNo', candidates)
                 .limit(10);
 
@@ -1324,7 +1324,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
             try {
                 const { data: partData, error: partErr } = await supabase
                     .from('products')
-                    .select('id,partNo,description,uom,weight,hsn_code,prices')
+                    .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
                     .ilike('partNo', sanitized + '%')
                     .limit(35);
 
@@ -1341,7 +1341,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
                 try {
                     const { data: strippedData } = await supabase
                         .from('products')
-                        .select('id,partNo,description,uom,weight,hsn_code,prices')
+                        .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
                         .ilike('partNo', stripped + '%')
                         .limit(25);
                     if (strippedData) {
@@ -1355,7 +1355,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
                 try {
                     const { data: descData } = await supabase
                         .from('products')
-                        .select('id,partNo,description,uom,weight,hsn_code,prices')
+                        .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
                         .ilike('description', '%' + sanitized + '%')
                         .limit(35);
 
@@ -1372,7 +1372,7 @@ export async function searchProducts(term: string): Promise<Product[]> {
                     try {
                         const { data: umlautData } = await supabase
                             .from('products')
-                            .select('id,partNo,description,uom,weight,hsn_code,prices')
+                            .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
                             .ilike('description', '%' + umlautTerm + '%')
                             .limit(35);
                         if (umlautData) {
