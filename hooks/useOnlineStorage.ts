@@ -118,9 +118,14 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                         });
                     }
 
-                    // 2. Progressive background stream: load all remaining historical quotations in batches of 150
-                    // This brings in all ~4,045 historical offers cleanly without timing out PostgreSQL
+                    // 2. Progressive background stream: ONLY download older historical quotes if not already cached in IndexedDB
+                    // If the browser already has 1,000+ quotations cached locally, DO NOT waste egress re-downloading them!
                     const streamAllQuotations = async () => {
+                        const cachedCount = (stateRef.current?.length || memoryCache.get('quotations')?.length || 0);
+                        if (cachedCount >= 1000) {
+                            // Historical archive already cached in browser, zero egress wasted
+                            return;
+                        }
                         let offset = 150;
                         const batchSize = 150;
                         while (isMounted) {
@@ -141,8 +146,8 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
 
                                 if (olderBatch.length < batchSize) break;
                                 offset += olderBatch.length;
-                                // 350ms delay between batches so UI stays silky smooth
-                                await new Promise(r => setTimeout(r, 350));
+                                // 500ms delay between batches
+                                await new Promise(r => setTimeout(r, 500));
                             } catch (streamErr) {
                                 console.warn("Background stream batch error:", streamErr);
                                 break;
