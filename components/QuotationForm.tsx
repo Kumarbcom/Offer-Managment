@@ -353,6 +353,33 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Track window/tab focus time to prevent auto-selecting text on tab/screen switch
+  const lastWindowFocusRef = useRef<number>(0);
+  useEffect(() => {
+    const handleWinFocus = () => {
+      lastWindowFocusRef.current = Date.now();
+    };
+    window.addEventListener('focus', handleWinFocus, true);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        lastWindowFocusRef.current = Date.now();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility, true);
+    return () => {
+      window.removeEventListener('focus', handleWinFocus, true);
+      document.removeEventListener('visibilitychange', handleVisibility, true);
+    };
+  }, []);
+
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // If the window/tab just gained focus within 600ms (tab/screen switch), do NOT select text
+    if (Date.now() - lastWindowFocusRef.current < 600) {
+      return;
+    }
+    e.target.select();
+  };
+
   // Update document title for printing to set default PDF filename
   useEffect(() => {
     if (previewMode !== 'none' && formData && selectedCustomerObj) {
@@ -2479,7 +2506,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     value={item.moq} 
                                     onChange={e => handleItemChange(index, 'moq', parseInt(e.target.value) || 0)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'moq')}
-                                    onFocus={(e) => e.target.select()}
+                                    onFocus={handleInputFocus}
                                     className={`w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black ${hasMoqDiff ? 'bg-amber-50 font-bold border-amber-300' : ''}`} 
                                     disabled={isReadOnly}
                                 />
@@ -2498,7 +2525,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     value={item.req} 
                                     onChange={e => handleItemChange(index, 'req', parseInt(e.target.value) || 0)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'req')}
-                                    onFocus={(e) => e.target.select()}
+                                    onFocus={handleInputFocus}
                                     className={`w-12 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black ${hasReqDiff ? 'bg-amber-50 font-bold border-amber-300' : ''}`} 
                                     disabled={isReadOnly}
                                 />
@@ -2536,7 +2563,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     value={item.discount} 
                                     onChange={e => handleItemChange(index, 'discount', e.target.value)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'discount')}
-                                    onFocus={(e) => e.target.select()}
+                                    onFocus={handleInputFocus}
                                     className={`w-10 p-0.5 text-center h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs ${limitExceeded ? 'bg-red-500 text-white print:bg-transparent print:text-black font-bold' : hasDiscountDiff ? 'bg-amber-50 font-bold border-amber-300 text-black' : 'text-black'}`}
                                     disabled={isReadOnly}
                                 />
@@ -2574,7 +2601,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     value={item.stockStatus} 
                                     onChange={e => handleItemChange(index, 'stockStatus', e.target.value)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'stockStatus')}
-                                    onFocus={(e) => e.target.select()}
+                                    onFocus={handleInputFocus}
                                     className="w-16 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={isReadOnly}
                                 />
@@ -2599,7 +2626,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                             value={item.airFreightDetails?.weightPerMtr || 0} 
                                             onChange={e => handleItemChange(index, 'airFreightDetails.weightPerMtr', parseFloat(e.target.value) || 0)} 
                                             onKeyDown={(e) => handleGridKeyDown(e, index, 'airWeight')}
-                                            onFocus={(e) => e.target.select()}
+                                            onFocus={handleInputFocus}
                                             className="w-full p-0.5 text-right border-transparent hover:border-slate-300 focus:border-blue-500 rounded text-xs text-black" 
                                             title="Weight (kg/m) for calculation"
                                         />
@@ -2622,7 +2649,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                     value={item.airFreightDetails?.airFreightLeadTime || ''} 
                                     onChange={e => handleItemChange(index, 'airFreightDetails.airFreightLeadTime', e.target.value)} 
                                     onKeyDown={(e) => handleGridKeyDown(e, index, 'airLeadTime')}
-                                    onFocus={(e) => e.target.select()}
+                                    onFocus={handleInputFocus}
                                     className="w-20 p-0.5 h-6 border-transparent hover:border-slate-300 focus:border-blue-500 rounded disabled:bg-slate-100 text-xs text-black" 
                                     disabled={!item.airFreight || isReadOnly}
                                 />

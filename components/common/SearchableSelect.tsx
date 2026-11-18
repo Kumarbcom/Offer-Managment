@@ -193,8 +193,7 @@ export const SearchableSelect = <T extends Record<string, any>,>(
         className="w-full h-full px-2 py-1 pr-6 text-xs border border-transparent hover:border-gray-300 focus:border-gray-300 focus:outline-none bg-transparent truncate disabled:cursor-not-allowed"
         value={searchTerm}
         onChange={handleInputChange}
-        onFocus={(e) => {
-          e.target.select();
+        onFocus={() => {
           handleFocus();
         }}
         onKeyDown={handleKeyDown}
