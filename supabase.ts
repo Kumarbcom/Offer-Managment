@@ -831,7 +831,9 @@ export async function upsertQuotation(quotation: Quotation): Promise<Quotation> 
                 
             if (maxError) throw new Error(parseSupabaseError(maxError, "Failed to fetch max ID"));
             
-            const currentMaxId = maxData && maxData.length > 0 ? maxData[0].id : 0;
+            const dbMax = maxData && maxData.length > 0 ? Number(maxData[0].id) : 0;
+            // Baseline continuity: Ensure quotation ID continues seamlessly from the previous project (minimum 6562 -> sequence 4200)
+            const currentMaxId = Math.max(dbMax, 6562);
             const nextId = currentMaxId + 1;
             
             // 2. Try to strictly INSERT with this new ID

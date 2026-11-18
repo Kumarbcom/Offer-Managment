@@ -2206,7 +2206,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                             <span className="truncate" title={(formData?.id && formData.id > 0) ? generateFormattedQuotationNumber(formData, quotations || []) : 'New offer (Latest offer number will be allocated on save)'}>
                                 {(formData?.id && formData.id > 0) 
                                     ? generateFormattedQuotationNumber(formData, quotations || []) 
-                                    : `New (Next: #${((quotations || []).reduce((max, q) => Math.max(max, q.id || 0), 0) + 1)})`}
+                                    : `New (Next: #${Math.max(((quotations || []).reduce((max, q) => Math.max(max, q.id || 0), 0) + 1), 6563)})`}
                             </span>
                             {formData?.id && formData.id > 0 && !isReadOnly && (
                                 <button

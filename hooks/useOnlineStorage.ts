@@ -75,8 +75,12 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
         let isMounted = true;
         idbGet<T[]>(`cache_${tableName}`).then(idbData => {
             if (isMounted && idbData && Array.isArray(idbData) && idbData.length > 0) {
-                memoryCache.set(tableName, idbData);
-                setState(prev => prev ?? idbData);
+                let cleaned = idbData;
+                if (tableName === 'quotations') {
+                    cleaned = idbData.filter((item: any) => !(item && item.id === 1 && String(item.quotationDate || item.quotation_date || '').startsWith('2026-11-18')));
+                }
+                memoryCache.set(tableName, cleaned);
+                setState(prev => prev ?? cleaned);
                 setIsLoading(false);
             }
         });
@@ -108,7 +112,12 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                             const current = prev || [];
                             const map = new Map<number, any>();
                             // Keep any existing items from local cache
-                            current.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
+                            current.forEach((item: any) => {
+                                if (item && item.id === 1 && String(item.quotationDate || item.quotation_date || '').startsWith('2026-11-18')) {
+                                    return; // Drop the temporary 0001 offer
+                                }
+                                if (item && item.id) map.set(item.id, item);
+                            });
                             // Overwrite/insert with latest fresh items from DB
                             latest.forEach((item: any) => { if (item && item.id) map.set(item.id, item); });
                             const merged = Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
