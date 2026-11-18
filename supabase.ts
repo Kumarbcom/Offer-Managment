@@ -738,16 +738,17 @@ export async function getProductsPaginated(options: any) {
         .range(offset, offset + pageLimit - 1);
     
     if (activeFilters.universal) {
-        const pattern = `%${activeFilters.universal.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-        query = query.or(`partNo.ilike."${pattern}",description.ilike."${pattern}"`);
+        const cleanTerm = activeFilters.universal.replace(/[%_\*]/g, '').trim();
+        const pattern = `%${cleanTerm}%`;
+        query = query.or(`partNo.ilike.${pattern},description.ilike.${pattern}`);
     } else {
         if (activeFilters.partNo) {
-            const pattern = `%${activeFilters.partNo.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-            query = query.ilike('partNo', pattern);
+            const cleanPart = activeFilters.partNo.replace(/[%_\*]/g, '').trim();
+            query = query.ilike('partNo', `%${cleanPart}%`);
         }
         if (activeFilters.description) {
-            const pattern = `%${activeFilters.description.replace(/\*/g, '%').replace(/\./g, '_')}%`;
-            query = query.ilike('description', pattern);
+            const cleanDesc = activeFilters.description.replace(/[%_\*]/g, '').trim();
+            query = query.ilike('description', `%${cleanDesc}%`);
         }
     }
 
