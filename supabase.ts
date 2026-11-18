@@ -725,6 +725,24 @@ export async function getNextCustomerId(): Promise<number> {
     }
 }
 
+export function buildFlexibleSearchRegex(input: string): string {
+    if (!input || !input.trim()) return '';
+    const orBranches = input.split('*').map(b => b.trim()).filter(Boolean);
+    if (orBranches.length === 0) return '';
+    
+    const branchPatterns = orBranches.map(branch => {
+        let res = branch.replace(/[+?^${}()|[\]\\]/g, '\\$&');
+        res = res.replace(/(\d+)[.,](\d+)/g, '$1[.,]$2');
+        res = res.replace(/(\d+)\s*([a-zA-Z]+)/g, '$1\\s*$2');
+        res = res.replace(/([a-zA-Z]+)\s*(\d+)/g, '$1\\s*$2');
+        res = res.replace(/[oöOÖ]/g, '[oöOÖ]');
+        res = res.replace(/\s+/g, '\\s+');
+        return res;
+    });
+
+    return branchPatterns.length === 1 ? branchPatterns[0] : '(' + branchPatterns.join('|') + ')';
+}
+
 export async function getProductsPaginated(options: any) { 
     if (!supabase) throw new Error("Supabase client not initialized");
     const { pageLimit, startAfterDoc, sortBy, sortOrder, filters } = options;
@@ -738,17 +756,26 @@ export async function getProductsPaginated(options: any) {
         .range(offset, offset + pageLimit - 1);
     
     if (activeFilters.universal) {
-        const cleanTerm = activeFilters.universal.replace(/[%_\*]/g, '').trim();
-        const pattern = `%${cleanTerm}%`;
-        query = query.or(`partNo.ilike.${pattern},description.ilike.${pattern}`);
+        const pattern = buildFlexibleSearchRegex(activeFilters.universal);
+        if (pattern) {
+            query = query.or(`partNo.imatch.${pattern},description.imatch.${pattern}`);
+        }
     } else {
         if (activeFilters.partNo) {
-            const cleanPart = activeFilters.partNo.replace(/[%_\*]/g, '').trim();
-            query = query.ilike('partNo', `%${cleanPart}%`);
+            if (activeFilters.partNo.includes('*')) {
+                const branches = activeFilters.partNo.split('*').map((b: string) => b.trim().replace(/[%_]/g, '')).filter(Boolean);
+                const orPattern = branches.map((b: string) => `partNo.ilike.%${b}%`).join(',');
+                if (orPattern) query = query.or(orPattern);
+            } else {
+                const cleanPart = activeFilters.partNo.replace(/[%_\*]/g, '').trim();
+                query = query.ilike('partNo', `%${cleanPart}%`);
+            }
         }
         if (activeFilters.description) {
-            const cleanDesc = activeFilters.description.replace(/[%_\*]/g, '').trim();
-            query = query.ilike('description', `%${cleanDesc}%`);
+            const pattern = buildFlexibleSearchRegex(activeFilters.description);
+            if (pattern) {
+                query = query.filter('description', 'imatch', pattern);
+            }
         }
     }
 
@@ -1284,11 +1311,17 @@ export async function searchProducts(term: string): Promise<Product[]> {
     // 2. Local instant match from cached products (0ms response)
     const localMatches: Product[] = [];
     if (cleanTerm) {
+        let flexRegex: RegExp | null = null;
+        try {
+            const pat = buildFlexibleSearchRegex(cleanTerm);
+            if (pat) flexRegex = new RegExp(pat, 'i');
+        } catch (_) {}
+
         const words = cleanTerm.toLowerCase().split(/\s+/).filter(Boolean);
         for (const p of productCacheByPartNo.values()) {
             const pNo = (p.partNo || '').toLowerCase();
             const desc = (p.description || '').toLowerCase();
-            if (words.every(w => pNo.includes(w) || desc.includes(w))) {
+            if ((flexRegex && (flexRegex.test(desc) || flexRegex.test(pNo))) || words.every(w => pNo.includes(w) || desc.includes(w))) {
                 localMatches.push(p);
                 if (localMatches.length >= 50) break;
             }
@@ -1366,33 +1399,36 @@ export async function searchProducts(term: string): Promise<Product[]> {
                 } catch {}
             }
 
-            // PRIORITY 3: If fewer than 25 results, search description
+            // PRIORITY 3: If fewer than 25 results, search description with flexible regex (e.g. 3G2.5, 3G2,5, 3 G 2.5)
             if (combined.size < 25) {
-                try {
-                    const { data: descData } = await supabase
-                        .from('products')
-                        .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
-                        .ilike('description', '%' + sanitized + '%')
-                        .limit(35);
-
-                    if (descData) {
-                        descData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
-                    }
-                } catch (dErr) {
-                    console.warn("Description search skipped:", dErr);
-                }
-
-                // If user typed OELFLEX or OLFLEX, check with ÖLFLEX too
-                if (/o/i.test(sanitized) && combined.size < 25) {
-                    const umlautTerm = sanitized.replace(/oe/gi, 'ö').replace(/o/gi, 'ö');
+                const flexPattern = buildFlexibleSearchRegex(cleanTerm);
+                if (flexPattern) {
                     try {
-                        const { data: umlautData } = await supabase
+                        const { data: descData } = await supabase
                             .from('products')
                             .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
-                            .ilike('description', '%' + umlautTerm + '%')
+                            .filter('description', 'imatch', flexPattern)
                             .limit(35);
-                        if (umlautData) {
-                            umlautData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
+
+                        if (descData) {
+                            descData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
+                        }
+                    } catch (dErr) {
+                        console.warn("Description regex search skipped:", dErr);
+                    }
+                }
+
+                // Standard fallback ilike if regex returned few results
+                if (combined.size < 15 && sanitized) {
+                    try {
+                        const { data: descData } = await supabase
+                            .from('products')
+                            .select('id,partNo,description,uom,weight,hsn_code,prices,image_url')
+                            .ilike('description', '%' + sanitized + '%')
+                            .limit(20);
+
+                        if (descData) {
+                            descData.forEach(p => { if (!combined.has(p.id)) combined.set(p.id, p); });
                         }
                     } catch {}
                 }

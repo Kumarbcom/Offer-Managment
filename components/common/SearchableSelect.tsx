@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { buildFlexibleSearchRegex } from '../../supabase';
 
 interface SearchableSelectProps<T> {
   options: T[];
@@ -139,22 +140,34 @@ export const SearchableSelect = <T extends Record<string, any>,>(
     }
   };
 
-  // Strictly filter options to ensure 100% correct match against user input
+  // Filter options to match against user input (supporting 3G2.5, 3G2,5, 3 G 2.5)
   const optionsToDisplay = useMemo(() => {
     if (!searchTerm || !searchTerm.trim()) return options;
+    if (isAsync) return options;
+
+    let regex: RegExp | null = null;
+    try {
+      const pat = buildFlexibleSearchRegex(searchTerm);
+      if (pat) regex = new RegExp(pat, 'i');
+    } catch (_) {}
+
     const cleanLower = searchTerm.trim().toLowerCase();
     const words = cleanLower.split(/\s+/).filter(Boolean);
 
     return options.filter(option => {
-      const disp = String(option[displayKey] || '').toLowerCase();
-      const desc = String(option.description || '').toLowerCase();
+      const disp = String(option[displayKey] || '');
+      const desc = String(option.description || '');
+      if (regex && (regex.test(disp) || regex.test(desc))) return true;
+
+      const dispL = disp.toLowerCase();
+      const descL = desc.toLowerCase();
       const city = String(option.city || '').toLowerCase();
       const address = String(option.address || '').toLowerCase();
       const pincode = String(option.pincode || '').toLowerCase();
       const idStr = String(option[idKey] || '');
-      return words.every(w => disp.includes(w) || desc.includes(w) || city.includes(w) || address.includes(w) || pincode.includes(w) || idStr.includes(w));
+      return words.every(w => dispL.includes(w) || descL.includes(w) || city.includes(w) || address.includes(w) || pincode.includes(w) || idStr.includes(w));
     });
-  }, [options, searchTerm, displayKey, idKey]);
+  }, [options, searchTerm, displayKey, idKey, isAsync]);
 
   // Keep highlighted index in bounds
   useEffect(() => {
