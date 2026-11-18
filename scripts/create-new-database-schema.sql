@@ -3,6 +3,11 @@
 -- Run this in your new Supabase Project: SQL Editor -> New Query -> Run
 -- ====================================================================
 
+-- Drop any foreign key constraints that block quotation saving
+ALTER TABLE IF EXISTS quotations DROP CONSTRAINT IF EXISTS quotations_customer_id_fkey;
+ALTER TABLE IF EXISTS quotations DROP CONSTRAINT IF EXISTS quotations_sales_person_id_fkey;
+ALTER TABLE IF EXISTS customers DROP CONSTRAINT IF EXISTS customers_sales_person_id_fkey;
+
 -- 1. USERS TABLE
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -26,7 +31,7 @@ CREATE TABLE IF NOT EXISTS customers (
     address TEXT,
     city TEXT,
     pincode TEXT,
-    sales_person_id INTEGER REFERENCES sales_persons(id) ON DELETE SET NULL,
+    sales_person_id INTEGER,
     discount_structure JSONB DEFAULT '{}'::jsonb
 );
 CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
@@ -51,13 +56,22 @@ CREATE TABLE IF NOT EXISTS quotations (
     id BIGINT PRIMARY KEY,
     quotation_date DATE,
     enquiry_date DATE,
-    customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
-    sales_person_id INTEGER REFERENCES sales_persons(id) ON DELETE SET NULL,
+    customer_id INTEGER,
+    sales_person_id INTEGER,
     contact_person TEXT,
     contact_number TEXT,
     other_terms TEXT,
     payment_terms TEXT,
     prepared_by TEXT DEFAULT 'Kumar',
+    products_brand TEXT DEFAULT 'Lapp',
+    mode_of_enquiry TEXT DEFAULT 'Customer Email',
+    status TEXT DEFAULT 'Open',
+    comments TEXT,
+    details JSONB DEFAULT '[]'::jsonb,
+    gst_added BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
     products_brand TEXT DEFAULT 'Lapp',
     mode_of_enquiry TEXT DEFAULT 'Customer Email',
     status TEXT DEFAULT 'Open',

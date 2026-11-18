@@ -180,6 +180,17 @@ export const useOnlineStorage = <T extends {id?: number | string, name?: string}
                     data = memoryCache.get(tableName) || stateRef.current || [];
                     // Background sync of newly added customers (e.g. created on other devices)
                     if (tableName === 'customers' && supabase) {
+                        // Check if cloud table is empty (e.g. fresh project migration)
+                        supabase.from('customers').select('id', { count: 'exact', head: true }).then(({ count }) => {
+                            if (count === 0 && data && data.length > 0) {
+                                console.log(`Cloud customers table is empty. Syncing ${data.length} cached customers to new Supabase project...`);
+                                const mapped = data.map(c => mapToSupabase('customers', c));
+                                for (let i = 0; i < mapped.length; i += 100) {
+                                    supabase.from('customers').upsert(mapped.slice(i, i + 100), { onConflict: 'id' }).catch(() => {});
+                                }
+                            }
+                        }).catch(() => {});
+
                         const maxId = (data || []).reduce((max: number, c: any) => Math.max(max, Number(c?.id) || 0), 0);
                         supabase.from('customers').select('*').gt('id', maxId).order('id', { ascending: false }).then(({ data: recent }) => {
                             if (recent && recent.length > 0 && isMounted) {

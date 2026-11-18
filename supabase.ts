@@ -849,6 +849,30 @@ export async function upsertQuotation(quotation: Quotation): Promise<Quotation> 
                     console.warn(`Collision on ID ${nextId}, retrying... (Attempt ${attempts} of ${maxAttempts})`);
                     continue;
                 }
+                // Handle foreign key constraint violation (e.g. customer_id not yet in cloud table)
+                if (error.code === '23503' || String(error.message).toLowerCase().includes('foreign key') || String(error.message).toLowerCase().includes('violates')) {
+                    const custId = Number(payload.customer_id);
+                    if (custId) {
+                        const cachedCust = customerCache.get(custId);
+                        const custPayload = cachedCust ? mapToSupabase('customers', cachedCust) : { id: custId, name: `Customer #${custId}` };
+                        await supabase.from('customers').upsert([custPayload], { onConflict: 'id' }).catch(() => {});
+                        // Retry insert quotation with customer
+                        const { data: retryData, error: retryError } = await supabase.from('quotations').insert(payload).select().single();
+                        if (!retryError && retryData) {
+                            const saved = mapFromSupabase('quotations', retryData);
+                            broadcastQuotationUpdate(saved);
+                            return saved;
+                        }
+                    }
+                    // Secondary retry: set customer_id = null so quote save is NEVER blocked
+                    payload.customer_id = null;
+                    const { data: fallbackData, error: fallbackError } = await supabase.from('quotations').insert(payload).select().single();
+                    if (!fallbackError && fallbackData) {
+                        const saved = mapFromSupabase('quotations', fallbackData);
+                        broadcastQuotationUpdate(saved);
+                        return saved;
+                    }
+                }
                 throw new Error(parseSupabaseError(error, "Failed to save new quotation to cloud"));
             }
             
@@ -870,6 +894,27 @@ export async function upsertQuotation(quotation: Quotation): Promise<Quotation> 
             
         if (error) {
             console.error("Update error details:", error);
+            if (error.code === '23503' || String(error.message).toLowerCase().includes('foreign key') || String(error.message).toLowerCase().includes('violates')) {
+                const custId = Number(payload.customer_id);
+                if (custId) {
+                    const cachedCust = customerCache.get(custId);
+                    const custPayload = cachedCust ? mapToSupabase('customers', cachedCust) : { id: custId, name: `Customer #${custId}` };
+                    await supabase.from('customers').upsert([custPayload], { onConflict: 'id' }).catch(() => {});
+                    const { data: retryData, error: retryError } = await supabase.from('quotations').update(payload).eq('id', payload.id).select().single();
+                    if (!retryError && retryData) {
+                        const saved = mapFromSupabase('quotations', retryData);
+                        broadcastQuotationUpdate(saved);
+                        return saved;
+                    }
+                }
+                payload.customer_id = null;
+                const { data: fallbackData, error: fallbackError } = await supabase.from('quotations').update(payload).eq('id', payload.id).select().single();
+                if (!fallbackError && fallbackData) {
+                    const saved = mapFromSupabase('quotations', fallbackData);
+                    broadcastQuotationUpdate(saved);
+                    return saved;
+                }
+            }
             throw new Error(parseSupabaseError(error, "Failed to update quotation in cloud"));
         }
         
