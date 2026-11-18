@@ -2,9 +2,9 @@
 // This avoids ESM dependency resolution issues (like AuthClient null) in browser environments.
 const globalSupabase = (window as any).supabase;
 
-const supabaseUrl = 'https://hrvjlqqldbgzlvqavwwl.supabase.co';
-// Publishable key for project hrvjlqqldbgzlvqavwwl
-const supabaseAnonKey = 'sb_publishable_zVgpGYf029VcVG_ae0hv8w_yyGUtil8';
+const supabaseUrl = 'https://jzdpbaornpkrgwwelvqa.supabase.co';
+// Publishable key for project jzdpbaornpkrgwwelvqa (enquiry@siddhikabel.com)
+const supabaseAnonKey = 'sb_publishable_GeFTcwQrbVoqOz0huLdOaA_aghUoxzn';
 
 let client = null;
 
