@@ -525,8 +525,23 @@ export async function set<T extends { id?: number | string, name?: string }>(tab
                 return payload;
             });
 
-            const { error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey });
-            if (error) throw new Error(parseSupabaseError(error, `Failed to upsert batch to ${supabaseTableName}`));
+            if (tableName === 'users') {
+                for (const userItem of mappedBatch) {
+                    if (userItem.id) {
+                        const { error } = await supabase.from(supabaseTableName).upsert(userItem, { onConflict: 'id' });
+                        if (error) {
+                            const { error: updErr } = await supabase.from(supabaseTableName).update(userItem).eq('id', userItem.id);
+                            if (updErr) throw new Error(parseSupabaseError(updErr, `Failed to update user ${userItem.name}`));
+                        }
+                    } else {
+                        const { error: insErr } = await supabase.from(supabaseTableName).insert(userItem);
+                        if (insErr) throw new Error(parseSupabaseError(insErr, `Failed to insert user ${userItem.name}`));
+                    }
+                }
+            } else {
+                const { error } = await supabase.from(supabaseTableName).upsert(mappedBatch, { onConflict: primaryKey });
+                if (error) throw new Error(parseSupabaseError(error, `Failed to upsert batch to ${supabaseTableName}`));
+            }
         }
     }
 }
