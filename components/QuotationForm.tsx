@@ -1218,20 +1218,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           }
       }
       
-      // Auto-enrich any items missing an imageUrl from productImageMap or fetchedProducts before saving
+      // DATABASE DISK & EGRESS OPTIMIZATION:
+      // Strip heavy base64 strings from quotation items before saving to database.
+      // Images are dynamically enriched on-the-fly from the product catalog in memory,
+      // so storing redundant 50KB-100KB base64 strings inside 4,200 quotation JSONs was bloating DB to 500MB!
       if (quotationToSave.details && quotationToSave.details.length > 0) {
           quotationToSave.details = quotationToSave.details.map(d => {
-              if (d.imageUrl) return d;
-              const cleanP = (d.partNo || '').trim();
-              const unpadded = cleanP.replace(/^0+/, '');
-              const resolved = (d.productId ? productImageMap.get(String(d.productId)) : undefined) ||
-                               (cleanP ? productImageMap.get(cleanP) : undefined) ||
-                               (cleanP ? productImageMap.get(cleanP.toLowerCase()) : undefined) ||
-                               (unpadded ? productImageMap.get(unpadded) : undefined) ||
-                               (unpadded ? productImageMap.get(unpadded.toLowerCase()) : undefined) ||
-                               (d.productId ? fetchedProducts.get(d.productId)?.imageUrl : undefined);
-              if (resolved) {
-                  return { ...d, imageUrl: resolved };
+              if (d.imageUrl && d.imageUrl.startsWith('data:image')) {
+                  const { imageUrl, ...rest } = d;
+                  return rest;
               }
               return d;
           });
