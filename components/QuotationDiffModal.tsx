@@ -62,12 +62,13 @@ export const QuotationDiffModal: React.FC<QuotationDiffModalProps> = ({
         @media print {
           @page {
             size: A4 landscape !important;
-            margin: 6mm 8mm !important;
+            margin: 4mm 6mm !important;
           }
           html, body {
             overflow: visible !important;
             height: auto !important;
             background: white !important;
+            font-size: 8pt !important;
           }
           body * {
             visibility: hidden !important;
@@ -110,6 +111,7 @@ export const QuotationDiffModal: React.FC<QuotationDiffModalProps> = ({
             overflow: visible !important;
             max-height: none !important;
             height: auto !important;
+            padding: 0 !important;
           }
           .no-print-diff {
             display: none !important;
@@ -141,25 +143,28 @@ export const QuotationDiffModal: React.FC<QuotationDiffModalProps> = ({
         className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden my-auto"
       >
         {/* Header Bar */}
-        <header className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3 sm:p-4 flex items-center justify-between shrink-0 shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-600/40 border border-indigo-400/30 rounded-lg shadow-inner">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-indigo-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <header className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-2.5 sm:p-3 flex items-center justify-between shrink-0 shadow-md">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-indigo-600/40 border border-indigo-400/30 rounded-lg shadow-inner">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-indigo-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m-3-3h6" />
               </svg>
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-black tracking-wide uppercase text-white">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm font-black tracking-wide uppercase text-white">
                   Quotation Revision Variance Analysis
                 </h2>
-                <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                <span className="bg-amber-400 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
                   Rev {diff.revisionNumber} vs Rev 0
                 </span>
+                <span className="text-xs text-indigo-200 font-bold ml-1">
+                  {finalQtnNo}
+                </span>
               </div>
-              <p className="text-[11px] text-slate-300">
-                Detailed comparison: Initial Offer (Rev 0) vs Final Amended Offer
+              <p className="text-[10px] text-slate-300 mt-0.5">
+                <span className="text-slate-400 font-medium">Customer:</span> <strong className="text-white font-bold">{customer?.name || 'Customer'}</strong> {customer?.city && <span className="text-slate-300">({customer.city}{customer.pincode ? ` - ${customer.pincode}` : ''})</span>} &bull; <span className="text-slate-400 font-medium">Initial Date:</span> {diff.initialDate || 'N/A'} &bull; <span className="text-slate-400 font-medium">Amended Date:</span> {diff.finalDate || 'N/A'}
               </p>
             </div>
           </div>
@@ -188,89 +193,66 @@ export const QuotationDiffModal: React.FC<QuotationDiffModalProps> = ({
         </header>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto flex-1 p-3 sm:p-5 space-y-4 bg-slate-50/50">
+        <div className="overflow-y-auto flex-1 p-2 sm:p-3 space-y-2.5 bg-slate-50/50">
           
-          {/* Metadata Card */}
-          <div className="bg-white rounded-lg p-3 sm:p-4 border border-slate-200 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Customer</span>
-              <p className="font-bold text-slate-800 text-sm">{customer?.name || 'Customer'}</p>
-              <p className="text-[11px] text-slate-500 truncate">{customer?.city ? `${customer.city} - ${customer.pincode || ''}` : ''}</p>
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Quotation Reference</span>
-              <p className="font-bold text-indigo-700 text-xs">{finalQtnNo}</p>
-              <p className="text-[10px] text-slate-500">Initial Ref: {initialQtnNo}</p>
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Offer Timeline</span>
-              <p className="text-[11px] text-slate-700">
-                <span className="font-semibold text-slate-500">Initial Date:</span> {diff.initialDate || 'N/A'}
-              </p>
-              <p className="text-[11px] text-slate-700">
-                <span className="font-semibold text-slate-500">Amended Date:</span> {diff.finalDate || 'N/A'}
-              </p>
-            </div>
-          </div>
-
-          {/* Commercial Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
+          {/* Commercial Summary Cards - Always in 1 Single Horizontal Row */}
+          <div className="grid grid-cols-4 gap-2 text-xs">
             {/* Initial Total Card */}
-            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Initial Offer (Rev 0)</span>
-              <div className="text-base sm:text-lg font-black text-slate-700 mt-1">
+            <div className="bg-white p-2 sm:p-2.5 rounded-lg border border-slate-200 shadow-2xs">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Initial Offer (Rev 0)</span>
+              <div className="text-sm sm:text-base font-black text-slate-700 mt-0.5">
                 {formatCurrency(diff.initialGrandTotal)}
               </div>
-              <p className="text-[10px] text-slate-400 mt-0.5">{diff.totalInitialItems} line items quoted</p>
+              <p className="text-[9px] text-slate-400 mt-0.5">{diff.totalInitialItems} line items quoted</p>
             </div>
 
             {/* Final Total Card */}
-            <div className="bg-white p-3 rounded-lg border border-indigo-200 bg-indigo-50/20 shadow-xs">
-              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">Final Offer (Rev {diff.revisionNumber})</span>
-              <div className="text-base sm:text-lg font-black text-indigo-950 mt-1">
+            <div className="bg-white p-2 sm:p-2.5 rounded-lg border border-indigo-200 bg-indigo-50/20 shadow-2xs">
+              <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-wider block">Final Offer (Rev {diff.revisionNumber})</span>
+              <div className="text-sm sm:text-base font-black text-indigo-950 mt-0.5">
                 {formatCurrency(diff.finalGrandTotal)}
               </div>
-              <p className="text-[10px] text-indigo-600 mt-0.5">{diff.totalFinalItems} line items quoted</p>
+              <p className="text-[9px] text-indigo-600 mt-0.5">{diff.totalFinalItems} line items quoted</p>
             </div>
 
             {/* Commercial Variance Card */}
-            <div className={`p-3 rounded-lg border shadow-xs ${
+            <div className={`p-2 sm:p-2.5 rounded-lg border shadow-2xs ${
               diff.grandTotalDelta < 0
                 ? 'bg-emerald-50/80 border-emerald-300'
                 : diff.grandTotalDelta > 0
                 ? 'bg-amber-50/80 border-amber-300'
                 : 'bg-slate-50 border-slate-200'
             }`}>
-              <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-600">Net Variance</span>
-              <div className="text-base sm:text-lg font-black mt-1">
+              <span className="text-[9px] font-bold uppercase tracking-wider block text-slate-600">Net Variance</span>
+              <div className="text-sm sm:text-base font-black mt-0.5">
                 {formatDelta(diff.grandTotalDelta)}
               </div>
-              <p className="text-[10px] font-semibold mt-0.5 text-slate-600">
+              <p className="text-[9px] font-semibold mt-0.5 text-slate-600">
                 {diff.percentageChange !== 0 ? `${diff.percentageChange > 0 ? '+' : ''}${diff.percentageChange.toFixed(2)}% overall` : 'No net change'}
               </p>
             </div>
 
             {/* Line Items Breakdown Card */}
-            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Item Modifications</span>
-              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+            <div className="bg-white p-2 sm:p-2.5 rounded-lg border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Item Modifications</span>
+              <div className="flex items-center gap-1 flex-wrap mt-0.5">
                 {diff.modifiedCount > 0 && (
-                  <span className="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                  <span className="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-1.5 py-0.5 rounded text-[9px]">
                     {diff.modifiedCount} Modified
                   </span>
                 )}
                 {diff.addedCount > 0 && (
-                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-1.5 py-0.5 rounded text-[9px]">
                     +{diff.addedCount} Added
                   </span>
                 )}
                 {diff.removedCount > 0 && (
-                  <span className="bg-rose-100 text-rose-800 border border-rose-300 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                  <span className="bg-rose-100 text-rose-800 border border-rose-300 font-bold px-1.5 py-0.5 rounded text-[9px]">
                     -{diff.removedCount} Removed
                   </span>
                 )}
                 {diff.unchangedCount > 0 && (
-                  <span className="bg-slate-100 text-slate-600 border border-slate-200 font-semibold px-1.5 py-0.5 rounded text-[10px]">
+                  <span className="bg-slate-100 text-slate-600 border border-slate-200 font-semibold px-1.5 py-0.5 rounded text-[9px]">
                     {diff.unchangedCount} Unchanged
                   </span>
                 )}
