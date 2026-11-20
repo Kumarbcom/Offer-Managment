@@ -1837,7 +1837,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
               <table className="min-w-full">
                 <thead className="sticky top-0 z-20 bg-[#f8fafc] border-b border-slate-200 shadow-2xs select-none">
                   <tr>
-                    <th className="py-3.5 px-3 w-10 text-center bg-[#f8fafc]">
+                    <th className="py-2.5 px-2 w-9 text-center bg-[#f8fafc]">
                       <input
                         type="checkbox"
                         checked={isAllSelected}
@@ -1845,40 +1845,34 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                     </th>
-                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] whitespace-nowrap" onClick={() => handleSort('id')}>
+                    <th className="py-2.5 px-2 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] whitespace-nowrap w-20" onClick={() => handleSort('id')}>
                       QUOTATION NO {sortBy === 'id' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('quotationDate')}>
+                    <th className="py-2.5 px-2 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] whitespace-nowrap w-24" onClick={() => handleSort('quotationDate')}>
                       DATE {sortBy === 'quotationDate' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('customer')}>
+                    <th className="py-2.5 px-2.5 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] min-w-[170px] max-w-[220px]" onClick={() => handleSort('customer')}>
                       CUSTOMER {sortBy === 'customer' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('contactPerson')}>
+                    <th className="py-2.5 px-2 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] w-28" onClick={() => handleSort('contactPerson')}>
                       CONTACT {sortBy === 'contactPerson' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="py-3.5 px-3 text-right text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('totalAmount')}>
+                    <th className="py-2.5 px-2.5 text-right text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] w-24 whitespace-nowrap" onClick={() => handleSort('totalAmount')}>
                       AMOUNT {sortBy === 'totalAmount' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="py-3.5 px-3 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('status')}>
+                    <th className="py-2.5 px-1.5 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] w-24 whitespace-nowrap" onClick={() => handleSort('status')}>
                       STATUS {sortBy === 'status' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="py-3.5 px-3 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">
-                      VALIDITY
-                    </th>
-                    <th className="py-3.5 px-2 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider bg-[#f8fafc]">
+                    <th className="py-2.5 px-1 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider bg-[#f8fafc] w-12 whitespace-nowrap">
                       ITEMS
                     </th>
-                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc]" onClick={() => handleSort('salesPerson')}>
+                    <th className="py-2.5 px-2 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer bg-[#f8fafc] whitespace-nowrap w-24" onClick={() => handleSort('salesPerson')}>
                       SALES PERSON {sortBy === 'salesPerson' && (sortOrder === 'asc' ? '▲' : '▼')}
                     </th>
-                    <th className="py-3.5 px-3 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider bg-[#f8fafc] min-w-[200px]">
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                        COMMENTS
-                      </span>
+                    <th className="py-2.5 px-2 text-left text-[10px] font-extrabold text-slate-600 uppercase tracking-wider bg-[#f8fafc] min-w-[130px] max-w-[180px]">
+                      COMMENTS
                     </th>
-                    <th className="sticky right-0 z-30 bg-[#f8fafc] shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] py-3 px-3 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider w-[125px]">
+                    <th className="sticky right-0 z-30 bg-[#f8fafc] shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] py-2.5 px-2 text-center text-[10px] font-extrabold text-slate-600 uppercase tracking-wider w-20">
                       ACTIONS
                     </th>
                   </tr>
@@ -1899,7 +1893,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         }`}
                       >
                         {/* Checkbox */}
-                        <td className="px-3 py-3 text-center">
+                        <td className="px-2 py-2 text-center w-9">
                           <input 
                             type="checkbox" 
                             checked={isSelected} 
@@ -1909,7 +1903,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         </td>
 
                         {/* QUOTATION NO (Clickable to open) */}
-                        <td className="px-3 py-3 text-slate-700 text-xs font-semibold whitespace-nowrap">
+                        <td className="px-2 py-2 text-slate-700 text-xs font-semibold whitespace-nowrap w-20">
                           {(() => {
                             const fullNo = generateFormattedQuotationNumber(q, quotations || []);
                             const seqNum = getQuotationSeqNum(q, quotations || []);
@@ -1929,16 +1923,16 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         </td>
 
                         {/* DATE */}
-                        <td className="px-3 py-3 text-xs text-slate-700 whitespace-nowrap font-medium">
+                        <td className="px-2 py-2 text-xs text-slate-700 whitespace-nowrap font-medium w-24">
                           {formatDisplayDate(q.quotationDate)}
                         </td>
 
                         {/* CUSTOMER (Clickable to open) */}
-                        <td className="px-3 py-3 min-w-[180px] max-w-[280px]">
+                        <td className="px-2.5 py-2 min-w-[170px] max-w-[220px]">
                           <button
                             type="button"
                             onClick={() => handleEdit(q.id)}
-                            className="text-left font-bold text-slate-900 hover:text-blue-600 transition-colors uppercase tracking-tight whitespace-normal break-words block w-full cursor-pointer leading-snug"
+                            className="text-left font-bold text-xs text-slate-800 hover:text-blue-600 transition-colors block w-full cursor-pointer leading-tight whitespace-normal break-words"
                             title={`Open Quotation: ${getCustomerName(q.customerId)}`}
                           >
                             {getCustomerName(q.customerId)}
@@ -1949,7 +1943,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         </td>
 
                         {/* CONTACT */}
-                        <td className="px-3 py-3 min-w-[130px] max-w-[180px]">
+                        <td className="px-2 py-2 w-28">
                           <p className="text-xs font-semibold text-slate-800 truncate" title={q.contactPerson || ''}>
                             {q.contactPerson || '—'}
                           </p>
@@ -1959,36 +1953,31 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         </td>
 
                         {/* AMOUNT */}
-                        <td className="px-3 py-3 text-right whitespace-nowrap font-mono font-bold text-slate-900 text-xs">
+                        <td className="px-2.5 py-2 text-right whitespace-nowrap font-mono font-bold text-slate-900 text-xs w-24">
                           ₹{amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </td>
 
                         {/* STATUS */}
-                        <td className="px-2 py-3 text-center">
+                        <td className="px-1.5 py-2 text-center w-24">
                           <StatusBadge status={getEffectiveStatus(q)} onChange={s => handleStatusChange(q.id, s)} />
                         </td>
 
-                        {/* VALIDITY */}
-                        <td className="px-3 py-3 text-center whitespace-nowrap text-xs text-slate-600 font-medium">
-                          {getValidityDate(q.quotationDate)}
-                        </td>
-
                         {/* ITEMS */}
-                        <td className="px-2 py-3 text-center text-xs font-semibold text-slate-700">
+                        <td className="px-1 py-2 text-center text-xs font-semibold text-slate-700 w-12">
                           {q.details?.length || 0}
                         </td>
 
                         {/* SALES PERSON */}
-                        <td className="px-3 py-3 min-w-[110px]">
+                        <td className="px-2 py-2 whitespace-nowrap w-24">
                           <p className="text-xs font-bold text-slate-900 truncate">
                             {getSalesPersonName(q.salesPersonId)}
                           </p>
                         </td>
 
                         {/* COMMENTS */}
-                        <td className="px-3 py-3 min-w-[160px] max-w-[210px]">
-                          <div className="flex items-start gap-2">
-                            <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 shadow-2xs">
+                        <td className="px-2 py-2 min-w-[130px] max-w-[180px]">
+                          <div className="flex items-start gap-1.5">
+                            <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5 shadow-2xs">
                               {commentCount}
                             </div>
                             <div className="min-w-0 flex-1">
@@ -1998,7 +1987,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setSelectedSidePanelQuotation(q)}
-                                className="text-[11px] text-slate-400 hover:text-blue-600 font-medium transition-colors cursor-pointer text-left block mt-0.5"
+                                className="text-[10px] text-slate-400 hover:text-blue-600 font-medium transition-colors cursor-pointer text-left block"
                               >
                                 Add comment
                               </button>
@@ -2007,10 +1996,10 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         </td>
 
                         {/* ACTIONS (Sticky so it is always visible on screen) */}
-                        <td className={`sticky right-0 z-10 px-3 py-3 text-center whitespace-nowrap shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] ${
+                        <td className={`sticky right-0 z-10 px-2 py-2 text-center whitespace-nowrap w-20 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)] ${
                           isSelected ? 'bg-blue-50' : rowIdx % 2 === 0 ? 'bg-white group-hover:bg-slate-50' : 'bg-[#fafbfe] group-hover:bg-slate-50'
                         }`}>
-                          <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
                               onClick={() => handleEdit(q.id)}

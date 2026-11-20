@@ -100,10 +100,14 @@ const statusTheme: Record<string, { border: string; bg: string; dot: string; bad
 };
 
 
+// Module-level cache for instantaneous (0ms) tab switching without loading delays
+let cachedCustomersList: Customer[] = [];
+let cachedCustomersTotalCount = 0;
+
 export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, quotations, onFilterQuotations, currentUser }) => {
-  const [displayedCustomers, setDisplayedCustomers] = useState<Customer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const [displayedCustomers, setDisplayedCustomers] = useState<Customer[]>(cachedCustomersList);
+  const [isLoading, setIsLoading] = useState(cachedCustomersList.length === 0);
+  const [totalCount, setTotalCount] = useState(cachedCustomersTotalCount);
   const [currentPage, setCurrentPage] = useState(1);
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,8 +127,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
 
   const totalPages = Math.ceil(totalCount / PAGE_LIMIT);
 
-  const fetchCustomers = useCallback(async (page: number) => {
-    setIsLoading(true);
+  const fetchCustomers = useCallback(async (page: number, showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
         const offset = (page - 1) * PAGE_LIMIT;
         const result = await getCustomersPaginated({
@@ -140,20 +144,40 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
         });
         setDisplayedCustomers(result.customers);
         setTotalCount(result.count);
+        // Cache default page 1 results for instant tab switches
+        if (page === 1 && !debouncedSearchTerm && !debouncedSearchCity && selectedSalesPersonId === 'all') {
+            cachedCustomersList = result.customers;
+            cachedCustomersTotalCount = result.count;
+        }
     } catch (error) {
-        alert(error instanceof Error ? error.message : 'Failed to fetch customers');
+        console.error('Failed to fetch customers:', error);
     } finally {
         setIsLoading(false);
     }
   }, [sortBy, sortOrder, debouncedSearchTerm, debouncedSearchCity, selectedSalesPersonId]);
   
+  const isInitialMount = useRef(true);
+
+  // Triggered when filters or sorting change
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      // If we already have cached customers and no filters, revalidate quietly in background (no spinner)
+      const hasInitialCache = cachedCustomersList.length > 0 && !debouncedSearchTerm && !debouncedSearchCity && selectedSalesPersonId === 'all';
+      fetchCustomers(1, !hasInitialCache);
+      return;
+    }
     setCurrentPage(1);
-    fetchCustomers(1);
+    fetchCustomers(1, true);
   }, [debouncedSearchTerm, debouncedSearchCity, sortBy, sortOrder, selectedSalesPersonId]);
 
+  // Triggered only when pagination page changes
+  const prevPageRef = useRef(1);
   useEffect(() => {
-    fetchCustomers(currentPage);
+    if (prevPageRef.current !== currentPage) {
+      prevPageRef.current = currentPage;
+      fetchCustomers(currentPage, true);
+    }
   }, [currentPage, fetchCustomers]);
 
 

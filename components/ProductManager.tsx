@@ -386,11 +386,15 @@ const parseToYYYYMMDD = (val: any): string => {
   return '';
 };
 
+// Module-level cache for instantaneous (0ms) product table loading
+let cachedProductsList: Product[] = [];
+let cachedProductsHasMore = true;
+
 export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) => {
-  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>(cachedProductsList);
+  const [isLoading, setIsLoading] = useState(cachedProductsList.length === 0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(cachedProductsHasMore);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -411,6 +415,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
   const [zoomedProduct, setZoomedProduct] = useState<Product | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialMount = useRef(true);
   
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [viewMode, setViewMode] = useState<'excel' | 'modern'>(() => {
@@ -434,12 +439,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     };
   }, []);
 
-  const fetchProducts = useCallback(async (isLoadMore = false) => {
+  const fetchProducts = useCallback(async (isLoadMore = false, showLoading = true) => {
     if (isLoadMore) {
         if (!hasMore || isLoadingMore) return;
         setIsLoadingMore(true);
     } else {
-        setIsLoading(true);
+        if (showLoading) setIsLoading(true);
         setCurrentPage(1);
     }
 
@@ -481,6 +486,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
             return combined;
         });
 
+        if (!isLoadMore && !searchTerm && !searchDescription) {
+            cachedProductsList = result.products;
+            cachedProductsHasMore = result.products.length === PAGE_LIMIT;
+        }
+
         setCurrentPage(pageToFetch);
         setHasMore(result.products.length === PAGE_LIMIT);
 
@@ -495,9 +505,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      // If we have cached products and no search filters, revalidate quietly in background (0ms UI, no loading spinner)
+      const hasInitialCache = cachedProductsList.length > 0 && !searchTerm && !searchDescription;
+      fetchProducts(false, !hasInitialCache);
+      return;
+    }
+
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     debounceTimeoutRef.current = setTimeout(() => {
-      fetchProducts(false);
+      fetchProducts(false, true);
     }, 300); 
 
     return () => { if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current) };
@@ -521,6 +539,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
         await deleteProductsBatch([id]);
         setDisplayedProducts(prev => prev.filter(p => p.id !== id));
+        cachedProductsList = cachedProductsList.filter(p => p.id !== id);
     }
   }, []);
 
@@ -530,10 +549,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     if (productToEdit) {
       await updateProduct(product);
       setDisplayedProducts(prev => prev.map(p => p.id === product.id ? product : p));
+      cachedProductsList = cachedProductsList.map(p => p.id === product.id ? product : p);
     } else {
       await addProductsBatch([product]);
       setSearchTerm(product.partNo);
       setDisplayedProducts(prev => [product, ...prev.filter(p => p.id !== product.id)]);
+      cachedProductsList = [product, ...cachedProductsList.filter(p => p.id !== product.id)];
     }
     handleCloseModal();
   }, [productToEdit, handleCloseModal]);

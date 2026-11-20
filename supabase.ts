@@ -595,6 +595,7 @@ export async function getCustomersPaginated(options: any) {
     if (error) throw new Error(parseSupabaseError(error, "Failed to fetch customers"));
     
     const mappedCustomers = (data || []).map(item => mapFromSupabase('customers', item));
+    mappedCustomers.forEach(c => cacheCustomerLocally(c));
     return { customers: mappedCustomers, count: count || 0 };
 }
 
