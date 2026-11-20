@@ -1,6 +1,8 @@
 import type { Product, PriceEntry } from '../types';
 
-export const THRESHOLD_DATE = new Date(2026, 8, 11); // 11.09.2026 (September 11, 2026)
+export const THRESHOLD_DATE = new Date(2026, 10, 20); // 20.11.2026 (November 20, 2026)
+THRESHOLD_DATE.setHours(0, 0, 0, 0);
+export const THRESHOLD_DATE_DISPLAY = '20.11.2026';
 
 /**
  * Safely parses various date formats (YYYY-MM-DD, DD.MM.YYYY, DD-MM-YYYY, ISO strings)
@@ -109,9 +111,9 @@ export function getPriceForDate(product: Product | { prices?: PriceEntry[] } | n
 }
 
 /**
- * Checks if a product or price list has any price tier valid on or after 11.09.2026 (2026-09-11).
- * Returns true ONLY if valid prices exist and ALL available price tiers are strictly before 11.09.2026.
- * If any price tier has validFrom >= 11.09.2026, returns false (not older).
+ * Checks if a product or price list has any price tier valid on or after 20.11.2026 (2026-11-20).
+ * Returns true ONLY if valid prices exist and ALL available price tiers are strictly before 20.11.2026.
+ * If any price tier has validFrom >= 20.11.2026, returns false (not older).
  */
 export function isPriceOlderThanThreshold(productOrPrices: Product | PriceEntry[] | null | undefined): boolean {
     if (!productOrPrices) return false;
@@ -139,12 +141,12 @@ export function isPriceOlderThanThreshold(productOrPrices: Product | PriceEntry[
 }
 
 /**
- * Checks whether an individual quotation line item has a price older than 11.09.2026.
- * - If the item's current price matches a price tier valid from >= 11.09.2026: returns false (NOT older).
- * - If the item's current price matches an older tier (validFrom < 11.09.2026): returns true (OLDER).
- * - If no exact price match, checks if the product itself has any price tier >= 11.09.2026:
- *   - If the product has NO price tier >= 11.09.2026: returns true (OLDER).
- *   - If the product HAS a tier >= 11.09.2026, but the item's price is different from that current tier: returns true (item has older price).
+ * Checks whether an individual quotation line item has a price older than 20.11.2026.
+ * - If the item's current price matches a price tier valid from >= 20.11.2026: returns false (NOT older).
+ * - If the item's current price matches an older tier (validFrom < 20.11.2026): returns true (OLDER).
+ * - If no exact price match, checks if the product itself has any price tier >= 20.11.2026:
+ *   - If the product has NO price tier >= 20.11.2026: returns true (OLDER).
+ *   - If the product HAS a tier >= 20.11.2026, but the item's price is different from that current tier: returns true (item has older price).
  */
 export function isItemPriceOlderThanThreshold(
     item: { price?: number; partNo?: string; productId?: number },
@@ -158,7 +160,7 @@ export function isItemPriceOlderThanThreshold(
 
     const itemPrice = Number(item.price) || 0;
 
-    // 1. Check if item's current price matches a tier with validFrom >= 11.09.2026
+    // 1. Check if item's current price matches a tier with validFrom >= 20.11.2026
     const matchingCurrentTier = product.prices.find(pr => {
         if (!pr || !pr.validFrom) return false;
         const priceMatches = Math.abs((Number(pr.lp) || 0) - itemPrice) < 0.02 || Math.abs((Number(pr.sp) || 0) - itemPrice) < 0.02;
@@ -170,11 +172,11 @@ export function isItemPriceOlderThanThreshold(
     });
 
     if (matchingCurrentTier) {
-        // Price is valid from 11.09.2026 or later -> Not older!
+        // Price is valid from 20.11.2026 or later -> Not older!
         return false;
     }
 
-    // 2. Check if item's current price matches an older tier (< 11.09.2026)
+    // 2. Check if item's current price matches an older tier (< 20.11.2026)
     const matchingOlderTier = product.prices.find(pr => {
         if (!pr || !pr.validFrom) return false;
         const priceMatches = Math.abs((Number(pr.lp) || 0) - itemPrice) < 0.02 || Math.abs((Number(pr.sp) || 0) - itemPrice) < 0.02;
@@ -186,7 +188,7 @@ export function isItemPriceOlderThanThreshold(
     });
 
     if (matchingOlderTier) {
-        // Specifically matched an older tier from before 11.09.2026
+        // Specifically matched an older tier from before 20.11.2026
         return true;
     }
 
@@ -200,7 +202,7 @@ export function isItemPriceOlderThanThreshold(
             if (d.getTime() < THRESHOLD_DATE.getTime()) {
                 return true;
             }
-            // If active price is >= 11.09.2026 but item price doesn't match, item is on old price
+            // If active price is >= 20.11.2026 but item price doesn't match, item is on old price
             const activePriceVal = activePrice.lp > 0 ? activePrice.lp : activePrice.sp;
             if (itemPrice > 0 && Math.abs(activePriceVal - itemPrice) >= 0.02) {
                 return true;
@@ -209,12 +211,12 @@ export function isItemPriceOlderThanThreshold(
         }
     }
 
-    // Fallback: check if product has any tier >= 11.09.2026
+    // Fallback: check if product has any tier >= 20.11.2026
     return isPriceOlderThanThreshold(product);
 }
 
 /**
- * Checks if a specific price entry has validFrom strictly before 11.09.2026.
+ * Checks if a specific price entry has validFrom strictly before 20.11.2026.
  */
 export function isPriceEntryOlderThanThreshold(priceEntry: PriceEntry | null | undefined): boolean {
     if (!priceEntry || !priceEntry.validFrom) return false;

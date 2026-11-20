@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Product, PriceEntry } from '../types';
 import { UOMS, PLANTS } from '../constants';
 import { getNextProductId, uploadProductImageToStorage } from '../supabase';
-import { isPriceOlderThanThreshold, sortPricesLatestFirst } from '../utils/priceUtils';
+import { isPriceOlderThanThreshold, sortPricesLatestFirst, THRESHOLD_DATE_DISPLAY } from '../utils/priceUtils';
 
 interface ProductAddModalProps {
   isOpen: boolean;
@@ -675,7 +675,7 @@ export const ProductAddModal: React.FC<ProductAddModalProps> = ({ isOpen, onClos
                     {isOlderPriceDetected && (
                       <div className="p-2 mx-3 my-1.5 bg-amber-50 border border-amber-300 rounded-lg text-amber-900 text-xs font-semibold flex items-center gap-1.5">
                         <span>⚠️</span>
-                        <span>Older price: check validity date</span>
+                        <span>Older price: check validity date (prior to {THRESHOLD_DATE_DISPLAY})</span>
                       </div>
                     )}
 

@@ -1307,7 +1307,7 @@ export function hydrateProductsFromQuotations(quotations: Quotation[]) {
                             prices: priceVal > 0 ? [{
                                 lp: item.priceSource === 'LP' ? priceVal : 0,
                                 sp: item.priceSource === 'SP' ? priceVal : priceVal,
-                                validFrom: '2026-09-11',
+                                validFrom: '2026-11-20',
                                 validTo: '9999-12-31'
                             }] : []
                         };
@@ -1321,7 +1321,7 @@ export function hydrateProductsFromQuotations(quotations: Quotation[]) {
                             existing.prices = [{
                                 lp: item.priceSource === 'LP' ? priceVal : 0,
                                 sp: item.priceSource === 'SP' ? priceVal : priceVal,
-                                validFrom: '2026-09-11',
+                                validFrom: '2026-11-20',
                                 validTo: '9999-12-31'
                             }];
                         }

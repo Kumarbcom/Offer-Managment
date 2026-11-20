@@ -19,7 +19,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, updateCustomerSalesPerson, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, productCacheById, productSearchCache, customerCache, cacheCustomerLocally, hydrateProductsFromQuotations, fetchSingleQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
-import { getPriceForDate, isPriceOlderThanThreshold, isItemPriceOlderThanThreshold, isPriceEntryOlderThanThreshold, parseProductDate } from '../utils/priceUtils';
+import { getPriceForDate, isPriceOlderThanThreshold, isItemPriceOlderThanThreshold, isPriceEntryOlderThanThreshold, parseProductDate, THRESHOLD_DATE_DISPLAY } from '../utils/priceUtils';
 
 declare var XLSX: any;
 
@@ -2271,7 +2271,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                 <span>⚠️</span> Older price Need to check:
                             </span>
                             <span className="text-amber-900">
-                                {partNos ? `Part ${partNos}${olderItems.length > 4 ? '...' : ''} has price older than 11.09.2026.` : 'Some items have prices older than 11.09.2026.'} <span className="text-amber-700 italic">(Notification only)</span>
+                                {partNos ? `Part ${partNos}${olderItems.length > 4 ? '...' : ''} has price older than ${THRESHOLD_DATE_DISPLAY}.` : `Some items have prices older than ${THRESHOLD_DATE_DISPLAY}.`} <span className="text-amber-700 italic">(Notification only)</span>
                             </span>
                         </div>
                         <button
@@ -2519,6 +2519,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         const initialAmount = initialItem ? initialUnitPrice * (initialItem.moq || 0) : 0;
                         const hasAmountDiff = Boolean(canDiff && initialItem && Math.abs(initialAmount - amount) > 0.01);
                         const isNewlyAdded = Boolean(isRev && viewingVersion === 'current' && showInlineDiff && !initialItem);
+                        const isOlderPrice = Boolean(currentProduct && currentProduct.prices && currentProduct.prices.length > 0 && isItemPriceOlderThanThreshold(item, currentProduct, formData?.quotationDate || getTodayDateString()));
                         const hasAnyChange = hasPartNoDiff || hasDescDiff || hasMoqDiff || hasReqDiff || hasPriceDiff || hasDiscountDiff;
                         return (
                         <tr key={index} className={`divide-x divide-slate-200 transition-colors ${isNewlyAdded ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : hasAnyChange ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50'}`}>
@@ -2609,8 +2610,9 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                         ₹{initialItem.price.toFixed(2)}
                                     </div>
                                 )}
-                                <div className={`flex items-center ${hasPriceDiff ? 'bg-amber-50' : 'bg-slate-100'} h-6`}>
-                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className={`w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black ${hasPriceDiff ? 'font-bold text-indigo-950' : ''}`} disabled/>
+                                <div className={`flex items-center ${isOlderPrice ? 'bg-amber-100 border border-amber-300' : hasPriceDiff ? 'bg-amber-50' : 'bg-slate-100'} h-6`} title={isOlderPrice ? `Price is from an older tier (prior to ${THRESHOLD_DATE_DISPLAY})` : undefined}>
+                                    {isOlderPrice && <span className="text-[10px] pl-0.5 select-none" title={`Older price (prior to ${THRESHOLD_DATE_DISPLAY})`}>⚠️</span>}
+                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className={`w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black ${isOlderPrice ? 'font-bold text-amber-950' : hasPriceDiff ? 'font-bold text-indigo-950' : ''}`} disabled/>
                                     <select 
                                         value={item.priceSource} 
                                         className="bg-transparent border-l border-slate-200 p-0 text-[9px] text-black h-full appearance-none text-center w-6 focus:outline-none" 
