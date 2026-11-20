@@ -56,29 +56,63 @@ export const QuotationDiffModal: React.FC<QuotationDiffModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="diff-modal-overlay fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       {/* Print styles specifically for the Comparison Sheet */}
       <style>{`
         @media print {
+          html, body {
+            overflow: visible !important;
+            height: auto !important;
+            background: white !important;
+          }
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
+          }
+          .diff-modal-overlay {
+            position: static !important;
+            inset: auto !important;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            z-index: auto !important;
           }
           #quotation-diff-sheet, #quotation-diff-sheet * {
-            visibility: visible;
+            visibility: visible !important;
           }
           #quotation-diff-sheet {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 10mm;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
             background: white !important;
             color: black !important;
             box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+          }
+          #quotation-diff-sheet .overflow-y-auto {
+            overflow: visible !important;
+            max-height: none !important;
+            height: auto !important;
           }
           .no-print-diff {
             display: none !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
