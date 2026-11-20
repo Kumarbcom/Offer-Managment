@@ -125,7 +125,7 @@ const ModernProductRow = React.memo(({
             <td className="px-4 py-2.5 text-right w-[13%] whitespace-nowrap">
                 {Number(lp) > 0 ? (
                     <span className="font-mono font-bold text-slate-900 text-xs">
-                        ₹{Number(lp).toFixed(2)}
+                        ₹{Number(lp).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 ) : (
                     <span className="text-slate-300 text-xs font-mono">—</span>
@@ -136,7 +136,7 @@ const ModernProductRow = React.memo(({
             <td className="px-4 py-2.5 text-right w-[11%] whitespace-nowrap">
                 {Number(sp) > 0 ? (
                     <span className="font-mono text-slate-600 text-xs">
-                        ₹{Number(sp).toFixed(2)}
+                        ₹{Number(sp).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 ) : (
                     <span className="text-slate-300 text-xs font-mono">—</span>
@@ -261,6 +261,25 @@ const ExcelProductRow = React.memo(({
                     aria-label={`Select product ${product.partNo}`}
                 />
             </td>
+            {/* ID */}
+            <td className="px-2 border-r border-slate-300 text-slate-500 font-mono text-center w-14">
+                #{product.id}
+            </td>
+            {/* Image (Compact Thumbnail if exists, or dash) */}
+            <td className="px-1 border-r border-slate-300 text-center w-12">
+                {product.imageUrl ? (
+                    <img 
+                        src={product.imageUrl} 
+                        alt={product.partNo} 
+                        onClick={() => onZoomImage?.(product)}
+                        className="w-6 h-6 object-contain rounded bg-white border border-slate-300 cursor-zoom-in hover:scale-125 transition-transform shadow-2xs mx-auto" 
+                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        title="Click to zoom image"
+                    />
+                ) : (
+                    <span className="text-slate-300 text-xs">—</span>
+                )}
+            </td>
             {/* Part No - Prominent, Bold, and Never Truncated */}
             <td className="px-2 border-r border-slate-300 font-mono font-bold text-slate-900 text-xs sm:text-sm min-w-[130px] whitespace-nowrap">
                 <span 
@@ -296,11 +315,11 @@ const ExcelProductRow = React.memo(({
                 const pr = priceMap.get(date.key);
                 return (
                     <React.Fragment key={date.key}>
-                        <td className="px-2 border-r border-slate-300 text-right font-mono font-bold text-slate-900 min-w-[70px] whitespace-nowrap">
-                            {pr && pr.lp > 0 ? Number(pr.lp).toFixed(2) : '-'}
+                        <td className="px-2 border-r border-slate-300 text-right font-mono font-bold text-slate-900 min-w-[85px] whitespace-nowrap">
+                            {pr && pr.lp > 0 ? Number(pr.lp).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                         </td>
-                        <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 min-w-[70px] whitespace-nowrap">
-                            {pr && pr.sp > 0 ? Number(pr.sp).toFixed(2) : '-'}
+                        <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 min-w-[85px] whitespace-nowrap">
+                            {pr && pr.sp > 0 ? Number(pr.sp).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                         </td>
                     </React.Fragment>
                 );
@@ -522,6 +541,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const handleDownloadTemplate = () => {
     const templateData = [
       {
+        "ID": "",
+        "Image": "",
         "Part No": "1119004",
         "Description": "ÖLFLEX® CLASSIC 110 4G0,5",
         "HSN Code": "85444990",
@@ -529,11 +550,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         "MFG": "TRDN",
         "Weight": 0.054,
         "LP": 106.18,
-        "SP": "-",
+        "SP": 0,
         "Valid From": formatToDDMMYYYY(new Date().toISOString().split('T')[0]),
         "Valid To": "31.12.9999"
       },
       {
+        "ID": "",
+        "Image": "",
         "Part No": "4520012U100",
         "Description": "ÖLFLEX® UNIPLUS 1X2.5 BK",
         "HSN Code": "85444990",
@@ -541,21 +564,28 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         "MFG": "TRDN",
         "Weight": 0.045,
         "LP": 77.47,
-        "SP": "-",
+        "SP": 0,
         "Valid From": formatToDDMMYYYY(new Date().toISOString().split('T')[0]),
         "Valid To": "31.12.9999"
       }
     ];
     const ws = XLSX.utils.json_to_sheet(templateData);
+    Object.keys(ws).forEach(key => {
+      if (key.startsWith('!') || key.startsWith('A')) return;
+      const cell = ws[key];
+      if (cell && typeof cell.v === 'number') {
+        cell.z = '#,##0.00';
+      }
+    });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "New_Products_Template");
     XLSX.writeFile(wb, "New_Products_Template.xlsx");
   };
   
-  // Format products for export matching User Image 1:
-  // Row 1: base cols empty, then Valid From dates merged over LP & SP
-  // Row 2: Part No, Description, HSN Code, UOM, MFG, Weight, LP, SP, LP, SP...
-  // Row 3+: Product rows with date-wise prices
+  // Format products for export matching User Request:
+  // Row 1: base cols (ID, Image, Part No, Description, HSN Code, UOM, MFG, Weight) empty, then Valid From dates merged over LP & SP
+  // Row 2: ID, Image, Part No, Description, HSN Code, UOM, MFG, Weight, LP, SP, LP, SP...
+  // Row 3+: Product rows with date-wise prices formatted with thousand separator & 2 decimals
   const exportProductsToExcel = (productsToExport: Product[], filename: string) => {
     // Collect and sort all unique validFrom dates descending (newest on left)
     const dateMap = new Map<string, string>(); // YYYY-MM-DD -> DD.MM.YYYY
@@ -577,13 +607,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
       dateMap.set(todayKey, formatToDDMMYYYY(todayKey));
     }
 
-    const headerRow1: any[] = ['', '', '', '', '', ''];
-    const headerRow2: any[] = ['Part No', 'Description', 'HSN Code', 'UOM', 'MFG', 'Weight'];
+    const headerRow1: any[] = ['', '', '', '', '', '', '', ''];
+    const headerRow2: any[] = ['ID', 'Image', 'Part No', 'Description', 'HSN Code', 'UOM', 'MFG', 'Weight'];
     const merges: any[] = [];
 
     sortedDateKeys.forEach((key, idx) => {
       const displayDate = dateMap.get(key) || key;
-      const startCol = 6 + idx * 2;
+      const startCol = 8 + idx * 2;
       headerRow1.push(displayDate, '');
       headerRow2.push('LP', 'SP');
       merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: startCol + 1 } });
@@ -591,6 +621,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
     const dataRows = productsToExport.map(p => {
       const row: any[] = [
+        p.id,
+        p.imageUrl || '',
         p.partNo,
         p.description,
         p.hsnCode || '',
@@ -624,8 +656,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows]);
     ws['!merges'] = merges;
 
+    // Apply Thousand Separator with 2 Decimals (#,##0.00) to all numeric price/amount cells
+    Object.keys(ws).forEach(key => {
+      if (key.startsWith('!')) return;
+      const cell = ws[key];
+      if (cell && typeof cell.v === 'number') {
+        // Skip ID in column A
+        if (!key.startsWith('A')) {
+          cell.z = '#,##0.00';
+        }
+      }
+    });
+
     // Auto-fit column widths
     const colWidths = [
+      { wch: 8 },  // ID
+      { wch: 26 }, // Image
       { wch: 16 }, // Part No
       { wch: 38 }, // Description
       { wch: 12 }, // HSN Code
@@ -634,7 +680,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
       { wch: 10 }  // Weight
     ];
     sortedDateKeys.forEach(() => {
-      colWidths.push({ wch: 11 }, { wch: 11 }); // LP, SP
+      colWidths.push({ wch: 13 }, { wch: 13 }); // LP, SP
     });
     ws['!cols'] = colWidths;
 
@@ -661,7 +707,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     }
   };
 
-  // Generate Price Update Template with existing price matching User Image 2
+  // Generate Price Update Template with ID, Image, existing price, and thousand separator formatting
   const handleExportPriceList = async () => {
       setIsUploading(true);
       setUploadProgress('Generating update template with existing products...');
@@ -671,6 +717,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           const dataToExport = allProducts.map(product => {
               const currentPrice = getCurrentPrice(product);
               return {
+                  'ID': product.id,
+                  'Image': product.imageUrl || '',
                   'Part No': product.partNo,
                   'Description': product.description,
                   'HSN Code': product.hsnCode || '',
@@ -684,6 +732,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
               };
           });
           const ws = XLSX.utils.json_to_sheet(dataToExport);
+          Object.keys(ws).forEach(key => {
+            if (key.startsWith('!') || key.startsWith('A')) return;
+            const cell = ws[key];
+            if (cell && typeof cell.v === 'number') {
+              cell.z = '#,##0.00';
+            }
+          });
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, "Price_Update_Template");
           const dateTag = new Date().toISOString().split('T')[0];
@@ -957,12 +1012,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
               if (isPivoted) {
                   // Find column indexes in Row 1
-                  let partNoCol = 0;
-                  let descCol = 1;
-                  let hsnCol = 2;
-                  let uomCol = 3;
-                  let plantCol = 4;
-                  let weightCol = 5;
+                  let partNoCol = 2;
+                  let descCol = 3;
+                  let hsnCol = 4;
+                  let uomCol = 5;
+                  let plantCol = 6;
+                  let weightCol = 7;
+                  let imageCol = -1;
 
                   row1.forEach((cell, idx) => {
                       const h = String(cell || '').toLowerCase().replace(/[\s_\-]/g, '');
@@ -972,6 +1028,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                       else if (h === 'uom') uomCol = idx;
                       else if (h === 'mfg' || h === 'plant') plantCol = idx;
                       else if (h === 'weight') weightCol = idx;
+                      else if (h.includes('image')) imageCol = idx;
                   });
 
                   // Detect date pairs from row 0 & row 1
@@ -1036,6 +1093,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                           uom,
                           plant,
                           weight: !isNaN(weightNum) ? weightNum : undefined,
+                          imageUrl: imageCol >= 0 && row[imageCol] ? String(row[imageCol]).trim() : undefined,
                           prices: itemPrices
                       });
                   }
@@ -1820,6 +1878,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                 <th rowSpan={2} className="py-2 px-2 text-center w-8 border-r border-slate-300 bg-[#f3f2f1]">
                                     <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 text-[#107c41] focus:ring-[#107c41] cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
                                 </th>
+                                <th rowSpan={2} className="py-2 px-2 text-center border-r border-slate-300 w-14 bg-[#f3f2f1]">ID</th>
+                                <th rowSpan={2} className="py-2 px-1 text-center border-r border-slate-300 w-12 bg-[#f3f2f1]">Image</th>
                                 <th rowSpan={2} className="py-2 px-2 text-left border-r border-slate-300 min-w-[130px] bg-[#f3f2f1]">Part No</th>
                                 <th rowSpan={2} className="py-2 px-2 text-left border-r border-slate-300 min-w-[220px] bg-[#f3f2f1]">Description</th>
                                 <th rowSpan={2} className="py-2 px-2 text-center border-r border-slate-300 w-24 bg-[#f3f2f1]">HSN Code</th>
@@ -1836,8 +1896,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                             <tr className="border-b border-slate-300 bg-[#eaeaea]">
                                 {displayDateKeys.map(date => (
                                     <React.Fragment key={date.key}>
-                                        <th className="py-1 px-2 text-right border-r border-slate-300 text-slate-700 font-bold w-[70px]">LP</th>
-                                        <th className="py-1 px-2 text-right border-r border-slate-300 text-slate-700 font-bold w-[70px]">SP</th>
+                                        <th className="py-1 px-2 text-right border-r border-slate-300 text-slate-700 font-bold w-[85px]">LP</th>
+                                        <th className="py-1 px-2 text-right border-r border-slate-300 text-slate-700 font-bold w-[85px]">SP</th>
                                     </React.Fragment>
                                 ))}
                             </tr>
