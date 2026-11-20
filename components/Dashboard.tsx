@@ -401,9 +401,67 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
         gradientOpen.addColorStop(0, 'rgba(168, 162, 158, 0.3)');
         gradientOpen.addColorStop(1, 'rgba(168, 162, 158, 0.0)');
 
+        // Custom plugin: Glowing vertical line & glowing neon dots on active mouse pointer
+        const glowPointerPlugin = {
+            id: 'glowPointer',
+            afterDraw: (chart: any) => {
+                if (chart.tooltip?._active && chart.tooltip._active.length > 0) {
+                    const activePoint = chart.tooltip._active[0];
+                    const chartCtx = chart.ctx;
+                    const x = activePoint.element.x;
+                    const topY = chart.scales.y.top;
+                    const bottomY = chart.scales.y.bottom;
+
+                    chartCtx.save();
+                    // 1. Glowing vertical cursor guide beam
+                    chartCtx.beginPath();
+                    chartCtx.moveTo(x, topY);
+                    chartCtx.lineTo(x, bottomY);
+                    chartCtx.lineWidth = 2;
+                    chartCtx.strokeStyle = 'rgba(99, 102, 241, 0.5)';
+                    chartCtx.setLineDash([4, 4]);
+                    chartCtx.shadowColor = 'rgba(99, 102, 241, 0.9)';
+                    chartCtx.shadowBlur = 12;
+                    chartCtx.stroke();
+
+                    // 2. Glowing pulse orbs at each curve intersection
+                    chart.tooltip._active.forEach((pt: any) => {
+                        const px = pt.element.x;
+                        const py = pt.element.y;
+                        const dsColor = pt.element.options.borderColor || '#6366f1';
+
+                        // Outer glowing aura
+                        chartCtx.beginPath();
+                        chartCtx.arc(px, py, 10, 0, 2 * Math.PI);
+                        chartCtx.fillStyle = dsColor.startsWith('#') ? `${dsColor}33` : 'rgba(99, 102, 241, 0.25)';
+                        chartCtx.shadowColor = dsColor;
+                        chartCtx.shadowBlur = 16;
+                        chartCtx.fill();
+
+                        // Inner white core with colored halo ring
+                        chartCtx.beginPath();
+                        chartCtx.arc(px, py, 5, 0, 2 * Math.PI);
+                        chartCtx.fillStyle = '#ffffff';
+                        chartCtx.strokeStyle = dsColor;
+                        chartCtx.lineWidth = 3;
+                        chartCtx.shadowColor = dsColor;
+                        chartCtx.shadowBlur = 12;
+                        chartCtx.fill();
+                        chartCtx.stroke();
+                    });
+                    chartCtx.restore();
+                }
+            }
+        };
+
+        const pluginsList: any[] = [glowPointerPlugin];
+        if (typeof ChartDataLabels !== 'undefined') {
+            pluginsList.push(ChartDataLabels);
+        }
+
         const chartInstance = new Chart(ctx, {
             type: 'line',
-            plugins: [typeof ChartDataLabels !== 'undefined' ? ChartDataLabels : {}],
+            plugins: pluginsList,
             data: {
                 labels: monthNames,
                 datasets: [
@@ -414,9 +472,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         backgroundColor: gradientWon,
                         tension: 0.4,
                         fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        borderWidth: 2
+                        pointRadius: 3,
+                        pointBackgroundColor: '#6366f1',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5,
+                        pointHoverRadius: 7,
+                        pointHoverBackgroundColor: '#ffffff',
+                        pointHoverBorderColor: '#6366f1',
+                        pointHoverBorderWidth: 3,
+                        borderWidth: 2.5
                     },
                     {
                         label: 'Lost',
@@ -425,40 +489,95 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                         backgroundColor: gradientLost,
                         tension: 0.4,
                         fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        borderWidth: 2
+                        pointRadius: 3,
+                        pointBackgroundColor: '#f43f5e',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5,
+                        pointHoverRadius: 7,
+                        pointHoverBackgroundColor: '#ffffff',
+                        pointHoverBorderColor: '#f43f5e',
+                        pointHoverBorderWidth: 3,
+                        borderWidth: 2.5
                     },
                     {
                         label: 'Open / Pending',
                         data: dataByMonth.open,
-                        borderColor: '#a8a29e',
+                        borderColor: '#94a3b8',
                         backgroundColor: gradientOpen,
                         tension: 0.4,
                         fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        borderWidth: 2
+                        pointRadius: 3,
+                        pointBackgroundColor: '#94a3b8',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5,
+                        pointHoverRadius: 7,
+                        pointHoverBackgroundColor: '#ffffff',
+                        pointHoverBorderColor: '#94a3b8',
+                        pointHoverBorderWidth: 3,
+                        borderWidth: 2.5
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { top: 10, right: 15, left: 5 } },
+                animation: {
+                    duration: 1200,
+                    easing: 'easeOutQuart'
+                },
+                layout: { padding: { top: 20, right: 15, left: 5, bottom: 5 } },
                 plugins: {
-                    legend: { display: true, position: 'top', align: 'center', labels: { usePointStyle: true, boxWidth: 8, font: { family: "'Inter', sans-serif", weight: '600' } } },
-                    datalabels: { display: false },
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'center',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 15,
+                            font: { family: "'Inter', sans-serif", weight: '600', size: 12 }
+                        }
+                    },
+                    // Data Labels enabled on points with value > 0
+                    datalabels: {
+                        display: (context: any) => {
+                            const val = Number(context.dataset.data[context.dataIndex]);
+                            return !isNaN(val) && val > 0;
+                        },
+                        align: 'top',
+                        anchor: 'end',
+                        offset: 5,
+                        color: (context: any) => context.dataset.borderColor || '#475569',
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderColor: (context: any) => context.dataset.borderColor || '#cbd5e1',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        padding: { top: 2, bottom: 2, left: 5, right: 5 },
+                        font: { size: 9, weight: 'bold', family: "'Inter', sans-serif" },
+                        formatter: (value: number) => formatCurrencyCompact(value)
+                    },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
-                        backgroundColor: '#1e293b',
-                        callbacks: { label: (c: any) => `${c.dataset.label}: ${formatCurrency(c.parsed.y)}` }
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#ffffff',
+                        titleFont: { size: 12, weight: 'bold', family: "'Inter', sans-serif" },
+                        bodyColor: '#e2e8f0',
+                        bodyFont: { size: 11, family: "'Inter', sans-serif" },
+                        borderColor: 'rgba(99, 102, 241, 0.5)',
+                        borderWidth: 1.5,
+                        padding: 12,
+                        cornerRadius: 12,
+                        boxPadding: 6,
+                        usePointStyle: true,
+                        callbacks: {
+                            label: (c: any) => ` ${c.dataset.label}: ${formatCurrency(c.parsed.y)}`
+                        }
                     }
                 },
                 scales: {
                     x: {
-                        ticks: { color: '#64748b', font: { size: 11 } },
+                        ticks: { color: '#64748b', font: { size: 11, weight: '500' } },
                         grid: { display: false }
                     },
                     y: {
@@ -468,7 +587,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     }
                 },
                 interaction: {
-                    mode: 'nearest',
+                    mode: 'index',
                     axis: 'x',
                     intersect: false
                 }
@@ -648,7 +767,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                     datalabels: {
                         display: (ctx: any) => {
                             const val = Number(ctx.dataset.data[ctx.dataIndex]);
-                            return !isNaN(val) && val > 0;
+                            const total = (ctx.dataset.data || []).reduce((a: number, b: number) => a + (Number(b) || 0), 0);
+                            return !isNaN(val) && val > 0 && (total > 0 ? (val / total) >= 0.05 : true);
                         },
                         color: '#fff', // White for better contrast on vibrant colors
                         font: { weight: 'bold', size: 11 },
@@ -897,7 +1017,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 
                 {/* Total Enquiries */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full">
+                    whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.2 } }}
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200/80 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full group">
                     <div className="flex items-start justify-between w-full">
                         <div>
                             <div className="text-sm font-medium text-slate-500 mb-1">Total Enquiries</div>
@@ -917,7 +1038,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
                 {/* Customers */}
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
-                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full">
+                    whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.2 } }}
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200/80 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full group">
                     <div className="flex items-start justify-between w-full">
                         <div>
                             <div className="text-sm font-medium text-slate-500 mb-1">Total Customers</div>
@@ -946,7 +1068,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
                 {/* Total Revenue */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full">
+                    whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.2 } }}
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200/80 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full group">
                     <div className="flex items-start justify-between w-full">
                         <div>
                             <div className="text-sm font-medium text-slate-500 mb-1">Total Revenue</div>
@@ -966,7 +1089,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
 
                 {/* Won POs */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full">
+                    whileHover={{ y: -6, scale: 1.01, transition: { duration: 0.2 } }}
+                    className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-200/80 transition-all duration-300 border border-slate-100 flex flex-col justify-between h-full group">
                     <div className="flex items-start justify-between w-full">
                         <div>
                             <div className="text-sm font-medium text-slate-500 mb-1">Total Sales (PO)</div>

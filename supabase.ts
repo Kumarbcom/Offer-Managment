@@ -61,6 +61,7 @@ export const mapToSupabase = (tableName: TableName, item: any): any => {
     
     // Default pass-through for tables without specific mapping
     if (tableName === 'quotations') {
+        const rawDate = item.quotationDate || item.quotation_date || '';
         const payload: any = {
             quotation_date: item.quotationDate || item.quotation_date || null,
             enquiry_date: item.enquiryDate || item.enquiry_date || null,
@@ -76,8 +77,8 @@ export const mapToSupabase = (tableName: TableName, item: any): any => {
             status: (() => {
                 let st = (item.status || 'Open') as QuotationStatus;
                 if (st === 'Open' && rawDate) {
-                    const qDate = parseDate(rawDate);
-                    if (qDate && !isNaN(qDate.getTime())) {
+                    const qDate = new Date(rawDate);
+                    if (!isNaN(qDate.getTime())) {
                         const now = new Date();
                         const diffDays = (now.getTime() - qDate.getTime()) / (1000 * 60 * 60 * 24);
                         if (diffDays > 28) {
