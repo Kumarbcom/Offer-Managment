@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Quotation, SalesPerson, QuotationStatus, User, Customer } from '../types';
 import { QUOTATION_STATUSES } from '../constants';
 import { generateFormattedQuotationNumber, getQuotationSeqNum } from '../utils/quotationNumber';
