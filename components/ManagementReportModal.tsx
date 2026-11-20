@@ -66,38 +66,6 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
 
     const emailSubject = `[Weekly Review] Siddhi Kabel Corporation - Offer Management & Enquiry Performance (${dateRangeLabel})`;
 
-    // Compute Top 10 High Value Offers
-    const top10Offers = useMemo(() => {
-        const list = [...(quotations || [])];
-        return list
-            .filter(q => q && calculateTotalAmount(q) > 0)
-            .sort((a, b) => calculateTotalAmount(b) - calculateTotalAmount(a))
-            .slice(0, 10)
-            .map((q, idx) => {
-                const totalAmt = calculateTotalAmount(q);
-                const qNum = generateFormattedQuotationNumber(q, quotations || []);
-                const custName = q.customerId ? (customerMap.get(q.customerId) || (q as any).customerName || '—') : '—';
-                const spName = salesPersons?.find(s => s.id === q.salesPersonId)?.name || '—';
-                const qDate = q.quotationDate
-                    ? new Date(q.quotationDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-                    : '—';
-                const appLink = `https://offer-managment.vercel.app/?id=${q.id}`;
-                return {
-                    rank: idx + 1,
-                    id: q.id,
-                    quotationNumber: qNum,
-                    customerName: custName,
-                    salesPerson: spName,
-                    amount: totalAmt,
-                    status: q.status,
-                    date: qDate,
-                    appLink,
-                };
-            });
-    }, [quotations, customerMap, salesPersons]);
-
-    if (!isOpen) return null;
-
     // Helper for status percentage
     const calcPct = (part: number, total: number) => {
         if (!total || total <= 0) return '0.0%';
@@ -129,10 +97,64 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
     const winRateCountPct = calcPct(poCount + partialPoCount, totalEnqCount);
     const winRateValPct = calcPct(poVal + partialPoVal, totalEnqVal);
     const openPipelineValPct = calcPct(openVal, totalEnqVal);
+    const reviewAmendCountPct = calcPct(underReviewCount + amendCount, totalEnqCount);
+
+    // Compute Top 10 High Value Offers (Filtered for Latest 1 Month / 30 Days)
+    const top10Offers = useMemo(() => {
+        const list = [...(quotations || [])];
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+        oneMonthAgo.setHours(0, 0, 0, 0);
+
+        // Filter for offers from the last 30 days
+        let recentList = list.filter(q => {
+            if (!q || calculateTotalAmount(q) <= 0) return false;
+            if (!q.quotationDate) return false;
+            const d = new Date(q.quotationDate);
+            return !isNaN(d.getTime()) && d >= oneMonthAgo;
+        });
+
+        // If fewer than 10 offers in last 30 days, fall back to recent non-zero offers
+        if (recentList.length < 5) {
+            recentList = list.filter(q => q && calculateTotalAmount(q) > 0);
+        }
+
+        return recentList
+            .sort((a, b) => calculateTotalAmount(b) - calculateTotalAmount(a))
+            .slice(0, 10)
+            .map((q, idx) => {
+                const totalAmt = calculateTotalAmount(q);
+                const qNum = generateFormattedQuotationNumber(q, quotations || []);
+                const custName = q.customerId ? (customerMap.get(q.customerId) || (q as any).customerName || '—') : '—';
+                const spName = salesPersons?.find(s => s.id === q.salesPersonId)?.name || '—';
+                const qDate = q.quotationDate
+                    ? new Date(q.quotationDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : '—';
+                const appLink = `https://offer-managment.vercel.app/?id=${q.id}`;
+                return {
+                    rank: idx + 1,
+                    id: q.id,
+                    quotationNumber: qNum,
+                    customerName: custName,
+                    salesPerson: spName,
+                    amount: totalAmt,
+                    status: q.status,
+                    date: qDate,
+                    appLink,
+                };
+            });
+    }, [quotations, customerMap, salesPersons]);
+
+    if (!isOpen) return null;
 
     // Plain text version for WhatsApp / SMS / Plain email
     const generatePlainText = () => {
-        let text = `==================================================\n`;
+        let text = `Dear Sir,\n\n`;
+        text += `Please find below the Quotation Management & Sales Enquiry Weekly Performance Review for ${dateRangeLabel} (${reportDateStr}).\n\n`;
+        text += `📌 ACTION REQUIRED:\n`;
+        text += `Please review your offers and update the status directly on the portal:\n`;
+        text += `👉 https://offer-managment.vercel.app\n\n`;
+        text += `==================================================\n`;
         text += `WEEKLY SALES & QUOTATION REVIEW DASHBOARD\n`;
         text += `Siddhi Kabel Corporation Pvt Ltd\n`;
         text += `==================================================\n`;
@@ -141,30 +163,26 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
         text += `Prepared By: ${currentUser.name} (${currentUser.role})\n\n`;
 
         text += `--- 1. EXECUTIVE KPI SUMMARY ---\n`;
-        text += `• Total Enquiries: ${totalEnqCount} | ${formatCurrency(totalEnqVal)} (100%)\n`;
-        text += `• Orders Won (PO Received): ${poCount} (${calcPct(poCount, totalEnqCount)}) | ${formatCurrency(poVal)} (${calcPct(poVal, totalEnqVal)})\n`;
-        text += `• Partial PO Received: ${partialPoCount} (${calcPct(partialPoCount, totalEnqCount)}) | ${formatCurrency(partialPoVal)} (${calcPct(partialPoVal, totalEnqVal)})\n`;
-        text += `• Active Open Pipeline: ${openCount} (${calcPct(openCount, totalEnqCount)}) | ${formatCurrency(openVal)} (${calcPct(openVal, totalEnqVal)})\n`;
-        text += `• Under Review / Pending: ${underReviewCount} (${calcPct(underReviewCount, totalEnqCount)}) | ${formatCurrency(underReviewVal)} (${calcPct(underReviewVal, totalEnqVal)})\n`;
-        text += `• Need Amendment: ${amendCount} (${calcPct(amendCount, totalEnqCount)}) | ${formatCurrency(amendVal)} (${calcPct(amendVal, totalEnqVal)})\n`;
-        text += `• Lost / Expired: ${lostCount} (${calcPct(lostCount, totalEnqCount)}) | ${formatCurrency(lostVal)} (${calcPct(lostVal, totalEnqVal)})\n`;
-        text += `• Overall Win Rate: ${winRateCountPct} (Count) | ${winRateValPct} (Value)\n\n`;
+        text += `• Total Enquiries: ${totalEnqCount} | ${formatCurrencyCompact(totalEnqVal)} (100% Pipeline Base)\n`;
+        text += `• PO Received (Won): ${poCount} | ${formatCurrencyCompact(poVal)} (${winRateValPct}) [Win Rate: ${winRateCountPct}]\n`;
+        text += `• Open Offers: ${openCount} | ${formatCurrencyCompact(openVal)} (${calcPct(openCount, totalEnqCount)}) [${openPipelineValPct} of Pipeline]\n`;
+        text += `• Review / Amend: ${underReviewCount + amendCount} | ${formatCurrencyCompact(underReviewVal + amendVal)} (${reviewAmendCountPct})\n\n`;
 
         text += `--- 2. SALES PERSON PERFORMANCE & STATUS MATRIX ---\n`;
         salesPersonStats.forEach(sp => {
             const spLostCount = (sp['Lost']?.count || 0) + (sp['Expired']?.count || 0);
             const spLostVal = (sp['Lost']?.value || 0) + (sp['Expired']?.value || 0);
             text += `👤 ${sp.name.toUpperCase()}\n`;
-            text += `   • Total: ${sp.total.count} (${calcPct(sp.total.count, totalEnqCount)} of co.) | ${formatCurrency(sp.total.value)}\n`;
-            text += `   • Open Offers: ${sp['Open']?.count || 0} (${calcPct(sp['Open']?.count || 0, sp.total.count)}) | ${formatCurrency(sp['Open']?.value || 0)} (${calcPct(sp['Open']?.value || 0, sp.total.value)})\n`;
-            text += `   • PO Received: ${sp['PO received']?.count || 0} (${calcPct(sp['PO received']?.count || 0, sp.total.count)}) | ${formatCurrency(sp['PO received']?.value || 0)} (${calcPct(sp['PO received']?.value || 0, sp.total.value)})\n`;
-            text += `   • Partial PO: ${sp['Partial PO Received']?.count || 0} (${calcPct(sp['Partial PO Received']?.count || 0, sp.total.count)}) | ${formatCurrency(sp['Partial PO Received']?.value || 0)}\n`;
-            text += `   • Under Review: ${sp['Under Review']?.count || 0} (${calcPct(sp['Under Review']?.count || 0, sp.total.count)}) | ${formatCurrency(sp['Under Review']?.value || 0)}\n`;
-            text += `   • Need Amend: ${sp['Need Amendment']?.count || 0} (${calcPct(sp['Need Amendment']?.count || 0, sp.total.count)}) | ${formatCurrency(sp['Need Amendment']?.value || 0)}\n`;
-            text += `   • Lost/Expired: ${spLostCount} (${calcPct(spLostCount, sp.total.count)}) | ${formatCurrency(spLostVal)}\n\n`;
+            text += `   • Total: ${sp.total.count} (${calcPct(sp.total.count, totalEnqCount)} of co.) | ${formatCurrencyCompact(sp.total.value)}\n`;
+            text += `   • Open Offers: ${sp['Open']?.count || 0} (${calcPct(sp['Open']?.count || 0, sp.total.count)}) | ${formatCurrencyCompact(sp['Open']?.value || 0)} (${calcPct(sp['Open']?.value || 0, sp.total.value)})\n`;
+            text += `   • PO Received: ${sp['PO received']?.count || 0} (${calcPct(sp['PO received']?.count || 0, sp.total.count)}) | ${formatCurrencyCompact(sp['PO received']?.value || 0)} (${calcPct(sp['PO received']?.value || 0, sp.total.value)})\n`;
+            text += `   • Partial PO: ${sp['Partial PO Received']?.count || 0} (${calcPct(sp['Partial PO Received']?.count || 0, sp.total.count)}) | ${formatCurrencyCompact(sp['Partial PO Received']?.value || 0)}\n`;
+            text += `   • Under Review: ${sp['Under Review']?.count || 0} (${calcPct(sp['Under Review']?.count || 0, sp.total.count)}) | ${formatCurrencyCompact(sp['Under Review']?.value || 0)}\n`;
+            text += `   • Need Amend: ${sp['Need Amendment']?.count || 0} (${calcPct(sp['Need Amendment']?.count || 0, sp.total.count)}) | ${formatCurrencyCompact(sp['Need Amendment']?.value || 0)}\n`;
+            text += `   • Lost/Expired: ${spLostCount} (${calcPct(spLostCount, sp.total.count)}) | ${formatCurrencyCompact(spLostVal)}\n\n`;
         });
 
-        text += `--- 3. TOP 10 HIGH-VALUE OFFERS (WITH DIRECT APP LINK) ---\n`;
+        text += `--- 3. TOP 10 HIGH-VALUE OFFERS (LATEST 1 MONTH) ---\n`;
         top10Offers.forEach(o => {
             text += `#${o.rank}. ${o.quotationNumber} | ${formatCurrency(o.amount)}\n`;
             text += `    Customer: ${o.customerName}\n`;
@@ -173,9 +191,13 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
         });
 
         text += `--------------------------------------------------\n`;
-        text += `GRAND TOTAL: ${totalEnqCount} Enquiries | Value: ${formatCurrency(totalEnqVal)}\n`;
-        text += `Generated from Siddhi Kabel Corporation Offer Management System\n`;
-        text += `Portal: https://offer-managment.vercel.app\n`;
+        text += `GRAND TOTAL: ${totalEnqCount} Enquiries | Value: ${formatCurrency(totalEnqVal)}\n\n`;
+        text += `Thanks & Best Regards,\n`;
+        text += `${currentUser.name}\n`;
+        text += `${currentUser.role} | Sales & Commercial Operations\n`;
+        text += `Siddhi Kabel Corporation Pvt. Ltd.\n`;
+        text += `Manufacturers of High Temperature & Speciality Cables\n`;
+        text += `🔗 Portal: https://offer-managment.vercel.app\n`;
         return text;
     };
 
@@ -258,7 +280,7 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                                 </span>
                             </div>
                             <p className="text-xs text-slate-300 mt-0.5">
-                                Executive Performance Matrix • Offer Status % Breakdown • Top 10 High Value Offers
+                                Executive Performance Matrix • Offer Status % Breakdown • Top 10 High Value Offers (Latest 1 Mo)
                             </p>
                         </div>
                     </div>
@@ -297,8 +319,8 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                                     : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
-                            🏆 Top 10 High-Value Offers
-                            <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded-full text-[10px]">10</span>
+                            🏆 Top 10 Offers (Latest 1 Mo)
+                            <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded-full text-[10px]">{top10Offers.length}</span>
                         </button>
                         <button
                             type="button"
@@ -367,11 +389,12 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                 {/* Main Content Area */}
                 <div className="p-4 sm:p-6 overflow-y-auto space-y-6">
                     
-                    {/* Top Executive KPI Cards Summary (Always visible) */}
+                    {/* Top Executive KPI Cards Summary (Always visible - Image 3 Format) */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {/* Card 1: Total Enquiries */}
                         <div className="bg-gradient-to-br from-blue-50 to-indigo-50/40 border border-blue-200/70 rounded-2xl p-3.5 shadow-xs">
                             <div className="flex justify-between items-start">
-                                <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Total Enquiries</span>
+                                <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">TOTAL ENQUIRIES</span>
                                 <span className="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.5 rounded">100%</span>
                             </div>
                             <div className="text-2xl font-black text-slate-800 mt-1">{totalEnqCount}</div>
@@ -379,9 +402,10 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                             <div className="text-[10px] text-slate-500 mt-1 font-medium">Pipeline volume</div>
                         </div>
 
+                        {/* Card 2: PO Received (Won) */}
                         <div className="bg-gradient-to-br from-emerald-50 to-teal-50/40 border border-emerald-200/70 rounded-2xl p-3.5 shadow-xs">
                             <div className="flex justify-between items-start">
-                                <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">PO Received (Won)</span>
+                                <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">PO RECEIVED (WON)</span>
                                 <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded">
                                     {winRateCountPct} Win
                                 </span>
@@ -393,9 +417,10 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                             <div className="text-[10px] text-slate-500 mt-1 font-medium">Closed orders confirmed</div>
                         </div>
 
+                        {/* Card 3: Open Offers */}
                         <div className="bg-gradient-to-br from-indigo-50 to-blue-50/40 border border-indigo-200/70 rounded-2xl p-3.5 shadow-xs">
                             <div className="flex justify-between items-start">
-                                <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Open Offers</span>
+                                <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">OPEN OFFERS</span>
                                 <span className="text-[10px] bg-indigo-100 text-indigo-800 font-extrabold px-1.5 py-0.5 rounded">
                                     {openPipelineValPct} Val
                                 </span>
@@ -407,14 +432,15 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                             <div className="text-[10px] text-slate-500 mt-1 font-medium">Active offers in negotiation</div>
                         </div>
 
+                        {/* Card 4: Review / Amend */}
                         <div className="bg-gradient-to-br from-amber-50 to-orange-50/40 border border-amber-200/70 rounded-2xl p-3.5 shadow-xs">
                             <div className="flex justify-between items-start">
-                                <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Review / Amend</span>
+                                <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">REVIEW / AMEND</span>
                                 <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.5 rounded">Action</span>
                             </div>
                             <div className="text-2xl font-black text-slate-800 mt-1">{underReviewCount + amendCount}</div>
                             <div className="text-xs font-bold text-amber-700 mt-0.5">
-                                {formatCurrencyCompact(underReviewVal + amendVal)} <span className="text-[10px] text-amber-600 font-semibold">({calcPct(underReviewCount + amendCount, totalEnqCount)})</span>
+                                {formatCurrencyCompact(underReviewVal + amendVal)} <span className="text-[10px] text-amber-600 font-semibold">({reviewAmendCountPct})</span>
                             </div>
                             <div className="text-[10px] text-slate-500 mt-1 font-medium">Pending technical/price revision</div>
                         </div>
@@ -581,19 +607,19 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                                             </td>
                                             <td className="p-3 text-center border-r border-slate-700 bg-teal-950 text-teal-200">
                                                 <div className="font-bold">{partialPoCount} ({calcPct(partialPoCount, totalEnqCount)})</div>
-                                                <div className="text-[11px] text-teal-300 font-bold">{formatCurrencyCompact(partialPoVal)} ({calcPct(partialPoVal, totalEnqVal)})</div>
+                                                <div className="text-[11px] text-teal-300 font-bold">{formatCurrencyCompact(partialPoVal)}</div>
                                             </td>
                                             <td className="p-3 text-center border-r border-slate-700 bg-indigo-950 text-indigo-200">
                                                 <div className="font-bold">{underReviewCount} ({calcPct(underReviewCount, totalEnqCount)})</div>
-                                                <div className="text-[11px] text-indigo-300">{formatCurrencyCompact(underReviewVal)} ({calcPct(underReviewVal, totalEnqVal)})</div>
+                                                <div className="text-[11px] text-indigo-300">{formatCurrencyCompact(underReviewVal)}</div>
                                             </td>
                                             <td className="p-3 text-center border-r border-slate-700 bg-purple-950 text-purple-200">
                                                 <div className="font-bold">{amendCount} ({calcPct(amendCount, totalEnqCount)})</div>
-                                                <div className="text-[11px] text-purple-300">{formatCurrencyCompact(amendVal)} ({calcPct(amendVal, totalEnqVal)})</div>
+                                                <div className="text-[11px] text-purple-300">{formatCurrencyCompact(amendVal)}</div>
                                             </td>
                                             <td className="p-3 text-center bg-rose-950 text-rose-200">
                                                 <div className="font-bold">{lostCount} ({calcPct(lostCount, totalEnqCount)})</div>
-                                                <div className="text-[11px] text-rose-300">{formatCurrencyCompact(lostVal)} ({calcPct(lostVal, totalEnqVal)})</div>
+                                                <div className="text-[11px] text-rose-300">{formatCurrencyCompact(lostVal)}</div>
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -602,20 +628,20 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                         </div>
                     )}
 
-                    {/* TAB 2: Latest 10 High Value Offers */}
+                    {/* TAB 2: Latest 10 High Value Offers (Last 1 Month) */}
                     {activeTab === 'top10' && (
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <div>
                                     <h4 className="text-sm font-black text-slate-800 tracking-wide uppercase">
-                                        Top 10 High-Value Quotations &amp; Opportunities
+                                        Top 10 High-Value Quotations &amp; Opportunities (Latest 1 Month)
                                     </h4>
                                     <p className="text-xs text-slate-500">
-                                        Largest active value offers with 1-click deep links directly into the system.
+                                        Highest-value offers quoted in the last 30 days with direct 1-click app links.
                                     </p>
                                 </div>
                                 <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-lg">
-                                    Direct App Links Included
+                                    Last 30 Days Window
                                 </span>
                             </div>
 
@@ -718,32 +744,52 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                                 </div>
                                 
                                 <div className="prose max-w-none text-xs text-slate-700 space-y-4">
-                                    <p>Respected Management Team,</p>
+                                    <p className="text-sm font-semibold text-slate-900">Dear Sir,</p>
                                     <p>
-                                        Please find below the weekly executive review of sales enquiries, quotation status breakdown, and high-value pipeline opportunities for <strong>{dateRangeLabel}</strong>.
+                                        Please find below the Quotation Management &amp; Sales Enquiry Weekly Performance Review for <strong>{dateRangeLabel}</strong> ({reportDateStr}).
                                     </p>
+                                    
+                                    {/* Action Required Banner at Top */}
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-amber-900">
+                                        <div className="text-xs">
+                                            <strong>⚡ Action Required:</strong> Please review your offers and update the current status on the portal.
+                                        </div>
+                                        <a
+                                            href="https://offer-managment.vercel.app"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-xs whitespace-nowrap"
+                                        >
+                                            Review Offers &amp; Update Status ↗
+                                        </a>
+                                    </div>
                                     
                                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                                         <strong>Executive Highlights:</strong>
                                         <ul className="list-disc pl-5 mt-1 space-y-0.5">
-                                            <li>Total Enquiries Recorded: <strong>{totalEnqCount}</strong> ({formatCurrency(totalEnqVal)})</li>
-                                            <li>Closed &amp; Won Orders: <strong>{poCount}</strong> ({formatCurrency(poVal)}) — Win Conversion Rate: <strong>{winRateCountPct}</strong></li>
-                                            <li>Active Open Pipeline: <strong>{openCount}</strong> ({formatCurrency(openVal)}) — <strong>{openPipelineValPct}</strong> of total value</li>
-                                            <li>Pending Under Review / Amendment: <strong>{underReviewCount + amendCount}</strong> ({formatCurrency(underReviewVal + amendVal)})</li>
+                                            <li>Total Enquiries: <strong>{totalEnqCount}</strong> ({formatCurrencyCompact(totalEnqVal)})</li>
+                                            <li>Orders Won (PO Received): <strong>{poCount}</strong> ({formatCurrencyCompact(poVal)}) — Win Rate: <strong>{winRateCountPct}</strong></li>
+                                            <li>Active Open Offers: <strong>{openCount}</strong> ({formatCurrencyCompact(openVal)}) — <strong>{openPipelineValPct}</strong> of total value</li>
+                                            <li>Review / Amend: <strong>{underReviewCount + amendCount}</strong> ({formatCurrencyCompact(underReviewVal + amendVal)})</li>
                                         </ul>
                                     </div>
 
-                                    <p className="font-bold text-slate-800">1. Sales Person Performance &amp; Status Breakdown:</p>
-                                    <p className="text-[11px] text-slate-500 italic">[Styled responsive table with status % will be pasted into email]</p>
+                                    <p className="font-bold text-slate-800">1. Sales Person Performance &amp; Status Breakdown Matrix</p>
+                                    <p className="text-[11px] text-slate-500 italic">[Styled responsive table with visible white headers and % share]</p>
 
-                                    <p className="font-bold text-slate-800">2. Top 10 High-Value Opportunities (With App Links):</p>
-                                    <p className="text-[11px] text-slate-500 italic">[Top 10 offers with customer name, value, status, and direct 1-click links will be pasted into email]</p>
+                                    <p className="font-bold text-slate-800">2. Top 10 High-Value Offers (Latest 1 Month - With 1-Click App Links)</p>
+                                    <p className="text-[11px] text-slate-500 italic">[Top 10 highest-value offers with customer, sales person, value, and direct app links]</p>
 
-                                    <p className="pt-2">
-                                        Warm regards,<br />
-                                        <strong>{currentUser.name}</strong> ({currentUser.role})<br />
-                                        Siddhi Kabel Corporation Pvt Ltd
-                                    </p>
+                                    <div className="pt-4 border-t border-slate-200 text-xs text-slate-800 space-y-1">
+                                        <p>Thanks &amp; Best Regards,</p>
+                                        <p className="font-bold text-slate-900">{currentUser.name}</p>
+                                        <p className="text-slate-500">{currentUser.role} | Sales &amp; Commercial Operations</p>
+                                        <p className="font-bold text-indigo-900">Siddhi Kabel Corporation Pvt. Ltd.</p>
+                                        <p className="text-slate-500 text-[11px]">Manufacturers of High Temperature &amp; Speciality Cables</p>
+                                        <p className="text-indigo-600 font-semibold pt-1">
+                                            🔗 Portal: <a href="https://offer-managment.vercel.app" target="_blank" rel="noopener noreferrer" className="underline">https://offer-managment.vercel.app</a>
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -754,83 +800,236 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                 <div ref={contentRef} style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
                     <div style={{ fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif', color: '#1e293b', maxWidth: '900px', padding: '20px', backgroundColor: '#ffffff' }}>
                         
-                        {/* Title & Header */}
-                        <div style={{ borderBottom: '2px solid #4338ca', paddingBottom: '12px', marginBottom: '16px' }}>
-                            <h2 style={{ margin: '0 0 6px 0', color: '#0f172a', fontSize: '20px', fontWeight: 'bold' }}>
-                                Quotation &amp; Offer Management - Executive Performance Review
-                            </h2>
-                            <p style={{ margin: '0', fontSize: '13px', color: '#64748b' }}>
-                                <strong>Company:</strong> Siddhi Kabel Corporation Pvt Ltd &nbsp;|&nbsp; <strong>Period:</strong> {dateRangeLabel} &nbsp;|&nbsp; <strong>Date:</strong> {reportDateStr} &nbsp;|&nbsp; <strong>Prepared By:</strong> {currentUser.name}
-                            </p>
-                        </div>
+                        {/* 1. GREETING - Dear Sir, */}
+                        <p style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#0f172a', fontWeight: 'bold' }}>
+                            Dear Sir,
+                        </p>
+                        <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#334155', lineHeight: '1.5' }}>
+                            Please find below the Quotation Management &amp; Sales Enquiry Weekly Performance Review for <strong>{dateRangeLabel}</strong> ({reportDateStr}).
+                        </p>
 
-                        {/* Executive Summary Metrics Box (Email-friendly Table) */}
-                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontFamily: 'inherit' }}>
+                        {/* Top Action Required Callout Banner with Link */}
+                        <table width="100%" cellPadding="0" cellSpacing="0" border={0} style={{ width: '100%', marginBottom: '18px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px' }}>
                             <tbody>
                                 <tr>
-                                    <td style={{ width: '25%', padding: '12px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
-                                        <div style={{ fontSize: '11px', color: '#1d4ed8', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Enquiries</div>
-                                        <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1e293b', marginTop: '4px' }}>{totalEnqCount}</div>
-                                        <div style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'bold' }}>{formatCurrency(totalEnqVal)}</div>
-                                        <div style={{ fontSize: '10px', color: '#64748b' }}>100% Pipeline Base</div>
-                                    </td>
-                                    <td style={{ width: '8px' }}></td>
-                                    <td style={{ width: '25%', padding: '12px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px' }}>
-                                        <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 'bold', textTransform: 'uppercase' }}>Orders Won (PO)</div>
-                                        <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1e293b', marginTop: '4px' }}>{poCount}</div>
-                                        <div style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>{formatCurrency(poVal)}</div>
-                                        <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 'bold' }}>Win Rate: {winRateCountPct} ({winRateValPct} Val)</div>
-                                    </td>
-                                    <td style={{ width: '8px' }}></td>
-                                    <td style={{ width: '25%', padding: '12px', backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '8px' }}>
-                                        <div style={{ fontSize: '11px', color: '#6d28d9', fontWeight: 'bold', textTransform: 'uppercase' }}>Active Open Offers</div>
-                                        <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1e293b', marginTop: '4px' }}>{openCount}</div>
-                                        <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 'bold' }}>{formatCurrency(openVal)}</div>
-                                        <div style={{ fontSize: '10px', color: '#6d28d9' }}>{openPipelineValPct} of Total Pipeline</div>
-                                    </td>
-                                    <td style={{ width: '8px' }}></td>
-                                    <td style={{ width: '25%', padding: '12px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px' }}>
-                                        <div style={{ fontSize: '11px', color: '#b45309', fontWeight: 'bold', textTransform: 'uppercase' }}>Under Review / Amend</div>
-                                        <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1e293b', marginTop: '4px' }}>{underReviewCount + amendCount}</div>
-                                        <div style={{ fontSize: '12px', color: '#d97706', fontWeight: 'bold' }}>{formatCurrency(underReviewVal + amendVal)}</div>
-                                        <div style={{ fontSize: '10px', color: '#b45309' }}>Action required</div>
+                                    <td style={{ padding: '12px 14px', fontSize: '13px', color: '#92400e' }}>
+                                        <font color="#92400e">
+                                            <strong>📌 Action Required:</strong> Please review your offers and update the status directly on the portal:&nbsp;
+                                        </font>
+                                        <a
+                                            href="https://offer-managment.vercel.app"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                color: '#ffffff',
+                                                backgroundColor: '#4338ca',
+                                                fontWeight: 'bold',
+                                                textDecoration: 'none',
+                                                padding: '6px 14px',
+                                                borderRadius: '6px',
+                                                display: 'inline-block',
+                                                fontSize: '12px',
+                                                marginLeft: '8px',
+                                            }}
+                                        >
+                                            <font color="#ffffff"><b>Review Offers &amp; Update Status ↗</b></font>
+                                        </a>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        {/* SECTION 1: Performance Matrix Table */}
+                        {/* Title Bar */}
+                        <div style={{ borderBottom: '2px solid #4338ca', paddingBottom: '10px', marginBottom: '16px' }}>
+                            <h2 style={{ margin: '0 0 4px 0', color: '#0f172a', fontSize: '18px', fontWeight: 'bold' }}>
+                                Quotation &amp; Offer Management - Executive Performance Review
+                            </h2>
+                            <p style={{ margin: '0', fontSize: '12px', color: '#64748b' }}>
+                                <strong>Company:</strong> Siddhi Kabel Corporation Pvt Ltd &nbsp;|&nbsp; <strong>Period:</strong> {dateRangeLabel} &nbsp;|&nbsp; <strong>Date:</strong> {reportDateStr} &nbsp;|&nbsp; <strong>Prepared By:</strong> {currentUser.name}
+                            </p>
+                        </div>
+
+                        {/* 2. EXECUTIVE KPI CARDS TABLE (EXACT IMAGE 3 FORMAT WITH PILLS & COMPACT VALUES) */}
+                        <table width="100%" cellPadding="0" cellSpacing="0" border={0} style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '8px 0', marginBottom: '22px' }}>
+                            <tbody>
+                                <tr>
+                                    {/* Card 1: TOTAL ENQUIRIES */}
+                                    <td width="25%" valign="top" style={{ width: '25%', padding: '12px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px' }}>
+                                        <table width="100%" cellPadding="0" cellSpacing="0" border={0}>
+                                            <tbody>
+                                                <tr>
+                                                    <td align="left" style={{ fontSize: '11px', fontWeight: 'bold', color: '#1d4ed8', textTransform: 'uppercase' }}>
+                                                        <font color="#1d4ed8"><b>TOTAL ENQUIRIES</b></font>
+                                                    </td>
+                                                    <td align="right">
+                                                        <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '10px', fontWeight: 'bold', padding: '2px 7px', borderRadius: '6px', display: 'inline-block' }}>
+                                                            <font color="#1e40af"><b>100%</b></font>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '24px', fontWeight: '900', color: '#0f172a', padding: '6px 0 2px 0' }}>
+                                                        <font color="#0f172a"><b>{totalEnqCount}</b></font>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '13px', fontWeight: 'bold', color: '#1d4ed8' }}>
+                                                        <font color="#1d4ed8"><b>{formatCurrencyCompact(totalEnqVal)}</b></font>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '10px', color: '#64748b', paddingTop: '4px' }}>
+                                                        <font color="#64748b">Pipeline volume</font>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+
+                                    {/* Card 2: PO RECEIVED (WON) */}
+                                    <td width="25%" valign="top" style={{ width: '25%', padding: '12px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
+                                        <table width="100%" cellPadding="0" cellSpacing="0" border={0}>
+                                            <tbody>
+                                                <tr>
+                                                    <td align="left" style={{ fontSize: '11px', fontWeight: 'bold', color: '#15803d', textTransform: 'uppercase' }}>
+                                                        <font color="#15803d"><b>PO RECEIVED (WON)</b></font>
+                                                    </td>
+                                                    <td align="right">
+                                                        <span style={{ backgroundColor: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: 'bold', padding: '2px 7px', borderRadius: '6px', display: 'inline-block' }}>
+                                                            <font color="#166534"><b>{winRateCountPct} Win</b></font>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '24px', fontWeight: '900', color: '#0f172a', padding: '6px 0 2px 0' }}>
+                                                        <font color="#0f172a"><b>{poCount}</b></font>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '13px', fontWeight: 'bold', color: '#15803d' }}>
+                                                        <font color="#15803d"><b>{formatCurrencyCompact(poVal)}</b></font>
+                                                        &nbsp;<font color="#16a34a"><span style={{ fontSize: '11px', fontWeight: '600' }}>({winRateValPct})</span></font>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '10px', color: '#64748b', paddingTop: '4px' }}>
+                                                        <font color="#64748b">Closed orders confirmed</font>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+
+                                    {/* Card 3: OPEN OFFERS */}
+                                    <td width="25%" valign="top" style={{ width: '25%', padding: '12px', backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '12px' }}>
+                                        <table width="100%" cellPadding="0" cellSpacing="0" border={0}>
+                                            <tbody>
+                                                <tr>
+                                                    <td align="left" style={{ fontSize: '11px', fontWeight: 'bold', color: '#4338ca', textTransform: 'uppercase' }}>
+                                                        <font color="#4338ca"><b>OPEN OFFERS</b></font>
+                                                    </td>
+                                                    <td align="right">
+                                                        <span style={{ backgroundColor: '#ede9fe', color: '#5b21b6', fontSize: '10px', fontWeight: 'bold', padding: '2px 7px', borderRadius: '6px', display: 'inline-block' }}>
+                                                            <font color="#5b21b6"><b>{openPipelineValPct} Val</b></font>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '24px', fontWeight: '900', color: '#0f172a', padding: '6px 0 2px 0' }}>
+                                                        <font color="#0f172a"><b>{openCount}</b></font>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '13px', fontWeight: 'bold', color: '#4338ca' }}>
+                                                        <font color="#4338ca"><b>{formatCurrencyCompact(openVal)}</b></font>
+                                                        &nbsp;<font color="#6366f1"><span style={{ fontSize: '11px', fontWeight: '600' }}>({calcPct(openCount, totalEnqCount)})</span></font>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '10px', color: '#64748b', paddingTop: '4px' }}>
+                                                        <font color="#64748b">Active offers in negotiation</font>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+
+                                    {/* Card 4: REVIEW / AMEND */}
+                                    <td width="25%" valign="top" style={{ width: '25%', padding: '12px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px' }}>
+                                        <table width="100%" cellPadding="0" cellSpacing="0" border={0}>
+                                            <tbody>
+                                                <tr>
+                                                    <td align="left" style={{ fontSize: '11px', fontWeight: 'bold', color: '#b45309', textTransform: 'uppercase' }}>
+                                                        <font color="#b45309"><b>REVIEW / AMEND</b></font>
+                                                    </td>
+                                                    <td align="right">
+                                                        <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontSize: '10px', fontWeight: 'bold', padding: '2px 7px', borderRadius: '6px', display: 'inline-block' }}>
+                                                            <font color="#92400e"><b>Action</b></font>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '24px', fontWeight: '900', color: '#0f172a', padding: '6px 0 2px 0' }}>
+                                                        <font color="#0f172a"><b>{underReviewCount + amendCount}</b></font>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '13px', fontWeight: 'bold', color: '#b45309' }}>
+                                                        <font color="#b45309"><b>{formatCurrencyCompact(underReviewVal + amendVal)}</b></font>
+                                                        &nbsp;<font color="#d97706"><span style={{ fontSize: '11px', fontWeight: '600' }}>({reviewAmendCountPct})</span></font>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={2} style={{ fontSize: '10px', color: '#64748b', paddingTop: '4px' }}>
+                                                        <font color="#64748b">Pending technical/price revision</font>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        {/* SECTION 1: Performance Matrix Table (BULLETPROOF WHITE HEADERS FOR OUTLOOK & GMAIL) */}
                         <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             1. Sales Person Enquiry &amp; Status Breakdown Matrix
                         </h3>
                         
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', border: '1px solid #cbd5e1', marginBottom: '24px' }}>
                             <thead>
-                                <tr style={{ backgroundColor: '#0f172a' }}>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', textAlign: 'left', fontSize: '12px' }}>
-                                        Sales Person
-                                    </th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', textAlign: 'center', fontSize: '12px' }}>
-                                        Total Enquiry<br/><span style={{ fontSize: '10px', color: '#cbd5e1', fontWeight: 'normal' }}>Count / Val</span>
-                                    </th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', textAlign: 'center', fontSize: '12px' }}>
-                                        Open Offer<br/><span style={{ fontSize: '10px', color: '#93c5fd', fontWeight: 'normal' }}>Count / Val (%)</span>
-                                    </th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', textAlign: 'center', fontSize: '12px' }}>
-                                        PO Received<br/><span style={{ fontSize: '10px', color: '#86efac', fontWeight: 'normal' }}>Count / Val (%)</span>
-                                    </th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', textAlign: 'center', fontSize: '12px' }}>
-                                        Partial PO<br/><span style={{ fontSize: '10px', color: '#99f6e4', fontWeight: 'normal' }}>Count / Val (%)</span>
-                                    </th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', textAlign: 'center', fontSize: '12px' }}>
-                                        Under Review<br/><span style={{ fontSize: '10px', color: '#c7d2fe', fontWeight: 'normal' }}>Count / Val (%)</span>
-                                    </th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', textAlign: 'center', fontSize: '12px' }}>
-                                        Amendment<br/><span style={{ fontSize: '10px', color: '#e9d5ff', fontWeight: 'normal' }}>Count / Val (%)</span>
-                                    </th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', textAlign: 'center', fontSize: '12px' }}>
-                                        Lost / Expired<br/><span style={{ fontSize: '10px', color: '#fecdd3', fontWeight: 'normal' }}>Count / Val (%)</span>
-                                    </th>
+                                <tr bgcolor="#0f172a" style={{ backgroundColor: '#0f172a' }}>
+                                    <td bgcolor="#0f172a" align="left" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Sales Person</b></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Total Enquiry</b></font><br/>
+                                        <font color="#cbd5e1"><span style={{ fontSize: '10px', color: '#cbd5e1' }}>Count / Val</span></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Open Offer</b></font><br/>
+                                        <font color="#93c5fd"><span style={{ fontSize: '10px', color: '#93c5fd' }}>Count / Val (%)</span></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>PO Received</b></font><br/>
+                                        <font color="#86efac"><span style={{ fontSize: '10px', color: '#86efac' }}>Count / Val (%)</span></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Partial PO</b></font><br/>
+                                        <font color="#99f6e4"><span style={{ fontSize: '10px', color: '#99f6e4' }}>Count / Val (%)</span></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Under Review</b></font><br/>
+                                        <font color="#c7d2fe"><span style={{ fontSize: '10px', color: '#c7d2fe' }}>Count / Val (%)</span></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Amendment</b></font><br/>
+                                        <font color="#e9d5ff"><span style={{ fontSize: '10px', color: '#e9d5ff' }}>Count / Val (%)</span></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Lost / Expired</b></font><br/>
+                                        <font color="#fecdd3"><span style={{ fontSize: '10px', color: '#fecdd3' }}>Count / Val (%)</span></font>
+                                    </td>
                                 </tr>
                             </thead>
                             <tbody>
@@ -887,50 +1086,67 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                                 })}
                             </tbody>
                             <tfoot>
-                                <tr style={{ backgroundColor: '#0f172a' }}>
-                                    <td style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
-                                        COMPANY TOTAL
+                                <tr bgcolor="#0f172a" style={{ backgroundColor: '#0f172a' }}>
+                                    <td bgcolor="#0f172a" align="left" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>COMPANY TOTAL</b></font>
                                     </td>
-                                    <td style={{ backgroundColor: '#0f172a', color: '#fde047', fontWeight: 'bold', padding: '10px 8px', textAlign: 'center', border: '1px solid #334155', fontSize: '12px' }}>
-                                        {totalEnqCount} (100%)<br/>{formatCurrencyCompact(totalEnqVal)}
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#fde047', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#fde047"><b>{totalEnqCount} (100%)<br/>{formatCurrencyCompact(totalEnqVal)}</b></font>
                                     </td>
-                                    <td style={{ backgroundColor: '#0f172a', color: '#93c5fd', fontWeight: 'bold', padding: '10px 8px', textAlign: 'center', border: '1px solid #334155', fontSize: '12px' }}>
-                                        {openCount} ({calcPct(openCount, totalEnqCount)})<br/>{formatCurrencyCompact(openVal)} ({calcPct(openVal, totalEnqVal)})
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#93c5fd', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#93c5fd"><b>{openCount} ({calcPct(openCount, totalEnqCount)})<br/>{formatCurrencyCompact(openVal)} ({calcPct(openVal, totalEnqVal)})</b></font>
                                     </td>
-                                    <td style={{ backgroundColor: '#0f172a', color: '#86efac', fontWeight: 'bold', padding: '10px 8px', textAlign: 'center', border: '1px solid #334155', fontSize: '12px' }}>
-                                        {poCount} ({calcPct(poCount, totalEnqCount)})<br/>{formatCurrencyCompact(poVal)} ({calcPct(poVal, totalEnqVal)})
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#86efac', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#86efac"><b>{poCount} ({calcPct(poCount, totalEnqCount)})<br/>{formatCurrencyCompact(poVal)} ({calcPct(poVal, totalEnqVal)})</b></font>
                                     </td>
-                                    <td style={{ backgroundColor: '#0f172a', color: '#99f6e4', fontWeight: 'bold', padding: '10px 8px', textAlign: 'center', border: '1px solid #334155', fontSize: '12px' }}>
-                                        {partialPoCount} ({calcPct(partialPoCount, totalEnqCount)})<br/>{formatCurrencyCompact(partialPoVal)}
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#99f6e4', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#99f6e4"><b>{partialPoCount} ({calcPct(partialPoCount, totalEnqCount)})<br/>{formatCurrencyCompact(partialPoVal)}</b></font>
                                     </td>
-                                    <td style={{ backgroundColor: '#0f172a', color: '#c7d2fe', fontWeight: 'bold', padding: '10px 8px', textAlign: 'center', border: '1px solid #334155', fontSize: '12px' }}>
-                                        {underReviewCount} ({calcPct(underReviewCount, totalEnqCount)})<br/>{formatCurrencyCompact(underReviewVal)}
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#c7d2fe', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#c7d2fe"><b>{underReviewCount} ({calcPct(underReviewCount, totalEnqCount)})<br/>{formatCurrencyCompact(underReviewVal)}</b></font>
                                     </td>
-                                    <td style={{ backgroundColor: '#0f172a', color: '#e9d5ff', fontWeight: 'bold', padding: '10px 8px', textAlign: 'center', border: '1px solid #334155', fontSize: '12px' }}>
-                                        {amendCount} ({calcPct(amendCount, totalEnqCount)})<br/>{formatCurrencyCompact(amendVal)}
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#e9d5ff', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#e9d5ff"><b>{amendCount} ({calcPct(amendCount, totalEnqCount)})<br/>{formatCurrencyCompact(amendVal)}</b></font>
                                     </td>
-                                    <td style={{ backgroundColor: '#0f172a', color: '#fecdd3', fontWeight: 'bold', padding: '10px 8px', textAlign: 'center', border: '1px solid #334155', fontSize: '12px' }}>
-                                        {lostCount} ({calcPct(lostCount, totalEnqCount)})<br/>{formatCurrencyCompact(lostVal)}
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#fecdd3', fontWeight: 'bold', padding: '10px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#fecdd3"><b>{lostCount} ({calcPct(lostCount, totalEnqCount)})<br/>{formatCurrencyCompact(lostVal)}</b></font>
                                     </td>
                                 </tr>
                             </tfoot>
                         </table>
 
-                        {/* SECTION 2: Top 10 High Value Offers Table with Direct App Link */}
+                        {/* SECTION 2: TOP 10 HIGH VALUE OFFERS (LATEST 1 MONTH - WITH APP LINKS) */}
                         <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            2. Top 10 High-Value Offers (With 1-Click App Links)
+                            2. Top 10 High-Value Offers (Latest 1 Month - With 1-Click App Links)
                         </h3>
 
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', border: '1px solid #cbd5e1', marginBottom: '20px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', border: '1px solid #cbd5e1', marginBottom: '24px' }}>
                             <thead>
-                                <tr style={{ backgroundColor: '#0f172a' }}>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '8px 6px', border: '1px solid #334155', textAlign: 'center', width: '30px' }}>#</th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '8px 10px', border: '1px solid #334155', textAlign: 'left' }}>Quotation Ref</th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '8px 10px', border: '1px solid #334155', textAlign: 'left' }}>Customer</th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '8px 10px', border: '1px solid #334155', textAlign: 'left' }}>Sales Person</th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '8px 10px', border: '1px solid #334155', textAlign: 'right' }}>Amount (INR)</th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '8px 10px', border: '1px solid #334155', textAlign: 'center' }}>Status</th>
-                                    <th style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '8px 10px', border: '1px solid #334155', textAlign: 'center' }}>App Link</th>
+                                <tr bgcolor="#0f172a" style={{ backgroundColor: '#0f172a' }}>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '9px 8px', border: '1px solid #334155', fontSize: '12px', width: '30px' }}>
+                                        <font color="#ffffff"><b>#</b></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="left" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '9px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Quotation Ref</b></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="left" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '9px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Customer Name</b></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="left" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '9px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Sales Person</b></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="right" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '9px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Offer Value (INR)</b></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '9px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Status</b></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '9px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>Date</b></font>
+                                    </td>
+                                    <td bgcolor="#0f172a" align="center" style={{ backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 'bold', padding: '9px 8px', border: '1px solid #334155', fontSize: '12px' }}>
+                                        <font color="#ffffff"><b>App Link</b></font>
+                                    </td>
                                 </tr>
                             </thead>
                             <tbody>
@@ -954,6 +1170,9 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                                         <td style={{ padding: '8px 10px', textAlign: 'center', border: '1px solid #e2e8f0', fontWeight: 'bold', color: offer.status === 'PO received' ? '#15803d' : offer.status === 'Open' ? '#1d4ed8' : '#b45309' }}>
                                             {offer.status}
                                         </td>
+                                        <td style={{ padding: '8px 10px', textAlign: 'center', border: '1px solid #e2e8f0', color: '#64748b' }}>
+                                            {offer.date}
+                                        </td>
                                         <td style={{ padding: '8px 10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
                                             <a
                                                 href={offer.appLink}
@@ -969,13 +1188,25 @@ export const ManagementReportModal: React.FC<ManagementReportModalProps> = ({
                             </tbody>
                         </table>
 
-                        {/* Sign-off footer */}
-                        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', fontSize: '11px', color: '#64748b' }}>
-                            <p style={{ margin: '0 0 4px 0' }}>
-                                Report generated from <strong>Siddhi Kabel Corporation Offer Management System</strong>.
+                        {/* 3. SIGNATURE - Full Executive Sign-off */}
+                        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '2px solid #e2e8f0', fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif' }}>
+                            <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#334155' }}>
+                                Thanks &amp; Best Regards,
                             </p>
-                            <p style={{ margin: '0' }}>
-                                Direct Application Portal: <a href="https://offer-managment.vercel.app" style={{ color: '#4338ca' }}>https://offer-managment.vercel.app</a>
+                            <p style={{ margin: '0 0 2px 0', fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
+                                {currentUser.name}
+                            </p>
+                            <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64748b' }}>
+                                {currentUser.role} | Sales &amp; Commercial Operations
+                            </p>
+                            <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: 'bold', color: '#1e3a8a' }}>
+                                Siddhi Kabel Corporation Pvt. Ltd.
+                            </p>
+                            <p style={{ margin: '0 0 6px 0', fontSize: '11px', color: '#64748b' }}>
+                                Manufacturers of High Temperature &amp; Speciality Cables
+                            </p>
+                            <p style={{ margin: '0', fontSize: '11px', color: '#4338ca' }}>
+                                🔗 System Portal: <a href="https://offer-managment.vercel.app" style={{ color: '#4338ca', textDecoration: 'underline', fontWeight: 'bold' }}>https://offer-managment.vercel.app</a>
                             </p>
                         </div>
                     </div>
