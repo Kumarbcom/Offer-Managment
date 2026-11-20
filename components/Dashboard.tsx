@@ -1260,6 +1260,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ quotations, salesPersons, 
                 performanceTotals={performanceTotals}
                 dateRangeLabel={dateRangeLabel}
                 currentUser={currentUser}
+                quotations={quotations}
+                customerMap={customerMap}
+                salesPersons={salesPersons}
             />
 </div>
     );
