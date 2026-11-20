@@ -16,7 +16,7 @@ interface CustomerManagerProps {
   currentUser: User;
 }
 
-type SortByType = 'id' | 'name' | 'city' | 'pincode' | 'salesPerson';
+type SortByType = 'id' | 'name' | 'city' | 'pincode' | 'salesPerson' | 'salesPersonId';
 type SortOrderType = 'asc' | 'desc';
 
 const PAGE_LIMIT = 50;
@@ -31,6 +31,72 @@ const statusColors: Record<string, { bg: string, text: string }> = {
     'Lost': { bg: 'bg-rose-100', text: 'text-rose-700' },
     'Under Review': { bg: 'bg-indigo-100', text: 'text-indigo-700' },
     'Need Amendment': { bg: 'bg-purple-100', text: 'text-purple-700' },
+};
+
+const statusTheme: Record<string, { border: string; bg: string; dot: string; badge: string; valColor: string; pillBg: string; pillText: string }> = {
+  'Open': { 
+    border: 'border-blue-200 hover:border-blue-400', 
+    bg: 'from-blue-50/70 to-blue-100/40 hover:to-blue-100/70', 
+    dot: 'bg-blue-600', 
+    badge: 'text-blue-700', 
+    valColor: 'text-blue-900',
+    pillBg: 'bg-blue-50 border-blue-200',
+    pillText: 'text-blue-700'
+  },
+  'PO received': { 
+    border: 'border-emerald-200 hover:border-emerald-400', 
+    bg: 'from-emerald-50/70 to-emerald-100/40 hover:to-emerald-100/70', 
+    dot: 'bg-emerald-600', 
+    badge: 'text-emerald-700', 
+    valColor: 'text-emerald-900',
+    pillBg: 'bg-emerald-50 border-emerald-200',
+    pillText: 'text-emerald-700'
+  },
+  'Partial PO Received': { 
+    border: 'border-amber-200 hover:border-amber-400', 
+    bg: 'from-amber-50/70 to-amber-100/40 hover:to-amber-100/70', 
+    dot: 'bg-amber-600', 
+    badge: 'text-amber-800', 
+    valColor: 'text-amber-900',
+    pillBg: 'bg-amber-50 border-amber-200',
+    pillText: 'text-amber-800'
+  },
+  'Expired': { 
+    border: 'border-yellow-200 hover:border-yellow-400', 
+    bg: 'from-yellow-50/70 to-yellow-100/40 hover:to-yellow-100/70', 
+    dot: 'bg-yellow-600', 
+    badge: 'text-yellow-800', 
+    valColor: 'text-yellow-900',
+    pillBg: 'bg-yellow-50 border-yellow-200',
+    pillText: 'text-yellow-800'
+  },
+  'Lost': { 
+    border: 'border-rose-200 hover:border-rose-400', 
+    bg: 'from-rose-50/70 to-rose-100/40 hover:to-rose-100/70', 
+    dot: 'bg-rose-600', 
+    badge: 'text-rose-700', 
+    valColor: 'text-rose-900',
+    pillBg: 'bg-rose-50 border-rose-200',
+    pillText: 'text-rose-700'
+  },
+  'Under Review': { 
+    border: 'border-indigo-200 hover:border-indigo-400', 
+    bg: 'from-indigo-50/70 to-indigo-100/40 hover:to-indigo-100/70', 
+    dot: 'bg-indigo-600', 
+    badge: 'text-indigo-700', 
+    valColor: 'text-indigo-900',
+    pillBg: 'bg-indigo-50 border-indigo-200',
+    pillText: 'text-indigo-700'
+  },
+  'Need Amendment': { 
+    border: 'border-purple-200 hover:border-purple-400', 
+    bg: 'from-purple-50/70 to-purple-100/40 hover:to-purple-100/70', 
+    dot: 'bg-purple-600', 
+    badge: 'text-purple-700', 
+    valColor: 'text-purple-900',
+    pillBg: 'bg-purple-50 border-purple-200',
+    pillText: 'text-purple-700'
+  },
 };
 
 
@@ -313,39 +379,91 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-50 p-2 rounded-lg shadow-sm border border-slate-200">
-        <h3 className="text-base font-semibold text-black mb-1">
-            Overall Quotation Summary
-        </h3>
-        <div className="flex flex-wrap gap-2 items-center">
-            <div
-                onClick={() => onFilterQuotations({ })}
-                className="cursor-pointer text-blue-700 hover:text-blue-900 transition-colors text-sm font-semibold p-1 rounded-md hover:bg-blue-100/50"
-                title={`View all ${allQuotationStats.total.count} quotations`}
-            >
-                <span>Total Enquiries: </span>
-                <span className="font-bold">{allQuotationStats.total.count}</span>
-                <span className="text-slate-400 mx-1">|</span>
-                <span className="font-bold">{formatCurrency(allQuotationStats.total.value)}</span>
+      {/* Overall Quotation Summary - Dashboard Stat Cards */}
+      <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200">
+        <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shadow-2xs">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
             </div>
-            {QUOTATION_STATUSES.map(status => {
-                const stats = allQuotationStats.byStatus[status];
-                if (!stats || stats.count === 0) return null;
-                const colors = statusColors[status] || { bg: 'bg-slate-100', text: 'text-slate-700' };
-                return (
-                    <div
-                        key={status}
-                        onClick={() => onFilterQuotations({ status: status })}
-                        className={`cursor-pointer ${colors.text} hover:bg-opacity-80 transition-opacity text-sm font-semibold p-1 rounded-md hover:bg-current/10`}
-                        title={`View ${stats.count} '${status}' quotations`}
-                    >
-                        <span>{status}: </span>
-                        <span className="font-bold">{stats.count}</span>
-                        <span className="text-slate-400 mx-1">|</span>
-                        <span className="font-bold">{formatCurrency(stats.value)}</span>
-                    </div>
-                )
-            })}
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                Overall Quotation Summary
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Click any card to filter quotations instantly
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onFilterQuotations({})}
+            className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+          >
+            <span>View All ({allQuotationStats.total.count})</span>
+            <span>→</span>
+          </button>
+        </div>
+
+        {/* Dashboard Stat Cards Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+          {/* Total Card */}
+          <div
+            onClick={() => onFilterQuotations({})}
+            className="group cursor-pointer bg-gradient-to-br from-slate-50 to-blue-50/50 hover:to-blue-100/70 p-2.5 rounded-lg border border-slate-200 hover:border-blue-400 transition-all duration-200 shadow-2xs hover:shadow-xs flex flex-col justify-between"
+            title={`View all ${allQuotationStats.total.count} quotations`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Total</span>
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+            </div>
+            <div className="mt-1.5">
+              <div className="text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
+                {allQuotationStats.total.count.toLocaleString('en-IN')}
+              </div>
+              <div className="text-[11px] font-semibold text-slate-600 truncate mt-0.5" title={formatCurrency(allQuotationStats.total.value)}>
+                {formatCurrency(allQuotationStats.total.value)}
+              </div>
+            </div>
+          </div>
+
+          {/* Status Cards */}
+          {QUOTATION_STATUSES.map(status => {
+            const stats = allQuotationStats.byStatus[status] || { count: 0, value: 0 };
+            const cfg = statusTheme[status] || { 
+              border: 'border-slate-200 hover:border-slate-400',
+              bg: 'from-slate-50 to-slate-100/50 hover:to-slate-100',
+              dot: 'bg-slate-400',
+              badge: 'text-slate-700',
+              valColor: 'text-slate-700'
+            };
+            return (
+              <div
+                key={status}
+                onClick={() => onFilterQuotations({ status })}
+                className={`group cursor-pointer bg-gradient-to-br ${cfg.bg} p-2.5 rounded-lg border ${cfg.border} transition-all duration-200 shadow-2xs hover:shadow-xs flex flex-col justify-between`}
+                title={`View ${stats.count} '${status}' quotations (${formatCurrency(stats.value)})`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider truncate ${cfg.badge}`} title={status}>
+                    {status}
+                  </span>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`}></span>
+                </div>
+                <div className="mt-1.5">
+                  <div className="text-base font-extrabold text-slate-900 group-hover:scale-105 transition-transform origin-left">
+                    {stats.count.toLocaleString('en-IN')}
+                  </div>
+                  <div className={`text-[11px] font-semibold truncate mt-0.5 ${cfg.valColor}`} title={formatCurrency(stats.value)}>
+                    {formatCurrency(stats.value)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -433,53 +551,103 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
             <>
                 <div className="overflow-x-auto -mx-4">
                     <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50">
+                    <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
                           {['ID', 'Customer Name', 'Address', 'City', 'Pincode', 'Sales Person', 'Quotations', 'Actions'].map(header => (
-                            <th key={header} scope="col" className="px-3 py-2 text-left text-xs font-semibold text-black uppercase tracking-wider">
+                            <th key={header} scope="col" className={`px-3 py-2 text-xs font-bold text-slate-800 uppercase tracking-wider ${header === 'Actions' ? 'text-center' : 'text-left'}`}>
                               {header}
                             </th>
                           ))}
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-slate-200">
+                    <tbody className="bg-white divide-y divide-slate-100">
                         {displayedCustomers.map(customer => (
-                            <tr key={customer.id} className="hover:bg-slate-50/70">
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.id}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-black">{customer.name}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black max-w-xs truncate">{customer.address}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.city}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{customer.pincode}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">{getSalesPersonName(customer.salesPersonId)}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-black">
-                                    <div className="flex flex-col items-start gap-1">
-                                        {QUOTATION_STATUSES.map(status => {
-                                            const relevantQuotes = quotations?.filter(q => q.customerId === customer.id && q.status === status) || [];
-                                            if (relevantQuotes.length === 0) return null;
-                                            const totalValue = relevantQuotes.reduce((sum, q) => sum + calculateTotalAmount(q), 0);
-                                            const colors = statusColors[status] || { bg: 'bg-slate-100', text: 'text-slate-700' };
-                                            return (
-                                                <div
-                                                    key={status}
-                                                    onClick={() => onFilterQuotations({ customerIds: [customer.id], status: status })}
-                                                    className={`cursor-pointer hover:underline ${colors.text} text-xs font-semibold`}
-                                                    title={`View ${relevantQuotes.length} '${status}' quotation(s)`}
-                                                >
-                                                    <span>{status}: </span>
-                                                    <span className="font-bold">{relevantQuotes.length}</span>
-                                                    <span className="text-slate-400 mx-1">|</span>
-                                                    <span className="font-bold">{formatCurrency(totalValue)}</span>
-                                                </div>
-                                            )
-                                        })}
-                                        {quotations?.filter(q => q.customerId === customer.id).length === 0 && (
-                                            <span className="text-xs text-slate-400 italic">No quotations</span>
-                                        )}
-                                    </div>
+                            <tr key={customer.id} className="hover:bg-slate-50/70 transition-colors">
+                                <td className="px-3 py-2.5 whitespace-nowrap text-xs font-mono text-slate-500 align-top">#{customer.id}</td>
+                                <td className="px-3 py-2.5 text-xs font-bold text-slate-900 align-top whitespace-normal break-words min-w-[160px] max-w-[240px] leading-snug">
+                                    {customer.name}
                                 </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                    <button onClick={() => handleEdit(customer)} className="font-semibold text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
-                                    <button onClick={() => handleDelete(customer.id)} className="font-semibold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+                                <td className="px-3 py-2.5 text-xs text-slate-600 align-top whitespace-normal break-words min-w-[160px] max-w-[240px] leading-relaxed">
+                                    {customer.address || <span className="text-slate-400 italic">—</span>}
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap text-xs text-slate-700 align-top">{customer.city || '—'}</td>
+                                <td className="px-3 py-2.5 whitespace-nowrap text-xs text-slate-700 align-top">{customer.pincode || '—'}</td>
+                                <td className="px-3 py-2.5 whitespace-nowrap text-xs font-semibold text-slate-800 align-top">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[11px] font-semibold">
+                                        {getSalesPersonName(customer.salesPersonId)}
+                                    </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-sm text-slate-800 align-top min-w-[280px]">
+                                    {(() => {
+                                        const customerQuotes = quotations?.filter(q => q.customerId === customer.id) || [];
+                                        if (customerQuotes.length === 0) {
+                                            return <span className="text-xs text-slate-400 italic">No quotations</span>;
+                                        }
+
+                                        const rows = QUOTATION_STATUSES.map(status => {
+                                            const matched = customerQuotes.filter(q => q.status === status);
+                                            if (matched.length === 0) return null;
+                                            const totalVal = matched.reduce((sum, q) => sum + calculateTotalAmount(q), 0);
+                                            const theme = statusTheme[status] || { pillBg: 'bg-slate-50 border-slate-200', pillText: 'text-slate-700' };
+                                            return { status, count: matched.length, totalVal, theme };
+                                        }).filter(Boolean);
+
+                                        return (
+                                            <div className="space-y-1">
+                                                <div className="grid grid-cols-[115px_50px_1fr] text-[10px] font-bold text-slate-400 uppercase tracking-wider pb-0.5 border-b border-slate-100">
+                                                    <span>Status</span>
+                                                    <span className="text-center">Offers</span>
+                                                    <span className="text-right">Value</span>
+                                                </div>
+                                                {rows.map(row => (
+                                                    <div
+                                                        key={row!.status}
+                                                        onClick={() => onFilterQuotations({ customerIds: [customer.id], status: row!.status })}
+                                                        className="grid grid-cols-[115px_50px_1fr] items-center gap-1.5 py-0.5 px-1 rounded hover:bg-slate-100/70 cursor-pointer transition-colors group"
+                                                        title={`View ${row!.count} '${row!.status}' quotation(s) for ${customer.name}`}
+                                                    >
+                                                        <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${row!.theme.pillBg} ${row!.theme.pillText} truncate`}>
+                                                            {row!.status}
+                                                        </span>
+                                                        <span className="text-center text-xs font-bold text-slate-700 group-hover:text-blue-600">
+                                                            {row!.count}
+                                                        </span>
+                                                        <span className="text-right text-xs font-semibold text-slate-900 font-mono">
+                                                            {formatCurrency(row!.totalVal)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap text-center text-sm font-medium align-middle">
+                                    <div className="inline-flex items-center justify-center gap-1.5">
+                                        <button 
+                                            onClick={() => handleEdit(customer)} 
+                                            className="w-7 h-7 rounded-lg flex items-center justify-center text-blue-600 hover:text-blue-800 bg-blue-50/70 hover:bg-blue-100 transition-colors border border-blue-200/60 cursor-pointer shadow-2xs"
+                                            title="Edit Customer"
+                                            aria-label="Edit Customer"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDelete(customer.id)} 
+                                            className="w-7 h-7 rounded-lg flex items-center justify-center text-rose-600 hover:text-rose-800 bg-rose-50/70 hover:bg-rose-100 transition-colors border border-rose-200/60 cursor-pointer shadow-2xs"
+                                            title="Delete Customer"
+                                            aria-label="Delete Customer"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="3 6 5 6 21 6"/>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                                <line x1="14" y1="11" x2="14" y2="17"/>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

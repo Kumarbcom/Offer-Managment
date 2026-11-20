@@ -73,7 +73,20 @@ export const mapToSupabase = (tableName: TableName, item: any): any => {
             prepared_by: item.preparedBy !== undefined ? item.preparedBy : (item.prepared_by || 'Kumar'),
             products_brand: item.productsBrand !== undefined ? item.productsBrand : (item.products_brand || 'Lapp'),
             mode_of_enquiry: item.modeOfEnquiry !== undefined ? item.modeOfEnquiry : (item.mode_of_enquiry || 'Customer Email'),
-            status: item.status || 'Open',
+            status: (() => {
+                let st = (item.status || 'Open') as QuotationStatus;
+                if (st === 'Open' && rawDate) {
+                    const qDate = parseDate(rawDate);
+                    if (qDate && !isNaN(qDate.getTime())) {
+                        const now = new Date();
+                        const diffDays = (now.getTime() - qDate.getTime()) / (1000 * 60 * 60 * 24);
+                        if (diffDays > 28) {
+                            return 'Expired';
+                        }
+                    }
+                }
+                return st;
+            })(),
             comments: item.comments || '',
             details: item.details || [],
             gst_added: item.gstAdded !== undefined ? item.gstAdded : (item.gst_added !== undefined ? item.gst_added : true)
@@ -238,7 +251,20 @@ export const mapFromSupabase = (tableName: TableName, item: any): any => {
             productsBrand: get(['products_brand', 'productsBrand'], 'Lapp'),
             salesPersonId: isNaN(salesPersonId) ? null : (salesPersonId || null),
             modeOfEnquiry: get(['mode_of_enquiry', 'modeOfEnquiry'], 'Customer Email'),
-            status: item.status || 'Open',
+            status: (() => {
+                let st = (item.status || 'Open') as QuotationStatus;
+                if (st === 'Open' && rawDate) {
+                    const qDate = parseDate(rawDate);
+                    if (qDate && !isNaN(qDate.getTime())) {
+                        const now = new Date();
+                        const diffDays = (now.getTime() - qDate.getTime()) / (1000 * 60 * 60 * 24);
+                        if (diffDays > 28) {
+                            return 'Expired';
+                        }
+                    }
+                }
+                return st;
+            })(),
             comments: item.comments || '',
             details: item.details || [],
             gstAdded: !!(get(['gst_added', 'gstAdded'], false)),

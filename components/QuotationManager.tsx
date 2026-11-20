@@ -236,6 +236,34 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
   // Excel Column Filters State
   const [columnFilters, setColumnFilters] = useState<ColumnFilterState>({});
   const [activeFilterDropdown, setActiveFilterDropdown] = useState<string | null>(null);
+  const [hideOlderThan2Months, setHideOlderThan2Months] = useState<boolean>(true);
+
+  const twoMonthsAgoDateStr = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 2);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  const hasSearchOrDateFilter = useMemo(() => {
+    return Boolean(
+      (universalSearchTerm && universalSearchTerm.trim().length > 0) ||
+      columnFilters.qtnNo ||
+      columnFilters.dateFrom ||
+      columnFilters.dateTo
+    );
+  }, [universalSearchTerm, columnFilters.qtnNo, columnFilters.dateFrom, columnFilters.dateTo]);
+
+  const getEffectiveStatus = useCallback((q: Quotation): QuotationStatus => {
+    if (q.status === 'Open') {
+      const qDate = new Date(q.quotationDate);
+      if (!isNaN(qDate.getTime())) {
+        const now = new Date();
+        const diffDays = (now.getTime() - qDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays > 28) return 'Expired';
+      }
+    }
+    return q.status;
+  }, []);
 
   useEffect(() => {
     if (globalSearch) {
@@ -498,8 +526,17 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
           if (columnFilters.amountMax !== undefined && amt > columnFilters.amountMax) return false;
         }
 
+        // ── 2 Months Retention Rule ──
+        // Only if user types in search (universalSearchTerm or columnFilters.qtnNo) or selects date range (dateFrom or dateTo) then show older offers
+        if (!hasSearchOrDateFilter && hideOlderThan2Months) {
+          if (q.quotationDate && q.quotationDate < twoMonthsAgoDateStr) {
+            return false;
+          }
+        }
+
+        const effectiveStatus = getEffectiveStatus(q);
         if (columnFilters.statuses && columnFilters.statuses.length > 0) {
-          if (!columnFilters.statuses.includes(q.status)) {
+          if (!columnFilters.statuses.includes(effectiveStatus)) {
             return false;
           }
         }
@@ -540,7 +577,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
           case 'contactPerson': comparison = a.contactPerson.localeCompare(b.contactPerson); break;
           case 'salesPerson': comparison = getSalesPersonName(a.salesPersonId).localeCompare(getSalesPersonName(b.salesPersonId)); break;
           case 'totalAmount': comparison = calculateTotalAmount(a) - calculateTotalAmount(b); break;
-          case 'status': comparison = a.status.localeCompare(b.status); break;
+          case 'status': comparison = getEffectiveStatus(a).localeCompare(getEffectiveStatus(b)); break;
           case 'comments': comparison = (a.comments || '').localeCompare(b.comments || ''); break;
         }
         if (comparison === 0 && sortBy !== 'id') {
@@ -548,7 +585,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
         }
         return sortOrder === 'asc' ? comparison : -comparison;
       });
-  }, [quotations, universalSearchTerm, columnFilters, customerMap, salesPersons, sortBy, sortOrder, quotationFilter, userRole, currentUser]);
+  }, [quotations, universalSearchTerm, columnFilters, customerMap, salesPersons, sortBy, sortOrder, quotationFilter, userRole, currentUser, hideOlderThan2Months, twoMonthsAgoDateStr, hasSearchOrDateFilter, getEffectiveStatus]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -773,6 +810,9 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
     if (quotationFilter?.customerIds && quotationFilter.customerIds.length > 0) {
       list = list.filter(q => q.customerId !== null && quotationFilter.customerIds?.includes(q.customerId));
     }
+    if (!hasSearchOrDateFilter && hideOlderThan2Months) {
+      list = list.filter(q => !q.quotationDate || q.quotationDate >= twoMonthsAgoDateStr);
+    }
 
     const counts = {
       total: { count: 0, amount: 0 },
@@ -788,7 +828,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
       counts.total.count += 1;
       counts.total.amount += amt;
 
-      const st = q.status;
+      const st = getEffectiveStatus(q);
       if (st === 'Open') {
         counts.open.count += 1;
         counts.open.amount += amt;
@@ -808,7 +848,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
     });
 
     return counts;
-  }, [quotations, userRole, currentUser, salesPersons, quotationFilter]);
+  }, [quotations, userRole, currentUser, salesPersons, quotationFilter, hasSearchOrDateFilter, hideOlderThan2Months, twoMonthsAgoDateStr, getEffectiveStatus]);
 
   const handleStatusCardClick = (category: 'all' | 'Open' | 'PO received' | 'Partial PO Received' | 'Lost' | 'Need Amendment') => {
     if (category === 'all') {
@@ -1251,7 +1291,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800">
                 <span className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-mono leading-none">₹</span>
-                <span>Invoiced / Part</span>
+                <span>Partial Order Received</span>
               </div>
               <div className="w-5 h-5 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
@@ -1342,6 +1382,30 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
           </div>
 
         </div>
+
+        {/* ── 2 Months Retention Notification & Toggle ── */}
+        {!hasSearchOrDateFilter && (
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3.5 py-2 text-xs text-slate-700 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${hideOlderThan2Months ? 'bg-blue-600' : 'bg-amber-500'}`}></span>
+              <span className="font-semibold text-slate-800">
+                {hideOlderThan2Months 
+                  ? `Showing offers from the last 2 months (${twoMonthsAgoDateStr} to today).` 
+                  : `Showing all offers including older than 2 months.`}
+              </span>
+              <span className="text-slate-500 text-[11px] hidden sm:inline">
+                {hideOlderThan2Months ? "Older offers are hidden unless you search by offer number or select a date range." : ""}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHideOlderThan2Months(prev => !prev)}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer ml-auto"
+            >
+              {hideOlderThan2Months ? "Show All Older Offers" : "Hide Older Than 2 Months"}
+            </button>
+          </div>
+        )}
 
         {/* ── Active Excel Filters Bar ── */}
         {activeFilterCount > 0 && (
@@ -1846,14 +1910,22 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
                         {/* QUOTATION NO (Clickable to open) */}
                         <td className="px-3 py-3 text-slate-700 text-xs font-semibold whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(q.id)}
-                            className="font-mono font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1"
-                            title={`Open Quotation ${generateFormattedQuotationNumber(q, quotations || [])}`}
-                          >
-                            <span>{generateFormattedQuotationNumber(q, quotations || [])}</span>
-                          </button>
+                          {(() => {
+                            const fullNo = generateFormattedQuotationNumber(q, quotations || []);
+                            const seqNum = getQuotationSeqNum(q, quotations || []);
+                            const revSuffix = q.revisionNumber && Number(q.revisionNumber) > 0 ? ` (R${q.revisionNumber})` : '';
+                            const shortNo = seqNum !== 'ERROR' && seqNum !== 'DRAFT' ? `${seqNum}${revSuffix}` : fullNo;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(q.id)}
+                                className="font-mono font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1"
+                                title={`Open Quotation ${fullNo}`}
+                              >
+                                <span>{shortNo}</span>
+                              </button>
+                            );
+                          })()}
                         </td>
 
                         {/* DATE */}
@@ -1862,11 +1934,11 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         </td>
 
                         {/* CUSTOMER (Clickable to open) */}
-                        <td className="px-3 py-3 min-w-[170px] max-w-[240px]">
+                        <td className="px-3 py-3 min-w-[180px] max-w-[280px]">
                           <button
                             type="button"
                             onClick={() => handleEdit(q.id)}
-                            className="text-left font-bold text-slate-900 hover:text-blue-600 transition-colors uppercase tracking-tight truncate block w-full cursor-pointer"
+                            className="text-left font-bold text-slate-900 hover:text-blue-600 transition-colors uppercase tracking-tight whitespace-normal break-words block w-full cursor-pointer leading-snug"
                             title={`Open Quotation: ${getCustomerName(q.customerId)}`}
                           >
                             {getCustomerName(q.customerId)}
@@ -1893,7 +1965,7 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
 
                         {/* STATUS */}
                         <td className="px-2 py-3 text-center">
-                          <StatusBadge status={q.status} onChange={s => handleStatusChange(q.id, s)} />
+                          <StatusBadge status={getEffectiveStatus(q)} onChange={s => handleStatusChange(q.id, s)} />
                         </td>
 
                         {/* VALIDITY */}
@@ -1910,9 +1982,6 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                         <td className="px-3 py-3 min-w-[110px]">
                           <p className="text-xs font-bold text-slate-900 truncate">
                             {getSalesPersonName(q.salesPersonId)}
-                          </p>
-                          <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
-                            Inside Sales
                           </p>
                         </td>
 
@@ -1945,14 +2014,13 @@ export const QuotationManager: React.FC<QuotationManagerProps> = ({
                             <button
                               type="button"
                               onClick={() => handleEdit(q.id)}
-                              title="Open Quotation"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white transition-all shadow-2xs hover:scale-105 cursor-pointer"
+                              title="Edit Quotation"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-all shadow-2xs hover:scale-105 cursor-pointer"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                               </svg>
-                              <span>Open</span>
                             </button>
                             <button
                               type="button"
