@@ -57,9 +57,13 @@ export const QuotationDiffModal: React.FC<QuotationDiffModalProps> = ({
 
   return (
     <div className="diff-modal-overlay fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      {/* Print styles specifically for the Comparison Sheet */}
+      {/* Print styles specifically for the Comparison Sheet (Landscape Mode) */}
       <style>{`
         @media print {
+          @page {
+            size: A4 landscape !important;
+            margin: 6mm 8mm !important;
+          }
           html, body {
             overflow: visible !important;
             height: auto !important;
@@ -113,6 +117,20 @@ export const QuotationDiffModal: React.FC<QuotationDiffModalProps> = ({
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+          }
+          table {
+            width: 100% !important;
+            page-break-inside: auto !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+          tfoot {
+            display: table-footer-group !important;
           }
         }
       `}</style>
