@@ -372,6 +372,7 @@ const parseToYYYYMMDD = (val: any): string => {
     return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
   }
   const s = String(val).trim();
+  if (!s || s === '-' || s === '—') return '';
   const ddmmyyyyMatch = s.match(/^(\d{1,2})[-\/\.](\d{1,2})[-\/\.](\d{4})$/);
   if (ddmmyyyyMatch) {
     const day = ddmmyyyyMatch[1].padStart(2, '0');
@@ -382,7 +383,7 @@ const parseToYYYYMMDD = (val: any): string => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const d = new Date(s);
   if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-  return s;
+  return '';
 };
 
 export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) => {
@@ -547,7 +548,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         "Description": "ÖLFLEX® CLASSIC 110 4G0,5",
         "HSN Code": "85444990",
         "UOM": "M",
-        "MFG": "TRDN",
+        "Plant": "TRDN",
         "Weight": 0.054,
         "LP": 106.18,
         "SP": 0,
@@ -561,7 +562,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
         "Description": "ÖLFLEX® UNIPLUS 1X2.5 BK",
         "HSN Code": "85444990",
         "UOM": "M",
-        "MFG": "TRDN",
+        "Plant": "TRDN",
         "Weight": 0.045,
         "LP": 77.47,
         "SP": 0,
@@ -608,7 +609,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     }
 
     const headerRow1: any[] = ['', '', '', '', '', '', '', ''];
-    const headerRow2: any[] = ['ID', 'Image', 'Part No', 'Description', 'HSN Code', 'UOM', 'MFG', 'Weight'];
+    const headerRow2: any[] = ['ID', 'Image', 'Part No', 'Description', 'HSN Code', 'UOM', 'Plant', 'Weight'];
     const merges: any[] = [];
 
     sortedDateKeys.forEach((key, idx) => {
@@ -723,7 +724,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                   'Description': product.description,
                   'HSN Code': product.hsnCode || '',
                   'UOM': product.uom || '',
-                  'MFG': product.plant || '',
+                  'Plant': product.plant || '',
                   'Weight': product.weight > 0 ? product.weight : '',
                   'LP': currentPrice && currentPrice.lp > 0 ? currentPrice.lp : 0,
                   'SP': currentPrice && currentPrice.sp > 0 ? currentPrice.sp : '-',
@@ -1006,8 +1007,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
               const row1 = rawAOA[1] || [];
               
               const isPivoted = row0.some((cell, colIdx) => {
-                  const s = String(cell || '').trim();
-                  return parseToYYYYMMDD(s) !== '' && colIdx >= 5;
+                  const s = parseToYYYYMMDD(cell);
+                  return Boolean(s && /^\d{4}-\d{2}-\d{2}$/.test(s) && colIdx >= 5);
               });
 
               if (isPivoted) {
@@ -1040,7 +1041,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                   const datePairs: DatePair[] = [];
                   for (let c = 0; c < row0.length; c++) {
                       const parsed = parseToYYYYMMDD(row0[c]);
-                      if (parsed) {
+                      if (parsed && /^\d{4}-\d{2}-\d{2}$/.test(parsed)) {
                           let lpCol = -1;
                           let spCol = -1;
                           if (String(row1[c] || '').toUpperCase() === 'LP') {
@@ -1209,13 +1210,23 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                               }
                           }
 
-                          // Sort chronologically and chain validTo
+                          // Filter out any price entries with missing or invalid validFrom
+                          newPrices = newPrices.filter(pr => {
+                              const k = parseToYYYYMMDD(pr.validFrom);
+                              return Boolean(k && /^\d{4}-\d{2}-\d{2}$/.test(k));
+                          });
+
+                          // Sort chronologically and chain validTo safely
                           if (newPrices.length > 0) {
                               newPrices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
                               for (let j = 0; j < newPrices.length - 1; j++) {
                                   const nextDate = new Date(newPrices[j + 1].validFrom);
-                                  nextDate.setDate(nextDate.getDate() - 1);
-                                  newPrices[j].validTo = nextDate.toISOString().split('T')[0];
+                                  if (!isNaN(nextDate.getTime())) {
+                                      nextDate.setDate(nextDate.getDate() - 1);
+                                      if (!isNaN(nextDate.getTime())) {
+                                          newPrices[j].validTo = nextDate.toISOString().split('T')[0];
+                                      }
+                                  }
                               }
                               newPrices[newPrices.length - 1].validTo = '9999-12-31';
                           }
@@ -1884,7 +1895,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                 <th rowSpan={2} className="py-2 px-2 text-left border-r border-slate-300 min-w-[220px] bg-[#f3f2f1]">Description</th>
                                 <th rowSpan={2} className="py-2 px-2 text-center border-r border-slate-300 w-24 bg-[#f3f2f1]">HSN Code</th>
                                 <th rowSpan={2} className="py-2 px-1 text-center border-r border-slate-300 w-14 bg-[#f3f2f1]">UOM</th>
-                                <th rowSpan={2} className="py-2 px-1 text-center border-r border-slate-300 w-16 bg-[#f3f2f1]">MFG</th>
+                                <th rowSpan={2} className="py-2 px-1 text-center border-r border-slate-300 w-16 bg-[#f3f2f1]">Plant</th>
                                 <th rowSpan={2} className="py-2 px-2 text-right border-r border-slate-300 w-20 bg-[#f3f2f1]">Weight</th>
                                 {displayDateKeys.map(date => (
                                     <th key={date.key} colSpan={2} className="py-1 px-2 text-center border-r border-slate-300 bg-[#d9d9d9] text-slate-900 font-bold text-xs tracking-wider">
@@ -1934,7 +1945,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                 <th className="px-4 py-3 w-[13%] text-right bg-transparent text-white">LIST PRICE</th>
                                 <th className="px-4 py-3 w-[11%] text-right bg-transparent text-white">SELLING PRICE</th>
                                 <th className="px-2 py-3 w-[7%] text-center bg-transparent text-white">UOM</th>
-                                <th className="px-2 py-3 w-[9%] text-center bg-transparent text-white">MFG</th>
+                                <th className="px-2 py-3 w-[9%] text-center bg-transparent text-white">PLANT</th>
                                 <th className="px-3 py-3 w-[8%] text-right bg-transparent text-white">WEIGHT (Kg/KM)</th>
                                 <th className="px-3 py-3 w-[8%] text-center min-w-[85px] bg-transparent text-white">ACTIONS</th>
                             </tr>
