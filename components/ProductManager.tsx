@@ -211,11 +211,13 @@ const ModernProductRow = React.memo(({
     );
 });
 
-// Memoized ExcelProductRow component (Authentic Microsoft Excel Look)
+// Memoized ExcelProductRow component matching User Screenshot:
+// Part No, Description, HSN Code, UOM, MFG, Weight, then Date-wise LP & SP
 const ExcelProductRow = React.memo(({ 
     product, 
     index, 
     isSelected, 
+    dateKeys,
     onSelect, 
     onEdit, 
     onDelete, 
@@ -224,14 +226,22 @@ const ExcelProductRow = React.memo(({
     product: Product; 
     index: number; 
     isSelected: boolean; 
+    dateKeys: { key: string; label: string }[];
     onSelect: (id: number) => void; 
     onEdit: (product: Product) => void; 
     onDelete: (id: number) => void; 
     onZoomImage?: (p: Product) => void; 
 }) => {
-    const currentPrice = getCurrentPrice(product);
-    const lp = currentPrice?.lp || 0;
-    const sp = currentPrice?.sp || 0;
+    const priceMap = useMemo(() => {
+        const map = new Map<string, PriceEntry>();
+        (product.prices || []).forEach(pr => {
+            if (pr.validFrom) {
+                const k = parseToYYYYMMDD(pr.validFrom);
+                if (k) map.set(k, pr);
+            }
+        });
+        return map;
+    }, [product.prices]);
     
     return (
         <tr className={`border-b border-slate-300 transition-colors h-7.5 text-xs ${
@@ -251,11 +261,7 @@ const ExcelProductRow = React.memo(({
                     aria-label={`Select product ${product.partNo}`}
                 />
             </td>
-            {/* A: ID */}
-            <td className="px-2 border-r border-slate-300 text-slate-500 font-mono text-center w-14">
-                #{product.id}
-            </td>
-            {/* B: Part No - Prominent, Bold, and Never Truncated */}
+            {/* Part No - Prominent, Bold, and Never Truncated */}
             <td className="px-2 border-r border-slate-300 font-mono font-bold text-slate-900 text-xs sm:text-sm min-w-[130px] whitespace-nowrap">
                 <span 
                     className="hover:text-[#107c41] cursor-pointer" 
@@ -265,51 +271,42 @@ const ExcelProductRow = React.memo(({
                     {product.partNo}
                 </span>
             </td>
-            {/* C: Image (Compact Thumbnail if exists, or dash) */}
-            <td className="px-1 border-r border-slate-300 text-center w-12">
-                {product.imageUrl ? (
-                    <img 
-                        src={product.imageUrl} 
-                        alt={product.partNo} 
-                        onClick={() => onZoomImage?.(product)}
-                        className="w-6 h-6 object-contain rounded bg-white border border-slate-300 cursor-zoom-in hover:scale-125 transition-transform shadow-2xs mx-auto" 
-                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                        title="Click to zoom image"
-                    />
-                ) : (
-                    <span className="text-slate-300 text-xs">—</span>
-                )}
-            </td>
-            {/* D: Description */}
-            <td className="px-2 border-r border-slate-300 text-slate-800 max-w-sm truncate" title={product.description}>
+            {/* Description */}
+            <td className="px-2 border-r border-slate-300 text-slate-800 min-w-[220px] max-w-sm truncate" title={product.description}>
                 {product.description}
             </td>
-            {/* E: HSN Code */}
+            {/* HSN Code */}
             <td className="px-2 border-r border-slate-300 text-slate-600 font-mono text-center w-24">
-                {product.hsnCode || '—'}
+                {product.hsnCode || ''}
             </td>
-            {/* F: List Price */}
-            <td className="px-2 border-r border-slate-300 text-right font-mono font-bold text-slate-900 w-28 whitespace-nowrap">
-                {Number(lp) > 0 ? `₹${Number(lp).toFixed(2)}` : '—'}
-            </td>
-            {/* G: Selling Price */}
-            <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-28 whitespace-nowrap">
-                {Number(sp) > 0 ? `₹${Number(sp).toFixed(2)}` : '—'}
-            </td>
-            {/* H: UOM */}
+            {/* UOM */}
             <td className="px-1 border-r border-slate-300 text-center font-mono text-slate-700 w-14">
-                {product.uom || '—'}
+                {product.uom || ''}
             </td>
-            {/* I: Plant */}
+            {/* MFG */}
             <td className="px-1 border-r border-slate-300 text-center font-mono text-slate-700 w-16">
-                {product.plant || '—'}
+                {product.plant || ''}
             </td>
-            {/* J: Weight */}
+            {/* Weight */}
             <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 w-20 whitespace-nowrap">
-                {product.weight > 0 ? `${product.weight} Kg/KM` : '—'}
+                {product.weight > 0 ? product.weight : ''}
             </td>
-            {/* K: Actions */}
-            <td className="px-2 text-center w-20 whitespace-nowrap">
+            {/* Date-wise LP & SP columns matching Image 2 */}
+            {dateKeys.map(date => {
+                const pr = priceMap.get(date.key);
+                return (
+                    <React.Fragment key={date.key}>
+                        <td className="px-2 border-r border-slate-300 text-right font-mono font-bold text-slate-900 min-w-[70px] whitespace-nowrap">
+                            {pr && pr.lp > 0 ? Number(pr.lp).toFixed(2) : '-'}
+                        </td>
+                        <td className="px-2 border-r border-slate-300 text-right font-mono text-slate-600 min-w-[70px] whitespace-nowrap">
+                            {pr && pr.sp > 0 ? Number(pr.sp).toFixed(2) : '-'}
+                        </td>
+                    </React.Fragment>
+                );
+            })}
+            {/* Actions */}
+            <td className="px-2 text-center w-20 whitespace-nowrap sticky right-0 bg-white/95 border-l border-slate-200">
                 <div className="flex items-center justify-center gap-1.5">
                     <button 
                         onClick={() => onEdit(product)} 
@@ -335,17 +332,18 @@ const ExcelProductRow = React.memo(({
 const formatToDDMMYYYY = (val: any): string => {
   if (!val) return '';
   const s = String(val).trim();
-  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) return s;
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s.replace(/-/g, '.');
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     const [y, m, d] = s.split('T')[0].split('-');
-    return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    return `${d.padStart(2, '0')}.${m.padStart(2, '0')}.${y}`;
   }
   const d = new Date(val);
   if (isNaN(d.getTime())) return s;
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
-  return `${day}-${month}-${year}`;
+  return `${day}.${month}.${year}`;
 };
 
 const parseToYYYYMMDD = (val: any): string => {
@@ -396,7 +394,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [viewMode, setViewMode] = useState<'excel' | 'modern'>(() => {
-    return (localStorage.getItem('products_view_mode') as 'excel' | 'modern') || 'modern';
+    return (localStorage.getItem('products_view_mode') as 'excel' | 'modern') || 'excel';
   });
   const [activeDropdown, setActiveDropdown] = useState<'export' | 'update' | 'template' | null>(null);
   const canManageProducts = currentUser.role !== 'Sales Person';
@@ -524,30 +522,28 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
   const handleDownloadTemplate = () => {
     const templateData = [
       {
-        "PartNo": "4510023U100",
-        "Description": "ÖLFLEX® UNIPLUS 1X1 BU",
-        "HSNCode": "85444990",
+        "Part No": "1119004",
+        "Description": "ÖLFLEX® CLASSIC 110 4G0,5",
+        "HSN Code": "85444990",
         "UOM": "M",
-        "Plant": "MFGN",
-        "Weight": 0.025,
-        "LP": 33.04,
-        "SP": 0,
-        "ValidFrom": new Date().toISOString().split('T')[0],
-        "ValidTo": "9999-12-31",
-        "ImageURL": "https://example.com/sample.jpg"
+        "MFG": "TRDN",
+        "Weight": 0.054,
+        "LP": 106.18,
+        "SP": "-",
+        "Valid From": formatToDDMMYYYY(new Date().toISOString().split('T')[0]),
+        "Valid To": "31.12.9999"
       },
       {
-        "PartNo": "4520012U100",
+        "Part No": "4520012U100",
         "Description": "ÖLFLEX® UNIPLUS 1X2.5 BK",
-        "HSNCode": "85444990",
+        "HSN Code": "85444990",
         "UOM": "M",
-        "Plant": "TRDN",
+        "MFG": "TRDN",
         "Weight": 0.045,
         "LP": 77.47,
-        "SP": 0,
-        "ValidFrom": new Date().toISOString().split('T')[0],
-        "ValidTo": "9999-12-31",
-        "ImageURL": ""
+        "SP": "-",
+        "Valid From": formatToDDMMYYYY(new Date().toISOString().split('T')[0]),
+        "Valid To": "31.12.9999"
       }
     ];
     const ws = XLSX.utils.json_to_sheet(templateData);
@@ -556,50 +552,92 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     XLSX.writeFile(wb, "New_Products_Template.xlsx");
   };
   
-  // Helper to format products for export: ID, Image, Part No, Description, HSN Code, UOM, Plant, Weight, then Price table From date wise
+  // Format products for export matching User Image 1:
+  // Row 1: base cols empty, then Valid From dates merged over LP & SP
+  // Row 2: Part No, Description, HSN Code, UOM, MFG, Weight, LP, SP, LP, SP...
+  // Row 3+: Product rows with date-wise prices
   const exportProductsToExcel = (productsToExport: Product[], filename: string) => {
-    const dataToExport = productsToExport.flatMap(product => {
-      // Sort price table From date wise: LATEST DATE 1ST (descending by validFrom date)
-      const sortedPrices = [...(product.prices || [])].sort((a, b) => {
-        const dateA = new Date(a.validFrom).getTime() || 0;
-        const dateB = new Date(b.validFrom).getTime() || 0;
-        return dateB - dateA;
+    // Collect and sort all unique validFrom dates descending (newest on left)
+    const dateMap = new Map<string, string>(); // YYYY-MM-DD -> DD.MM.YYYY
+    productsToExport.forEach(p => {
+      (p.prices || []).forEach(price => {
+        if (price.validFrom) {
+          const key = parseToYYYYMMDD(price.validFrom);
+          if (key && !dateMap.has(key)) {
+            dateMap.set(key, formatToDDMMYYYY(key));
+          }
+        }
       });
-
-      if (sortedPrices.length === 0) {
-        return [{
-          'ID': product.id,
-          'Image': product.imageUrl || '',
-          'Part No': product.partNo,
-          'Description': product.description,
-          'HSN Code': product.hsnCode || '',
-          'UOM': product.uom || '',
-          'Plant': product.plant || '',
-          'Weight': product.weight || 0,
-          'LP (List Price)': 0,
-          'SP (Special Price)': 0,
-          'Valid From': '',
-          'Valid Upto': ''
-        }];
-      }
-
-      return sortedPrices.map(price => ({
-        'ID': product.id,
-        'Image': product.imageUrl || '',
-        'Part No': product.partNo,
-        'Description': product.description,
-        'HSN Code': product.hsnCode || '',
-        'UOM': product.uom || '',
-        'Plant': product.plant || '',
-        'Weight': product.weight || 0,
-        'LP (List Price)': price.lp || 0,
-        'SP (Special Price)': price.sp || 0,
-        'Valid From': formatToDDMMYYYY(price.validFrom),
-        'Valid Upto': formatToDDMMYYYY(price.validTo)
-      }));
     });
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const sortedDateKeys = Array.from(dateMap.keys()).sort((a, b) => b.localeCompare(a));
+    if (sortedDateKeys.length === 0) {
+      const todayKey = new Date().toISOString().split('T')[0];
+      sortedDateKeys.push(todayKey);
+      dateMap.set(todayKey, formatToDDMMYYYY(todayKey));
+    }
+
+    const headerRow1: any[] = ['', '', '', '', '', ''];
+    const headerRow2: any[] = ['Part No', 'Description', 'HSN Code', 'UOM', 'MFG', 'Weight'];
+    const merges: any[] = [];
+
+    sortedDateKeys.forEach((key, idx) => {
+      const displayDate = dateMap.get(key) || key;
+      const startCol = 6 + idx * 2;
+      headerRow1.push(displayDate, '');
+      headerRow2.push('LP', 'SP');
+      merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: startCol + 1 } });
+    });
+
+    const dataRows = productsToExport.map(p => {
+      const row: any[] = [
+        p.partNo,
+        p.description,
+        p.hsnCode || '',
+        p.uom || '',
+        p.plant || '',
+        p.weight > 0 ? p.weight : ''
+      ];
+
+      const priceByKey = new Map<string, PriceEntry>();
+      (p.prices || []).forEach(pr => {
+        if (pr.validFrom) {
+          const k = parseToYYYYMMDD(pr.validFrom);
+          if (k) priceByKey.set(k, pr);
+        }
+      });
+
+      sortedDateKeys.forEach(key => {
+        const pr = priceByKey.get(key);
+        if (pr) {
+          row.push(pr.lp > 0 ? Number(pr.lp) : '-');
+          row.push(pr.sp > 0 ? Number(pr.sp) : '-');
+        } else {
+          row.push('-');
+          row.push('-');
+        }
+      });
+
+      return row;
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows]);
+    ws['!merges'] = merges;
+
+    // Auto-fit column widths
+    const colWidths = [
+      { wch: 16 }, // Part No
+      { wch: 38 }, // Description
+      { wch: 12 }, // HSN Code
+      { wch: 8 },  // UOM
+      { wch: 8 },  // MFG
+      { wch: 10 }  // Weight
+    ];
+    sortedDateKeys.forEach(() => {
+      colWidths.push({ wch: 11 }, { wch: 11 }); // LP, SP
+    });
+    ws['!cols'] = colWidths;
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Products");
     XLSX.writeFile(wb, filename);
@@ -623,7 +661,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
     }
   };
 
-  // Generate Price Update Template with existing price and updated date
+  // Generate Price Update Template with existing price matching User Image 2
   const handleExportPriceList = async () => {
       setIsUploading(true);
       setUploadProgress('Generating update template with existing products...');
@@ -633,18 +671,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           const dataToExport = allProducts.map(product => {
               const currentPrice = getCurrentPrice(product);
               return {
-                  'ID': product.id,
-                  'Image': product.imageUrl || '',
                   'Part No': product.partNo,
                   'Description': product.description,
                   'HSN Code': product.hsnCode || '',
                   'UOM': product.uom || '',
-                  'Plant': product.plant || '',
-                  'Weight': product.weight || 0,
-                  'LP (List Price)': currentPrice ? currentPrice.lp : 0,
-                  'SP (Special Price)': currentPrice ? currentPrice.sp : 0,
+                  'MFG': product.plant || '',
+                  'Weight': product.weight > 0 ? product.weight : '',
+                  'LP': currentPrice && currentPrice.lp > 0 ? currentPrice.lp : 0,
+                  'SP': currentPrice && currentPrice.sp > 0 ? currentPrice.sp : '-',
                   'Valid From': currentPrice && currentPrice.validFrom ? formatToDDMMYYYY(currentPrice.validFrom) : todayDateStr,
-                  'Valid Upto': currentPrice && currentPrice.validTo ? formatToDDMMYYYY(currentPrice.validTo) : '31-12-9999'
+                  'Valid To': currentPrice && currentPrice.validTo ? formatToDDMMYYYY(currentPrice.validTo) : '31.12.9999'
               };
           });
           const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -882,130 +918,291 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           const data = e.target?.result;
           if (!data) return;
           setIsUploading(true);
-          setUploadProgress('Analyzing price updates...');
+          setUploadProgress('Analyzing price update file...');
           
           try {
               const workbook = XLSX.read(data, { type: 'array' });
               const sheetName = workbook.SheetNames[0];
               const worksheet = workbook.Sheets[sheetName];
-              const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+              const rawAOA: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
               
-              // Identify rows with price updates, validity updates, or image updates
-              const rowsWithUpdates = json.filter(row => {
-                  const desc = String(row['Description'] || '').toLowerCase();
-                  if (desc.includes('cutting charge') || desc.includes('not in range')) {
-                      return false;
-                  }
-                  const rawLP = row['LP (List Price)'] ?? row['LP'] ?? row['List Price'] ?? row['New LP'];
-                  const rawSP = row['SP (Special Price)'] ?? row['SP'] ?? row['Special Price'] ?? row['New SP'];
-                  const rawFrom = row['Valid From'] ?? row['ValidFrom'] ?? row['New Valid From'];
-                  const rawTo = row['Valid Upto'] ?? row['ValidUpto'] ?? row['Valid To'] ?? row['ValidTo'] ?? row['New Valid To'] ?? row['New Valid Upto'];
-                  const rawImg = row['Image'] ?? row['ImageURL'] ?? row['imageUrl'];
-
-                  const hasPriceUpdate = (rawLP !== undefined && rawLP !== '') || (rawSP !== undefined && rawSP !== '');
-                  const hasDateUpdate = Boolean((rawFrom !== undefined && String(rawFrom).trim()) || (rawTo !== undefined && String(rawTo).trim()));
-                  const hasImageUpdate = Boolean(rawImg !== undefined && String(rawImg).trim());
-
-                  return hasPriceUpdate || hasDateUpdate || hasImageUpdate;
-              });
-              
-              if (rowsWithUpdates.length === 0) {
-                  alert("No valid rows found in the file. Please ensure 'Valid From', 'Valid Upto', 'LP', or 'SP' columns are filled.");
+              if (!rawAOA || rawAOA.length < 2) {
+                  alert("File appears to be empty or does not have enough rows.");
                   setIsUploading(false);
                   setUploadProgress('');
                   return;
               }
 
-              // Collect PartNos to fetch existing products
-              const partNos = rowsWithUpdates.map(row => String(row['Part No'] || row['PartNo'] || '').trim()).filter(Boolean);
-              
-              // Chunk requests to avoid query limits
-              const CHUNK_SIZE = 100;
-              let updatedCount = 0;
-              
-              for (let i = 0; i < partNos.length; i += CHUNK_SIZE) {
-                  const chunkPartNos = partNos.slice(i, i + CHUNK_SIZE);
-                  setUploadProgress(`Processing products ${i+1} to ${Math.min(i+CHUNK_SIZE, partNos.length)}...`);
-                  
-                  const products = await getProductsByPartNos(chunkPartNos);
-                  const productsToUpdate: Product[] = [];
-                  
-                  for (const product of products) {
-                      const row = rowsWithUpdates.find(r => {
-                        const pNo = String(r['Part No'] || r['PartNo'] || '').trim().toLowerCase();
-                        return pNo === product.partNo.toLowerCase() || (r['ID'] && Number(r['ID']) === product.id);
-                      });
-                      if (!row) continue;
-                      
-                      const rawLP = row['LP (List Price)'] ?? row['LP'] ?? row['List Price'] ?? row['New LP'];
-                      const rawSP = row['SP (Special Price)'] ?? row['SP'] ?? row['Special Price'] ?? row['New SP'];
-                      const rawFrom = row['Valid From'] ?? row['ValidFrom'] ?? row['New Valid From'];
-                      const rawTo = row['Valid Upto'] ?? row['ValidUpto'] ?? row['Valid To'] ?? row['ValidTo'] ?? row['New Valid To'] ?? row['New Valid Upto'];
-                      const rawImg = row['Image'] ?? row['ImageURL'] ?? row['imageUrl'];
+              interface ParsedItem {
+                  partNo: string;
+                  description?: string;
+                  hsnCode?: string;
+                  uom?: string;
+                  plant?: string;
+                  weight?: number;
+                  imageUrl?: string;
+                  prices: { lp: number; sp: number; validFrom: string; validTo?: string }[];
+              }
 
+              const itemsMap = new Map<string, ParsedItem>();
+
+              // Check if Format 1: Multi-date Pivoted Export (Row 0 has dates like 11.09.2026, Row 1 has LP, SP headers)
+              const row0 = rawAOA[0] || [];
+              const row1 = rawAOA[1] || [];
+              
+              const isPivoted = row0.some((cell, colIdx) => {
+                  const s = String(cell || '').trim();
+                  return parseToYYYYMMDD(s) !== '' && colIdx >= 5;
+              });
+
+              if (isPivoted) {
+                  // Find column indexes in Row 1
+                  let partNoCol = 0;
+                  let descCol = 1;
+                  let hsnCol = 2;
+                  let uomCol = 3;
+                  let plantCol = 4;
+                  let weightCol = 5;
+
+                  row1.forEach((cell, idx) => {
+                      const h = String(cell || '').toLowerCase().replace(/[\s_\-]/g, '');
+                      if (h === 'partno' || h === 'partnumber') partNoCol = idx;
+                      else if (h === 'description' || h === 'desc') descCol = idx;
+                      else if (h.includes('hsn')) hsnCol = idx;
+                      else if (h === 'uom') uomCol = idx;
+                      else if (h === 'mfg' || h === 'plant') plantCol = idx;
+                      else if (h === 'weight') weightCol = idx;
+                  });
+
+                  // Detect date pairs from row 0 & row 1
+                  interface DatePair {
+                      dateStr: string;
+                      lpCol: number;
+                      spCol: number;
+                  }
+                  const datePairs: DatePair[] = [];
+                  for (let c = 0; c < row0.length; c++) {
+                      const parsed = parseToYYYYMMDD(row0[c]);
+                      if (parsed) {
+                          let lpCol = -1;
+                          let spCol = -1;
+                          if (String(row1[c] || '').toUpperCase() === 'LP') {
+                              lpCol = c;
+                              if (String(row1[c + 1] || '').toUpperCase() === 'SP') {
+                                  spCol = c + 1;
+                              }
+                          } else if (String(row1[c] || '').toUpperCase() === 'SP') {
+                              spCol = c;
+                          } else {
+                              lpCol = c;
+                          }
+                          datePairs.push({ dateStr: parsed, lpCol, spCol });
+                      }
+                  }
+
+                  // Parse data rows starting from row index 2
+                  for (let r = 2; r < rawAOA.length; r++) {
+                      const row = rawAOA[r];
+                      const partNo = String(row[partNoCol] || '').trim();
+                      if (!partNo) continue;
+                      const desc = String(row[descCol] || '').trim();
+                      if (desc.toLowerCase().includes('cutting charge') || desc.toLowerCase().includes('not in range')) continue;
+
+                      const hsn = String(row[hsnCol] || '').trim();
+                      const uom = String(row[uomCol] || '').trim();
+                      const plant = String(row[plantCol] || '').trim();
+                      const weightNum = parseFloat(String(row[weightCol] || '').replace(/,/g, ''));
+
+                      const itemPrices: { lp: number; sp: number; validFrom: string }[] = [];
+                      for (const pair of datePairs) {
+                          const rawLP = pair.lpCol >= 0 ? row[pair.lpCol] : undefined;
+                          const rawSP = pair.spCol >= 0 ? row[pair.spCol] : undefined;
+                          const lpVal = rawLP !== undefined && rawLP !== '' && rawLP !== '-' ? parseFloat(String(rawLP).replace(/,/g, '')) : NaN;
+                          const spVal = rawSP !== undefined && rawSP !== '' && rawSP !== '-' ? parseFloat(String(rawSP).replace(/,/g, '')) : NaN;
+                          
+                          if ((!isNaN(lpVal) && lpVal > 0) || (!isNaN(spVal) && spVal > 0)) {
+                              itemPrices.push({
+                                  lp: !isNaN(lpVal) ? lpVal : 0,
+                                  sp: !isNaN(spVal) ? spVal : 0,
+                                  validFrom: pair.dateStr
+                              });
+                          }
+                      }
+
+                      itemsMap.set(partNo.toLowerCase(), {
+                          partNo,
+                          description: desc,
+                          hsnCode: hsn,
+                          uom,
+                          plant,
+                          weight: !isNaN(weightNum) ? weightNum : undefined,
+                          prices: itemPrices
+                      });
+                  }
+              } else {
+                  // Format 2: Tabular template (Row 0 has headers: Part No, Description, HSN Code, UOM, MFG, Weight, LP, SP, Valid From, Valid To)
+                  const jsonRows: any[] = XLSX.utils.sheet_to_json(worksheet);
+                  const todayStr = new Date().toISOString().split('T')[0];
+
+                  for (const row of jsonRows) {
+                      const partNo = String(row['Part No'] ?? row['PartNo'] ?? row['partNo'] ?? '').trim();
+                      if (!partNo) continue;
+                      const desc = String(row['Description'] ?? row['description'] ?? '').trim();
+                      if (desc.toLowerCase().includes('cutting charge') || desc.toLowerCase().includes('not in range')) continue;
+
+                      const rawLP = row['LP'] ?? row['LP (List Price)'] ?? row['List Price'] ?? row['New LP'];
+                      const rawSP = row['SP'] ?? row['SP (Special Price)'] ?? row['Special Price'] ?? row['New SP'];
+                      const rawFrom = row['Valid From'] ?? row['ValidFrom'] ?? row['New Valid From'];
+                      const rawTo = row['Valid To'] ?? row['ValidTo'] ?? row['Valid Upto'] ?? row['ValidUpto'] ?? row['New Valid To'] ?? row['New Valid Upto'];
+                      const rawImg = row['Image'] ?? row['ImageURL'] ?? row['imageUrl'] ?? row['Image URL'];
+                      const rawHSN = row['HSN Code'] ?? row['HSNCode'] ?? row['HSN'];
+                      const rawUOM = row['UOM'] ?? row['uom'];
+                      const rawPlant = row['MFG'] ?? row['Plant'] ?? row['plant'];
+                      const rawWeight = row['Weight'] ?? row['weight'];
+
+                      const lpVal = rawLP !== undefined && rawLP !== '' && rawLP !== '-' ? parseFloat(String(rawLP).replace(/,/g, '')) : NaN;
+                      const spVal = rawSP !== undefined && rawSP !== '' && rawSP !== '-' ? parseFloat(String(rawSP).replace(/,/g, '')) : NaN;
                       const parsedFrom = parseToYYYYMMDD(rawFrom);
                       const parsedTo = parseToYYYYMMDD(rawTo);
-                      
-                      const lpNum = rawLP !== undefined && rawLP !== '' ? parseFloat(String(rawLP).replace(/,/g, '')) : NaN;
-                      const spNum = rawSP !== undefined && rawSP !== '' ? parseFloat(String(rawSP).replace(/,/g, '')) : NaN;
+                      const weightNum = rawWeight !== undefined && rawWeight !== '' ? parseFloat(String(rawWeight).replace(/,/g, '')) : NaN;
 
-                      let newPrices = [...(product.prices || [])];
-                      const hasPriceUpdate = (!isNaN(lpNum) && lpNum > 0) || (!isNaN(spNum) && spNum > 0);
-
-                      if (hasPriceUpdate) {
-                          const validFrom = parsedFrom || new Date().toISOString().split('T')[0];
-                          const validTo = parsedTo || '9999-12-31';
-                          const newPriceEntry: PriceEntry = { 
-                            lp: !isNaN(lpNum) ? lpNum : 0, 
-                            sp: !isNaN(spNum) ? spNum : 0, 
-                            validFrom, 
-                            validTo 
+                      const key = partNo.toLowerCase();
+                      let existingItem = itemsMap.get(key);
+                      if (!existingItem) {
+                          existingItem = {
+                              partNo,
+                              description: desc,
+                              hsnCode: rawHSN ? String(rawHSN).trim() : undefined,
+                              uom: rawUOM ? String(rawUOM).trim() : undefined,
+                              plant: rawPlant ? String(rawPlant).trim() : undefined,
+                              weight: !isNaN(weightNum) ? weightNum : undefined,
+                              imageUrl: rawImg ? String(rawImg).trim() : undefined,
+                              prices: []
                           };
-                          newPrices.push(newPriceEntry);
-                          
-                          // Sort and adjust dates
-                          newPrices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
-                          
-                          for (let j = 0; j < newPrices.length - 1; j++) {
-                              const nextDate = new Date(newPrices[j+1].validFrom);
-                              nextDate.setDate(nextDate.getDate() - 1);
-                              newPrices[j].validTo = nextDate.toISOString().split('T')[0];
-                          }
-                          newPrices[newPrices.length - 1].validTo = '9999-12-31';
-                      } else if (parsedFrom || parsedTo) {
-                          // Update ONLY validity dates of the latest price entry
-                          if (newPrices.length > 0) {
-                              const lastIdx = newPrices.length - 1;
-                              newPrices[lastIdx] = {
-                                  ...newPrices[lastIdx],
-                                  validFrom: parsedFrom || newPrices[lastIdx].validFrom,
-                                  validTo: parsedTo || newPrices[lastIdx].validTo
-                              };
-                          } else {
-                              newPrices = [{
-                                  lp: 0,
-                                  sp: 0,
-                                  validFrom: parsedFrom || new Date().toISOString().split('T')[0],
-                                  validTo: parsedTo || '9999-12-31'
-                              }];
-                          }
+                          itemsMap.set(key, existingItem);
                       }
-                      
-                      let imageUrl = product.imageUrl;
-                      if (rawImg !== undefined && String(rawImg).trim()) {
-                          imageUrl = String(rawImg).trim();
+
+                      if ((!isNaN(lpVal) && lpVal > 0) || (!isNaN(spVal) && spVal > 0) || parsedFrom) {
+                          existingItem.prices.push({
+                              lp: !isNaN(lpVal) ? lpVal : 0,
+                              sp: !isNaN(spVal) ? spVal : 0,
+                              validFrom: parsedFrom || todayStr,
+                              validTo: parsedTo || '9999-12-31'
+                          });
                       }
-                      
-                      productsToUpdate.push({ ...product, prices: newPrices, imageUrl });
-                  }
-                  
-                  if (productsToUpdate.length > 0) {
-                      await addProductsBatch(productsToUpdate);
-                      updatedCount += productsToUpdate.length;
                   }
               }
-              
-              alert(`Successfully updated prices for ${updatedCount} products.`);
+
+              const allParsedItems = Array.from(itemsMap.values());
+              if (allParsedItems.length === 0) {
+                  alert("No valid product rows found in the file. Please check column headers (e.g. 'Part No', 'LP', 'SP', 'Valid From').");
+                  setIsUploading(false);
+                  setUploadProgress('');
+                  return;
+              }
+
+              // Get next product ID in case there are new products to insert
+              let nextId = await getNextProductId();
+              const partNos = allParsedItems.map(item => item.partNo);
+              const CHUNK_SIZE = 100;
+              let updatedCount = 0;
+              let createdCount = 0;
+
+              for (let i = 0; i < partNos.length; i += CHUNK_SIZE) {
+                  const chunkPartNos = partNos.slice(i, i + CHUNK_SIZE);
+                  setUploadProgress(`Processing & updating products ${i + 1} to ${Math.min(i + CHUNK_SIZE, partNos.length)} of ${partNos.length}...`);
+
+                  const existingProducts = await getProductsByPartNos(chunkPartNos);
+                  const existingMap = new Map<string, Product>();
+                  existingProducts.forEach(p => existingMap.set(p.partNo.trim().toLowerCase(), p));
+
+                  const productsToSave: Product[] = [];
+
+                  for (const pNo of chunkPartNos) {
+                      const item = itemsMap.get(pNo.toLowerCase());
+                      if (!item) continue;
+
+                      const existing = existingMap.get(pNo.toLowerCase());
+                      if (existing) {
+                          // Update existing product and REPLACE existing price if validFrom matches!
+                          let newPrices = [...(existing.prices || [])];
+
+                          for (const upPrice of item.prices) {
+                              const targetFrom = upPrice.validFrom;
+                              const existingIdx = newPrices.findIndex(p => parseToYYYYMMDD(p.validFrom) === targetFrom);
+
+                              if (existingIdx >= 0) {
+                                  // REPLACE EXISTING PRICE
+                                  newPrices[existingIdx] = {
+                                      ...newPrices[existingIdx],
+                                      lp: upPrice.lp,
+                                      sp: upPrice.sp,
+                                      validFrom: targetFrom,
+                                      validTo: upPrice.validTo || newPrices[existingIdx].validTo || '9999-12-31'
+                                  };
+                              } else {
+                                  // Add new date entry
+                                  newPrices.push({
+                                      lp: upPrice.lp,
+                                      sp: upPrice.sp,
+                                      validFrom: targetFrom,
+                                      validTo: upPrice.validTo || '9999-12-31'
+                                  });
+                              }
+                          }
+
+                          // Sort chronologically and chain validTo
+                          if (newPrices.length > 0) {
+                              newPrices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
+                              for (let j = 0; j < newPrices.length - 1; j++) {
+                                  const nextDate = new Date(newPrices[j + 1].validFrom);
+                                  nextDate.setDate(nextDate.getDate() - 1);
+                                  newPrices[j].validTo = nextDate.toISOString().split('T')[0];
+                              }
+                              newPrices[newPrices.length - 1].validTo = '9999-12-31';
+                          }
+
+                          const updatedProduct: Product = {
+                              ...existing,
+                              prices: newPrices,
+                              description: item.description?.trim() || existing.description,
+                              hsnCode: item.hsnCode !== undefined && item.hsnCode !== '' ? item.hsnCode.trim() : existing.hsnCode,
+                              uom: (item.uom && UOMS.includes(item.uom.trim() as any) ? item.uom.trim() : existing.uom) as Product['uom'],
+                              plant: (item.plant && PLANTS.includes(item.plant.trim() as any) ? item.plant.trim() : existing.plant) as Product['plant'],
+                              weight: item.weight !== undefined && !isNaN(item.weight) && item.weight > 0 ? item.weight : existing.weight,
+                              imageUrl: item.imageUrl?.trim() || existing.imageUrl
+                          };
+                          productsToSave.push(updatedProduct);
+                          updatedCount++;
+                      } else {
+                          // Insert new product into database
+                          const newProduct: Product = {
+                              id: nextId++,
+                              partNo: item.partNo.trim(),
+                              description: item.description?.trim() || item.partNo.trim(),
+                              hsnCode: item.hsnCode?.trim() || '',
+                              uom: (item.uom && UOMS.includes(item.uom.trim() as any) ? item.uom.trim() : '') as Product['uom'],
+                              plant: (item.plant && PLANTS.includes(item.plant.trim() as any) ? item.plant.trim() : '') as Product['plant'],
+                              weight: item.weight && !isNaN(item.weight) ? item.weight : 0,
+                              imageUrl: item.imageUrl?.trim() || '',
+                              prices: item.prices.length > 0 ? item.prices : [{
+                                  lp: 0,
+                                  sp: 0,
+                                  validFrom: new Date().toISOString().split('T')[0],
+                                  validTo: '9999-12-31'
+                              }]
+                          };
+                          productsToSave.push(newProduct);
+                          createdCount++;
+                      }
+                  }
+
+                  if (productsToSave.length > 0) {
+                      await addProductsBatch(productsToSave);
+                  }
+              }
+
+              alert(`Successfully saved to database:\n• ${updatedCount} existing products updated (prices replaced where valid from matched)\n• ${createdCount} new products created.`);
               fetchProducts(false); // Refresh grid
               
           } catch(error) {
@@ -1017,7 +1214,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           }
       };
       reader.readAsArrayBuffer(file);
-  }
+  };
 
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
@@ -1036,8 +1233,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
         const productsByPartNo: Record<string, any[]> = {};
         json.forEach(row => {
-          const partNo = String(row['PartNo'] || '').trim();
-          const desc = String(row['Description'] || '').toLowerCase();
+          const partNo = String(row['Part No'] ?? row['PartNo'] ?? row['partNo'] ?? '').trim();
+          const desc = String(row['Description'] ?? row['description'] ?? '').toLowerCase();
           
           if (desc.includes('cutting charge') || desc.includes('not in range')) {
             return; // Skip this product
@@ -1054,45 +1251,50 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
 
         const newProducts: Product[] = Object.values(productsByPartNo).map((rows): Product | null => {
           const firstRow = rows[0];
-          if (!firstRow['PartNo'] || !firstRow['Description']) {
+          const partNo = String(firstRow['Part No'] ?? firstRow['PartNo'] ?? firstRow['partNo'] ?? '').trim();
+          const desc = String(firstRow['Description'] ?? firstRow['description'] ?? '').trim();
+          if (!partNo || !desc) {
             console.warn(`Skipping product due to missing PartNo or Description.`);
             return null;
           }
           newId++;
 
-          const parseExcelDate = (excelDate: any): string => {
-            if (!excelDate) return '';
-            if (typeof excelDate === 'number' && excelDate > 1) {
-              const date = new Date(Date.UTC(1900, 0, excelDate - 1));
-              return date.toISOString().split('T')[0];
-            }
-            if (typeof excelDate === 'string') {
-              const parsedDate = new Date(excelDate);
-              if (!isNaN(parsedDate.getTime())) return parsedDate.toISOString().split('T')[0];
-              return excelDate;
-            }
-            return '';
-          };
-
           const prices: PriceEntry[] = rows.map(row => {
-            const validFrom = parseExcelDate(row['ValidFrom']);
+            const rawFrom = row['Valid From'] ?? row['ValidFrom'] ?? row['New Valid From'];
+            const rawTo = row['Valid To'] ?? row['ValidTo'] ?? row['Valid Upto'] ?? row['ValidUpto'];
+            const validFrom = parseToYYYYMMDD(rawFrom);
             if (!validFrom) return null;
-            return { lp: parseFloat(row['LP']) || 0, sp: parseFloat(row['SP']) || 0, validFrom: validFrom, validTo: parseExcelDate(row['ValidTo']) || '9999-12-31' };
+            
+            const rawLP = row['LP'] ?? row['LP (List Price)'] ?? row['List Price'] ?? 0;
+            const rawSP = row['SP'] ?? row['SP (Special Price)'] ?? row['Special Price'] ?? 0;
+            const lpNum = parseFloat(String(rawLP).replace(/,/g, '')) || 0;
+            const spNum = parseFloat(String(rawSP).replace(/,/g, '')) || 0;
+
+            return { 
+              lp: lpNum, 
+              sp: spNum, 
+              validFrom: validFrom, 
+              validTo: parseToYYYYMMDD(rawTo) || '9999-12-31' 
+            };
           }).filter((p): p is PriceEntry => p !== null);
 
           if (prices.length === 0) return null;
           prices.sort((a, b) => new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime());
 
+          const rawPlant = firstRow['MFG'] ?? firstRow['Plant'] ?? firstRow['plant'];
+          const rawHSN = firstRow['HSN Code'] ?? firstRow['HSNCode'] ?? firstRow['HSN'] ?? '';
+          const rawWeight = parseFloat(String(firstRow['Weight'] ?? firstRow['weight'] ?? 0).replace(/,/g, '')) || 0;
+
           return {
             id: newId,
-            partNo: String(firstRow['PartNo']),
-            description: String(firstRow['Description']),
-            hsnCode: String(firstRow['HSNCode'] || ''),
+            partNo: partNo,
+            description: desc,
+            hsnCode: String(rawHSN),
             prices: prices,
             uom: (UOMS.find(u => u === firstRow['UOM']) || '') as Product['uom'],
-            plant: (PLANTS.find(p => p === firstRow['Plant']) || '') as Product['plant'],
-            weight: parseFloat(firstRow['Weight']) || 0,
-            imageUrl: String(firstRow['ImageURL'] || '').trim(),
+            plant: (PLANTS.find(p => p === rawPlant) || '') as Product['plant'],
+            weight: rawWeight,
+            imageUrl: String(firstRow['ImageURL'] ?? firstRow['Image'] ?? firstRow['imageUrl'] ?? '').trim(),
           };
         }).filter((p): p is Product => p !== null);
 
@@ -1106,7 +1308,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
           alert(`${newProducts.length} products imported successfully!`);
           fetchProducts(false);
         } else {
-          alert('No valid products found in the file. Check column names (e.g., "PartNo", "Description", "ValidFrom").');
+          alert('No valid products found in the file. Check column names (e.g., "Part No", "Description", "Valid From").');
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : `An issue occurred during file processing. Please check the console for details.`;
@@ -1177,6 +1379,26 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
       setSelectedProductIds(new Set());
     }
   };
+
+  const displayDateKeys = useMemo(() => {
+    const dateMap = new Map<string, string>(); // YYYY-MM-DD -> DD.MM.YYYY
+    displayedProducts.forEach(p => {
+      (p.prices || []).forEach(price => {
+        if (price.validFrom) {
+          const key = parseToYYYYMMDD(price.validFrom);
+          if (key && !dateMap.has(key)) {
+            dateMap.set(key, formatToDDMMYYYY(key));
+          }
+        }
+      });
+    });
+    const sorted = Array.from(dateMap.keys()).sort((a, b) => b.localeCompare(a));
+    if (sorted.length === 0) {
+      const todayKey = new Date().toISOString().split('T')[0];
+      return [{ key: todayKey, label: formatToDDMMYYYY(todayKey) }];
+    }
+    return sorted.map(k => ({ key: k, label: dateMap.get(k) || k }));
+  }, [displayedProducts]);
 
   const isAllSelected = selectedProductIds.size > 0 && selectedProductIds.size === displayedProducts.length;
 
@@ -1594,21 +1816,30 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                     <table className="min-w-full border-collapse text-xs">
                         <thead className="bg-[#f3f2f1] text-slate-700 font-bold uppercase text-[10px] sticky top-0 z-20 select-none border-b border-slate-300 shadow-xs">
                             <tr className="border-b border-slate-300">
-                                <th className="py-2 px-1 text-center w-10 border-r border-slate-300 bg-[#e1dfdd] text-slate-700">#</th>
-                                <th className="py-2 px-2 text-center w-8 border-r border-slate-300 bg-[#f3f2f1]">
+                                <th rowSpan={2} className="py-2 px-1 text-center w-10 border-r border-slate-300 bg-[#e1dfdd] text-slate-700">#</th>
+                                <th rowSpan={2} className="py-2 px-2 text-center w-8 border-r border-slate-300 bg-[#f3f2f1]">
                                     <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 text-[#107c41] focus:ring-[#107c41] cursor-pointer" checked={isAllSelected} onChange={handleSelectAll} aria-label="Select all products"/>
                                 </th>
-                                <th className="py-2 px-2 text-center border-r border-slate-300 w-14 bg-[#f3f2f1]">A: ID</th>
-                                <th className="py-2 px-2 text-left border-r border-slate-300 min-w-[140px] bg-[#f3f2f1]">B: Part No</th>
-                                <th className="py-2 px-1 text-center border-r border-slate-300 w-12 bg-[#f3f2f1]">C: Image</th>
-                                <th className="py-2 px-2 text-left border-r border-slate-300 min-w-[220px] bg-[#f3f2f1]">D: Description</th>
-                                <th className="py-2 px-2 text-center border-r border-slate-300 w-24 bg-[#f3f2f1]">E: HSN Code</th>
-                                <th className="py-2 px-2 text-right border-r border-slate-300 w-28 bg-[#f3f2f1]">F: List Price (₹)</th>
-                                <th className="py-2 px-2 text-right border-r border-slate-300 w-28 bg-[#f3f2f1]">G: Selling Price (₹)</th>
-                                <th className="py-2 px-1 text-center border-r border-slate-300 w-14 bg-[#f3f2f1]">H: UOM</th>
-                                <th className="py-2 px-1 text-center border-r border-slate-300 w-16 bg-[#f3f2f1]">I: Plant</th>
-                                <th className="py-2 px-2 text-right border-r border-slate-300 w-20 bg-[#f3f2f1]">J: Weight (Kg/KM)</th>
-                                <th className="py-2 px-1 text-center w-20 bg-[#f3f2f1]">K: Actions</th>
+                                <th rowSpan={2} className="py-2 px-2 text-left border-r border-slate-300 min-w-[130px] bg-[#f3f2f1]">Part No</th>
+                                <th rowSpan={2} className="py-2 px-2 text-left border-r border-slate-300 min-w-[220px] bg-[#f3f2f1]">Description</th>
+                                <th rowSpan={2} className="py-2 px-2 text-center border-r border-slate-300 w-24 bg-[#f3f2f1]">HSN Code</th>
+                                <th rowSpan={2} className="py-2 px-1 text-center border-r border-slate-300 w-14 bg-[#f3f2f1]">UOM</th>
+                                <th rowSpan={2} className="py-2 px-1 text-center border-r border-slate-300 w-16 bg-[#f3f2f1]">MFG</th>
+                                <th rowSpan={2} className="py-2 px-2 text-right border-r border-slate-300 w-20 bg-[#f3f2f1]">Weight</th>
+                                {displayDateKeys.map(date => (
+                                    <th key={date.key} colSpan={2} className="py-1 px-2 text-center border-r border-slate-300 bg-[#d9d9d9] text-slate-900 font-bold text-xs tracking-wider">
+                                        {date.label}
+                                    </th>
+                                ))}
+                                <th rowSpan={2} className="py-2 px-1 text-center w-20 bg-[#f3f2f1] sticky right-0 border-l border-slate-300">Actions</th>
+                            </tr>
+                            <tr className="border-b border-slate-300 bg-[#eaeaea]">
+                                {displayDateKeys.map(date => (
+                                    <React.Fragment key={date.key}>
+                                        <th className="py-1 px-2 text-right border-r border-slate-300 text-slate-700 font-bold w-[70px]">LP</th>
+                                        <th className="py-1 px-2 text-right border-r border-slate-300 text-slate-700 font-bold w-[70px]">SP</th>
+                                    </React.Fragment>
+                                ))}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
@@ -1617,6 +1848,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                     key={product.id}
                                     index={index}
                                     product={product}
+                                    dateKeys={displayDateKeys}
                                     isSelected={selectedProductIds.has(product.id)}
                                     onSelect={handleSelectOne}
                                     onEdit={handleEdit}
@@ -1642,7 +1874,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ currentUser }) =
                                 <th className="px-4 py-3 w-[13%] text-right bg-transparent text-white">LIST PRICE</th>
                                 <th className="px-4 py-3 w-[11%] text-right bg-transparent text-white">SELLING PRICE</th>
                                 <th className="px-2 py-3 w-[7%] text-center bg-transparent text-white">UOM</th>
-                                <th className="px-2 py-3 w-[9%] text-center bg-transparent text-white">PLANT</th>
+                                <th className="px-2 py-3 w-[9%] text-center bg-transparent text-white">MFG</th>
                                 <th className="px-3 py-3 w-[8%] text-right bg-transparent text-white">WEIGHT (Kg/KM)</th>
                                 <th className="px-3 py-3 w-[8%] text-center min-w-[85px] bg-transparent text-white">ACTIONS</th>
                             </tr>

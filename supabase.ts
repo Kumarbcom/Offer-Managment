@@ -679,17 +679,53 @@ export async function upsertCustomer(customer: any) {
     cacheCustomerLocally(customer);
 }
 
+export async function updateCustomerSalesPerson(customerId: number, salesPersonId: number | null, updateQuotations: boolean = true) {
+    if (!supabase) throw new Error("Supabase client not initialized");
+    
+    // 1. Update customer in Supabase customers master table
+    const { error: custError } = await supabase
+        .from('customers')
+        .update({ sales_person_id: salesPersonId })
+        .eq('id', customerId);
+    if (custError) throw new Error(parseSupabaseError(custError, "Failed to update customer sales person in master"));
+
+    // 2. Update local cached customer if exists
+    try {
+        const cached = customerCache.get(Number(customerId));
+        if (cached) {
+            cached.salesPersonId = salesPersonId;
+            cacheCustomerLocally(cached);
+        }
+    } catch {}
+
+    // 3. Update all past and existing quotations for this customer if requested
+    if (updateQuotations && salesPersonId !== null) {
+        const { error: qtnError } = await supabase
+            .from('quotations')
+            .update({ sales_person_id: salesPersonId })
+            .eq('customer_id', customerId);
+        if (qtnError) console.warn("Failed to update past quotations:", qtnError.message);
+    }
+}
+
 export async function deleteCustomer(id: number) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const { error } = await supabase.from('customers').delete().eq('id', id);
     if (error) throw new Error(parseSupabaseError(error, 'Failed to delete customer'));
 }
 
-export async function addCustomersBatch(customers: any[]) {
+export async function addCustomersBatch(customers: any[], onProgress?: (done: number, total: number) => void) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const payloads = customers.map(c => mapToSupabase('customers', c));
-    const { error } = await supabase.from('customers').upsert(payloads, { onConflict: 'id' });
-    if (error) throw new Error(parseSupabaseError(error, "Failed to add customers batch"));
+    const CHUNK_SIZE = 200;
+    for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
+        const chunk = payloads.slice(i, i + CHUNK_SIZE);
+        const { error } = await supabase.from('customers').upsert(chunk, { onConflict: 'id' });
+        if (error) throw new Error(parseSupabaseError(error, "Failed to add customers batch"));
+        if (onProgress) {
+            onProgress(Math.min(i + CHUNK_SIZE, payloads.length), payloads.length);
+        }
+    }
 }
 
 // Products

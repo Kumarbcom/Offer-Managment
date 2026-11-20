@@ -179,10 +179,10 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- SEED INITIAL SALES PERSONS
-INSERT INTO public.sales_persons (name, email, mobile) VALUES
-    ('Giridhar', 'giridhar@example.com', '9876543210'),
-    ('N Vinay Kumar', 'vinay@example.com', '9876543211'),
-    ('Veeresh', 'veeresh@example.com', '9876543212'),
-    ('Office', 'office@example.com', '9876543213')
-ON CONFLICT DO NOTHING;
+-- SEED INITIAL SALES PERSONS (1: Vinay, 2: Office, 3: Giridhar, 4: Veeresh)
+INSERT INTO public.sales_persons (id, name, email, mobile) VALUES
+    (1, 'N Vinay Kumar', 'vinaykumar@siddhikabel.com', '8105851098'),
+    (2, 'Office', 'enquiry@siddhikabel.com', '9876543213'),
+    (3, 'Giridhar', 'Giridhar@siddhikabel.com', '9876543211'),
+    (4, 'Veeresh', 'veeresh@siddhikabel.com', '9876543212')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, mobile = EXCLUDED.mobile;

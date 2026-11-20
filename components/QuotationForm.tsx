@@ -16,7 +16,7 @@ import { calculateTotalAmount } from '../utils/calc';
 import { AIAssistantPanel } from './AIAssistantPanel';
 import { QuotationDiffModal } from './QuotationDiffModal';
 import { useDebounce } from '../hooks/useDebounce';
-import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, productCacheById, productSearchCache, customerCache, cacheCustomerLocally, hydrateProductsFromQuotations, fetchSingleQuotation } from '../supabase';
+import { searchProducts, addProductsBatch, updateProduct, getProductsByIds, getProductsByPartNos, upsertCustomer, updateCustomerSalesPerson, searchCustomers, getCustomersByIds, upsertQuotation, cacheProductLocally, productCacheByPartNo, productCacheById, productSearchCache, customerCache, cacheCustomerLocally, hydrateProductsFromQuotations, fetchSingleQuotation } from '../supabase';
 import { generateFormattedQuotationNumber } from '../utils/quotationNumber';
 import { numberToWords } from '../utils/numberToWords';
 import { getPriceForDate, isPriceOlderThanThreshold, isItemPriceOlderThanThreshold, isPriceEntryOlderThanThreshold, parseProductDate } from '../utils/priceUtils';
@@ -242,6 +242,15 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<Customer | null>(null);
   const [isCustomerSearchModalOpen, setIsCustomerSearchModalOpen] = useState(false);
+  const [spModalState, setSpModalState] = useState<{
+    isOpen: boolean;
+    newSpId: number;
+    customerId: number;
+    customerName: string;
+    currentSpName: string;
+    newSpName: string;
+  } | null>(null);
+  const [isUpdatingMaster, setIsUpdatingMaster] = useState(false);
 
   // Synchronize customers prop into local customerCache for instant lookups
   useEffect(() => {
@@ -288,6 +297,32 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
     return matches.slice(0, 50);
   }, [customerList, customerSearchTerm, selectedCustomerObj]);
+
+  const handleConfirmUpdateMaster = async () => {
+    if (!spModalState) return;
+    try {
+      setIsUpdatingMaster(true);
+      await updateCustomerSalesPerson(spModalState.customerId, spModalState.newSpId, true);
+      
+      // Update local selectedCustomerObj
+      setSelectedCustomerObj(prev => prev ? { ...prev, salesPersonId: spModalState.newSpId } : null);
+      
+      // Update quotations list in React state for this customer
+      if (setQuotations) {
+        await setQuotations(prev => {
+          if (!prev) return prev;
+          return prev.map(q => q.customerId === spModalState.customerId ? { ...q, salesPersonId: spModalState.newSpId } : q);
+        });
+      }
+      
+      setSpModalState(null);
+    } catch (err) {
+      console.error('Failed to update Customer Master:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update Customer Master');
+    } finally {
+      setIsUpdatingMaster(false);
+    }
+  };
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -425,13 +460,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     // For NEW quotations, we set ID to 0 initially (Offline Mode).
     // Real ID is generated only on SAVE to prevent collisions and background reset issues.
     
-    // Auto-assign Sales Person ID if the current user is a Sales Person
+    // Auto-assign Sales Person ID only if the current user is a Sales Person
     let defaultSalesPersonId: number | null = null;
     if (userRole === 'Sales Person') {
         const me = salesPersons.find(sp => sp.name === currentUser.name);
         if (me) defaultSalesPersonId = me.id;
-    } else {
-        defaultSalesPersonId = 4; // Default to Office (ID 4) for Admin/Management so new quotes are never unallocated
     }
 
     return {
@@ -726,12 +759,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   useEffect(() => {
     if (selectedCustomerObj && editingQuotationId === null) {
         if (userRole !== 'Sales Person') {
-            const latestQuote = (quotations || []).find(q => q.customerId === selectedCustomerObj.id && q.salesPersonId);
-            const targetSpId = selectedCustomerObj.salesPersonId || latestQuote?.salesPersonId || 4;
-            setFormData(prev => (prev && (!prev.salesPersonId || prev.salesPersonId === 0)) ? {...prev, salesPersonId: targetSpId} : prev);
+            const targetSpId = selectedCustomerObj.salesPersonId ?? null;
+            if (targetSpId !== null) {
+                setFormData(prev => (prev && (!prev.salesPersonId || prev.salesPersonId === 0)) ? {...prev, salesPersonId: targetSpId} : prev);
+            }
         }
     }
-  }, [selectedCustomerObj, editingQuotationId, userRole, quotations]);
+  }, [selectedCustomerObj, editingQuotationId, userRole]);
 
   const handleRecheckPrices = useCallback(() => {
     if (!formData || !formData.details || formData.details.length === 0) return;
@@ -939,6 +973,21 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             });
             return { ...prev, quotationDate: value, details: updatedDetails };
         });
+        return;
+    }
+    if (name === 'salesPersonId') {
+        const newId = value ? parseInt(value) : null;
+        if (selectedCustomerObj && newId !== null && selectedCustomerObj.salesPersonId !== newId) {
+            setSpModalState({
+                isOpen: true,
+                newSpId: newId,
+                customerId: selectedCustomerObj.id,
+                customerName: selectedCustomerObj.name,
+                currentSpName: salesPersons.find(sp => sp.id === selectedCustomerObj.salesPersonId)?.name || 'None (Blank)',
+                newSpName: salesPersons.find(sp => sp.id === newId)?.name || 'Unknown'
+            });
+        }
+        setFormData(prev => prev ? { ...prev, salesPersonId: newId } : null);
         return;
     }
     setFormData(prev => prev ? { ...prev, [name]: isNumericId ? (value ? parseInt(value) : null) : value } : null);
@@ -1366,11 +1415,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         if (editingQuotationId === null) {
           if (userRole === 'Sales Person') {
             const me = salesPersons.find(sp => sp.name === currentUser.name);
-            newSpId = me ? me.id : (customer.salesPersonId || prev.salesPersonId);
+            newSpId = me ? me.id : (customer.salesPersonId ?? null);
           } else {
-            // Find salesperson from customer or historical quotation
-            const latestQuote = (quotations || []).find(q => q.customerId === customer.id && q.salesPersonId);
-            newSpId = customer.salesPersonId || latestQuote?.salesPersonId || prev.salesPersonId || 4;
+            // Take sales person from customer master (leave null/blank if not assigned in master)
+            newSpId = customer.salesPersonId ?? null;
           }
         }
         return {
@@ -2354,6 +2402,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                      {selectedCustomerObj && (
                         <div className="ml-[33.33%] pl-1 text-[10px] text-black whitespace-normal break-words leading-tight" title={`${selectedCustomerObj.address || ''}, ${selectedCustomerObj.city || ''} - ${selectedCustomerObj.pincode || ''}`}>
                             {selectedCustomerObj.address || ''}, {selectedCustomerObj.city || ''} - {selectedCustomerObj.pincode || ''}
+                            {!selectedCustomerObj.salesPersonId && (
+                                <div className="text-amber-700 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded font-semibold mt-0.5 inline-block">
+                                    ⚠️ No Sales Person in Master. Please select one.
+                                </div>
+                            )}
                         </div>
                      )}
                 </div>
@@ -2761,6 +2814,45 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
           });
         }}
       />
+
+      {spModalState && spModalState.isOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in">
+            <div className="flex items-center space-x-3 text-blue-600">
+              <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className="text-base font-bold text-slate-800">Update Customer Master?</h3>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Customer <strong className="text-slate-800">{spModalState.customerName}</strong> currently has{' '}
+              <span className="font-semibold text-slate-800">{spModalState.currentSpName}</span> in Customer Master.
+            </p>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Would you like to update the Customer Master to{' '}
+              <span className="font-semibold text-blue-600">{spModalState.newSpName}</span> so that all past/older offers and new future offers automatically use this Sales Person?
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 justify-end">
+              <button
+                type="button"
+                disabled={isUpdatingMaster}
+                onClick={() => setSpModalState(null)}
+                className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition"
+              >
+                Only for this Quotation
+              </button>
+              <button
+                type="button"
+                disabled={isUpdatingMaster}
+                onClick={handleConfirmUpdateMaster}
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow transition flex items-center justify-center space-x-1"
+              >
+                {isUpdatingMaster ? 'Updating Master...' : 'Update Master (All Offers)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CustomerAddModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} salesPersons={salesPersons} />
       <CustomerSearchModal 
