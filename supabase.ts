@@ -867,6 +867,27 @@ export async function fetchAllProductsForExport() {
     return allProducts;
 }
 
+export async function fetchAllCustomersForExport(): Promise<Customer[]> { 
+    if (!supabase) throw new Error("Supabase client not initialized");
+    let allCustomers: Customer[] = [];
+    let from = 0;
+    const limit = 1000;
+    while (true) {
+        const { data, error } = await supabase.from('customers').select('*').order('id', { ascending: true }).range(from, from + limit - 1);
+        if (error) throw new Error(parseSupabaseError(error, "Failed to fetch all customers"));
+        if (!data || data.length === 0) break;
+        const mapped = data.map(item => mapFromSupabase('customers', item));
+        allCustomers.push(...mapped);
+        if (data.length < limit) break;
+        from += limit;
+    }
+    // Cache all fetched customers for instant lookups
+    allCustomers.forEach(c => cacheCustomerLocally(c));
+    // Sort alphabetically by name
+    allCustomers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return allCustomers;
+}
+
 export async function addProductsBatch(products: any[]) {
     if (!supabase) throw new Error("Supabase client not initialized");
     const payloads = products.map(p => mapToSupabase('products', p));

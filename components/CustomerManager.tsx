@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type { Customer, SalesPerson, Quotation, QuotationStatus, User } from '../types';
 import { CustomerAddModal } from './CustomerAddModal';
 import { QUOTATION_STATUSES } from '../constants';
-import { getCustomersPaginated, upsertCustomer, deleteCustomer, addCustomersBatch } from '../supabase';
+import { getCustomersPaginated, upsertCustomer, deleteCustomer, addCustomersBatch, fetchAllCustomersForExport } from '../supabase';
 import { useDebounce } from '../hooks/useDebounce';
 import { calculateTotalAmount } from '../utils/calc';
 
@@ -252,23 +252,65 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
     XLSX.writeFile(wb, "Customer_Upload_Template.xlsx");
   };
 
-  const handleExport = () => {
-      const dataToExport = displayedCustomers.map(c => ({
-          id: c.id,
-          name: c.name,
-          address: c.address,
-          city: c.city,
-          pincode: c.pincode,
-          salesPersonId: c.salesPersonId,
-          singleCoreDiscount: c.discountStructure?.singleCore || 0,
-          multiCoreDiscount: c.discountStructure?.multiCore || 0,
-          specialCableDiscount: c.discountStructure?.specialCable || 0,
-          accessoriesDiscount: c.discountStructure?.accessories || 0,
-      }));
+  const formatCustomerForExport = (c: Customer) => ({
+      "Customer ID": c.id,
+      "Customer Name": c.name,
+      "Address": c.address || '',
+      "City": c.city || '',
+      "Pincode": c.pincode || '',
+      "Sales Person": getSalesPersonName(c.salesPersonId),
+      "Single Core Discount (%)": c.discountStructure?.singleCore ?? 0,
+      "Multi Core Discount (%)": c.discountStructure?.multiCore ?? 0,
+      "Special Cable Discount (%)": c.discountStructure?.specialCable ?? 0,
+      "Accessories Discount (%)": c.discountStructure?.accessories ?? 0,
+  });
+
+  const exportCustomersToExcel = (customerList: Customer[], filename: string) => {
+      const dataToExport = customerList.map(formatCustomerForExport);
       const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+      // Auto-fit column widths for clean readability in Excel
+      ws['!cols'] = [
+          { wch: 14 }, // Customer ID
+          { wch: 40 }, // Customer Name
+          { wch: 45 }, // Address
+          { wch: 20 }, // City
+          { wch: 14 }, // Pincode
+          { wch: 24 }, // Sales Person
+          { wch: 24 }, // Single Core Discount (%)
+          { wch: 24 }, // Multi Core Discount (%)
+          { wch: 26 }, // Special Cable Discount (%)
+          { wch: 24 }, // Accessories Discount (%)
+      ];
+
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Customers");
-      XLSX.writeFile(wb, "Customers_Export.xlsx");
+      XLSX.utils.book_append_sheet(wb, ws, "Customer Master");
+      XLSX.writeFile(wb, filename);
+  };
+
+  const handleExportVisible = () => {
+      exportCustomersToExcel(
+          displayedCustomers,
+          `Customer_Master_Visible_${new Date().toISOString().split('T')[0]}.xlsx`
+      );
+  };
+
+  const handleExportTotalMaster = async () => {
+      setIsUploading(true);
+      setUploadProgress(`Exporting total customer master... Fetching all ${totalCount || ''} customers from database...`);
+      try {
+          const allCustomers = await fetchAllCustomersForExport();
+          exportCustomersToExcel(
+              allCustomers,
+              `Customer_Master_Total_${new Date().toISOString().split('T')[0]}.xlsx`
+          );
+      } catch (error) {
+          console.error("Failed to export customer master:", error);
+          alert(error instanceof Error ? error.message : "Failed to export total customer master");
+      } finally {
+          setIsUploading(false);
+          setUploadProgress('');
+      }
   };
 
   const handleUploadClick = () => {
@@ -302,13 +344,14 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
               let lastId = lastIdResult.customers.length > 0 ? lastIdResult.customers[0].id : 0;
               
               const customersToUpsert: Customer[] = json.map(row => {
-                  if (!row.name) return null;
+                  const rawName = row.name ?? row['Customer Name'] ?? row['Customer'] ?? row['name'];
+                  if (!rawName) return null;
 
                   const customer: Partial<Customer> = {
-                      name: String(row.name),
-                      address: String(row.address || ''),
-                      city: String(row.city || ''),
-                      pincode: String(row.pincode || ''),
+                      name: String(rawName),
+                      address: String(row.address ?? row['Address'] ?? row['address'] ?? ''),
+                      city: String(row.city ?? row['City'] ?? row['city'] ?? ''),
+                      pincode: String(row.pincode ?? row['Pincode'] ?? row['pincode'] ?? ''),
                       salesPersonId: (() => {
                           // Check name-based fields first against live salesPersons list
                           const nameRaw = row['Sales Rep'] ?? row.salesPersonName ?? row['salesPersonName'] ?? row['Sales Person'] ?? row['salesPerson'] ?? row['sales_person'];
@@ -349,14 +392,14 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
                           return 2; // Default to Office (ID 2)
                       })(),
                       discountStructure: {
-                          singleCore: parseFloat(String(row.singleCoreDiscount)) || 0,
-                          multiCore: parseFloat(String(row.multiCoreDiscount)) || 0,
-                          specialCable: parseFloat(String(row.specialCableDiscount)) || 0,
-                          accessories: parseFloat(String(row.accessoriesDiscount)) || 0,
+                          singleCore: parseFloat(String(row.singleCoreDiscount ?? row['Single Core Discount (%)'] ?? row['Single Core Discount'] ?? 0)) || 0,
+                          multiCore: parseFloat(String(row.multiCoreDiscount ?? row['Multi Core Discount (%)'] ?? row['Multi Core Discount'] ?? 0)) || 0,
+                          specialCable: parseFloat(String(row.specialCableDiscount ?? row['Special Cable Discount (%)'] ?? row['Special Cable Discount'] ?? 0)) || 0,
+                          accessories: parseFloat(String(row.accessoriesDiscount ?? row['Accessories Discount (%)'] ?? row['Accessories Discount'] ?? 0)) || 0,
                       }
                   };
                   
-                  const idKey = Object.keys(row).find(key => key.toLowerCase().startsWith('id'));
+                  const idKey = Object.keys(row).find(key => key.toLowerCase().startsWith('id') || key.toLowerCase().includes('customer id'));
                   const rowId = idKey ? row[idKey] : undefined;
 
                   if (rowId && !isNaN(parseInt(String(rowId), 10))) {
@@ -496,9 +539,21 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ salesPersons, 
             <h2 className="text-xl font-bold text-black">Customers ({totalCount})</h2>
             <div className="flex flex-wrap gap-2 text-sm">
                 <button
-                    onClick={handleExport}
+                    onClick={handleExportTotalMaster}
+                    disabled={isUploading}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3.5 rounded-md transition duration-300 shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                    title="Export complete customer database with Sales Person names"
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Export Total Master</span>
+                </button>
+                <button
+                    onClick={handleExportVisible}
                     disabled={isUploading}
                     className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-1.5 px-3 rounded-md transition duration-300 disabled:opacity-50"
+                    title="Export currently visible page / filtered customers"
                 >
                     Export Visible
                 </button>
