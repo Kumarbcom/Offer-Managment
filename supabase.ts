@@ -1290,6 +1290,11 @@ if (typeof window !== 'undefined') {
             cached.forEach(p => {
                 if (p && p.prices && Array.isArray(p.prices)) {
                     p.prices = p.prices.filter(pr => !(pr.validFrom === '2000-01-01' && pr.validTo === '9999-12-31'));
+                    // Purge any fake 1-tier stub that was injected by legacy hydrateProductsFromQuotations
+                    if (p.prices.length === 1 && p.prices[0].validFrom === '2026-11-20' && p.prices[0].validTo === '9999-12-31') {
+                        p.prices = [];
+                        (p as any).isHydratedStub = true;
+                    }
                 }
                 cacheProductLocally(p, false);
             });
@@ -1302,7 +1307,8 @@ function scheduleProductCatalogPersist() {
     if (typeof window === 'undefined') return;
     if (saveCatalogTimer) clearTimeout(saveCatalogTimer);
     saveCatalogTimer = setTimeout(() => {
-        const allCached = Array.from(productCacheById.values());
+        // Only persist genuine products that have real prices and are not stubs
+        const allCached = Array.from(productCacheById.values()).filter(p => !Boolean((p as any).isHydratedStub) && p.prices && p.prices.length > 0);
         if (allCached.length > 0) {
             idbSet('cache_products_catalog', allCached.slice(0, 5000)).catch(() => {});
         }
@@ -1312,9 +1318,12 @@ function scheduleProductCatalogPersist() {
 export function cacheProductLocally(product: Product, persist = true) {
     if (!product) return;
     let added = false;
+    const isStub = Boolean((product as any).isHydratedStub);
+
     if (product.id && typeof product.id === 'number' && product.id > 0) {
         const existing = productCacheById.get(product.id);
-        if (!existing || (product.imageUrl && !existing.imageUrl) || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
+        const existingHasPrices = Boolean(existing?.prices && existing.prices.length > 0 && !(existing as any).isHydratedStub);
+        if (!existing || (!existingHasPrices && !isStub) || (product.imageUrl && !existing.imageUrl) || (product.prices && product.prices.length >= (existing.prices?.length || 0) && !isStub)) {
             productCacheById.set(product.id, product);
             added = true;
         }
@@ -1322,19 +1331,21 @@ export function cacheProductLocally(product: Product, persist = true) {
     if (product.partNo && typeof product.partNo === 'string' && product.partNo.trim()) {
         const key = product.partNo.trim().toLowerCase();
         const existing = productCacheByPartNo.get(key);
-        if (!existing || (product.imageUrl && !existing.imageUrl) || (product.prices && product.prices.length >= (existing.prices?.length || 0))) {
+        const existingHasPrices = Boolean(existing?.prices && existing.prices.length > 0 && !(existing as any).isHydratedStub);
+        if (!existing || (!existingHasPrices && !isStub) || (product.imageUrl && !existing.imageUrl) || (product.prices && product.prices.length >= (existing.prices?.length || 0) && !isStub)) {
             productCacheByPartNo.set(key, product);
             added = true;
         }
     }
-    if (added && persist) {
+    if (added && persist && !isStub) {
         scheduleProductCatalogPersist();
     }
 }
 
 /**
  * Hydrates commonly quoted products from loaded quotations into in-memory product cache.
- * Gives 0ms instant autocomplete for all items the team quotes regularly!
+ * Gives 0ms instant autocomplete suggestions for part numbers, descriptions, and images.
+ * Quotation line items DO NOT define catalog price tiers — genuine price tiers are always fetched from Supabase.
  */
 export function hydrateProductsFromQuotations(quotations: Quotation[]) {
     if (!quotations || !Array.isArray(quotations)) return;
@@ -1345,7 +1356,6 @@ export function hydrateProductsFromQuotations(quotations: Quotation[]) {
                     const cleanPartNo = item.partNo.trim();
                     const existing = productCacheByPartNo.get(cleanPartNo.toLowerCase());
                     if (!existing) {
-                        const priceVal = Number(item.price) || 0;
                         const p: Product = {
                             id: item.productId || 0,
                             partNo: cleanPartNo,
@@ -1353,29 +1363,13 @@ export function hydrateProductsFromQuotations(quotations: Quotation[]) {
                             uom: item.uom || 'M',
                             weight: item.airFreightDetails?.weightPerMtr || 0,
                             imageUrl: item.imageUrl || '',
-                            prices: priceVal > 0 ? [{
-                                lp: item.priceSource === 'LP' ? priceVal : 0,
-                                sp: item.priceSource === 'SP' ? priceVal : priceVal,
-                                validFrom: '2026-11-20',
-                                validTo: '9999-12-31'
-                            }] : []
+                            prices: [] // NEVER fake catalog price tiers! Genuine prices must come from Supabase.
                         };
+                        (p as any).isHydratedStub = true;
                         cacheProductLocally(p, false);
                     } else {
                         if (!existing.imageUrl && item.imageUrl) {
                             existing.imageUrl = item.imageUrl;
-                        }
-                        if ((!existing.prices || existing.prices.length === 0) && Number(item.price) > 0) {
-                            const priceVal = Number(item.price);
-                            existing.prices = [{
-                                lp: item.priceSource === 'LP' ? priceVal : 0,
-                                sp: item.priceSource === 'SP' ? priceVal : priceVal,
-                                validFrom: '2026-11-20',
-                                validTo: '9999-12-31'
-                            }];
-                        }
-                        if (existing.prices && existing.prices.some(pr => pr.validFrom === '2000-01-01' && pr.validTo === '9999-12-31')) {
-                            existing.prices = existing.prices.filter(pr => !(pr.validFrom === '2000-01-01' && pr.validTo === '9999-12-31'));
                         }
                     }
                 }
@@ -1591,7 +1585,7 @@ export async function getProductsByIds(ids: number[]): Promise<Product[]> {
     for (const id of validIds) {
         if (productCacheById.has(id)) {
             const p = productCacheById.get(id)!;
-            if (p.prices && Array.isArray(p.prices) && p.prices.length > 0) {
+            if (p.prices && Array.isArray(p.prices) && p.prices.length > 0 && !(p as any).isHydratedStub) {
                 cached.push(p);
             } else {
                 missing.push(id);
@@ -1626,7 +1620,7 @@ export async function getProductsByPartNos(partNos: string[]): Promise<Product[]
         const lower = pNo.toLowerCase();
         if (productCacheByPartNo.has(lower)) {
             const p = productCacheByPartNo.get(lower)!;
-            if (p.prices && Array.isArray(p.prices) && p.prices.length > 0) {
+            if (p.prices && Array.isArray(p.prices) && p.prices.length > 0 && !(p as any).isHydratedStub) {
                 cached.push(p);
             } else {
                 missing.push(pNo);

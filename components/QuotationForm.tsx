@@ -769,14 +769,38 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     }
   }, [selectedCustomerObj, editingQuotationId, userRole]);
 
-  const handleRecheckPrices = useCallback(() => {
+  const handleRecheckPrices = useCallback(async () => {
     if (!formData || !formData.details || formData.details.length === 0) return;
     const targetDate = formData.quotationDate || getTodayDateString();
     let updatedCount = 0;
 
+    // Ensure all products in quote details have genuine prices fetched from catalog
+    const missingProdIds = formData.details
+        .map(d => d.productId)
+        .filter(id => id > 0 && (!fetchedProducts.has(id) || !fetchedProducts.get(id)?.prices?.length));
+    const missingPartNos = formData.details
+        .map(d => d.partNo)
+        .filter(p => Boolean(p && p.trim()) && !Array.from(fetchedProducts.values()).some(fp => fp.partNo?.trim().toLowerCase() === p.trim().toLowerCase() && fp.prices?.length));
+
+    let currentProdMap = new Map(fetchedProducts);
+    if (missingProdIds.length > 0 || missingPartNos.length > 0) {
+        try {
+            const [byId, byPart] = await Promise.all([
+                missingProdIds.length > 0 ? getProductsByIds(missingProdIds) : Promise.resolve([]),
+                missingPartNos.length > 0 ? getProductsByPartNos(missingPartNos) : Promise.resolve([])
+            ]);
+            [...byId, ...byPart].forEach(p => {
+                if (p.id) currentProdMap.set(p.id, p);
+            });
+            setFetchedProducts(currentProdMap);
+        } catch (e) {
+            console.warn("Could not fetch missing products for recheck:", e);
+        }
+    }
+
     const newDetails = formData.details.map(item => {
-        const product = (item.productId && fetchedProducts.get(item.productId)) ||
-                        (item.partNo && Array.from(fetchedProducts.values()).find(p => p.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
+        const product = (item.productId && currentProdMap.get(item.productId)) ||
+                        (item.partNo && Array.from(currentProdMap.values()).find(p => p.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
                         (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase()));
 
         if (product && product.prices && product.prices.length > 0) {
@@ -2595,15 +2619,18 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                         const freightPerMtr = item.airFreightDetails?.weightPerMtr ? (item.airFreightDetails.weightPerMtr / 1000 * airFreightRate) : 0; 
                         const freightTotal = item.airFreight ? freightPerMtr * (item.moq || 0) : 0; 
                         const limitExceeded = isDiscountExceeded(item);
-                        const currentProduct = fetchedProducts.get(item.productId) || (item.partNo ? {
-                            id: item.productId || item.partNo,
-                            partNo: item.partNo,
-                            description: item.description || '',
-                            prices: [],
-                            imageUrl: item.imageUrl,
-                            uom: item.uom || 'M',
-                            brand: (item as any).brand || 'Lapp'
-                        } as any as Product : undefined);
+                        const currentProduct = (item.productId && fetchedProducts.get(item.productId)) ||
+                            (item.partNo && Array.from(fetchedProducts.values()).find(fp => fp.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
+                            (item.partNo && productCacheByPartNo.get(item.partNo.trim().toLowerCase())) ||
+                            (item.partNo ? {
+                                id: item.productId || item.partNo,
+                                partNo: item.partNo,
+                                description: item.description || '',
+                                prices: [],
+                                imageUrl: item.imageUrl,
+                                uom: item.uom || 'M',
+                                brand: (item as any).brand || 'Lapp'
+                            } as any as Product : undefined);
                         const cleanProductTerm = (productSearchTerm || '').trim().toLowerCase();
                         const candidateMap = new Map<number | string, Product>();
                         searchedProducts.forEach(p => candidateMap.set(p.id || p.partNo, p));
@@ -2746,7 +2773,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                                 )}
                                 <div className={`flex items-center ${isOlderPrice ? 'bg-amber-100 border border-amber-300' : hasPriceDiff ? 'bg-amber-50' : 'bg-slate-100'} h-6`} title={isOlderPrice ? `Price is from an older tier (prior to ${THRESHOLD_DATE_DISPLAY})` : undefined}>
                                     {isOlderPrice && <span className="text-[10px] pl-0.5 select-none" title={`Older price (prior to ${THRESHOLD_DATE_DISPLAY})`}>⚠️</span>}
-                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className={`w-14 p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black ${isOlderPrice ? 'font-bold text-amber-950' : hasPriceDiff ? 'font-bold text-indigo-950' : ''}`} disabled/>
+                                    <input type="number" step="0.01" value={item.price.toFixed(2)} className={`w-20 min-w-[70px] p-0.5 text-right h-full bg-transparent text-xs whitespace-nowrap text-black ${isOlderPrice ? 'font-bold text-amber-950' : hasPriceDiff ? 'font-bold text-indigo-950' : ''}`} disabled/>
                                     <select 
                                         value={item.priceSource} 
                                         className="bg-transparent border-l border-slate-200 p-0 text-[9px] text-black h-full appearance-none text-center w-6 focus:outline-none" 
