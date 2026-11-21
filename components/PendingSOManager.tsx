@@ -189,29 +189,42 @@ export const PendingSOManager: React.FC<PendingSOManagerProps> = ({ pendingSOs, 
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Pending Sales Order Report</h2>
-        <div className="flex flex-wrap gap-2 text-sm">
+        <div className="flex flex-wrap gap-2 text-xs items-center">
             <button 
                 onClick={handleAddNew}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 px-4 rounded-xl shadow-md shadow-blue-500/25 hover:shadow-lg transition-all active:scale-[0.98] text-xs cursor-pointer"
             >
-                Add Manual
+                <span className="w-4 h-4 rounded-full bg-white/25 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                </span>
+                <span className="tracking-wide">Add Order (Manual)</span>
             </button>
-            <div className="h-8 border-l border-gray-300 mx-1 hidden md:block"></div>
-            <button 
-                onClick={handleClearAll} 
-                disabled={isClearing}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {isClearing ? 'Clearing...' : 'Clear Total Report'}
-            </button>
-            <button onClick={handleDownloadTemplate} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold">Template</button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />
             <button 
                 onClick={() => fileInputRef.current?.click()} 
                 disabled={isUploading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
             >
-                {isUploading ? 'Uploading...' : 'Upload from Excel'}
+                <svg className="w-3.5 h-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>{isUploading ? 'Uploading...' : 'Upload from Excel'}</span>
+            </button>
+            <button 
+                onClick={handleDownloadTemplate} 
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+            >
+                <svg className="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span>Template</span>
+            </button>
+            <button 
+                onClick={handleClearAll} 
+                disabled={isClearing}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+            >
+                <svg className="w-3.5 h-3.5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>{isClearing ? 'Clearing...' : 'Clear Total Report'}</span>
             </button>
         </div>
       </div>

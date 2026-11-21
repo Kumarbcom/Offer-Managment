@@ -378,6 +378,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
   const formDataRef = useRef<Quotation | null>(formData);
   formDataRef.current = formData;
   const lastEvaluatedDateKeyRef = useRef<string | null>(null);
+  const userHasChangedQuotationDateRef = useRef<boolean>(false);
   const [recheckMessage, setRecheckMessage] = useState<string | null>(null);
 
   const userRole = currentUser.role;
@@ -637,6 +638,7 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     // Use structured clone or deep copy to avoid mutating state directly if objects are shared
     let initialQuotation = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : createNewQuotation();
     originalQuotationOnLoadRef.current = quotationToEdit ? JSON.parse(JSON.stringify(quotationToEdit)) : null;
+    userHasChangedQuotationDateRef.current = false;
     
     // Sanitize and patch missing fields for legacy data
     if (initialQuotation.details) {
@@ -794,8 +796,35 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     });
 
     if (updatedCount > 0) {
-        setFormData(prev => prev ? { ...prev, details: newDetails } : null);
-        setRecheckMessage(`Updated ${updatedCount} item(s) to match ${targetDate}`);
+        setFormData(prev => {
+            if (!prev) return null;
+            if (prev.id > 0) {
+                const orig = originalQuotationOnLoadRef.current;
+                const snap = prev.initialSnapshot || (orig && orig.details && orig.details.length > 0 ? {
+                    quotationDate: orig.quotationDate,
+                    details: JSON.parse(JSON.stringify(orig.details)),
+                    otherTerms: orig.otherTerms,
+                    paymentTerms: orig.paymentTerms,
+                    gstAdded: orig.gstAdded
+                } : {
+                    quotationDate: prev.quotationDate,
+                    details: JSON.parse(JSON.stringify(prev.details)),
+                    otherTerms: prev.otherTerms,
+                    paymentTerms: prev.paymentTerms,
+                    gstAdded: prev.gstAdded
+                });
+                const newRev = Math.max(1, (prev.revisionNumber || 0) + 1);
+                return {
+                    ...prev,
+                    details: newDetails,
+                    revisionNumber: newRev,
+                    initialSnapshot: snap,
+                    status: 'Need Amendment'
+                };
+            }
+            return { ...prev, details: newDetails };
+        });
+        setRecheckMessage(`Updated ${updatedCount} item(s) to match ${targetDate} & captured as Amendment`);
     } else {
         setRecheckMessage(`All items already match ${targetDate}`);
     }
@@ -804,6 +833,13 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
 
   useEffect(() => {
     if (!formData || !formData.details?.length || fetchedProducts.size === 0) return;
+
+    // SAFETY: If editing an existing quotation, DO NOT auto-overwrite saved historical prices on load!
+    // Auto-eval on mount should only run for NEW quotations (id === 0).
+    // For existing quotes, price recheck happens via handleRecheckPrices or when quotationDate is explicitly changed.
+    const isExistingQuote = formData.id > 0;
+    if (isExistingQuote && !userHasChangedQuotationDateRef.current) return;
+
     const targetDate = formData.quotationDate || getTodayDateString();
 
     const evaluationKey = `${targetDate}_${fetchedProducts.size}`;
@@ -830,7 +866,36 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
         }
         return item;
     });
-    if (wasUpdated) setFormData(prev => prev ? { ...prev, details: newDetails } : null);
+    if (wasUpdated) {
+        setFormData(prev => {
+            if (!prev) return null;
+            if (prev.id > 0) {
+                const orig = originalQuotationOnLoadRef.current;
+                const snap = prev.initialSnapshot || (orig && orig.details && orig.details.length > 0 ? {
+                    quotationDate: orig.quotationDate,
+                    details: JSON.parse(JSON.stringify(orig.details)),
+                    otherTerms: orig.otherTerms,
+                    paymentTerms: orig.paymentTerms,
+                    gstAdded: orig.gstAdded
+                } : {
+                    quotationDate: prev.quotationDate,
+                    details: JSON.parse(JSON.stringify(prev.details)),
+                    otherTerms: prev.otherTerms,
+                    paymentTerms: prev.paymentTerms,
+                    gstAdded: prev.gstAdded
+                });
+                const newRev = Math.max(1, (prev.revisionNumber || 0) + 1);
+                return {
+                    ...prev,
+                    details: newDetails,
+                    revisionNumber: newRev,
+                    initialSnapshot: snap,
+                    status: 'Need Amendment'
+                };
+            }
+            return { ...prev, details: newDetails };
+        });
+    }
   }, [formData?.quotationDate, fetchedProducts, getPriceForDate]);
 
   useEffect(() => {
@@ -955,8 +1020,10 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
     const { name, value } = e.target;
     const isNumericId = name === 'salesPersonId';
     if (name === 'quotationDate') {
+        userHasChangedQuotationDateRef.current = true;
         setFormData(prev => {
             if (!prev) return null;
+            let priceChanged = false;
             const updatedDetails = prev.details.map(item => {
                 const product = (item.productId && fetchedProducts.get(item.productId)) ||
                                 (item.partNo && Array.from(fetchedProducts.values()).find(p => p.partNo?.trim().toLowerCase() === item.partNo?.trim().toLowerCase())) ||
@@ -966,11 +1033,39 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
                     if (priceEntry) {
                         const newPrice = priceEntry.lp > 0 ? priceEntry.lp : priceEntry.sp;
                         const priceSource: 'LP' | 'SP' = priceEntry.lp > 0 ? 'LP' : 'SP';
+                        if (Math.abs(newPrice - (item.price || 0)) > 0.01) {
+                            priceChanged = true;
+                        }
                         return { ...item, price: newPrice, priceSource };
                     }
                 }
                 return item;
             });
+
+            if (priceChanged && prev.id > 0) {
+                const orig = originalQuotationOnLoadRef.current;
+                const snap = prev.initialSnapshot || (orig && orig.details && orig.details.length > 0 ? {
+                    quotationDate: orig.quotationDate,
+                    details: JSON.parse(JSON.stringify(orig.details)),
+                    otherTerms: orig.otherTerms,
+                    paymentTerms: orig.paymentTerms,
+                    gstAdded: orig.gstAdded
+                } : {
+                    quotationDate: prev.quotationDate,
+                    details: JSON.parse(JSON.stringify(prev.details)),
+                    otherTerms: prev.otherTerms,
+                    paymentTerms: prev.paymentTerms,
+                    gstAdded: prev.gstAdded
+                });
+                return {
+                    ...prev,
+                    quotationDate: value,
+                    details: updatedDetails,
+                    revisionNumber: Math.max(1, (prev.revisionNumber || 0) + 1),
+                    initialSnapshot: snap,
+                    status: 'Need Amendment'
+                };
+            }
             return { ...prev, quotationDate: value, details: updatedDetails };
         });
         return;
@@ -1017,7 +1112,11 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
             }
             return item;
         });
-        return { ...prev, details: newDetails };
+        const isPriceOrDiscount = field === 'price' || field === 'discount';
+        const nextStatus = (isPriceOrDiscount && prev.id > 0 && (prev.status === 'Open' || prev.status === 'Under Review'))
+            ? 'Need Amendment'
+            : prev.status;
+        return { ...prev, details: newDetails, status: nextStatus };
     });
   };
   
@@ -1284,9 +1383,44 @@ export const QuotationForm: React.FC<QuotationFormProps> = ({
       
       let quotationToSave = { ...formData };
 
+      // Automatic Amendment Detection on Save:
+      // When saving an existing quotation (id > 0), if prices, discounts, or items changed compared to original loaded quotation:
+      const orig = originalQuotationOnLoadRef.current;
+      if (!isNew && orig && orig.details && orig.details.length > 0) {
+          const hasPriceOrDetailChange = (() => {
+              if (orig.details.length !== quotationToSave.details.length) return true;
+              for (let i = 0; i < quotationToSave.details.length; i++) {
+                  const curr = quotationToSave.details[i];
+                  const old = orig.details[i];
+                  if (!old) return true;
+                  if (curr.partNo !== old.partNo) return true;
+                  if (Math.abs((Number(curr.price) || 0) - (Number(old.price) || 0)) > 0.01) return true;
+                  if (Math.abs((Number(curr.discount) || 0) - (Number(old.discount) || 0)) > 0.01) return true;
+              }
+              return false;
+          })();
+
+          if (hasPriceOrDetailChange) {
+              if (!quotationToSave.initialSnapshot) {
+                  quotationToSave.initialSnapshot = orig.initialSnapshot || {
+                      quotationDate: orig.quotationDate,
+                      details: JSON.parse(JSON.stringify(orig.details)),
+                      otherTerms: orig.otherTerms,
+                      paymentTerms: orig.paymentTerms,
+                      gstAdded: orig.gstAdded
+                  };
+              }
+              if ((quotationToSave.revisionNumber || 0) <= (orig.revisionNumber || 0)) {
+                  quotationToSave.revisionNumber = (orig.revisionNumber || 0) + 1;
+              }
+              if (quotationToSave.status === 'Open' || quotationToSave.status === 'Under Review') {
+                  quotationToSave.status = 'Need Amendment';
+              }
+          }
+      }
+
       // Ensure initialSnapshot is preserved or derived from pristine loaded state if revision > 0
       if ((quotationToSave.revisionNumber || 0) > 0 && !quotationToSave.initialSnapshot) {
-          const orig = originalQuotationOnLoadRef.current;
           if (orig && orig.details && orig.details.length > 0) {
               quotationToSave.initialSnapshot = orig.initialSnapshot || {
                   quotationDate: orig.quotationDate,
